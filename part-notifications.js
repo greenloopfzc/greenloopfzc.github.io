@@ -17,9 +17,7 @@
   }
 
   function findSidebarLink(fileName) {
-    const links = document.querySelectorAll(".sidebar-nav a");
-
-    return [...links].find((link) => {
+    return [...document.querySelectorAll(".sidebar-nav a")].find((link) => {
       const url = new URL(link.href, window.location.href);
       return url.pathname.endsWith(`/${fileName}`);
     });
@@ -43,6 +41,45 @@
 
     initialQcLink.after(laboratoryLink);
     laboratoryLink.after(partsLink);
+  }
+
+  function updateDashboardGreeting() {
+    const headings = [...document.querySelectorAll("h1")];
+
+    const greetingHeading = headings.find((heading) =>
+      /good\s+(morning|afternoon|evening|night)/i.test(
+        heading.textContent
+      )
+    );
+
+    if (!greetingHeading) return;
+
+    const hour = new Date().getHours();
+    let greeting;
+
+    if (hour >= 5 && hour < 12) {
+      greeting = "Good morning";
+    } else if (hour >= 12 && hour < 17) {
+      greeting = "Good afternoon";
+    } else if (hour >= 17 && hour < 22) {
+      greeting = "Good evening";
+    } else {
+      greeting = "Good night";
+    }
+
+    const currentText = greetingHeading.textContent.trim();
+
+    const namePart = currentText
+      .replace(
+        /good\s+(morning|afternoon|evening|night)\s*,?\s*/i,
+        ""
+      )
+      .replace(/\.$/, "")
+      .trim();
+
+    const userName = namePart || "Admin";
+
+    greetingHeading.textContent = `${greeting}, ${userName}.`;
   }
 
   function createPartsBadge() {
@@ -130,9 +167,8 @@
 
     const pendingCount = Math.max(0, readCount(data));
 
-    badge.textContent = pendingCount > 99
-      ? "99+"
-      : String(pendingCount);
+    badge.textContent =
+      pendingCount > 99 ? "99+" : String(pendingCount);
 
     badge.hidden = pendingCount === 0;
     badge.title = `${pendingCount} part request(s) waiting`;
@@ -140,17 +176,19 @@
 
   function initialize() {
     reorderSidebar();
+    updateDashboardGreeting();
     refreshPartsNotification();
 
     window.clearInterval(refreshTimer);
 
-    refreshTimer = window.setInterval(
-      refreshPartsNotification,
-      30000
-    );
+    refreshTimer = window.setInterval(() => {
+      updateDashboardGreeting();
+      refreshPartsNotification();
+    }, 30000);
 
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden) {
+        updateDashboardGreeting();
         refreshPartsNotification();
       }
     });
