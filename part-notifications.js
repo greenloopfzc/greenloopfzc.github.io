@@ -2,55 +2,163 @@
   "use strict";
 
   const config = window.GREENLOOP_CONFIG || {};
-  const notificationTargets = [
-    { key: "initial_qc", selector: '[data-module="Initial QC"], a[href="initial-qc.html"]', label: "Initial QC jobs waiting" },
-    { key: "parts", selector: '[data-module="Parts"], a[href="parts.html"]', label: "Parts requests waiting" },
-    { key: "laboratory", selector: '[data-module="Laboratory"], a[href="laboratory.html"]', label: "Laboratory jobs waiting" },
-    { key: "glass", selector: '[data-module="Glass"], a[href="glass.html"]', label: "Glass jobs waiting" },
-    { key: "final_qc", selector: '[data-module="Final QC"], a[href="final-qc.html"]', label: "Final QC jobs waiting" },
-    { key: "production", selector: '[data-module="Production"], a[href="production.html"]', label: "Production jobs waiting" }
-  ];
-  let client;
+  let supabaseClient;
+  let refreshTimer;
 
   function getClient() {
-    return (client ||= window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey));
+    if (!supabaseClient && window.supabase) {
+      supabaseClient = window.supabase.createClient(
+        config.supabaseUrl,
+        config.supabaseAnonKey
+      );
+    }
+
+    return supabaseClient;
   }
 
-  function renderBadge(target, count) {
-    document.querySelectorAll(target.selector).forEach((item) => {
-      let badge = item.querySelector(".workflow-notification-badge");
-      if (count > 0) {
-        if (!badge) {
-          badge = document.createElement("span");
-          badge.className = "workflow-notification-badge";
-          badge.setAttribute("aria-label", target.label);
-          item.append(badge);
-        }
-        badge.textContent = count > 99 ? "99+" : String(count);
-        badge.hidden = false;
-      } else if (badge) {
-        badge.hidden = true;
+  function findSidebarLink(fileName) {
+    const links = document.querySelectorAll(".sidebar-nav a");
+
+    return [...links].find((link) => {
+      const url = new URL(link.href, window.location.href);
+      return url.pathname.endsWith(`/${fileName}`);
+    });
+  }
+
+  function reorderSidebar() {
+    const initialQcLink = findSidebarLink("initial-qc.html");
+    const laboratoryLink = findSidebarLink("laboratory.html");
+    const partsLink = findSidebarLink("parts.html");
+
+    if (!initialQcLink || !laboratoryLink || !partsLink) return;
+
+    const parent = initialQcLink.parentElement;
+
+    if (
+      laboratoryLink.parentElement !== parent ||
+      partsLink.parentElement !== parent
+    ) {
+      return;
+    }
+
+    initialQcLink.after(laboratoryLink);
+    laboratoryLink.after(partsLink);
+  }
+
+  function createPartsBadge() {
+    const partsLink = findSidebarLink("parts.html");
+    if (!partsLink) return null;
+
+    let badge = partsLink.querySelector(
+      "[data-parts-notification-badge]"
+    );
+
+    if (!badge) {
+      badge = document.createElement("span");
+      badge.dataset.partsNotificationBadge = "true";
+      badge.hidden = true;
+
+      Object.assign(badge.style, {
+        minWidth: "22px",
+        height: "22px",
+        marginLeft: "auto",
+        border: "2px solid white",
+        borderRadius: "999px",
+        padding: "0 6px",
+        color: "white",
+        background: "#dc2f25",
+        boxShadow: "0 2px 7px rgba(160, 25, 18, 0.35)",
+        fontSize: "11px",
+        fontWeight: "800",
+        lineHeight: "18px",
+        textAlign: "center"
+      });
+
+      partsLink.appendChild(badge);
+    }
+
+    return badge;
+  }
+
+  function readCount(data) {
+    if (Array.isArray(data)) {
+      const firstItem = data[0];
+
+      if (typeof firstItem === "object" && firstItem !== null) {
+        return Number(
+          firstItem.get_pending_part_request_count ??
+          firstItem.pending_count ??
+          0
+        );
+      }
+
+      return Number(firstItem || 0);
+    }
+
+    if (typeof data === "object" && data !== null) {
+      return Number(
+        data.get_pending_part_request_count ??
+        data.pending_count ??
+        0
+      );
+    }
+
+    return Number(data || 0);
+  }
+
+  async function refreshPartsNotification() {
+    const badge = createPartsBadge();
+    const client = getClient();
+
+    if (!badge || !client) return;
+
+    const { data: sessionData } = await client.auth.getSession();
+
+    if (!sessionData?.session) {
+      badge.hidden = true;
+      return;
+    }
+
+    const { data, error } = await client.rpc(
+      "get_pending_part_request_count"
+    );
+
+    if (error) {
+      badge.hidden = true;
+      return;
+    }
+
+    const pendingCount = Math.max(0, readCount(data));
+
+    badge.textContent = pendingCount > 99
+      ? "99+"
+      : String(pendingCount);
+
+    badge.hidden = pendingCount === 0;
+    badge.title = `${pendingCount} part request(s) waiting`;
+  }
+
+  function initialize() {
+    reorderSidebar();
+    refreshPartsNotification();
+
+    window.clearInterval(refreshTimer);
+
+    refreshTimer = window.setInterval(
+      refreshPartsNotification,
+      30000
+    );
+
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) {
+        refreshPartsNotification();
       }
     });
   }
 
-  async function refreshPartsNotification() {
-    if (!config.supabaseUrl || !config.supabaseAnonKey || !window.supabase) return;
-    const { data: sessionData } = await getClient().auth.getSession();
-    if (!sessionData.session) return;
-    const { data, error } = await getClient().rpc("get_workflow_notification_counts");
-    if (!error) {
-      notificationTargets.forEach((target) => renderBadge(target, Number(data?.[target.key]) || 0));
-      return;
-    }
-
-    const fallback = await getClient().rpc("get_pending_part_request_count");
-    if (!fallback.error) {
-      const partsTarget = notificationTargets.find((target) => target.key === "parts");
-      renderBadge(partsTarget, Number(fallback.data) || 0);
-    }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initialize);
+  } else {
+    initialize();
   }
-
-  refreshPartsNotification().catch(() => {});
-  window.setInterval(() => refreshPartsNotification().catch(() => {}), 20000);
 })();
