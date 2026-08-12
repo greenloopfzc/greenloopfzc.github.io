@@ -4,6 +4,8 @@
   const config = window.GREENLOOP_CONFIG || {};
   let supabaseClient;
   let refreshTimer;
+  let autoPickTimer;
+  let manualImeiAction = false;
 
   function getClient() {
     if (!supabaseClient && window.supabase) {
@@ -44,18 +46,18 @@
   }
 
   function updateDashboardGreeting() {
-    const headings = [...document.querySelectorAll("h1")];
-
-    const greetingHeading = headings.find((heading) =>
-      /good\s+(morning|afternoon|evening|night)/i.test(
-        heading.textContent
-      )
+    const greetingHeading = [...document.querySelectorAll("h1")].find(
+      (heading) =>
+        /good\s+(morning|afternoon|evening|night)/i.test(
+          heading.textContent
+        )
     );
 
     if (!greetingHeading) return;
 
     const hour = new Date().getHours();
-    let greeting;
+
+    let greeting = "Good night";
 
     if (hour >= 5 && hour < 12) {
       greeting = "Good morning";
@@ -63,27 +65,25 @@
       greeting = "Good afternoon";
     } else if (hour >= 17 && hour < 22) {
       greeting = "Good evening";
-    } else {
-      greeting = "Good night";
     }
 
     const currentText = greetingHeading.textContent.trim();
 
-    const namePart = currentText
-      .replace(
-        /good\s+(morning|afternoon|evening|night)\s*,?\s*/i,
-        ""
-      )
-      .replace(/\.$/, "")
-      .trim();
-
-    const userName = namePart || "Admin";
+    const userName =
+      currentText
+        .replace(
+          /good\s+(morning|afternoon|evening|night)\s*,?\s*/i,
+          ""
+        )
+        .replace(/\.$/, "")
+        .trim() || "Admin";
 
     greetingHeading.textContent = `${greeting}, ${userName}.`;
   }
 
   function createPartsBadge() {
     const partsLink = findSidebarLink("parts.html");
+
     if (!partsLink) return null;
 
     let badge = partsLink.querySelector(
@@ -174,9 +174,77 @@
     badge.title = `${pendingCount} part request(s) waiting`;
   }
 
+  function markManualImeiAction(event) {
+    if (!event.isTrusted) return;
+
+    const target = event.target;
+
+    if (
+      target.matches("input[id*='imei'], input[placeholder*='IMEI']") ||
+      target.matches(
+        "#pending-imei-select, #lab-step-select, #final-qc-step-select, #glass-step-select, #frame-step-select"
+      )
+    ) {
+      manualImeiAction = true;
+    }
+  }
+
+  function clearAutomaticImeiSelection() {
+    if (manualImeiAction) return;
+
+    const automaticDropdowns = document.querySelectorAll(
+      "#pending-imei-select, #lab-step-select, #final-qc-step-select, #glass-step-select, #frame-step-select"
+    );
+
+    automaticDropdowns.forEach((dropdown) => {
+      if (dropdown.options.length > 0) {
+        dropdown.selectedIndex = 0;
+      }
+    });
+
+    const automaticImeiInputs = document.querySelectorAll(
+      "input[id*='imei'][data-auto-picked='true']"
+    );
+
+    automaticImeiInputs.forEach((input) => {
+      input.value = "";
+      input.removeAttribute("data-auto-picked");
+    });
+
+    const workspaces = document.querySelectorAll(
+      "#qc-workspace, #lab-workspace, #final-qc-workspace, #glass-workspace, #frame-workspace"
+    );
+
+    workspaces.forEach((workspace) => {
+      workspace.hidden = true;
+    });
+  }
+
+  function startManualImeiOnlyMode() {
+    document.addEventListener("keydown", markManualImeiAction, true);
+    document.addEventListener("input", markManualImeiAction, true);
+    document.addEventListener("change", markManualImeiAction, true);
+    document.addEventListener("paste", markManualImeiAction, true);
+
+    let checksRemaining = 40;
+
+    window.clearInterval(autoPickTimer);
+
+    autoPickTimer = window.setInterval(() => {
+      clearAutomaticImeiSelection();
+
+      checksRemaining -= 1;
+
+      if (checksRemaining <= 0 || manualImeiAction) {
+        window.clearInterval(autoPickTimer);
+      }
+    }, 250);
+  }
+
   function initialize() {
     reorderSidebar();
     updateDashboardGreeting();
+    startManualImeiOnlyMode();
     refreshPartsNotification();
 
     window.clearInterval(refreshTimer);
