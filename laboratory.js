@@ -11,6 +11,7 @@
   const workspace = document.querySelector("#lab-workspace");
   const deviceSummary = document.querySelector("#lab-device-summary");
   const findingsList = document.querySelector("#lab-findings");
+  const plannedPartsList = document.querySelector("#lab-planned-parts");
   const partsList = document.querySelector("#lab-parts");
   const form = document.querySelector("#lab-form");
   const message = document.querySelector("#lab-message");
@@ -165,6 +166,34 @@
     }));
   }
 
+  async function loadPlannedParts(jobId) {
+    const { data, error } = await getClient()
+      .from("initial_qc_part_requirements")
+      .select("id, part_name, quantity_required, notes, status, part_request_id")
+      .eq("job_id", jobId)
+      .order("identified_at", { ascending: true });
+    if (error) throw error;
+    return data || [];
+  }
+
+  function renderPlannedParts(requirements) {
+    if (!requirements.length) {
+      plannedPartsList.innerHTML = '<p class="history-empty">No parts were identified by Initial QC.</p>';
+      return;
+    }
+
+    plannedPartsList.innerHTML = requirements.map((requirement) => {
+      const isPending = requirement.status === "identified";
+      const statusLabel = requirement.status === "requested"
+        ? "Requested from Parts"
+        : requirement.status === "not_required" ? "Not required" : "Waiting for Laboratory review";
+      const actions = isPending
+        ? `<div class="lab-planned-actions"><button type="button" data-request-planned-part="${requirement.id}">Request from Parts</button><button type="button" data-skip-planned-part="${requirement.id}">Not required</button></div>`
+        : `<span class="lab-plan-status ${requirement.status}">${statusLabel}</span>`;
+      return `<article class="lab-planned-row"><div><strong>${escapeHtml(requirement.part_name)}</strong><span>Quantity ${Number(requirement.quantity_required || 1)}${requirement.notes ? ` · ${escapeHtml(requirement.notes)}` : ""}</span></div>${actions}</article>`;
+    }).join("");
+  }
+
   function renderIssuedParts(issues) {
     if (!issues.length) {
       partsList.innerHTML = '<p class="history-empty">No issued parts for this job.</p>';
@@ -195,8 +224,9 @@
     const workOrder = getWorkOrder(selectedStep) || {};
     deviceSummary.innerHTML = `<dl><div><dt>IMEI</dt><dd>${escapeHtml(device.imei_1 || "—")}</dd></div><div><dt>Supplier code</dt><dd>${escapeHtml(supplierLabel(supplier))}</dd></div><div><dt>Model</dt><dd>${escapeHtml(device.model || "—")}</dd></div><div><dt>GB</dt><dd>${escapeHtml(device.storage_gb ? `${device.storage_gb} GB` : "—")}</dd></div><div><dt>Color</dt><dd>${escapeHtml(device.color || "—")}</dd></div><div><dt>Grade</dt><dd>${escapeHtml(job.supplier_grade || device.original_grade || "—")}</dd></div><div><dt>Technician</dt><dd>${escapeHtml(selectedStep.assigned_technician_name || "Not assigned")}</dd></div></dl>`;
 
-    const [findings, recordResponse, issuedParts] = await Promise.all([
+    const [findings, plannedParts, recordResponse, issuedParts] = await Promise.all([
       loadFindings(job.id),
+      loadPlannedParts(job.id),
       getClient().from("laboratory_work_records").select("id, rework_cycle, started_at, paused_at, paused_seconds, completed_at").eq("work_order_step_id", selectedStep.id).eq("rework_cycle", selectedStep.rework_count).maybeSingle(),
       loadIssuedParts(job.id)
     ]);
@@ -204,6 +234,7 @@
     findingsList.innerHTML = findings.length
       ? findings.map((finding) => `<li><strong>${escapeHtml(finding.check_item)}</strong><span>${escapeHtml(finding.action_required)} · ${escapeHtml(finding.priority)} priority${finding.notes ? ` · ${escapeHtml(finding.notes)}` : ""}</span></li>`).join("")
       : "<li><strong>Laboratory work required</strong><span>Review the work order and complete the assigned technical repair.</span></li>";
+    renderPlannedParts(plannedParts);
     renderIssuedParts(issuedParts);
     setWorkState(recordResponse.data);
   }
@@ -334,8 +365,36 @@
     document.querySelector("#additional-part-name").value = "";
     document.querySelector("#additional-part-notes").value = "";
     document.querySelector("#additional-part-quantity").value = 1;
-    showToast("Additional part requested. The job is now in the Parts queue.");
-    await loadQueue();
+    showToast("Additional part requested from Laboratory. The mobile remains in Laboratory.");
+    await loadSelectedStep();
+  }
+
+  async function handlePlannedPartAction(event) {
+    const requestButton = event.target.closest("[data-request-planned-part]");
+    const skipButton = event.target.closest("[data-skip-planned-part]");
+    if (!requestButton && !skipButton) return;
+
+    const button = requestButton || skipButton;
+    const requirementId = requestButton
+      ? requestButton.dataset.requestPlannedPart
+      : skipButton.dataset.skipPlannedPart;
+    const rpcName = requestButton
+      ? "request_initial_qc_part_from_lab"
+      : "mark_initial_qc_part_not_required";
+
+    setMessage();
+    setSubmitting(button, true, requestButton ? "Requesting..." : "Saving...");
+    const { error } = await getClient().rpc(rpcName, { p_requirement_id: requirementId });
+    setSubmitting(button, false);
+    if (error) {
+      setMessage(error.message || "The Initial QC part could not be reviewed.");
+      return;
+    }
+
+    showToast(requestButton
+      ? "Part requested from Laboratory. It is now visible to the Parts Department."
+      : "Part marked as not required by Laboratory.");
+    await loadSelectedStep();
   }
 
   async function initialize() {
@@ -369,6 +428,7 @@
   pauseButton.addEventListener("click", pauseWork);
   resumeButton.addEventListener("click", resumeWork);
   form.addEventListener("submit", completeWork);
+  plannedPartsList.addEventListener("click", handlePlannedPartAction);
   partsList.addEventListener("click", handlePartAction);
   document.querySelector("#additional-part-button").addEventListener("click", requestAdditionalPart);
   initialize().catch((error) => { permissionMessage.textContent = error.message || "Laboratory could not be loaded."; permissionMessage.hidden = false; });

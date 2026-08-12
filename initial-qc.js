@@ -237,7 +237,7 @@
     const duplicate = selections.find((selection, index) => selections.findIndex((item) => item.label === selection.label) !== index);
     if (duplicate) throw new Error(`${duplicate.label} is selected more than once. Select each part or service on one Initial QC line only.`);
     if (technicianIds.size > 1) throw new Error("A device can be assigned to one Laboratory technician. Use the same technician on all Initial QC lines.");
-    if (selections.length && technicianIds.size === 0) throw new Error("Select the Laboratory technician before completing QC.");
+    if (technicianIds.size === 0) throw new Error("Select the Laboratory technician before completing QC.");
 
     const findings = selections.map((selection) => {
       const item = serviceItems.find((service) => service.label === selection.label);
@@ -267,7 +267,7 @@
 
     const button = document.querySelector("#complete-qc");
     setSubmitting(button, true, "Saving QC...");
-    const { data, error } = await getClient().rpc("complete_scanned_initial_qc_with_roster_and_grades", {
+    const { data, error } = await getClient().rpc("complete_initial_qc_lab_first", {
       p_job_id: selectedJob.id,
       p_overall_condition: "",
       p_cosmetic_condition: "",
@@ -282,10 +282,10 @@
     if (error) { setMessage(error.message || "Initial QC could not be completed."); return; }
 
     const result = data?.[0];
-    const next = String(result?.next_department || "next department").replaceAll("_", " ");
-    const successText = result?.parts_requested
-      ? `Initial QC saved. ${result.parts_requested} part request(s) sent to Parts and the job is available in Laboratory at the same time.`
-      : `Initial QC saved. Next: ${next}.`;
+    const identifiedCount = Number(result?.parts_requested || 0);
+    const successText = identifiedCount
+      ? `Initial QC saved. Mobile sent to Laboratory with ${identifiedCount} identified part(s). Parts will be notified only after Laboratory requests them.`
+      : "Initial QC saved. Mobile sent to Laboratory for technician review.";
     showToast(successText);
     setScanMessage(successText, true);
     selectedJob = null;

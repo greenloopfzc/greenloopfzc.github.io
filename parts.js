@@ -83,7 +83,10 @@
       const device = deviceOf(request) || {};
       const supplier = supplierOf(request) || {};
       const remaining = Number(request.quantity_requested) - Number(request.quantity_issued);
-      return `<tr><td>${escapeHtml(device.imei_1 || "—")}</td><td>${escapeHtml(device.device_number || "—")}<small>${escapeHtml(device.model || "")}</small></td><td>${escapeHtml(job.job_number || "—")}</td><td>${escapeHtml(supplierLabel(supplier))}</td><td><strong>${escapeHtml(request.part_name)}</strong><small>${request.request_source === "technician_additional" ? "Additional technician request" : "Initial QC request"}</small></td><td>${request.quantity_requested}</td><td>${remaining}</td><td><select data-inventory-request="${request.id}">${inventoryOptions()}</select></td><td><input data-quantity-request="${request.id}" type="number" min="1" max="${remaining}" step="1" value="${Math.max(1, remaining)}"></td><td><button class="issue-row-button" type="button" data-issue-request="${request.id}">Issue</button></td></tr>`;
+      const sourceLabel = request.request_source === "technician_additional"
+        ? "Additional Laboratory request"
+        : "Laboratory request from Initial QC plan";
+      return `<tr><td>${escapeHtml(device.imei_1 || "—")}</td><td>${escapeHtml(device.device_number || "—")}<small>${escapeHtml(device.model || "")}</small></td><td>${escapeHtml(job.job_number || "—")}</td><td>${escapeHtml(supplierLabel(supplier))}</td><td><strong>${escapeHtml(request.part_name)}</strong><small>${sourceLabel}</small></td><td>${request.quantity_requested}</td><td>${remaining}</td><td><select data-inventory-request="${request.id}">${inventoryOptions()}</select></td><td><input data-quantity-request="${request.id}" type="number" min="1" max="${remaining}" step="1" value="${Math.max(1, remaining)}"></td><td><button class="issue-row-button" type="button" data-issue-request="${request.id}">Issue</button></td></tr>`;
     }).join("") : '<tr><td colspan="10">No part requests are waiting.</td></tr>';
     queueList.querySelectorAll("[data-inventory-request]").forEach((select) => {
       const request = requests.find((item) => item.id === select.dataset.inventoryRequest);
