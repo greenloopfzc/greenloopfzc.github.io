@@ -1,0 +1,22 @@
+.parts-content { max-width: 1510px; }
+.parts-app { display: grid; gap: 17px; }
+.parts-summary { display: flex; align-items: center; gap: 12px; border: 1px solid #e3eae5; border-radius: 13px; padding: 17px 19px; background: linear-gradient(118deg, #f5fbf7, #fff); }
+.parts-summary h2 { margin: 3px 0 0; color: #2b3a30; font-family: "Manrope", Arial, sans-serif; font-size: 1rem; letter-spacing: -.045em; }
+.parts-summary .queue-count { margin-left: auto; }
+.parts-sheet-panel, .inventory-panel { display: grid; gap: 13px; }
+.parts-sheet-wrap { overflow-x: auto; border: 1px solid #dce7df; border-radius: 9px; background: #fff; }
+.parts-sheet { width: 100%; min-width: 1080px; border-collapse: collapse; color: #405047; font-size: .69rem; text-align: left; }
+.parts-sheet th, .parts-sheet td { border-bottom: 1px solid #edf1ee; padding: 10px 11px; vertical-align: middle; white-space: nowrap; }
+.parts-sheet th { color: #61736a; background: #f5faf6; font-size: .59rem; letter-spacing: .055em; text-transform: uppercase; }
+.parts-sheet td small { display: block; margin-top: 3px; color: #86938b; font-size: .59rem; }
+.parts-sheet td strong { color: #2f4d3b; font-size: .7rem; }
+.parts-sheet select, .parts-sheet input { min-height: 34px; border: 1px solid #d8e4db; border-radius: 6px; padding: 0 7px; color: #33473a; background: #fff; font: inherit; font-size: .65rem; }
+.parts-sheet select { width: 190px; }
+.parts-sheet input { width: 54px; text-align: center; }
+.issue-row-button { min-height: 34px; border: 1px solid #23734d; border-radius: 6px; padding: 0 10px; color: #fff; background: #147149; font: inherit; font-size: .65rem; font-weight: 700; cursor: pointer; }
+.issue-row-button:disabled { opacity: .55; cursor: not-allowed; }
+.inventory-grid { display: grid; grid-template-columns: .9fr 1.45fr .7fr .8fr auto; align-items: end; gap: 11px; }
+.inventory-grid .secondary-button { min-height: 42px; white-space: nowrap; }
+.inventory-table { min-width: 600px; }
+@media (max-width: 960px) { .inventory-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .inventory-grid .secondary-button { width: 100%; } }
+@media (max-width: 650px) { .parts-summary { display: grid; align-items: start; } .parts-summary .queue-count { margin-left: 0; width: fit-content; } .parts-summary .secondary-button { width: 100%; } .inventory-grid { grid-template-columns: 1fr; } }

@@ -1,0 +1,40 @@
+.user-access-content { max-width: 1500px; }
+.access-notice { display: flex; gap: 10px; align-items: baseline; margin: 0 0 17px; padding: 13px 15px; border: 1px solid #cce6d6; border-radius: 10px; background: #f2fbf5; color: #31634a; font-size: .76rem; line-height: 1.45; }
+.access-notice strong { color: #126848; white-space: nowrap; }
+.user-access-layout { display: grid; grid-template-columns: minmax(250px, .7fr) minmax(0, 1.3fr); gap: 18px; }
+.access-panel { border: 1px solid #dbe7df; border-radius: 13px; background: #fff; }
+.access-panel-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 18px; border-bottom: 1px solid #e6eee9; }
+.access-panel-heading h2 { margin: 3px 0 0; color: #183d2d; font: 800 1.05rem/1.2 Manrope, sans-serif; }
+.user-list { display: grid; gap: 7px; padding: 11px; }
+.user-list-item { width: 100%; padding: 12px; border: 1px solid transparent; border-radius: 9px; background: #fff; color: #385448; cursor: pointer; text-align: left; font: inherit; }
+.user-list-item:hover { border-color: #c5e0cf; background: #f5fbf7; }
+.user-list-item.active { border-color: #0f7451; background: #e8f6ed; }
+.user-list-item strong, .user-list-item small { display: block; }
+.user-list-item strong { color: #1d4935; font-size: .82rem; }
+.user-list-item small { margin-top: 3px; color: #7b8d83; font-size: .68rem; }
+.user-list-item .user-role-summary { margin-top: 7px; color: #0d7050; font-size: .62rem; font-weight: 800; }
+.user-list-item.inactive { opacity: .58; }
+.editor-panel { min-width: 0; padding-bottom: 18px; }
+#access-editor { display: grid; gap: 20px; padding: 18px; }
+.access-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
+.access-fields > label { display: grid; gap: 6px; color: #47584e; font-size: .7rem; font-weight: 800; }
+.access-fields input:not([type="checkbox"]) { min-height: 40px; border: 1px solid #d6e2da; border-radius: 8px; padding: 0 11px; color: #263d31; font: inherit; }
+.access-email { min-height: 40px; display: flex; align-items: center; padding: 0 11px; border: 1px solid #e1e9e4; border-radius: 8px; background: #f8fbf9; color: #65766c; font-size: .76rem; font-weight: 600; }
+.access-active { align-content: end; grid-auto-rows: min-content; }
+.access-active input { width: 17px; height: 17px; margin: 11px 0; accent-color: #0d7752; }
+.permission-title { margin: 0; color: #2c4839; font-size: .78rem; font-weight: 800; }
+.permission-help { margin: 4px 0 11px; color: #7a8b81; font-size: .69rem; }
+.role-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.role-option { display: grid; gap: 3px; min-height: 74px; padding: 10px; border: 1px solid #dce8e0; border-radius: 9px; background: #fbfdfb; cursor: pointer; }
+.role-option:has(input:checked) { border-color: #66b58a; background: #eff9f2; }
+.role-option input { width: 16px; height: 16px; margin: 0 0 1px; accent-color: #0d7752; }
+.role-option strong { color: #28503b; font-size: .7rem; }
+.role-option small { color: #76877d; font-size: .61rem; line-height: 1.35; }
+.access-empty { margin: 0; padding: 38px 18px; color: #829087; font-size: .75rem; text-align: center; }
+.role-guide-panel { margin-top: 18px; }
+.role-guide { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; }
+.role-guide-item { min-height: 104px; padding: 15px; border-right: 1px solid #e6eee9; border-bottom: 1px solid #e6eee9; }
+.role-guide-item strong { display: block; color: #214a36; font-size: .75rem; }
+.role-guide-item span { display: block; margin-top: 5px; color: #7a8c82; font-size: .65rem; line-height: 1.45; }
+@media (max-width: 1000px) { .user-access-layout { grid-template-columns: 1fr; } .role-options, .role-guide { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 620px) { .access-notice { align-items: flex-start; flex-direction: column; } .access-fields, .role-options, .role-guide { grid-template-columns: 1fr; } .role-guide-item { border-right: 0; } }

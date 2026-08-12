@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0d5c43">
+    <meta name="description" content="Greenloop ready stock after Final QC pass.">
+    <title>Ready Stock | Greenloop</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="ready-stock.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="config.js"></script>
+    <script defer src="part-notifications.js"></script>
+    <script defer src="ready-stock.js"></script>
+  </head>
+  <body class="app-page">
+    <div class="app-shell">
+      <aside id="sidebar" class="sidebar" aria-label="Main navigation">
+        <div class="sidebar-top"><a class="app-brand" href="dashboard.html"><img class="brand-image" src="looplogo.jpg" alt=""><span>greenloop</span></a><button id="close-menu" class="icon-button close-menu" type="button" aria-label="Close menu">×</button></div>
+        <nav class="sidebar-nav">
+          <p class="nav-label">Workspace</p>
+          <a class="nav-item" href="dashboard.html"><span class="nav-icon" aria-hidden="true">⌘</span>Overview</a>
+          <a class="nav-item" href="receiving.html"><span class="nav-icon" aria-hidden="true">+</span>Stock Received</a>
+          <a class="nav-item" href="imei-search.html"><span class="nav-icon" aria-hidden="true">⌕</span>IMEI Search</a>
+          <p class="nav-label">Operations</p>
+          <a class="nav-item" href="initial-qc.html"><span class="nav-icon" aria-hidden="true">✓</span>Initial QC</a>
+          <a class="nav-item" href="parts.html"><span class="nav-icon" aria-hidden="true">▦</span>Parts</a>
+          <a class="nav-item" href="laboratory.html"><span class="nav-icon" aria-hidden="true">⌁</span>Laboratory &amp; Glass</a>
+          <a class="nav-item" href="final-qc.html"><span class="nav-icon" aria-hidden="true">◉</span>Final QC</a>
+          <a class="nav-item active" href="ready-stock.html"><span class="nav-icon" aria-hidden="true">▤</span>Ready Stock</a>
+          <a class="nav-item" href="production.html"><span class="nav-icon" aria-hidden="true">↗</span>Production</a>
+          <p class="nav-label">Control</p>
+          <a class="nav-item" href="reports.html"><span class="nav-icon" aria-hidden="true">▤</span>Reports</a>
+        </nav>
+        <div class="sidebar-user"><span class="user-avatar">SA</span><span><strong>System Admin</strong><small>Super Admin</small></span></div>
+      </aside>
+      <div id="menu-backdrop" class="menu-backdrop" hidden></div>
+      <main class="app-main">
+        <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Overview</a><span aria-hidden="true">/</span><strong>Ready Stock</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
+        <div class="page-content ready-stock-content">
+          <section class="page-heading ready-stock-heading"><div><p class="eyebrow dashboard-eyebrow">Ready Stock</p><h1>Final QC passed stock</h1><p class="heading-subtitle">Model, memory, grade, and RMA quantities currently held by Greenloop after Final QC pass.</p></div><div class="ready-stock-heading-actions"><a class="primary-button" href="export-box.html">Prepare export box</a><a class="secondary-button" href="ready-stock-journey.html">View device journey</a><button id="refresh-ready-stock" class="secondary-button" type="button">Refresh table</button></div></section>
+          <div id="permission-message" class="access-message" hidden></div>
+          <section id="ready-stock-app" hidden>
+            <section class="ready-stock-filters" aria-label="Ready Stock date range"><div class="ready-stock-filter-heading"><strong>Final QC pass date range</strong><span>By default, this table shows stock passed today. Clear both dates to view all current Ready Stock.</span></div><label>From<input id="ready-stock-from" type="date"></label><label>To<input id="ready-stock-to" type="date"></label><button id="apply-ready-stock-range" class="primary-button" type="button">Apply range</button><button id="clear-ready-stock-range" class="secondary-button" type="button">View all</button></section>
+            <section class="ready-stock-total"><span>Ready Stock Total</span><strong id="ready-stock-total">0 pcs</strong><small id="ready-stock-range-label">Final-QC-passed devices still held by Greenloop</small></section>
+            <section class="ready-stock-panel"><div class="ready-stock-table-wrap"><table class="ready-stock-table"><thead><tr><th>Model</th><th>Grade A</th><th>Grade B</th><th>Other Grade</th><th>RMA</th><th>Latest Final QC pass</th><th>Total Qty</th></tr></thead><tbody id="ready-stock-body"></tbody><tfoot><tr><th>Total</th><th id="total-grade-a">0</th><th id="total-grade-b">0</th><th id="total-other-grade">0</th><th id="total-rma">0</th><th>—</th><th id="total-qty">0 pcs</th></tr></tfoot></table></div></section>
+          </section>
+        </div>
+      </main>
+    </div>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  </body>
+</html>

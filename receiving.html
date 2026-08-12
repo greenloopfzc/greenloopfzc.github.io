@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0d5c43">
+    <meta http-equiv="refresh" content="0; url=stock-entry.html">
+    <meta name="description" content="Receive stock into Greenloop.">
+    <title>Stock Received | Greenloop</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    >
+    <link rel="stylesheet" href="styles.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="config.js"></script>
+    <script defer src="part-notifications.js"></script>
+    <script defer src="receiving.js"></script>
+  </head>
+  <body class="app-page">
+    <div class="app-shell">
+      <aside id="sidebar" class="sidebar" aria-label="Main navigation">
+        <div class="sidebar-top">
+          <a class="app-brand" href="dashboard.html" aria-label="Greenloop dashboard">
+            <img class="brand-image" src="looplogo.jpg" alt="">
+            <span>greenloop</span>
+          </a>
+          <button id="close-menu" class="icon-button close-menu" type="button" aria-label="Close menu">×</button>
+        </div>
+
+        <nav class="sidebar-nav">
+          <p class="nav-label">Workspace</p>
+          <a class="nav-item" href="dashboard.html"><span class="nav-icon" aria-hidden="true">⌘</span>Overview</a>
+          <a class="nav-item active" href="receiving.html"><span class="nav-icon" aria-hidden="true">+</span>Stock Received</a>
+          <button class="nav-item module-link" type="button" data-module="IMEI Search"><span class="nav-icon" aria-hidden="true">⌕</span>IMEI Search</button>
+
+          <p class="nav-label">Operations</p>
+          <a class="nav-item" href="initial-qc.html"><span class="nav-icon" aria-hidden="true">✓</span>Initial QC</a>
+          <button class="nav-item module-link" type="button" data-module="Parts"><span class="nav-icon" aria-hidden="true">▦</span>Parts</button>
+          <a class="nav-item" href="laboratory.html"><span class="nav-icon" aria-hidden="true">⌁</span>Laboratory &amp; Glass</a>
+          <button class="nav-item module-link" type="button" data-module="Frame"><span class="nav-icon" aria-hidden="true">□</span>Frame</button>
+          <a class="nav-item" href="final-qc.html"><span class="nav-icon" aria-hidden="true">◉</span>Final QC</a>
+          <button class="nav-item module-link" type="button" data-module="Production"><span class="nav-icon" aria-hidden="true">↗</span>Production</button>
+          <button class="nav-item module-link" type="button" data-module="Shipping"><span class="nav-icon" aria-hidden="true">↝</span>Shipping</button>
+
+          <p class="nav-label">Control</p>
+          <button class="nav-item module-link" type="button" data-module="RMA"><span class="nav-icon" aria-hidden="true">↶</span>RMA</button>
+          <button class="nav-item module-link" type="button" data-module="Retail Shop"><span class="nav-icon" aria-hidden="true">⌂</span>Retail Shop</button>
+          <button class="nav-item module-link" type="button" data-module="Reports"><span class="nav-icon" aria-hidden="true">▤</span>Reports</button>
+        </nav>
+
+        <div class="sidebar-user">
+          <span class="user-avatar">SA</span>
+          <span><strong>System Admin</strong><small>Super Admin</small></span>
+        </div>
+      </aside>
+
+      <div id="menu-backdrop" class="menu-backdrop" hidden></div>
+
+      <main class="app-main">
+        <header class="topbar">
+          <button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button>
+          <div class="breadcrumb"><a href="dashboard.html">Overview</a><span aria-hidden="true">/</span><strong>Stock Received</strong></div>
+          <div class="topbar-actions">
+            <span class="live-chip">Live database</span>
+            <a class="topbar-profile" href="dashboard.html" aria-label="Go to dashboard"><span class="user-avatar small">SA</span><span class="profile-name">System Admin</span></a>
+          </div>
+        </header>
+
+        <div class="page-content receiving-content">
+          <section class="page-heading receiving-heading" aria-labelledby="receiving-title">
+            <div>
+              <p class="eyebrow dashboard-eyebrow">Stock Received</p>
+              <h1 id="receiving-title">Receive stock</h1>
+              <p class="heading-subtitle">Scan the IMEI and save only the essential stock details.</p>
+            </div>
+            <a class="quiet-link" href="dashboard.html">← Back to overview</a>
+          </section>
+
+          <div id="permission-message" class="access-message" hidden></div>
+
+          <details id="today-stock-card" class="today-stock-card" hidden>
+            <summary class="today-stock-heading"><div><p class="panel-kicker">Today&apos;s stock received</p><h2>Devices entered today</h2></div><span id="today-stock-count" class="queue-count">0 devices</span></summary>
+            <button id="refresh-today-stock" class="secondary-button today-stock-refresh" type="button">Refresh</button>
+            <div class="today-stock-table-wrap"><table><thead><tr><th>Time</th><th>IMEI</th><th>Device</th><th>Model</th></tr></thead><tbody id="today-stock-list"></tbody></table></div>
+          </details>
+
+          <div class="receiving-layout">
+            <form id="receiving-form" class="receiving-form" novalidate>
+              <section class="receiving-channel-panel"><div class="form-field"><label for="stock-channel">Stock channel</label><select id="stock-channel" name="stock-channel"><option value="stock_received">Stock Received</option><option value="rma_received">RMA Received</option><option value="retail_shop_received">Retail Shop Received</option><option value="retail_shop_out">Send to Retail Shop</option></select></div><p id="stock-channel-help">Use Stock Received for normal incoming purchase stock.</p></section>
+              <section class="form-panel">
+                <div class="form-panel-heading"><span class="section-number">01</span><div><h2>Stock received</h2><p>Scan IMEI first. Only the five fields below are required.</p></div></div>
+                <div class="form-grid four-columns">
+                  <div class="form-field imei-field"><label for="imei-1">IMEI <span class="required-mark">Required</span></label><input id="imei-1" name="imei-1" type="text" inputmode="numeric" autocomplete="off" maxlength="15" placeholder="Scan 15-digit IMEI" required><small>Saved devices load automatically.</small></div>
+                  <div class="form-field"><label for="model">Model <span class="required-mark">Required</span></label><div class="master-option-control"><select id="model" name="model" required><option value="">Loading models...</option></select><button class="master-add" type="button" data-option-group="model" data-option-target="model" title="Add model">+</button><button class="master-remove" type="button" data-option-group="model" data-option-target="model" title="Remove selected model">−</button></div></div>
+                  <div class="form-field"><label for="storage-gb">Storage (GB) <span class="required-mark">Required</span></label><div class="master-option-control"><select id="storage-gb" name="storage-gb" required><option value="">Loading storage...</option></select><button class="master-add" type="button" data-option-group="storage_gb" data-option-target="storage-gb" title="Add storage size">+</button><button class="master-remove" type="button" data-option-group="storage_gb" data-option-target="storage-gb" title="Remove selected storage size">−</button></div></div>
+                  <div class="form-field"><label for="color">Color <span class="required-mark">Required</span></label><div class="master-option-control"><select id="color" name="color" required><option value="">Loading colors...</option></select><button class="master-add" type="button" data-option-group="color" data-option-target="color" title="Add color">+</button><button class="master-remove" type="button" data-option-group="color" data-option-target="color" title="Remove selected color">−</button></div></div>
+                  <div class="form-field"><label for="battery-health">Battery health <span class="required-mark">Required</span></label><div class="suffix-input"><input id="battery-health" name="battery-health" type="number" inputmode="numeric" min="0" max="100" placeholder="85" required><span>%</span></div></div>
+                </div>
+                <div id="duplicate-notice" class="duplicate-notice" hidden></div>
+              </section>
+
+              <details id="receiving-optional" class="receiving-optional">
+                <summary>Additional details (all optional)</summary>
+                <div class="receiving-optional-body">
+                  <div class="form-grid three-columns detail-grid">
+                    <div class="form-field"><label for="ownership-type">Ownership type</label><select id="ownership-type" name="ownership-type"><option value="">Use automatic default</option><option value="company_owned">Company owned</option><option value="customer_owned">Customer owned</option></select><select id="job-type" name="job-type" hidden></select></div>
+                    <div class="form-field"><label for="supplier-grade">Supplier grade</label><select id="supplier-grade" name="supplier-grade"><option value="">Not recorded</option><option>A+</option><option>A</option><option>B</option><option>C</option><option>Unsorted</option></select></div>
+                    <div class="form-field"><label for="gc-grade">GC grade</label><select id="gc-grade" name="gc-grade"><option value="">Not recorded</option><option>A+</option><option>A</option><option>B</option><option>C</option></select></div>
+                  </div>
+                  <div class="party-block" id="supplier-block"><div class="form-field"><label for="supplier-id">Supplier</label><select id="supplier-id" name="supplier-id"><option value="">Loading suppliers...</option></select></div><button class="mini-action" id="add-supplier" type="button">+ Add supplier</button></div>
+                  <div class="party-block" id="customer-block" hidden><div class="form-field"><label for="customer-id">Customer</label><select id="customer-id" name="customer-id"><option value="">Loading customers...</option></select></div><button class="mini-action" id="add-customer" type="button">+ Add customer</button></div>
+                  <div class="form-field detail-grid"><label for="notes">Receiving notes</label><textarea id="notes" name="notes" rows="2" placeholder="Optional notes"></textarea></div>
+                  <select id="receiving-location" name="receiving-location" hidden><option value="">Loading location...</option></select>
+                </div>
+              </details>
+
+              <div id="form-message" class="form-message receiving-message" role="status" aria-live="polite"></div>
+              <div class="form-actions">
+                <button id="clear-form" class="secondary-button" type="button">Clear form</button>
+                <button id="receive-button" class="primary-button receive-submit" type="submit"><span>Save stock received</span><span aria-hidden="true">→</span></button>
+              </div>
+            </form>
+
+            <aside class="receiving-side">
+              <section class="side-card workflow-card">
+                <p class="panel-kicker">Automatic next step</p>
+                <h2>Initial QC pending</h2>
+                <p>Every received device is sent to the Initial QC queue. No repair department is forced until diagnosis confirms the required work.</p>
+                <ol class="workflow-steps"><li class="current"><span>1</span>Stock Received</li><li><span>2</span>Initial QC</li><li><span>3</span>Smart routing</li><li><span>4</span>Final QC</li></ol>
+              </section>
+              <section class="side-card duplicate-card">
+                <span class="side-icon" aria-hidden="true">⌕</span>
+                <h2>Duplicate IMEI control</h2>
+                <p>If the scanned IMEI already exists, Greenloop preserves the device history and creates a new job under the same device.</p>
+              </section>
+              <section class="side-card data-card">
+                <p class="panel-kicker">Saved with this receipt</p>
+                <ul><li>Device or existing device match</li><li>New permanent job number</li><li>Automatic stock batch and location movement</li><li>Timeline events for the IMEI</li></ul>
+              </section>
+            </aside>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <dialog id="contact-dialog" class="contact-dialog" aria-labelledby="contact-dialog-title">
+      <form id="contact-form" method="dialog" novalidate>
+        <header><div><p class="panel-kicker">Master data</p><h2 id="contact-dialog-title">Add contact</h2></div><button id="close-contact-dialog" class="icon-button" type="button" aria-label="Close dialog">×</button></header>
+        <p id="contact-dialog-description" class="dialog-description"></p>
+        <div class="form-grid two-columns">
+          <div class="form-field full-width"><label for="contact-company">Company or customer name <span class="required-mark">Required</span></label><input id="contact-company" name="contact-company" type="text" required></div>
+          <div class="form-field"><label for="contact-person">Contact name</label><input id="contact-person" name="contact-person" type="text"></div>
+          <div class="form-field"><label for="contact-phone">Phone</label><input id="contact-phone" name="contact-phone" type="tel"></div>
+          <div class="form-field"><label for="contact-email">Email</label><input id="contact-email" name="contact-email" type="email"></div>
+          <div class="form-field"><label for="contact-country">Country</label><input id="contact-country" name="contact-country" type="text"></div>
+          <div class="form-field full-width"><label for="contact-notes">Notes</label><textarea id="contact-notes" name="contact-notes" rows="2"></textarea></div>
+        </div>
+        <p id="contact-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
+        <footer><button id="cancel-contact" class="secondary-button" type="button">Cancel</button><button id="save-contact" class="primary-button" type="submit">Save contact</button></footer>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  </body>
+</html>

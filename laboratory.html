@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0d5c43">
+    <meta name="description" content="Laboratory technician work queue for Greenloop.">
+    <title>Laboratory | Greenloop</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="initial-qc.css">
+    <link rel="stylesheet" href="laboratory.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="config.js"></script>
+    <script defer src="part-notifications.js"></script>
+    <script defer src="laboratory.js?v=20260811-2"></script>
+  </head>
+  <body class="app-page">
+    <div class="app-shell">
+      <aside id="sidebar" class="sidebar" aria-label="Main navigation">
+        <div class="sidebar-top"><a class="app-brand" href="dashboard.html"><img class="brand-image" src="looplogo.jpg" alt=""><span>greenloop</span></a><button id="close-menu" class="icon-button close-menu" type="button" aria-label="Close menu">×</button></div>
+        <nav class="sidebar-nav">
+          <p class="nav-label">Workspace</p>
+          <a class="nav-item" href="dashboard.html"><span class="nav-icon" aria-hidden="true">⌘</span>Overview</a>
+          <a class="nav-item" href="receiving.html"><span class="nav-icon" aria-hidden="true">+</span>Receiving</a>
+          <button class="nav-item module-link" type="button" data-module="IMEI Search"><span class="nav-icon" aria-hidden="true">⌕</span>IMEI Search</button>
+          <p class="nav-label">Operations</p>
+          <a class="nav-item" href="initial-qc.html"><span class="nav-icon" aria-hidden="true">✓</span>Initial QC</a>
+          <button class="nav-item module-link" type="button" data-module="Parts"><span class="nav-icon" aria-hidden="true">▦</span>Parts</button>
+          <a class="nav-item active" href="laboratory.html"><span class="nav-icon" aria-hidden="true">⌁</span>Laboratory &amp; Glass</a>
+          <button class="nav-item module-link" type="button" data-module="Frame"><span class="nav-icon" aria-hidden="true">□</span>Frame</button>
+          <a class="nav-item" href="final-qc.html"><span class="nav-icon" aria-hidden="true">◉</span>Final QC</a>
+          <button class="nav-item module-link" type="button" data-module="Production"><span class="nav-icon" aria-hidden="true">↗</span>Production</button>
+          <button class="nav-item module-link" type="button" data-module="Shipping"><span class="nav-icon" aria-hidden="true">↝</span>Shipping</button>
+          <p class="nav-label">Control</p>
+          <button class="nav-item module-link" type="button" data-module="RMA"><span class="nav-icon" aria-hidden="true">↶</span>RMA</button>
+          <button class="nav-item module-link" type="button" data-module="Retail Shop"><span class="nav-icon" aria-hidden="true">⌂</span>Retail Shop</button>
+          <button class="nav-item module-link" type="button" data-module="Reports"><span class="nav-icon" aria-hidden="true">▤</span>Reports</button>
+        </nav>
+        <div class="sidebar-user"><span class="user-avatar">SA</span><span><strong>System Admin</strong><small>Super Admin</small></span></div>
+      </aside>
+      <div id="menu-backdrop" class="menu-backdrop" hidden></div>
+      <main class="app-main">
+        <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Overview</a><span aria-hidden="true">/</span><strong>Laboratory</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span><a class="topbar-profile" href="dashboard.html"><span class="user-avatar small">SA</span><span class="profile-name">System Admin</span></a></div></header>
+        <div class="page-content qc-content">
+          <section class="page-heading qc-heading"><div><p class="eyebrow dashboard-eyebrow">Laboratory &amp; Glass</p><h1>Technician workbench</h1><p class="heading-subtitle">Technical, housing, and glass work are completed here with active repair time tracking.</p></div><a class="quiet-link" href="initial-qc.html">← Back to Initial QC</a></section>
+          <div id="permission-message" class="access-message" hidden></div>
+          <section id="lab-app" class="qc-app" hidden>
+            <div class="qc-queue-bar"><div><p class="panel-kicker">Laboratory queue</p><h2>Jobs ready for technician work</h2></div><button id="refresh-queue" class="secondary-button" type="button">Refresh queue</button></div>
+            <div class="qc-picker-row"><label class="qc-imei-picker" for="lab-imei-scan"><span>Scan IMEI</span><input id="lab-imei-scan" type="text" inputmode="numeric" autocomplete="off" maxlength="15" placeholder="Scan 15-digit IMEI"></label><label class="qc-job-picker" for="lab-step-select"><span>Select a Laboratory work order</span><select id="lab-step-select"><option value="">Loading queue...</option></select></label><span id="queue-count" class="queue-count">0 waiting</span></div>
+            <div id="lab-empty" class="qc-empty" hidden><strong>Laboratory queue is clear.</strong><span>Initial QC will send technical jobs here automatically.</span></div>
+            <section id="lab-workspace" class="qc-workspace" hidden>
+              <div id="lab-device-summary" class="qc-device-summary"></div>
+              <div class="lab-layout">
+                <form id="lab-form" class="qc-form" novalidate>
+                  <section class="form-panel"><div class="form-panel-heading"><span class="section-number">01</span><div><h2>Required Laboratory work</h2><p>These issues were assigned by Initial QC.</p></div></div><ul id="lab-findings" class="lab-findings"></ul></section>
+                  <section class="form-panel"><div class="form-panel-heading"><span class="section-number">02</span><div><h2>Issued parts</h2><p>Install only what was actually used. Return unused issued stock to Parts.</p></div></div><div id="lab-parts" class="lab-parts"><p class="history-empty">No issued parts for this job.</p></div><div id="additional-part-form" class="additional-part-form"><div class="form-grid two-columns"><div class="form-field"><label for="additional-part-name">Additional part required</label><input id="additional-part-name" placeholder="Example: Charging flex"></div><div class="form-field"><label for="additional-part-quantity">Quantity</label><input id="additional-part-quantity" type="number" min="1" step="1" value="1"></div></div><div class="form-field"><label for="additional-part-notes">Reason / notes</label><input id="additional-part-notes" placeholder="Optional detail"></div><button id="additional-part-button" class="inline-add-button" type="button">+ Request additional part from Parts</button></div></section>
+                  <section class="form-panel"><div class="form-panel-heading"><span class="section-number">03</span><div><h2>Completion record</h2><p>Pause time is excluded automatically from the final active repair time.</p></div></div><div class="form-field"><label for="lab-work-done">Work done <span class="required-mark">Required</span></label><input id="lab-work-done" type="text" placeholder="Example: Housing repaired and charging tested" required></div><div class="form-field"><label for="lab-material-cost">Material cost (AED)</label><input id="lab-material-cost" type="number" min="0" step="0.01" value="0" placeholder="0.00"><small>Glass, housing, or other material cost used in Laboratory.</small></div><div class="form-field detail-grid"><label for="lab-notes">Technician notes</label><textarea id="lab-notes" rows="3" placeholder="Repair work, testing result, or additional findings"></textarea></div></section>
+                  <p id="lab-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
+                  <div class="lab-actions"><button id="start-lab-work" class="secondary-button" type="button">Start work</button><button id="pause-lab-work" class="secondary-button" type="button" hidden>Pause</button><button id="resume-lab-work" class="secondary-button" type="button" hidden>Resume</button><button id="complete-lab-work" class="primary-button receive-submit" type="submit" disabled>Complete and route →</button></div>
+                </form>
+                <aside class="qc-side"><section class="side-card lab-status-card"><p class="panel-kicker">Time tracking</p><h2 id="lab-status-title">Ready to start</h2><p id="lab-status-text">Start work to save the assigned technician and automatic start time.</p><div class="lab-time"><span>Active time</span><strong id="lab-active-time">00:00:00</strong></div><div class="lab-rework"><span>Rework count</span><strong id="lab-rework-count">0</strong></div></section><section class="side-card"><span class="side-icon" aria-hidden="true">⌁</span><h2>Next department</h2><p>On completion, Greenloop closes this technician step and sends the IMEI to the next required department automatically.</p></section></aside>
+              </div>
+            </section>
+          </section>
+        </div>
+      </main>
+    </div>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  </body>
+</html>

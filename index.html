@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0d5c43">
+    <meta
+      name="description"
+      content="Greenloop operations platform for used mobile refurbishment, service, inventory, and quality control."
+    >
+    <title>Sign in | Greenloop</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    >
+    <link rel="stylesheet" href="styles.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="config.js"></script>
+    <script defer src="auth.js?v=20260811-2"></script>
+  </head>
+  <body class="auth-page">
+    <main class="auth-shell">
+      <section class="auth-intro" aria-labelledby="intro-title">
+        <a class="brand" href="index.html" aria-label="Greenloop home">
+          <img class="brand-image" src="looplogo.jpg" alt="">
+          <span>greenloop</span>
+        </a>
+
+        <div class="intro-copy">
+          <p class="eyebrow">Operations platform</p>
+          <h1 id="intro-title">Every device.<br>One trusted history.</h1>
+          <p class="intro-text">
+            Track receiving, refurbishment, quality control, parts, and shipment from one secure workspace.
+          </p>
+        </div>
+
+        <ul class="intro-points" aria-label="Greenloop features">
+          <li>
+            <span class="feature-icon" aria-hidden="true">01</span>
+            <span><strong>IMEI-first records</strong><small>Permanent device history</small></span>
+          </li>
+          <li>
+            <span class="feature-icon" aria-hidden="true">02</span>
+            <span><strong>Controlled workflows</strong><small>Role-based department queues</small></span>
+          </li>
+          <li>
+            <span class="feature-icon" aria-hidden="true">03</span>
+            <span><strong>Cost visibility</strong><small>Accurate job and lifetime costs</small></span>
+          </li>
+        </ul>
+
+        <p class="intro-footer">Greenloop FZC &middot; Operations system</p>
+      </section>
+
+      <section class="auth-panel" aria-labelledby="sign-in-title">
+        <div class="auth-card">
+          <div class="mobile-brand">
+            <img class="brand-image" src="looplogo.jpg" alt="">
+            <span>greenloop</span>
+          </div>
+
+          <header class="auth-header">
+            <p class="eyebrow">Secure access</p>
+            <h2 id="sign-in-title">Welcome back</h2>
+            <p>Sign in with your assigned Greenloop account.</p>
+          </header>
+
+          <form id="sign-in-form" class="sign-in-form" novalidate>
+            <div class="form-field">
+              <label for="username">Username</label>
+              <input
+                id="username"
+                name="username"
+                type="text"
+                autocapitalize="none"
+                autocomplete="username"
+                placeholder="Enter your username"
+                required
+              >
+            </div>
+
+            <div class="form-field">
+              <div class="label-row">
+                <label for="password">Password</label>
+                <button id="forgot-password" class="text-button" type="button">Forgot password?</button>
+              </div>
+              <div class="password-field">
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autocomplete="current-password"
+                  placeholder="Enter your password"
+                  required
+                >
+                <button
+                  id="toggle-password"
+                  class="password-toggle"
+                  type="button"
+                  aria-label="Show password"
+                  aria-pressed="false"
+                >
+                  Show
+                </button>
+              </div>
+            </div>
+
+            <label class="check-field" for="remember-session">
+              <input id="remember-session" name="remember-session" type="checkbox" checked>
+              <span>Keep me signed in on this device</span>
+            </label>
+
+            <p id="form-message" class="form-message" role="status" aria-live="polite"></p>
+
+            <button id="sign-in-button" class="primary-button" type="submit">
+              <span>Sign in</span>
+              <span aria-hidden="true">→</span>
+            </button>
+          </form>
+
+          <div class="auth-help">
+            <p>Password recovery is sent only to the system recovery email. For access help, contact your administrator.</p>
+          </div>
+        </div>
+        <p class="secure-note"><span aria-hidden="true">◆</span> Your account is protected by secure authentication.</p>
+      </section>
+    </main>
+  </body>
+</html>

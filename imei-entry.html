@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0d5c43">
+    <meta name="description" content="Enter scanned IMEIs into a Greenloop stock batch.">
+    <title>IMEI Entry | Greenloop</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="stock-entry.css?v=20260812-1">
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="config.js"></script>
+    <script defer src="part-notifications.js"></script>
+    <script defer src="imei-entry.js?v=20260812-4"></script>
+  </head>
+  <body class="app-page">
+    <div class="app-shell">
+      <aside id="sidebar" class="sidebar" aria-label="Main navigation">
+        <div class="sidebar-top"><a class="app-brand" href="dashboard.html"><img class="brand-image" src="looplogo.jpg" alt=""><span>greenloop</span></a><button id="close-menu" class="icon-button close-menu" type="button" aria-label="Close menu">×</button></div>
+        <nav class="sidebar-nav"></nav>
+        <div class="sidebar-user"><span class="user-avatar">SA</span><span><strong>System Admin</strong><small>Super Admin</small></span></div>
+      </aside>
+      <div id="menu-backdrop" class="menu-backdrop" hidden></div>
+      <main class="app-main">
+        <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Overview</a><span>/</span><a href="stock-entry.html">Stock Received</a><span>/</span><strong>IMEI Entry</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
+        <div class="page-content receiving-content stock-entry-content">
+          <section class="page-heading receiving-heading"><div><p class="eyebrow dashboard-eyebrow">IMEI Entry</p><h1>Scan batch IMEIs</h1><p class="heading-subtitle">Select the supplier-code batch first, then scan each device and save its main details.</p></div><a class="quiet-link" href="stock-entry.html">← Create another stock batch</a></section>
+          <div id="permission-message" class="access-message" hidden></div>
+          <div class="receiving-layout">
+            <form id="imei-entry-form" class="receiving-form" novalidate>
+              <section class="form-panel">
+                <div class="form-panel-heading"><span class="section-number">01</span><div><h2>Select supplier code</h2><p>Only batches that still have IMEIs remaining are shown.</p></div></div>
+                <div class="form-field"><label for="stock-batch">Supplier code / batch <span class="required-mark">Required</span></label><select id="stock-batch" required><option value="">Loading stock batches...</option></select></div>
+                <div id="batch-summary" class="batch-summary" hidden></div>
+              </section>
+              <section id="imei-detail-panel" class="form-panel" hidden>
+                <div class="form-panel-heading imei-scan-heading"><span class="section-number">02</span><div><h2>Scan IMEI and enter device details</h2><p>Every saved IMEI automatically enters the Initial QC queue.</p></div><button id="read-connected-iphone" class="secondary-button iphone-read-button" type="button">Read from 3uTools</button></div>
+                <div class="form-grid five-columns">
+                  <div class="form-field imei-field"><label for="imei-1">IMEI <span class="required-mark">Required</span></label><input id="imei-1" type="text" inputmode="numeric" autocomplete="off" maxlength="15" placeholder="Scan 15-digit IMEI" required></div>
+                  <div class="form-field"><label for="model">Model <span class="required-mark">Required</span></label><div class="master-option-control"><select id="model" required><option value="">Loading models...</option></select><button class="master-add" type="button" data-option-group="model" data-option-target="model" title="Add model">+</button><button class="master-remove" type="button" data-option-group="model" data-option-target="model" title="Remove selected model">−</button></div></div>
+                  <div class="form-field"><label for="storage-gb">GB <span class="required-mark">Required</span></label><div class="master-option-control"><select id="storage-gb" required><option value="">Loading GB...</option></select><button class="master-add" type="button" data-option-group="storage_gb" data-option-target="storage-gb" title="Add GB">+</button><button class="master-remove" type="button" data-option-group="storage_gb" data-option-target="storage-gb" title="Remove selected GB">−</button></div></div>
+                  <div class="form-field"><label for="color">Color <span class="required-mark">Required</span></label><div class="master-option-control"><select id="color" required><option value="">Loading colors...</option></select><button class="master-add" type="button" data-option-group="color" data-option-target="color" title="Add color">+</button><button class="master-remove" type="button" data-option-group="color" data-option-target="color" title="Remove selected color">−</button></div></div>
+                  <div class="form-field"><label for="battery-health">Battery health <span class="required-mark">Required</span></label><div class="suffix-input"><input id="battery-health" type="number" min="0" max="100" inputmode="numeric" placeholder="85" required><span>%</span></div></div>
+                </div>
+              </section>
+              <p id="form-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
+              <div id="imei-actions" class="form-actions" hidden><button id="save-imei" class="primary-button receive-submit" type="submit">Save IMEI to Initial QC →</button></div>
+            </form>
+            <aside class="receiving-side"><section class="side-card workflow-card"><p class="panel-kicker">Automatic next step</p><h2>Initial QC pending</h2><p>Each IMEI saved here creates its own permanent job and appears in Initial QC immediately.</p><ol class="workflow-steps"><li><span>1</span>Stock batch</li><li class="current"><span>2</span>IMEI entry</li><li><span>3</span>Initial QC</li></ol></section><section class="side-card"><span class="side-icon" aria-hidden="true">⌕</span><h2>Individual history</h2><p>Quantity is used for batch progress only. Every device is still tracked by its own unique IMEI.</p></section></aside>
+          </div>
+        </div>
+      </main>
+    </div>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  </body>
+</html>

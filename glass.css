@@ -1,0 +1,42 @@
+/* Glass Department: horizontal work sheet */
+.glass-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 15px;
+  overflow-x: auto;
+}
+
+.glass-layout > .qc-side { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); min-width: 980px; gap: 15px; }
+#glass-form { grid-template-columns: minmax(270px, .78fr) minmax(520px, 1.22fr); min-width: 980px; align-items: stretch; }
+#glass-form > .form-panel { height: 100%; margin: 0; }
+#glass-form > #glass-message, #glass-form > .form-actions { grid-column: 1 / -1; }
+#glass-form > .form-panel:nth-of-type(2) { display: grid; grid-template-columns: minmax(0, 1fr) minmax(175px, .68fr); align-content: start; gap: 12px; }
+#glass-form > .form-panel:nth-of-type(2) .form-panel-heading, #glass-form > .form-panel:nth-of-type(2) .form-grid, #glass-form > .form-panel:nth-of-type(2) .detail-grid { grid-column: 1 / -1; }
+#glass-form > .form-panel:nth-of-type(2) .detail-grid { margin-top: 0; }
+
+.glass-findings {
+  display: grid;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.glass-findings li {
+  display: grid;
+  gap: 4px;
+  border: 1px solid #d9e9df;
+  border-radius: 9px;
+  padding: 12px;
+  background: #f5fbf7;
+}
+
+.glass-findings strong { color: #2f5740; font-size: 0.72rem; }
+.glass-findings span { color: #6d8173; font-size: 0.65rem; line-height: 1.45; text-transform: capitalize; }
+.glass-status-card { border-color: #d6e5de; background: linear-gradient(150deg, #f7fcf9, #eff8f2); }
+.glass-findings { max-height: 315px; overflow-y: auto; padding-right: 2px; }
+
+@media (max-width: 960px) {
+  .glass-layout { margin-right: -16px; padding-right: 16px; }
+}

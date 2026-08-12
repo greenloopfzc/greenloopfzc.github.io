@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0d5c43">
+    <meta name="description" content="Greenloop Ready Stock device journey.">
+    <title>Ready Stock Journey | Greenloop</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="ready-stock.css">
+    <link rel="stylesheet" href="ready-stock-journey.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="config.js"></script>
+    <script defer src="part-notifications.js"></script>
+    <script defer src="ready-stock-journey.js"></script>
+  </head>
+  <body class="app-page">
+    <div class="app-shell">
+      <aside id="sidebar" class="sidebar" aria-label="Main navigation">
+        <div class="sidebar-top"><a class="app-brand" href="dashboard.html"><img class="brand-image" src="looplogo.jpg" alt=""><span>greenloop</span></a><button id="close-menu" class="icon-button close-menu" type="button" aria-label="Close menu">×</button></div>
+        <nav class="sidebar-nav"></nav>
+        <div class="sidebar-user"><span class="user-avatar">SA</span><span><strong>System Admin</strong><small>Super Admin</small></span></div>
+      </aside>
+      <div id="menu-backdrop" class="menu-backdrop" hidden></div>
+      <main class="app-main">
+        <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Overview</a><span aria-hidden="true">/</span><a href="ready-stock.html">Ready Stock</a><span aria-hidden="true">/</span><strong>Device Journey</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
+        <div class="page-content ready-stock-content journey-content">
+          <section class="page-heading ready-stock-heading"><div><p class="eyebrow dashboard-eyebrow">Ready Stock Journey</p><h1>Every device, one complete line</h1><p class="heading-subtitle">See the complete path from Stock Received to Ready Stock, with grades, parts used, work completed, and every recorded team member.</p></div><div class="ready-stock-heading-actions"><a class="secondary-button" href="ready-stock.html">Back to Ready Stock</a><button id="refresh-journey" class="secondary-button" type="button">Refresh table</button></div></section>
+          <div id="permission-message" class="access-message" hidden></div>
+          <section id="journey-app" hidden>
+            <section class="ready-stock-filters" aria-label="Ready Stock Journey date range"><div class="ready-stock-filter-heading"><strong>Final QC pass date range</strong><span>By default, this table shows devices passed today. Clear both dates to view all current Ready Stock.</span></div><label>From<input id="journey-from" type="date"></label><label>To<input id="journey-to" type="date"></label><button id="apply-journey-range" class="primary-button" type="button">Apply range</button><button id="clear-journey-range" class="secondary-button" type="button">View all</button></section>
+            <section class="journey-summary"><span>Devices shown</span><strong id="journey-total">0</strong><small id="journey-range-label">Latest Final QC pass appears first.</small></section>
+            <section class="journey-panel"><div class="journey-table-wrap"><table class="journey-table"><thead><tr><th>Stock Received</th><th>Supplier Code</th><th>Stock Channel</th><th>Batch</th><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>Supplier Grade</th><th>Company Initial Grade</th><th>Company Final QC Grade</th><th>Parts Used</th><th>Work Done</th><th>Worked By</th><th>Step by Step</th><th>Final QC Passed</th></tr></thead><tbody id="journey-body"></tbody></table></div></section>
+          </section>
+        </div>
+      </main>
+    </div>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  </body>
+</html>

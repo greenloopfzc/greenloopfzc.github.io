@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0d5c43">
+    <meta name="description" content="Greenloop operational reports.">
+    <title>Reports | Greenloop</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="reports.css?v=20260811-4">
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="config.js"></script>
+    <script defer src="part-notifications.js"></script>
+    <script defer src="reports.js?v=20260811-6"></script>
+  </head>
+  <body class="app-page">
+    <div class="app-shell">
+      <aside id="sidebar" class="sidebar" aria-label="Main navigation">
+        <div class="sidebar-top"><a class="app-brand" href="dashboard.html"><img class="brand-image" src="looplogo.jpg" alt=""><span>greenloop</span></a><button id="close-menu" class="icon-button close-menu" type="button" aria-label="Close menu">×</button></div>
+        <nav class="sidebar-nav">
+          <p class="nav-label">Workspace</p>
+          <a class="nav-item" href="dashboard.html"><span class="nav-icon" aria-hidden="true">⌘</span>Overview</a>
+          <a class="nav-item" href="receiving.html"><span class="nav-icon" aria-hidden="true">+</span>Stock Received</a>
+          <a class="nav-item" href="imei-search.html"><span class="nav-icon" aria-hidden="true">⌕</span>IMEI Search</a>
+          <p class="nav-label">Operations</p>
+          <a class="nav-item" href="initial-qc.html"><span class="nav-icon" aria-hidden="true">✓</span>Initial QC</a>
+          <a class="nav-item" href="parts.html"><span class="nav-icon" aria-hidden="true">▦</span>Parts</a>
+          <a class="nav-item" href="laboratory.html"><span class="nav-icon" aria-hidden="true">⌁</span>Laboratory &amp; Glass</a>
+          <a class="nav-item" href="final-qc.html"><span class="nav-icon" aria-hidden="true">◉</span>Final QC</a>
+          <a class="nav-item" href="production.html"><span class="nav-icon" aria-hidden="true">↗</span>Production</a>
+          <p class="nav-label">Control</p>
+          <a class="nav-item active" href="reports.html"><span class="nav-icon" aria-hidden="true">▤</span>Reports</a>
+        </nav>
+        <div class="sidebar-user"><span class="user-avatar">SA</span><span><strong>System Admin</strong><small>Super Admin</small></span></div>
+      </aside>
+      <div id="menu-backdrop" class="menu-backdrop" hidden></div>
+      <main class="app-main">
+        <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Overview</a><span aria-hidden="true">/</span><strong>Reports</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
+        <div class="page-content reports-content">
+          <section class="page-heading reports-heading"><div><p class="eyebrow dashboard-eyebrow">Reports</p><h1>Operations and performance</h1><p class="heading-subtitle">Use one date range for stock, repairs, quality control, cost, RMA, Retail Shop, and production reporting.</p></div></section>
+          <div id="permission-message" class="access-message" hidden></div>
+          <section id="reports-app" hidden>
+            <form id="report-filter" class="report-filter" novalidate>
+              <div class="form-field"><label for="date-from">From date</label><input id="date-from" type="date" required></div>
+              <div class="form-field"><label for="date-to">To date</label><input id="date-to" type="date" required></div>
+              <button id="apply-report-filter" class="primary-button" type="submit">Apply date range</button>
+            </form>
+            <p id="report-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
+            <section id="report-summary" class="report-summary" aria-label="Operational summary"></section>
+            <nav id="report-tabs" class="report-tabs" aria-label="Report categories">
+              <button class="report-tab active" type="button" data-report="overview">Overview</button>
+              <button class="report-tab" type="button" data-report="stock_received">Stock Received</button>
+              <button class="report-tab" type="button" data-report="work_in_progress">Work in Progress</button>
+              <button class="report-tab" type="button" data-report="parts_requests">Parts Required</button>
+              <button class="report-tab" type="button" data-report="parts_inventory">Parts Inventory</button>
+              <button class="report-tab" type="button" data-report="technicians">Technicians</button>
+              <button class="report-tab" type="button" data-report="final_qc">Final QC</button>
+              <button class="report-tab" type="button" data-report="costs">Device Cost</button>
+              <button class="report-tab" type="button" data-report="export_boxes">Export Boxes</button>
+              <button class="report-tab" type="button" data-report="deleted_history">Deleted History</button>
+              <button class="report-tab" type="button" data-report="rma">RMA</button>
+              <button class="report-tab" type="button" data-report="retail_shop">Retail Shop</button>
+              <button class="report-tab" type="button" data-report="production">Production</button>
+            </nav>
+            <section class="report-panel">
+              <div class="report-panel-heading"><div><p id="report-panel-kicker" class="panel-kicker">Overview</p><h2 id="report-panel-title">Live workflow overview</h2><p id="report-panel-description" class="report-panel-description"></p></div><span id="report-row-count" class="queue-count">0 records</span></div>
+              <div id="report-content" class="report-content"></div>
+            </section>
+          </section>
+        </div>
+      </main>
+    </div>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  </body>
+</html>

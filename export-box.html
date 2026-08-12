@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0d5c43">
+    <meta name="description" content="Export box preparation from Greenloop Ready Stock.">
+    <title>Export Boxes | Greenloop</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="export-box.css?v=20260811-4">
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="config.js"></script>
+    <script defer src="part-notifications.js"></script>
+    <script defer src="export-box.js?v=20260811-4"></script>
+  </head>
+  <body class="app-page">
+    <div class="app-shell">
+      <aside id="sidebar" class="sidebar" aria-label="Main navigation">
+        <div class="sidebar-top"><a class="app-brand" href="dashboard.html"><img class="brand-image" src="looplogo.jpg" alt=""><span>greenloop</span></a><button id="close-menu" class="icon-button close-menu" type="button" aria-label="Close menu">×</button></div>
+        <nav class="sidebar-nav"></nav>
+        <div class="sidebar-user"><span class="user-avatar">SA</span><span><strong>System Admin</strong><small>Super Admin</small></span></div>
+      </aside>
+      <div id="menu-backdrop" class="menu-backdrop" hidden></div>
+      <main class="app-main">
+        <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Overview</a><span aria-hidden="true">/</span><strong>Export Boxes</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
+        <div class="page-content export-box-content">
+          <section class="page-heading export-box-heading"><div><p class="eyebrow dashboard-eyebrow">Ready Stock Export</p><h1>Scan phones into an export box</h1><p class="heading-subtitle">Scan as many phones as required. Every accepted IMEI immediately leaves Ready Stock.</p></div><a class="quiet-link" href="ready-stock.html">← Ready Stock</a></section>
+          <div id="permission-message" class="access-message" hidden></div>
+          <section id="export-box-app" class="export-box-app" hidden>
+            <section class="export-box-control">
+              <div class="export-box-number"><span>Current export box</span><strong id="export-box-number">Loading…</strong><small id="export-box-status">Preparing box</small></div>
+              <div class="export-box-progress"><div class="export-box-progress-top"><strong id="export-box-count">0 phones</strong><span id="export-box-remaining">Ready to scan</span></div><div class="export-progress-track"><span id="export-progress-bar"></span></div></div>
+            </section>
+            <section class="export-box-actions"><span class="export-box-note">Print this sheet whenever required. When this box is finished, start the next box.</span><button id="start-next-box" class="secondary-button" type="button" disabled>Finish box and start next</button><button id="print-box-sheet" class="primary-button" type="button" disabled>Print box sheet</button><button id="delete-export-box" class="danger-button" type="button">Delete box</button></section>
+            <section class="export-scan-panel">
+              <div><p class="panel-kicker">Scan IMEI</p><h2>Place the scanner here</h2><p>After a valid 15-digit scan, S.No, model, GB, final grade, color, and box number are saved automatically.</p></div>
+              <label class="export-imei-field" for="export-imei"><span>15-digit IMEI</span><input id="export-imei" type="text" inputmode="numeric" autocomplete="off" maxlength="15" placeholder="Scan 15-digit IMEI" disabled></label>
+            </section>
+            <p id="export-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
+            <section class="export-sheet-panel">
+              <div class="export-sheet-heading"><div><strong class="export-print-brand">GREENLOOP FZC</strong><p class="panel-kicker">Printable box sheet</p><h2 id="export-sheet-title">Export Box</h2></div><span id="export-sheet-date"></span></div>
+              <div class="export-sheet-wrap"><table class="export-sheet"><thead><tr><th>S.No</th><th>IMEI</th><th>Model</th><th>GB</th><th>Grade</th><th>Color</th><th>Box number</th></tr></thead><tbody id="export-box-lines"></tbody></table></div>
+              <div class="export-sheet-footer"><span>Greenloop FZC</span><span id="export-sheet-total">0 phones</span><span>Checked by: __________________</span></div>
+            </section>
+          </section>
+        </div>
+      </main>
+    </div>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  </body>
+</html>

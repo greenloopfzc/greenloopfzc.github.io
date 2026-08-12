@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0d5c43">
+    <meta name="description" content="Greenloop operations dashboard.">
+    <title>Dashboard | Greenloop</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    >
+    <link rel="stylesheet" href="styles.css?v=20260811-5">
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="config.js"></script>
+    <script defer src="part-notifications.js"></script>
+    <script defer src="dashboard.js?v=20260811-2"></script>
+  </head>
+  <body class="app-page">
+    <div class="app-shell">
+      <aside id="sidebar" class="sidebar" aria-label="Main navigation">
+        <div class="sidebar-top">
+          <a class="app-brand" href="dashboard.html" aria-label="Greenloop dashboard">
+            <img class="brand-image" src="looplogo.jpg" alt="">
+            <span>greenloop</span>
+          </a>
+          <button id="close-menu" class="icon-button close-menu" type="button" aria-label="Close menu">×</button>
+        </div>
+
+        <nav class="sidebar-nav">
+          <p class="nav-label">Workspace</p>
+          <a class="nav-item active" href="dashboard.html">
+            <span class="nav-icon" aria-hidden="true">⌘</span>Overview
+          </a>
+          <a class="nav-item" href="receiving.html">
+            <span class="nav-icon" aria-hidden="true">+</span>Receiving
+          </a>
+          <button class="nav-item module-link" type="button" data-module="IMEI Search">
+            <span class="nav-icon" aria-hidden="true">⌕</span>IMEI Search
+          </button>
+
+          <p class="nav-label">Operations</p>
+          <a class="nav-item" href="initial-qc.html">
+            <span class="nav-icon" aria-hidden="true">✓</span>Initial QC
+            <span class="nav-count">38</span>
+          </a>
+          <button class="nav-item module-link" type="button" data-module="Parts">
+            <span class="nav-icon" aria-hidden="true">▦</span>Parts
+            <span class="nav-count">14</span>
+          </button>
+          <button class="nav-item module-link" type="button" data-module="Laboratory">
+            <span class="nav-icon" aria-hidden="true">⌁</span>Laboratory
+            <span class="nav-count">62</span>
+          </button>
+          <button class="nav-item module-link" type="button" data-module="Glass">
+            <span class="nav-icon" aria-hidden="true">◇</span>Glass
+          </button>
+          <button class="nav-item module-link" type="button" data-module="Frame">
+            <span class="nav-icon" aria-hidden="true">□</span>Frame
+          </button>
+          <button class="nav-item module-link" type="button" data-module="Final QC">
+            <span class="nav-icon" aria-hidden="true">◉</span>Final QC
+            <span class="nav-count">31</span>
+          </button>
+          <button class="nav-item module-link" type="button" data-module="Production">
+            <span class="nav-icon" aria-hidden="true">↗</span>Production
+          </button>
+          <button class="nav-item module-link" type="button" data-module="Shipping">
+            <span class="nav-icon" aria-hidden="true">↝</span>Shipping
+          </button>
+
+          <p class="nav-label">Control</p>
+          <button class="nav-item module-link" type="button" data-module="RMA">
+            <span class="nav-icon" aria-hidden="true">↶</span>RMA
+            <span class="nav-count warning">47</span>
+          </button>
+          <button class="nav-item module-link" type="button" data-module="Retail Shop">
+            <span class="nav-icon" aria-hidden="true">⌂</span>Retail Shop
+          </button>
+          <button class="nav-item module-link" type="button" data-module="Reports">
+            <span class="nav-icon" aria-hidden="true">▤</span>Reports
+          </button>
+        </nav>
+
+        <div class="sidebar-user">
+          <span class="user-avatar">SA</span>
+          <span><strong>System Admin</strong><small>Super Admin</small></span>
+          <button class="more-button module-link" type="button" data-module="Account settings" aria-label="Account settings">•••</button>
+        </div>
+      </aside>
+
+      <div id="menu-backdrop" class="menu-backdrop" hidden></div>
+
+      <main class="app-main">
+        <header class="topbar">
+          <button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button>
+          <div class="search-box">
+            <label class="sr-only" for="dashboard-search">Search by IMEI, job, shipment, or RMA</label>
+            <span aria-hidden="true">⌕</span>
+            <input id="dashboard-search" type="search" placeholder="Search IMEI, job, shipment, or RMA">
+            <kbd>⌘ K</kbd>
+          </div>
+          <div class="topbar-actions">
+            <span class="live-chip">Live database</span>
+            <button id="notification-button" class="icon-button notification-button" type="button" aria-label="Notifications">
+              ♧<span class="notification-dot" aria-hidden="true"></span>
+            </button>
+            <button class="topbar-profile module-link" type="button" data-module="Account settings">
+              <span class="user-avatar small">SA</span>
+              <span class="profile-name">System Admin</span>
+              <span aria-hidden="true">⌄</span>
+            </button>
+          </div>
+        </header>
+
+        <div class="page-content">
+          <section class="page-heading" aria-labelledby="dashboard-title">
+            <div>
+              <p class="eyebrow dashboard-eyebrow">Operations overview</p>
+              <h1 id="dashboard-title">Good morning, Admin.</h1>
+              <p id="dashboard-date" class="heading-subtitle">Here is what needs attention today.</p>
+            </div>
+            <a class="receive-button" href="stock-entry.html">
+              <span aria-hidden="true">+</span> Receive device
+            </a>
+          </section>
+
+          <section class="metric-grid" aria-label="Stock and operations summary">
+            <a class="metric-card metric-card-link company-stock" href="reports.html?report=stock_received">
+              <div class="metric-topline"><span class="metric-icon">◫</span><span class="trend up">↑ 8.4%</span></div>
+              <p>Company-owned stock</p>
+              <strong>1,284</strong>
+              <small>Open received-stock data &rarr;</small>
+            </a>
+            <a class="metric-card metric-card-link customer-stock" href="initial-qc.html">
+              <div class="metric-topline"><span class="metric-icon">◌</span><span class="trend up">↑ 4.1%</span></div>
+              <p>Customer-owned stock</p>
+              <strong>316</strong>
+              <small>Open Initial QC queue &rarr;</small>
+            </a>
+            <a class="metric-card metric-card-link rma-stock" href="reports.html?report=parts_requests">
+              <div class="metric-topline"><span class="metric-icon">↶</span><span class="trend attention">12 need QC</span></div>
+              <p>RMA in progress</p>
+              <strong>47</strong>
+              <small>Open parts-request data &rarr;</small>
+            </a>
+            <a class="metric-card metric-card-link ready-stock" href="ready-stock.html">
+              <div class="metric-topline"><span class="metric-icon">↝</span><span class="trend up">↑ 15.6%</span></div>
+              <p>Ready for shipment</p>
+              <strong>126</strong>
+              <small>Open current Ready Stock &rarr;</small>
+            </a>
+          </section>
+
+          <section class="dashboard-grid primary-grid">
+            <article class="panel queue-panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="panel-kicker">Live workload</p>
+                  <h2>Department queues</h2>
+                </div>
+                <button class="panel-link module-link" type="button" data-module="Department queues">View queues <span aria-hidden="true">→</span></button>
+              </div>
+              <div class="queue-list">
+                <div class="queue-row"><span class="queue-name"><i class="queue-dot qc"></i>Initial QC</span><span class="queue-bar"><b style="width: 54%"></b></span><strong>38</strong></div>
+                <div class="queue-row"><span class="queue-name"><i class="queue-dot parts"></i>Parts</span><span class="queue-bar"><b style="width: 23%"></b></span><strong>14</strong></div>
+                <div class="queue-row"><span class="queue-name"><i class="queue-dot lab"></i>Laboratory</span><span class="queue-bar"><b style="width: 90%"></b></span><strong>62</strong></div>
+                <div class="queue-row"><span class="queue-name"><i class="queue-dot glass"></i>Glass</span><span class="queue-bar"><b style="width: 36%"></b></span><strong>23</strong></div>
+                <div class="queue-row"><span class="queue-name"><i class="queue-dot frame"></i>Frame</span><span class="queue-bar"><b style="width: 30%"></b></span><strong>19</strong></div>
+                <div class="queue-row"><span class="queue-name"><i class="queue-dot final-qc"></i>Final QC</span><span class="queue-bar"><b style="width: 48%"></b></span><strong>31</strong></div>
+                <div class="queue-row"><span class="queue-name"><i class="queue-dot production"></i>Production</span><span class="queue-bar"><b style="width: 28%"></b></span><strong>17</strong></div>
+              </div>
+              <div class="queue-insight"><span aria-hidden="true">!</span><p><strong>Laboratory is the main bottleneck.</strong> It holds 30% of all active department tasks.</p></div>
+            </article>
+
+            <article class="panel throughput-panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="panel-kicker">Last 7 days</p>
+                  <h2>Daily throughput</h2>
+                </div>
+                <span class="chart-legend"><i></i>Completed</span>
+              </div>
+              <div class="bar-chart" aria-label="Devices completed over the last seven days">
+                <div class="bar-column"><span class="bar-value">64</span><i style="height: 51%"></i><small>Mon</small></div>
+                <div class="bar-column"><span class="bar-value">78</span><i style="height: 63%"></i><small>Tue</small></div>
+                <div class="bar-column"><span class="bar-value">52</span><i style="height: 42%"></i><small>Wed</small></div>
+                <div class="bar-column"><span class="bar-value">93</span><i style="height: 75%"></i><small>Thu</small></div>
+                <div class="bar-column"><span class="bar-value">84</span><i style="height: 68%"></i><small>Fri</small></div>
+                <div class="bar-column"><span class="bar-value">41</span><i style="height: 33%"></i><small>Sat</small></div>
+                <div class="bar-column current"><span class="bar-value">106</span><i style="height: 86%"></i><small>Today</small></div>
+              </div>
+              <div class="throughput-summary"><strong>518</strong><span>devices completed this week</span><em>+12.8% vs previous week</em></div>
+            </article>
+          </section>
+
+          <section class="dashboard-grid secondary-grid">
+            <article class="panel priority-panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="panel-kicker">Action needed</p>
+                  <h2>Priority queue</h2>
+                </div>
+                <button class="panel-link module-link" type="button" data-module="Priority queue">View all <span aria-hidden="true">→</span></button>
+              </div>
+              <div class="priority-table-wrap">
+                <table class="priority-table">
+                  <thead><tr><th>Job</th><th>Current task</th><th>Age</th><th>Status</th></tr></thead>
+                  <tbody>
+                    <tr data-search="JOB-2026-00451 356938035643809 iPhone 15 Pro laboratory"><td><strong>JOB-2026-00451</strong><small>356938035643809</small></td><td>Laboratory repair</td><td>5h 24m</td><td><span class="status-chip danger">Overdue</span></td></tr>
+                    <tr data-search="RMA-2026-00125 351756104208119 Samsung S24 final QC"><td><strong>RMA-2026-00125</strong><small>351756104208119</small></td><td>Final QC inspection</td><td>3h 11m</td><td><span class="status-chip warning">Priority</span></td></tr>
+                    <tr data-search="JOB-2026-00466 352099117492531 iPhone 14 frame"><td><strong>JOB-2026-00466</strong><small>352099117492531</small></td><td>Frame alignment</td><td>2h 37m</td><td><span class="status-chip neutral">In progress</span></td></tr>
+                    <tr data-search="JOB-2026-00470 353811027463821 iPhone 15 Plus parts"><td><strong>JOB-2026-00470</strong><small>353811027463821</small></td><td>Waiting for parts</td><td>1h 52m</td><td><span class="status-chip info">Waiting</span></td></tr>
+                  </tbody>
+                </table>
+                <p id="search-empty" class="search-empty" hidden>No preview job matches that search.</p>
+              </div>
+            </article>
+
+            <article class="panel stock-panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="panel-kicker">Parts control</p>
+                  <h2>Low stock alerts</h2>
+                </div>
+                <button class="panel-link module-link" type="button" data-module="Parts inventory">Parts inventory <span aria-hidden="true">→</span></button>
+              </div>
+              <ul class="stock-list">
+                <li><span class="part-icon">BT</span><span><strong>iPhone 15 Pro battery</strong><small>Minimum: 20 units</small></span><b class="stock-level critical">7 left</b></li>
+                <li><span class="part-icon">BG</span><span><strong>iPhone 14 back glass</strong><small>Minimum: 30 units</small></span><b class="stock-level warning">12 left</b></li>
+                <li><span class="part-icon">CG</span><span><strong>Samsung S24 camera glass</strong><small>Minimum: 15 units</small></span><b class="stock-level warning">9 left</b></li>
+                <li><span class="part-icon">FR</span><span><strong>iPhone 13 frame, black</strong><small>Minimum: 10 units</small></span><b class="stock-level critical">3 left</b></li>
+              </ul>
+              <button class="outline-button module-link" type="button" data-module="Parts purchase order">Create purchase order <span aria-hidden="true">→</span></button>
+            </article>
+          </section>
+
+          <section class="dashboard-grid tertiary-grid">
+            <article class="panel location-panel">
+              <div class="panel-heading">
+                <div><p class="panel-kicker">Physical stock</p><h2>Devices by location</h2></div>
+                <button class="panel-link module-link" type="button" data-module="Locations">View all <span aria-hidden="true">→</span></button>
+              </div>
+              <div class="location-grid">
+                <div><span>Main warehouse</span><strong>742</strong></div>
+                <div><span>Retail shop</span><strong>198</strong></div>
+                <div><span>Packing</span><strong>126</strong></div>
+                <div><span>RMA area</span><strong>47</strong></div>
+              </div>
+            </article>
+            <article class="panel activity-panel">
+              <div class="panel-heading"><div><p class="panel-kicker">Today</p><h2>Recent activity</h2></div></div>
+              <ol class="activity-list">
+                <li><i class="activity-dot green"></i><span><strong>Final QC passed</strong><small>JOB-2026-00440 moved to Production</small></span><time>10 min</time></li>
+                <li><i class="activity-dot amber"></i><span><strong>Part issued</strong><small>Battery issued to JOB-2026-00451</small></span><time>26 min</time></li>
+                <li><i class="activity-dot red"></i><span><strong>RMA received</strong><small>RMA-2026-00125 requires diagnosis</small></span><time>41 min</time></li>
+              </ol>
+            </article>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  </body>
+</html>

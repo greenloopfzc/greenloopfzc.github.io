@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0d5c43">
+    <meta name="description" content="Glass Department work queue for Greenloop.">
+    <title>Glass Department | Greenloop</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="initial-qc.css">
+    <link rel="stylesheet" href="glass.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="config.js"></script>
+    <script defer src="part-notifications.js"></script>
+    <script defer src="glass.js"></script>
+  </head>
+  <body class="app-page">
+    <div class="app-shell">
+      <aside id="sidebar" class="sidebar" aria-label="Main navigation">
+        <div class="sidebar-top">
+          <a class="app-brand" href="dashboard.html" aria-label="Greenloop dashboard"><img class="brand-image" src="looplogo.jpg" alt=""><span>greenloop</span></a>
+          <button id="close-menu" class="icon-button close-menu" type="button" aria-label="Close menu">×</button>
+        </div>
+        <nav class="sidebar-nav">
+          <p class="nav-label">Workspace</p>
+          <a class="nav-item" href="dashboard.html"><span class="nav-icon" aria-hidden="true">⌘</span>Overview</a>
+          <a class="nav-item" href="receiving.html"><span class="nav-icon" aria-hidden="true">+</span>Receiving</a>
+          <button class="nav-item module-link" type="button" data-module="IMEI Search"><span class="nav-icon" aria-hidden="true">⌕</span>IMEI Search</button>
+          <p class="nav-label">Operations</p>
+          <a class="nav-item" href="initial-qc.html"><span class="nav-icon" aria-hidden="true">✓</span>Initial QC</a>
+          <button class="nav-item module-link" type="button" data-module="Parts"><span class="nav-icon" aria-hidden="true">▦</span>Parts</button>
+          <button class="nav-item module-link" type="button" data-module="Laboratory"><span class="nav-icon" aria-hidden="true">⌁</span>Laboratory</button>
+          <a class="nav-item active" href="glass.html"><span class="nav-icon" aria-hidden="true">◇</span>Glass</a>
+          <button class="nav-item module-link" type="button" data-module="Frame"><span class="nav-icon" aria-hidden="true">□</span>Frame</button>
+          <button class="nav-item module-link" type="button" data-module="Final QC"><span class="nav-icon" aria-hidden="true">◉</span>Final QC</button>
+          <button class="nav-item module-link" type="button" data-module="Production"><span class="nav-icon" aria-hidden="true">↗</span>Production</button>
+          <button class="nav-item module-link" type="button" data-module="Shipping"><span class="nav-icon" aria-hidden="true">↝</span>Shipping</button>
+          <p class="nav-label">Control</p>
+          <button class="nav-item module-link" type="button" data-module="RMA"><span class="nav-icon" aria-hidden="true">↶</span>RMA</button>
+          <button class="nav-item module-link" type="button" data-module="Retail Shop"><span class="nav-icon" aria-hidden="true">⌂</span>Retail Shop</button>
+          <button class="nav-item module-link" type="button" data-module="Reports"><span class="nav-icon" aria-hidden="true">▤</span>Reports</button>
+        </nav>
+        <div class="sidebar-user"><span class="user-avatar">SA</span><span><strong>System Admin</strong><small>Super Admin</small></span></div>
+      </aside>
+      <div id="menu-backdrop" class="menu-backdrop" hidden></div>
+
+      <main class="app-main">
+        <header class="topbar">
+          <button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button>
+          <div class="breadcrumb"><a href="dashboard.html">Overview</a><span aria-hidden="true">/</span><strong>Glass Department</strong></div>
+          <div class="topbar-actions"><span class="live-chip">Live database</span><a class="topbar-profile" href="dashboard.html"><span class="user-avatar small">SA</span><span class="profile-name">System Admin</span></a></div>
+        </header>
+
+        <div class="page-content qc-content">
+          <section class="page-heading qc-heading" aria-labelledby="glass-title">
+            <div><p class="eyebrow dashboard-eyebrow">Glass Department</p><h1 id="glass-title">Complete glass work</h1><p class="heading-subtitle">Start the queued work, record the result and material cost, then hand the device to its next department.</p></div>
+            <a class="quiet-link" href="initial-qc.html">← Back to Initial QC</a>
+          </section>
+
+          <div id="permission-message" class="access-message" hidden></div>
+          <section id="glass-app" class="qc-app" hidden>
+            <div class="qc-queue-bar">
+              <div><p class="panel-kicker">Glass queue</p><h2>Jobs ready for Glass Department</h2></div>
+              <button id="refresh-queue" class="secondary-button" type="button">Refresh queue</button>
+            </div>
+            <div class="qc-picker-row">
+              <label class="qc-job-picker" for="glass-step-select"><span>Select a Glass work order</span><select id="glass-step-select"><option value="">Loading queue...</option></select></label>
+              <span id="queue-count" class="queue-count">0 waiting</span>
+            </div>
+            <div id="glass-empty" class="qc-empty" hidden><strong>Glass queue is clear.</strong><span>Initial QC will send eligible jobs here automatically.</span></div>
+
+            <section id="glass-workspace" class="qc-workspace" hidden>
+              <div id="glass-device-summary" class="qc-device-summary"></div>
+              <div class="glass-layout">
+                <form id="glass-form" class="qc-form" novalidate>
+                  <section class="form-panel">
+                    <div class="form-panel-heading"><span class="section-number">01</span><div><h2>Required Glass work</h2><p>These are the issues assigned from Initial QC.</p></div></div>
+                    <ul id="glass-findings" class="glass-findings"></ul>
+                  </section>
+                  <section class="form-panel">
+                    <div class="form-panel-heading"><span class="section-number">02</span><div><h2>Completion record</h2><p>Start records the assigned and start time automatically. Completion records your final work.</p></div></div>
+                    <div class="form-grid two-columns">
+                      <div class="form-field"><label for="glass-work-done">Work done <span class="required-mark">Required</span></label><input id="glass-work-done" name="glass-work-done" type="text" placeholder="Example: Back glass replaced" required></div>
+                      <div class="form-field"><label for="glass-material-cost">Material cost (AED)</label><div class="money-input"><span>AED</span><input id="glass-material-cost" name="glass-material-cost" type="number" inputmode="decimal" min="0" step="0.01" value="0"></div></div>
+                    </div>
+                    <div class="form-field detail-grid"><label for="glass-notes">Work notes</label><textarea id="glass-notes" name="glass-notes" rows="3" placeholder="Glass type, material used, condition, or special notes"></textarea></div>
+                  </section>
+                  <p id="glass-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
+                  <div class="form-actions"><button id="start-glass-work" class="secondary-button" type="button">Start Glass work</button><button id="complete-glass-work" class="primary-button receive-submit" type="submit" disabled>Complete and route →</button></div>
+                </form>
+                <aside class="qc-side">
+                  <section class="side-card glass-status-card"><p class="panel-kicker">Current work status</p><h2 id="glass-status-title">Ready to start</h2><p id="glass-status-text">Start the work to record the assigned worker and automatic start time.</p></section>
+                  <section class="side-card"><span class="side-icon" aria-hidden="true">◇</span><h2>Automatic handover</h2><p>When completed, Greenloop closes this Glass step and automatically sends the same IMEI to the next required department.</p></section>
+                </aside>
+              </div>
+            </section>
+          </section>
+        </div>
+      </main>
+    </div>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  </body>
+</html>

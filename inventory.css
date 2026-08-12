@@ -1,0 +1,29 @@
+.inventory-content { max-width: 1510px; }
+.inventory-app { display: grid; gap: 18px; }
+.inventory-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 13px; }
+.inventory-stats article { min-height: 100px; padding: 17px; border: 1px solid #dce9e1; border-radius: 12px; background: #fff; }
+.inventory-stats span { display: block; color: #77887e; font-size: .7rem; font-weight: 700; }
+.inventory-stats strong { display: block; margin-top: 9px; color: #173d2c; font: 800 1.55rem/1.1 Manrope, sans-serif; letter-spacing: -.055em; }
+.inventory-stats article:nth-child(3) { background: #f2faf5; }
+.inventory-stats article:nth-child(4) strong { font-size: .94rem; letter-spacing: 0; }
+.inventory-receipt-panel, .inventory-stock-panel, .inventory-history-panel { overflow: hidden; }
+#inventory-receipt-form { padding-top: 4px; }
+.receipt-grid { display: grid; grid-template-columns: 1.2fr .75fr 1fr 1.55fr .85fr 1fr .8fr 1.5fr auto; align-items: end; gap: 11px; }
+.receipt-grid > label { display: grid; gap: 6px; color: #405348; font-size: .71rem; font-weight: 800; }
+.receipt-grid label small { color: #8a9b91; font-size: .59rem; font-weight: 700; text-transform: uppercase; }
+.receipt-grid input, .receipt-grid select { width: 100%; min-width: 0; min-height: 42px; border: 1px solid #d4e2d9; border-radius: 8px; padding: 0 10px; color: #273e31; background: #fff; font: inherit; font-size: .76rem; }
+.inventory-master-control { display: grid; grid-template-columns: minmax(0, 1fr) 31px 31px; gap: 4px; }
+.inventory-master-control .master-add, .inventory-master-control .master-remove { min-width: 0; min-height: 42px; padding: 0; font-size: 1rem; }
+#receipt-unit-cost { display: flex; min-height: 42px; align-items: center; border: 1px solid #d5e8dc; border-radius: 8px; padding: 0 10px; color: #126848; background: #f2faf5; font-size: .78rem; }
+.receipt-grid > .primary-button { min-height: 42px; white-space: nowrap; }
+.inventory-stock-panel .form-panel-heading, .inventory-history-panel .form-panel-heading { align-items: center; }
+.inventory-table-wrap { overflow-x: auto; }
+.inventory-table { width: 100%; min-width: 1040px; border-collapse: collapse; color: #31463a; font-size: .74rem; }
+.inventory-table th, .inventory-table td { padding: 10px 11px; border: 1px solid #d9e5dd; text-align: left; white-space: nowrap; }
+.inventory-table th { color: #426755; background: #eff7f2; font-size: .65rem; letter-spacing: .06em; text-transform: uppercase; }
+.inventory-table td:nth-child(3), .inventory-table td:nth-child(4), .inventory-table td:nth-child(5), .inventory-table td:nth-child(6) { font-weight: 700; }
+.inventory-table tbody tr:nth-child(even) { background: #fbfdfb; }
+.inventory-table .history-origin { color: #5d7a69; font-weight: 800; text-transform: capitalize; }
+.inventory-empty { color: #839188; text-align: center !important; }
+@media (max-width: 1180px) { .receipt-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .receipt-notes { grid-column: span 2; } }
+@media (max-width: 760px) { .inventory-stats, .receipt-grid { grid-template-columns: 1fr; } .receipt-notes { grid-column: auto; } .inventory-stats article { min-height: auto; } }
