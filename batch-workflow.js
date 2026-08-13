@@ -113,30 +113,30 @@
 
     function fillBlankSelectionsFromPreviousRow() {
       [".batch-row-model", ".batch-row-storage", ".batch-row-color"].forEach((selector) => {
-        let previousValue = "";
+        const templateValue = panel.querySelector(`tbody tr:first-child ${selector}`)?.value || "";
         panel.querySelectorAll(selector).forEach((select) => {
-          if (select.value) {
-            previousValue = select.value;
-          } else if (previousValue) {
-            select.value = previousValue;
-          }
+          if (!select.value && templateValue) select.value = templateValue;
         });
       });
     }
 
     function continueSelectionToFollowingRows(sourceSelect) {
+      const sourceRow = sourceSelect.closest("tr");
+      const templateRow = panel.querySelector("tbody tr:first-child");
+      // Only line 1 is the template. A correction on line 2 or later belongs
+      // to that phone only and must never overwrite the phones below it.
+      if (!sourceRow || sourceRow !== templateRow) return;
       const selector = sourceSelect.classList.contains("batch-row-model")
         ? ".batch-row-model"
         : sourceSelect.classList.contains("batch-row-storage")
           ? ".batch-row-storage"
           : ".batch-row-color";
-      let nextRow = sourceSelect.closest("tr")?.nextElementSibling;
+      let nextRow = sourceRow.nextElementSibling;
 
       while (nextRow) {
         const nextSelect = nextRow.querySelector(selector);
         if (!nextSelect) break;
-        if (nextSelect.dataset.manuallyChanged === "yes") break;
-        if (nextRow.dataset.saved !== "yes") nextSelect.value = sourceSelect.value;
+        if (nextSelect.dataset.manuallyChanged !== "yes" && nextRow.dataset.saved !== "yes") nextSelect.value = sourceSelect.value;
         nextRow = nextRow.nextElementSibling;
       }
     }
@@ -171,7 +171,7 @@
               </tr>`).join("")}</tbody>
           </table>
         </div>
-        <p class="batch-entry-help">Model, GB and Color continue automatically into the following lines until you change them. IMEI and Battery Health always remain blank for each phone.</p>`;
+        <p class="batch-entry-help">Line 1 sets the default Model, GB and Color for the remaining lines. Any change on line 2 or later applies only to that phone. IMEI and Battery Health always remain blank for each phone.</p>`;
 
       fillBlankSelectionsFromPreviousRow();
 

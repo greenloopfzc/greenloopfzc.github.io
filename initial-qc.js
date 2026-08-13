@@ -198,8 +198,8 @@
   }
 
   function createRows(quantity) {
-    const previousRow = tableBody.lastElementChild;
-    const inherited = previousRow ? rowSnapshot(previousRow) : null;
+    const templateRow = tableBody.firstElementChild;
+    const inherited = templateRow ? rowSnapshot(templateRow) : null;
     tableBody.insertAdjacentHTML("beforeend", Array.from({ length: quantity }, rowMarkup).join(""));
     if (inherited) {
       [...tableBody.querySelectorAll("tr")].slice(-quantity).forEach((row) => applySnapshot(row, inherited));
@@ -213,23 +213,25 @@
   }
 
   function carrySimpleField(row, field) {
+    // Line 1 is the tray template. Manual corrections on later rows are local.
+    if (row !== tableBody.firstElementChild) return;
     const source = row.querySelector(`[data-carry-field="${field}"]`);
     let nextRow = row.nextElementSibling;
     const key = manualKey(field);
     while (nextRow) {
-      if (nextRow.dataset[key] === "yes") break;
-      if (nextRow.dataset.completed !== "yes") nextRow.querySelector(`[data-carry-field="${field}"]`).value = source.value;
+      if (nextRow.dataset[key] !== "yes" && nextRow.dataset.completed !== "yes") nextRow.querySelector(`[data-carry-field="${field}"]`).value = source.value;
       nextRow = nextRow.nextElementSibling;
     }
   }
 
   function carryRequirementGroup(row, kind) {
+    // Never let an exception on a middle row alter the phones below it.
+    if (row !== tableBody.firstElementChild) return;
     const values = valuesForGroup(row, kind);
     let nextRow = row.nextElementSibling;
     const key = manualKey(kind === "part" ? "parts" : "services");
     while (nextRow) {
-      if (nextRow.dataset[key] === "yes") break;
-      if (nextRow.dataset.completed !== "yes") setGroupValues(nextRow, kind, values);
+      if (nextRow.dataset[key] !== "yes" && nextRow.dataset.completed !== "yes") setGroupValues(nextRow, kind, values);
       nextRow = nextRow.nextElementSibling;
     }
   }

@@ -114,9 +114,9 @@
   }
 
   function createRows(quantity) {
-    const previous = tableBody.lastElementChild;
-    const inheritedGrade = previous?.querySelector("[data-final-grade]")?.value || "";
-    const inheritedResult = previous ? resultValue(previous) : "pass";
+    const templateRow = tableBody.firstElementChild;
+    const inheritedGrade = templateRow?.querySelector("[data-final-grade]")?.value || "";
+    const inheritedResult = templateRow ? resultValue(templateRow) : "pass";
     tableBody.insertAdjacentHTML("beforeend", Array.from({ length: quantity }, rowMarkup).join(""));
     [...tableBody.rows].slice(-quantity).forEach((row) => {
       row.querySelector("[data-final-grade]").value = inheritedGrade;
@@ -170,21 +170,23 @@
   }
 
   function carryGrade(row) {
+    // Only line 1 supplies defaults. Later-row grade changes are individual.
+    if (row !== tableBody.firstElementChild) return;
     const value = row.querySelector("[data-final-grade]").value;
     let next = row.nextElementSibling;
     while (next) {
-      if (next.dataset.manualGrade === "yes") break;
-      if (next.dataset.completed !== "yes") next.querySelector("[data-final-grade]").value = value;
+      if (next.dataset.manualGrade !== "yes" && next.dataset.completed !== "yes") next.querySelector("[data-final-grade]").value = value;
       next = next.nextElementSibling;
     }
   }
 
   function carryResult(row) {
+    // Pass/Fail corrections on a middle row must not modify following rows.
+    if (row !== tableBody.firstElementChild) return;
     const value = resultValue(row);
     let next = row.nextElementSibling;
     while (next) {
-      if (next.dataset.manualResult === "yes") break;
-      if (next.dataset.completed !== "yes") {
+      if (next.dataset.manualResult !== "yes" && next.dataset.completed !== "yes") {
         const input = next.querySelector(`[data-result][value="${value}"]`);
         if (input) input.checked = true;
       }
