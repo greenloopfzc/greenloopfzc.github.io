@@ -490,6 +490,10 @@
     const input = event.target.closest(".final-row-imei");
     if (!input || event.key !== "Enter") return;
     event.preventDefault();
+    // The scanner's trailing Enter reaches the next row because the final
+    // digit already advanced focus. Ignore Enter on that empty row so scanning
+    // continues line-by-line without skipping a line.
+    if (!/^\d{15}$/.test(input.value.trim())) return;
     focusNextScan(input.closest("tr"));
     loadScannedRow(input.closest("tr")).catch((error) => setRowState(input.closest("tr"), error.message || "Could not load IMEI", "is-error"));
   });

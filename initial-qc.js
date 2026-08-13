@@ -593,6 +593,10 @@
     const input = event.target.closest(".qc-bulk-imei");
     if (!input || event.key !== "Enter") return;
     event.preventDefault();
+    // A barcode scanner sends Enter after the 15 digits. The input handler has
+    // already moved focus to the next empty row, so that Enter arrives on an
+    // empty input. Never move again from an empty row or one line is skipped.
+    if (!/^\d{15}$/.test(input.value.trim())) return;
     focusNextScan(input.closest("tr"));
     loadScannedRow(input.closest("tr")).catch((error) => setRowState(input.closest("tr"), error.message || "Could not load IMEI", "is-error"));
   });
