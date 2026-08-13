@@ -15,8 +15,8 @@
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script defer src="config.js"></script>
     <script defer src="part-notifications.js?v=20260813-1"></script>
-    <script defer src="imei-entry.js?v=20260813-1"></script>
-    <script defer src="batch-workflow.js?v=20260813-4"></script>
+    <script defer src="imei-entry.js?v=20260813-2"></script>
+    <script defer src="batch-workflow.js?v=20260813-5"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -39,7 +39,7 @@
                 <div id="batch-summary" class="batch-summary" hidden></div>
               </section>
               <section id="imei-detail-panel" class="form-panel" hidden>
-                <div class="form-panel-heading imei-scan-heading"><span class="section-number">02</span><div><h2>Scan IMEI and enter device details</h2><p>Every saved IMEI automatically enters the Initial QC queue.</p></div><button id="read-connected-iphone" class="secondary-button iphone-read-button" type="button">Read from 3uTools</button></div>
+                <div class="form-panel-heading imei-scan-heading"><span class="section-number">02</span><div><h2>Scan IMEI and enter device details</h2><p>Every saved IMEI automatically enters the Initial QC queue.</p></div><button id="read-connected-iphone" class="secondary-button iphone-read-button" type="button">Read connected iPhone</button></div>
                 <div class="form-grid five-columns">
                   <div class="form-field imei-field"><label for="imei-1">IMEI <span class="required-mark">Required</span></label><input id="imei-1" type="text" inputmode="numeric" autocomplete="off" maxlength="15" placeholder="Scan 15-digit IMEI" required></div>
                   <div class="form-field"><label for="model">Model <span class="required-mark">Required</span></label><div class="master-option-control"><select id="model" required><option value="">Loading models...</option></select><button class="master-add" type="button" data-option-group="model" data-option-target="model" title="Add model">+</button><button class="master-remove" type="button" data-option-group="model" data-option-target="model" title="Remove selected model">−</button></div></div>

@@ -188,12 +188,18 @@
     setMessage();
     setBusy(readConnectedIphone, true, "Reading iPhone...");
     const abort = new AbortController();
-    const timer = window.setTimeout(() => abort.abort(), 9000);
+    const timer = window.setTimeout(() => abort.abort(), 15000);
     try {
       const response = await fetch(`http://127.0.0.1:51892/v1/device?t=${Date.now()}`, { cache: "no-store", signal: abort.signal });
       const result = await response.json().catch(() => ({}));
       if (!response.ok || !result.ok) throw new Error(result.message || "The connected iPhone could not be read.");
       const device = result.device || {};
+      const bulkPanel = document.querySelector("#batch-entry-panel:not([hidden])");
+      if (bulkPanel) {
+        window.dispatchEvent(new CustomEvent("greenloop:cable-device", { detail: device }));
+        setMessage("Connected iPhone data loaded into the active batch line.", "success");
+        return;
+      }
       const scannedImei = String(device.imei || "").replace(/\D/g, "");
       const loaded = [];
       if (/^\d{15}$/.test(scannedImei)) { imei.value = scannedImei; loaded.push("IMEI"); }
@@ -281,7 +287,7 @@
   document.querySelector("#close-menu").addEventListener("click", () => setMenu(false));
   backdrop.addEventListener("click", () => setMenu(false));
   batchSelect.addEventListener("change", updateBatchView);
-  readConnectedIphone.addEventListener("click", readFrom3uTools);
+  readConnectedIphone.addEventListener("click", readIphoneFromCable);
   imei.addEventListener("input", () => { imei.value = imei.value.replace(/\D/g, ""); });
   battery.addEventListener("input", scheduleAutoSave);
   battery.addEventListener("change", () => saveImei(null, true));
