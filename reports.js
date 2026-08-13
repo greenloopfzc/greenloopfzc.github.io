@@ -232,6 +232,21 @@
       </details>`).join("")}</div>`;
   }
 
+  function renderTestDataCleanup() {
+    return `
+      <section class="test-cleanup-card">
+        <div class="test-cleanup-copy">
+          <span class="test-cleanup-icon" aria-hidden="true">!</span>
+          <div><h3>Delete all test phone data</h3><p>Deletes every phone, job, batch, QC, Laboratory, Parts issue, Final QC, Ready Stock, and Export Box workflow record. Users, suppliers, dropdowns, technicians, and Parts Inventory are kept. Issued part quantities return to inventory, and every deleted row remains in Deleted History.</p></div>
+        </div>
+        <form id="test-data-cleanup-form" class="test-cleanup-form" novalidate>
+          <label>Deletion code<input name="deletion_code" type="password" inputmode="numeric" autocomplete="off" placeholder="Enter code" required></label>
+          <label>Type DELETE TEST DATA<input name="confirmation" type="text" autocomplete="off" placeholder="DELETE TEST DATA" required></label>
+          <button class="danger-button" type="submit">Delete test data</button>
+        </form>
+      </section>`;
+  }
+
   function renderDataCorrection() {
     panelKicker.textContent = "Management control";
     panelTitle.textContent = "IMEI data correction";
@@ -245,7 +260,7 @@
       </form>`;
 
     if (!correctionRecord) {
-      reportContent.innerHTML = `<div class="correction-workspace">${search}<div class="correction-welcome"><strong>Search one device to begin.</strong><span>IMEI, device details, supplier, receiving data, grades, notes, and the complete workflow timeline will load here.</span></div></div>`;
+      reportContent.innerHTML = `<div class="correction-workspace">${search}<div class="correction-welcome"><strong>Search one device to begin.</strong><span>IMEI, device details, supplier, receiving data, grades, notes, and the complete workflow timeline will load here.</span></div>${renderTestDataCleanup()}</div>`;
       return;
     }
 
@@ -300,6 +315,7 @@
           <div class="correction-section-title"><span>03</span><div><h3>Permanent workflow history</h3><p>Past events are never erased. Every correction is added as a new audited event.</p></div></div>
           ${renderCorrectionHistory(record)}
         </section>
+        ${renderTestDataCleanup()}
       </div>`;
   }
 
@@ -410,6 +426,30 @@
     setMessage(`${data?.device_number || "Device"} was corrected. ${changedCount} field${changedCount === 1 ? "" : "s"} saved in permanent Data Changes history.`, "success");
   }
 
+  async function deleteAllTestData(form) {
+    const formData = new FormData(form);
+    const confirmation = String(formData.get("confirmation") || "").trim();
+    if (confirmation !== "DELETE TEST DATA") { setMessage("Type DELETE TEST DATA exactly to confirm."); return; }
+    const approved = window.confirm("This will permanently remove every phone and its complete workflow data. Deleted History will be kept. Continue?");
+    if (!approved) return;
+
+    const submit = form.querySelector('button[type="submit"]');
+    submit.disabled = true;
+    submit.textContent = "Deleting...";
+    setMessage();
+    const { data, error } = await getClient().rpc("delete_all_test_operational_data", {
+      p_deletion_code: formData.get("deletion_code"),
+      p_confirmation: confirmation
+    });
+    submit.disabled = false;
+    submit.textContent = "Delete test data";
+    if (error) { setMessage(error.message || "Test data could not be deleted."); return; }
+
+    correctionRecord = null;
+    await loadReports();
+    setMessage(`${Number(data?.deleted_devices || 0)} phone(s), ${Number(data?.deleted_jobs || 0)} job(s), and ${Number(data?.deleted_batches || 0)} batch(es) were deleted. ${Number(data?.restored_part_units || 0)} issued part unit(s) returned to inventory. ${Number(data?.history_records_saved || 0)} audit record(s) were saved.`, "success");
+  }
+
   function renderActiveReport() {
     document.querySelectorAll(".report-tab").forEach((tab) => tab.classList.toggle("active", tab.dataset.report === activeReport));
     if (activeReport === "overview") renderOverview();
@@ -510,6 +550,11 @@
     if (event.target.id === "correction-save-form") {
       event.preventDefault();
       saveCorrection(event.target).catch((error) => setMessage(error.message || "The correction could not be saved."));
+      return;
+    }
+    if (event.target.id === "test-data-cleanup-form") {
+      event.preventDefault();
+      deleteAllTestData(event.target).catch((error) => setMessage(error.message || "Test data could not be deleted."));
     }
   });
   reportContent.addEventListener("input", (event) => {
