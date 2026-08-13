@@ -10,13 +10,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="initial-qc.css?v=20260811-2">
-    <link rel="stylesheet" href="batch-workflow.css?v=20260813-2">
+    <link rel="stylesheet" href="initial-qc.css?v=20260813-3">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script defer src="config.js"></script>
     <script defer src="part-notifications.js?v=20260813-1"></script>
-    <script defer src="initial-qc.js?v=20260813-2"></script>
-    <script defer src="batch-workflow.js?v=20260813-2"></script>
+    <script defer src="initial-qc.js?v=20260813-3"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -45,35 +43,25 @@
       <main class="app-main">
         <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Overview</a><span aria-hidden="true">/</span><strong>Initial QC</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span><a class="topbar-profile" href="dashboard.html"><span class="user-avatar small">SA</span><span class="profile-name">System Admin</span></a></div></header>
         <div class="page-content qc-content">
-          <section class="page-heading qc-heading"><div><p class="eyebrow dashboard-eyebrow">Initial QC</p><h1>Scan, inspect, and assign</h1><p class="heading-subtitle">Scan the IMEI, tick the required parts or services, then assign the Laboratory technician.</p></div><a class="quiet-link" href="imei-entry.html">&larr; IMEI Entry</a></section>
+          <section class="page-heading qc-heading"><div><p class="eyebrow dashboard-eyebrow">Initial QC</p><h1>Bulk scan, inspect, and assign</h1><p class="heading-subtitle">Scan all phones in the work tray first, then complete their grades, parts, services, and technician assignment.</p></div><a class="quiet-link" href="imei-entry.html">&larr; IMEI Entry</a></section>
           <div id="permission-message" class="access-message" hidden></div>
           <section id="qc-app" class="qc-app" hidden>
-            <section class="qc-scan-card"><div><p class="panel-kicker">Step 01</p><h2>Scan or select IMEI</h2><p>Use the scanner, type the IMEI, or select a pending device. Data loads automatically.</p></div><label class="qc-scan-field" for="qc-imei"><span>15-digit IMEI</span><input id="qc-imei" inputmode="numeric" autocomplete="off" placeholder="Scan IMEI now"></label><label class="qc-pending-picker" for="qc-pending-imei"><span>Pending IMEIs</span><select id="qc-pending-imei"><option value="">Loading pending IMEIs...</option></select></label><span id="queue-count" class="queue-count">0 waiting</span></section>
-            <p id="qc-scan-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
-            <div id="qc-empty" class="qc-empty"><strong>Ready for an IMEI scan.</strong><span>Only devices waiting for Initial QC will load here.</span></div>
-            <section id="qc-workspace" class="qc-workspace" hidden>
-              <form id="qc-form" class="qc-form" novalidate>
-                <section class="form-panel qc-sheet-panel">
-                  <div class="form-panel-heading"><span class="section-number">02</span><div><h2>Initial QC sheet</h2><p>Auto-picked device details stay on top. Add Initial QC lines below for parts, services, grades, and technician assignment.</p></div></div>
-                  <div class="qc-sheet-wrap">
-                    <table class="qc-auto-sheet">
-                      <thead><tr><th colspan="6">Auto picked data</th></tr><tr class="qc-sheet-labels"><th>IMEI</th><th>Supplier code</th><th>Model</th><th>GB</th><th>Color</th><th>Battery health</th></tr></thead>
-                      <tbody id="qc-auto-values"><tr><td colspan="6" class="qc-sheet-placeholder">Scan an IMEI to load this QC sheet.</td></tr></tbody>
-                    </table>
-                    <div class="qc-lines-toolbar"><div><strong>Inspection lines</strong><span>Use a new line only when this device has additional findings.</span></div><button id="add-qc-line" class="secondary-button" type="button">+ Add Initial QC line</button></div>
-                    <table class="qc-inspection-sheet">
-                      <thead><tr><th>Inspection line</th><th>Supplier grade</th><th>GC grade</th><th>Issues, parts, or services identified (optional)</th><th>Laboratory technician (required only for an issue)</th><th>Remove</th></tr></thead>
-                      <tbody id="qc-inspection-lines"><tr><td colspan="6" class="qc-sheet-placeholder">Initial QC lines appear after an IMEI is loaded.</td></tr></tbody>
-                    </table>
-                  </div>
-                </section>
-                <section class="form-panel qc-notes-panel">
-                  <div class="form-field"><label for="qc-notes">QC notes</label><textarea id="qc-notes" rows="4" placeholder="Testing result, issue details, or other required repair"></textarea></div>
-                </section>
-                <p id="qc-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
-                <div class="form-actions"><button id="clear-qc" class="secondary-button" type="button">Clear inspection</button><button id="complete-qc" class="primary-button receive-submit" type="submit">Complete Initial QC &rarr;</button></div>
-              </form>
+            <section class="qc-bulk-toolbar">
+              <div><p class="panel-kicker">Initial QC work tray</p><h2>Scan IMEIs first, then inspect every row</h2><p>Only scanned IMEIs are processed. Pending IMEIs are never loaded automatically.</p></div>
+              <div class="qc-bulk-toolbar-actions"><span id="queue-count" class="queue-count">0 waiting</span><span id="tray-count" class="queue-count tray-count">10 lines</span><button id="add-ten-rows" class="secondary-button" type="button">+ Add 10 lines</button><button id="clear-tray" class="secondary-button" type="button">Clear tray</button></div>
             </section>
+            <p id="qc-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
+            <form id="qc-form" class="qc-bulk-form" novalidate>
+              <section class="qc-bulk-panel">
+                <div class="qc-bulk-scroll">
+                  <table class="qc-bulk-table">
+                    <thead><tr><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>BH</th><th>Supplier code</th><th>Supplier grade</th><th>GC grade</th><th>Parts needed</th><th>Service needed</th><th>Assign technician</th></tr></thead>
+                    <tbody id="qc-bulk-body"></tbody>
+                  </table>
+                </div>
+              </section>
+              <div class="qc-bulk-actions"><span>Rows without parts or services go directly to Final QC.</span><button id="complete-qc" class="primary-button receive-submit" type="submit">Complete scanned Initial QC &rarr;</button></div>
+            </form>
           </section>
         </div>
       </main>
