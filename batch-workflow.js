@@ -65,6 +65,52 @@
       status.className = `batch-row-status${state ? ` ${state}` : ""}`;
     }
 
+    async function reloadOptionGroup(group, preferredValue = "") {
+      const masterByGroup = { model: modelMaster, storage_gb: storageMaster, color: colorMaster };
+      const classByGroup = { model: ".batch-row-model", storage_gb: ".batch-row-storage", color: ".batch-row-color" };
+      const master = masterByGroup[group];
+      const rowSelects = [...panel.querySelectorAll(classByGroup[group])];
+      const preserved = rowSelects.map((select) => select.value);
+      const { data, error } = await api().rpc("get_entry_options", { p_option_group: group });
+      if (error) throw error;
+      const items = data || [];
+      const fill = (select, chosen) => {
+        select.replaceChildren(new Option("Select", ""));
+        items.forEach((item) => {
+          const option = new Option(item.option_value, item.option_value);
+          option.dataset.optionId = item.id;
+          select.add(option);
+        });
+        if ([...select.options].some((option) => option.value === String(chosen || ""))) select.value = String(chosen);
+      };
+      fill(master, preferredValue || master.value);
+      rowSelects.forEach((select, index) => fill(select, preferredValue || preserved[index]));
+    }
+
+    async function addRowOption(button) {
+      const group = button.dataset.optionGroup;
+      const value = window.prompt(`Enter the new ${group.replaceAll("_", " ")}:`);
+      if (!value?.trim()) return;
+      const { data, error } = await api().rpc("add_entry_option", { p_option_group: group, p_option_value: value.trim() });
+      if (error) { window.alert(error.message || "The option could not be added."); return; }
+      await reloadOptionGroup(group, data?.[0]?.saved_value || value.trim());
+    }
+
+    async function removeRowOption(button) {
+      const group = button.dataset.optionGroup;
+      const select = button.closest(".batch-option-control").querySelector("select");
+      if (!select.value) { window.alert("Select an option first."); return; }
+      const { data, error: loadError } = await api().rpc("get_entry_options", { p_option_group: group });
+      if (loadError) { window.alert(loadError.message); return; }
+      const item = (data || []).find((entry) => String(entry.option_value).trim().toLocaleLowerCase() === String(select.value).trim().toLocaleLowerCase());
+      if (!item) { window.alert("This option could not be found."); return; }
+      const code = window.prompt("Enter deletion code to remove this option:");
+      if (code !== "1213") return;
+      const { error } = await api().rpc("delete_entry_option", { p_option_id: item.id, p_deletion_code: code });
+      if (error) { window.alert(error.message || "The option could not be removed."); return; }
+      await reloadOptionGroup(group);
+    }
+
     function renderRows() {
       if (!currentBatch) {
         panel.hidden = true;
@@ -86,9 +132,9 @@
               <tr data-index="${index}">
                 <td>${index + 1}</td>
                 <td><input class="batch-row-imei" inputmode="numeric" autocomplete="off" maxlength="15" placeholder="Scan IMEI"></td>
-                <td><select class="batch-row-model">${optionsHtml(modelMaster, slot.model)}</select></td>
-                <td><select class="batch-row-storage">${optionsHtml(storageMaster, String(slot.storage || ""))}</select></td>
-                <td><select class="batch-row-color">${optionsHtml(colorMaster, slot.color)}</select></td>
+                <td><div class="batch-option-control"><select class="batch-row-model">${optionsHtml(modelMaster, slot.model)}</select><button type="button" class="batch-option-add" data-option-group="model">+</button><button type="button" class="batch-option-remove" data-option-group="model">−</button></div></td>
+                <td><div class="batch-option-control"><select class="batch-row-storage">${optionsHtml(storageMaster, String(slot.storage || ""))}</select><button type="button" class="batch-option-add" data-option-group="storage_gb">+</button><button type="button" class="batch-option-remove" data-option-group="storage_gb">−</button></div></td>
+                <td><div class="batch-option-control"><select class="batch-row-color">${optionsHtml(colorMaster, slot.color)}</select><button type="button" class="batch-option-add" data-option-group="color">+</button><button type="button" class="batch-option-remove" data-option-group="color">−</button></div></td>
                 <td><input class="batch-row-battery" type="number" min="0" max="100" inputmode="numeric" placeholder="BH %"></td>
                 <td><button class="batch-save-button" type="button">Save</button></td>
                 <td class="batch-row-status">Waiting</td>
@@ -97,7 +143,15 @@
         </div>
         <p class="batch-entry-help">Scan the IMEI, confirm Model / GB / Color, then enter Battery Health. Press Enter in Battery Health or click Save. Blank lines are never stored.</p>`;
 
-      panel.querySelectorAll(".batch-row-imei").forEach((input) => input.addEventListener("input", () => { input.value = input.value.replace(/\D/g, ""); }));
+      panel.querySelectorAll(".batch-row-imei").forEach((input) => input.addEventListener("input", () => {
+        input.value = input.value.replace(/\D/g, "");
+        if (input.value.length === 15) {
+          const nextImei = input.closest("tr").nextElementSibling?.querySelector(".batch-row-imei:not(:disabled)");
+          window.setTimeout(() => (nextImei || panel.querySelector(".batch-row-battery:not(:disabled)"))?.focus(), 0);
+        }
+      }));
+      panel.querySelectorAll(".batch-option-add").forEach((button) => button.addEventListener("click", () => addRowOption(button)));
+      panel.querySelectorAll(".batch-option-remove").forEach((button) => button.addEventListener("click", () => removeRowOption(button)));
       panel.querySelectorAll(".batch-save-button").forEach((button) => button.addEventListener("click", () => saveRow(button.closest("tr"))));
       panel.querySelectorAll(".batch-row-battery").forEach((input) => {
         input.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); saveRow(input.closest("tr")); } });
@@ -138,7 +192,9 @@
       row.querySelectorAll("input, select").forEach((control) => { control.disabled = true; });
       button.textContent = "Saved";
       setRowStatus(row, "Sent to Initial QC", "is-saved");
-      row.nextElementSibling?.querySelector(".batch-row-imei")?.focus();
+      const nextRow = row.nextElementSibling;
+      const nextControl = nextRow?.querySelector(".batch-row-imei:not(:disabled)") || panel.querySelector("tr:not(.batch-saved-row) .batch-row-battery:not(:disabled)");
+      nextControl?.focus();
     }
 
     async function loadSelectedBatch() {
@@ -158,7 +214,7 @@
     if (batchSelect.value) window.setTimeout(loadSelectedBatch, 250);
   }
 
-  function initialisePendingTable({ selectSelector, title, columns }) {
+  function initialisePendingTable({ selectSelector, title, columns, workspaceSelector }) {
     const select = document.querySelector(selectSelector);
     if (!select) return;
     const anchor = select.closest(".qc-picker-row, .qc-scan-card");
@@ -166,24 +222,36 @@
     const panel = document.createElement("section");
     panel.className = "pending-stage-panel";
     anchor.insertAdjacentElement("afterend", panel);
+    const workspace = document.querySelector(workspaceSelector);
+    const workspaceMarker = document.createComment(`${workspaceSelector} original position`);
+    if (workspace?.parentNode) workspace.parentNode.insertBefore(workspaceMarker, workspace);
+
+    function restoreWorkspace() {
+      if (workspace && workspaceMarker.parentNode && workspace.parentNode !== workspaceMarker.parentNode) {
+        workspaceMarker.parentNode.insertBefore(workspace, workspaceMarker.nextSibling);
+      }
+    }
 
     function parseText(text) {
       return String(text || "").split(/\s*(?:Â·|·|•)\s*/).map((value) => value.trim()).filter(Boolean);
     }
 
     function render() {
+      restoreWorkspace();
       const options = [...select.options].filter((option) => option.value);
       panel.innerHTML = `
         <div class="pending-stage-title"><strong>${escapeHtml(title)}</strong><span>${options.length} pending</span></div>
         ${options.length ? `<div class="pending-table-scroll"><table class="pending-stage-table"><thead><tr><th>#</th>${columns.map((column) => `<th>${escapeHtml(column)}</th>`).join("")}<th>Action</th></tr></thead><tbody>${options.map((option, index) => {
           const pieces = parseText(option.text);
           const cells = columns.map((column, columnIndex) => `<td>${escapeHtml(pieces[columnIndex] || (columnIndex === 0 ? option.text : "—"))}</td>`).join("");
-          return `<tr data-value="${escapeHtml(option.value)}"${select.value === option.value ? ' class="is-selected"' : ""}><td>${index + 1}</td>${cells}<td><button type="button" class="pending-open-button" data-value="${escapeHtml(option.value)}">Open</button></td></tr>`;
+          const selected = select.value === option.value;
+          return `<tr data-value="${escapeHtml(option.value)}"${selected ? ' class="is-selected"' : ""}><td>${index + 1}</td>${cells}<td><button type="button" class="pending-open-button" data-value="${escapeHtml(option.value)}">Open</button></td></tr>${selected ? `<tr class="pending-details-row"><td colspan="${columns.length + 2}"><div class="pending-inline-workspace"></div></td></tr>` : ""}`;
         }).join("")}</tbody></table></div>` : '<p class="pending-stage-empty">No pending IMEIs at this stage.</p>'}`;
+      const detailsHost = panel.querySelector(".pending-inline-workspace");
+      if (detailsHost && workspace) detailsHost.append(workspace);
       panel.querySelectorAll(".pending-open-button").forEach((button) => button.addEventListener("click", () => {
         select.value = button.dataset.value;
         select.dispatchEvent(new Event("change", { bubbles: true }));
-        render();
       }));
     }
 
@@ -195,9 +263,9 @@
   function boot() {
     if (!window.supabase || !config.supabaseUrl || !config.supabaseAnonKey) return;
     initialiseBatchEntry().catch(() => {});
-    initialisePendingTable({ selectSelector: "#qc-pending-imei", title: "Initial QC pending IMEIs", columns: ["IMEI", "Supplier", "Model", "GB", "Color"] });
-    initialisePendingTable({ selectSelector: "#lab-step-select", title: "Laboratory pending IMEIs", columns: ["Supplier", "Job", "Device", "Model"] });
-    initialisePendingTable({ selectSelector: "#final-qc-step-select", title: "Final QC pending IMEIs", columns: ["Supplier", "Job", "IMEI"] });
+    initialisePendingTable({ selectSelector: "#qc-pending-imei", title: "Initial QC pending IMEIs", columns: ["IMEI", "Supplier", "Model", "GB", "Color"], workspaceSelector: "#qc-workspace" });
+    initialisePendingTable({ selectSelector: "#lab-step-select", title: "Laboratory pending IMEIs", columns: ["Supplier", "Job", "Device", "Model"], workspaceSelector: "#lab-workspace" });
+    initialisePendingTable({ selectSelector: "#final-qc-step-select", title: "Final QC pending IMEIs", columns: ["Supplier", "Job", "IMEI"], workspaceSelector: "#final-qc-workspace" });
   }
 
   window.addEventListener("DOMContentLoaded", () => window.setTimeout(boot, 120));

@@ -226,7 +226,7 @@
     const duplicate = selections.find((selection, index) => selections.findIndex((item) => item.label === selection.label) !== index);
     if (duplicate) throw new Error(`${duplicate.label} is selected more than once. Select each part or service on one Initial QC line only.`);
     if (technicianIds.size > 1) throw new Error("A device can be assigned to one Laboratory technician. Use the same technician on all Initial QC lines.");
-    if (technicianIds.size === 0) throw new Error("Select the Laboratory technician before completing QC.");
+    if (selections.length > 0 && technicianIds.size === 0) throw new Error("Select the Laboratory technician because an issue, part, or service was identified.");
 
     const findings = selections.map((selection) => {
       const item = serviceItems.find((service) => service.label === selection.label);
@@ -256,7 +256,9 @@
 
     const button = document.querySelector("#complete-qc");
     setSubmitting(button, true, "Saving QC...");
-    const { data, error } = await getClient().rpc("complete_initial_qc_lab_first", {
+    const hasWork = submission.findings.length > 0 || submission.parts.length > 0;
+    const rpcName = hasWork ? "complete_initial_qc_lab_first" : "complete_scanned_initial_qc_with_roster_and_grades";
+    const { data, error } = await getClient().rpc(rpcName, {
       p_job_id: selectedJob.id,
       p_overall_condition: "",
       p_cosmetic_condition: "",
@@ -272,7 +274,9 @@
 
     const result = data?.[0];
     const identifiedCount = Number(result?.parts_requested || 0);
-    const successText = identifiedCount
+    const successText = !hasWork
+      ? "Initial QC passed with no issues. Mobile sent directly to Final QC."
+      : identifiedCount
       ? `Initial QC saved. Mobile sent to Laboratory with ${identifiedCount} identified part(s). Parts will be notified only after Laboratory requests them.`
       : "Initial QC saved. Mobile sent to Laboratory for technician review.";
     showToast(successText);

@@ -9,6 +9,9 @@
 .batch-entry-table tbody tr:last-child td, .pending-stage-table tbody tr:last-child td { border-bottom: 0; }
 .batch-entry-table th, .pending-stage-table th { color: #476356; background: #eef7f1; font-size: .74rem; letter-spacing: .055em; text-transform: uppercase; white-space: nowrap; }
 .batch-entry-table input, .batch-entry-table select { width: 100%; min-width: 126px; height: 42px; padding: 0 10px; border: 1px solid #cddfd4; border-radius: 8px; background: #fff; font: inherit; }
+.batch-option-control { display: grid; grid-template-columns: minmax(126px, 1fr) 34px 34px; align-items: center; gap: 4px; min-width: 204px; }
+.batch-option-control button { width: 34px; height: 42px; border: 1px solid #bad9c8; border-radius: 8px; color: #087451; background: #f2faf5; font: inherit; font-size: 1rem; font-weight: 900; cursor: pointer; }
+.batch-option-control .batch-option-remove { border-color: #efccc6; color: #b84a3c; background: #fff7f5; }
 .batch-entry-table .batch-row-imei { min-width: 175px; }
 .batch-entry-table .batch-row-battery { min-width: 92px; }
 .batch-entry-table input:focus, .batch-entry-table select:focus { outline: 2px solid rgba(13, 122, 88, .22); border-color: #0d7a58; }
@@ -29,5 +32,9 @@
 .pending-stage-table { min-width: 720px; }
 .pending-stage-table td { color: #324b3e; font-size: .88rem; }
 .pending-stage-table tr.is-selected { background: #edf8f2; }
+.pending-details-row > td { padding: 12px !important; background: #f5faf7; }
+.pending-inline-workspace { min-width: 0; }
+.pending-inline-workspace > .qc-workspace { margin: 0; }
+.pending-inline-workspace .qc-sheet-panel, .pending-inline-workspace .form-panel { box-shadow: none; }
 .pending-stage-empty { margin: 0; padding: 8px; color: #728078; text-align: center; }
 @media (max-width: 700px) { .batch-entry-heading, .pending-stage-title { align-items: stretch; flex-direction: column; } .batch-entry-count, .pending-stage-title span { width: fit-content; } }
