@@ -111,6 +111,36 @@
       await reloadOptionGroup(group);
     }
 
+    function fillBlankSelectionsFromPreviousRow() {
+      [".batch-row-model", ".batch-row-storage", ".batch-row-color"].forEach((selector) => {
+        let previousValue = "";
+        panel.querySelectorAll(selector).forEach((select) => {
+          if (select.value) {
+            previousValue = select.value;
+          } else if (previousValue) {
+            select.value = previousValue;
+          }
+        });
+      });
+    }
+
+    function continueSelectionToFollowingRows(sourceSelect) {
+      const selector = sourceSelect.classList.contains("batch-row-model")
+        ? ".batch-row-model"
+        : sourceSelect.classList.contains("batch-row-storage")
+          ? ".batch-row-storage"
+          : ".batch-row-color";
+      let nextRow = sourceSelect.closest("tr")?.nextElementSibling;
+
+      while (nextRow) {
+        const nextSelect = nextRow.querySelector(selector);
+        if (!nextSelect) break;
+        if (nextSelect.dataset.manuallyChanged === "yes") break;
+        if (nextRow.dataset.saved !== "yes") nextSelect.value = sourceSelect.value;
+        nextRow = nextRow.nextElementSibling;
+      }
+    }
+
     function renderRows() {
       if (!currentBatch) {
         panel.hidden = true;
@@ -141,7 +171,16 @@
               </tr>`).join("")}</tbody>
           </table>
         </div>
-        <p class="batch-entry-help">Scan the IMEI, confirm Model / GB / Color, then enter Battery Health. Press Enter in Battery Health or click Save. Blank lines are never stored.</p>`;
+        <p class="batch-entry-help">Model, GB and Color continue automatically into the following lines until you change them. IMEI and Battery Health always remain blank for each phone.</p>`;
+
+      fillBlankSelectionsFromPreviousRow();
+
+      panel.querySelectorAll(".batch-row-model, .batch-row-storage, .batch-row-color").forEach((select) => {
+        select.addEventListener("change", () => {
+          select.dataset.manuallyChanged = "yes";
+          continueSelectionToFollowingRows(select);
+        });
+      });
 
       panel.querySelectorAll(".batch-row-imei").forEach((input) => input.addEventListener("input", () => {
         input.value = input.value.replace(/\D/g, "");
