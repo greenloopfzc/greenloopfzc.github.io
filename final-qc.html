@@ -4,82 +4,74 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#0d5c43">
-    <meta name="description" content="Final quality control for Greenloop jobs.">
+    <meta name="description" content="Bulk Final QC for Greenloop devices.">
     <title>Final QC | Greenloop</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="initial-qc.css">
-    <link rel="stylesheet" href="final-qc.css?v=20260811-6">
-    <link rel="stylesheet" href="batch-workflow.css?v=20260813-2">
+    <link rel="stylesheet" href="final-qc.css?v=20260813-7">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script defer src="config.js"></script>
     <script defer src="part-notifications.js?v=20260813-1"></script>
-    <script defer src="final-qc.js?v=20260813-1"></script>
-    <script defer src="batch-workflow.js?v=20260813-2"></script>
+    <script defer src="final-qc.js?v=20260813-7"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
       <aside id="sidebar" class="sidebar" aria-label="Main navigation">
-        <div class="sidebar-top"><a class="app-brand" href="dashboard.html"><img class="brand-image" src="looplogo.jpg" alt=""><span>greenloop</span></a><button id="close-menu" class="icon-button close-menu" type="button" aria-label="Close menu">×</button></div>
+        <div class="sidebar-top"><a class="app-brand" href="dashboard.html" aria-label="Greenloop dashboard"><img class="brand-image" src="looplogo.jpg" alt=""><span>greenloop</span></a><button id="close-menu" class="icon-button close-menu" type="button" aria-label="Close menu">&times;</button></div>
         <nav class="sidebar-nav">
           <p class="nav-label">Workspace</p>
           <a class="nav-item" href="dashboard.html"><span class="nav-icon" aria-hidden="true">⌘</span>Overview</a>
-          <a class="nav-item" href="receiving.html"><span class="nav-icon" aria-hidden="true">+</span>Receiving</a>
-          <button class="nav-item module-link" type="button" data-module="IMEI Search"><span class="nav-icon" aria-hidden="true">⌕</span>IMEI Search</button>
+          <a class="nav-item" href="receiving.html"><span class="nav-icon" aria-hidden="true">+</span>Stock Received</a>
+          <a class="nav-item" href="imei-entry.html"><span class="nav-icon" aria-hidden="true">⌕</span>IMEI Entry</a>
           <p class="nav-label">Operations</p>
           <a class="nav-item" href="initial-qc.html"><span class="nav-icon" aria-hidden="true">✓</span>Initial QC</a>
-          <button class="nav-item module-link" type="button" data-module="Parts"><span class="nav-icon" aria-hidden="true">▦</span>Parts</button>
           <a class="nav-item" href="laboratory.html"><span class="nav-icon" aria-hidden="true">⌁</span>Laboratory &amp; Glass</a>
-          <button class="nav-item module-link" type="button" data-module="Frame"><span class="nav-icon" aria-hidden="true">□</span>Frame</button>
-          <a class="nav-item active" href="final-qc.html"><span class="nav-icon" aria-hidden="true">◉</span>Final QC</a>
-          <a class="nav-item" href="production.html"><span class="nav-icon" aria-hidden="true">↗</span>Production</a>
-          <button class="nav-item module-link" type="button" data-module="Shipping"><span class="nav-icon" aria-hidden="true">↝</span>Shipping</button>
-          <p class="nav-label">Control</p>
-          <button class="nav-item module-link" type="button" data-module="RMA"><span class="nav-icon" aria-hidden="true">↶</span>RMA</button>
-          <button class="nav-item module-link" type="button" data-module="Retail Shop"><span class="nav-icon" aria-hidden="true">⌂</span>Retail Shop</button>
-          <button class="nav-item module-link" type="button" data-module="Reports"><span class="nav-icon" aria-hidden="true">▤</span>Reports</button>
+          <a class="nav-item" href="parts.html"><span class="nav-icon" aria-hidden="true">▦</span>Parts</a>
+          <a class="nav-item" href="inventory.html"><span class="nav-icon" aria-hidden="true">▧</span>Inventory</a>
+          <a class="nav-item active" href="final-qc.html"><span class="nav-icon" aria-hidden="true">◎</span>Final QC</a>
+          <a class="nav-item" href="ready-stock.html"><span class="nav-icon" aria-hidden="true">▤</span>Ready Stock</a>
+          <a class="nav-item" href="export-box.html"><span class="nav-icon" aria-hidden="true">□</span>Export Boxes</a>
+          <a class="nav-item" href="reports.html"><span class="nav-icon" aria-hidden="true">▥</span>Reports</a>
         </nav>
         <div class="sidebar-user"><span class="user-avatar">SA</span><span><strong>System Admin</strong><small>Super Admin</small></span></div>
       </aside>
       <div id="menu-backdrop" class="menu-backdrop" hidden></div>
       <main class="app-main">
         <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Overview</a><span aria-hidden="true">/</span><strong>Final QC</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span><a class="topbar-profile" href="dashboard.html"><span class="user-avatar small">SA</span><span class="profile-name">System Admin</span></a></div></header>
-        <div class="page-content qc-content">
-          <section class="page-heading qc-heading"><div><p class="eyebrow dashboard-eyebrow">Final QC</p><h1>Verify every completed job</h1><p class="heading-subtitle">Pass jobs to Production or return a failed device to its responsible work department with a permanent QC history.</p></div><a class="quiet-link" href="laboratory.html">← Back to Laboratory</a></section>
+        <div class="page-content final-bulk-content">
+          <section class="page-heading final-bulk-heading"><div><p class="eyebrow dashboard-eyebrow">Final QC</p><h1>Bulk final inspection</h1><p class="heading-subtitle">Scan all completed phones first, select their final grade and result, then save each row or complete the full tray.</p></div><a class="quiet-link" href="laboratory.html">&larr; Laboratory</a></section>
           <div id="permission-message" class="access-message" hidden></div>
-          <section id="final-qc-app" class="qc-app" hidden>
-            <div class="qc-queue-bar"><div><p class="panel-kicker">Final QC queue</p><h2>Jobs ready for final inspection</h2></div><button id="refresh-queue" class="secondary-button" type="button">Refresh queue</button></div>
-            <div class="qc-picker-row"><label class="qc-imei-picker" for="final-qc-imei-scan"><span>Scan IMEI</span><input id="final-qc-imei-scan" type="text" inputmode="numeric" autocomplete="off" maxlength="15" placeholder="Scan 15-digit IMEI"></label><label class="qc-job-picker" for="final-qc-step-select"><span>Select a job for Final QC</span><select id="final-qc-step-select"><option value="">Loading queue...</option></select></label><span id="queue-count" class="queue-count">0 waiting</span></div>
-            <div id="final-qc-empty" class="qc-empty" hidden><strong>Final QC queue is clear.</strong><span>Completed department work will appear here automatically.</span></div>
-            <section id="final-qc-workspace" class="qc-workspace" hidden>
-              <form id="final-qc-form" class="qc-form final-qc-form" novalidate>
-                <section class="final-qc-line-panel" aria-label="Final QC summary">
-                  <div id="final-qc-device-summary" class="final-qc-device-summary"></div>
-                  <div class="final-qc-grade-cell"><label class="final-qc-cell-label" for="final-qc-grade">Final grade <span class="required-mark">Required for pass</span></label><div class="final-grade-control"><select id="final-qc-grade"><option value="">Loading grades...</option></select><button id="add-final-grade" class="master-add" type="button" title="Add final grade">+</button><button id="remove-final-grade" class="master-remove" type="button" title="Remove selected final grade">−</button></div></div>
-                  <div class="final-qc-result-cell"><span class="final-qc-cell-label">Final result</span><div class="final-qc-choice"><label class="final-result-pass"><input name="final-result" type="radio" value="pass" checked><span>Pass</span></label><label class="final-result-fail"><input name="final-result" type="radio" value="fail"><span>Fail</span></label></div></div>
-                </section>
-                <p id="final-qc-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
-                <div class="form-actions"><button id="complete-final-qc" class="primary-button receive-submit" type="submit">Save and route</button></div>
-              </form>
-              <div class="final-qc-layout">
-                <form id="legacy-final-qc-form" class="qc-form" novalidate>
-                  <section class="form-panel"><div class="form-panel-heading"><span class="section-number">01</span><div><h2>Final checklist</h2><p>Untick any check that fails. Add a note when needed.</p></div></div><div id="final-qc-checklist" class="final-qc-checklist"></div></section>
-                  <section class="form-panel"><div class="form-panel-heading"><span class="section-number">02</span><div><h2>Final decision</h2><p>A failure reason and responsible department are mandatory for every failed QC attempt.</p></div></div>
-                    <div class="final-decision"><label class="decision-option pass"><input name="final-result" type="radio" value="pass" checked><span><strong>PASS</strong><small>Send the device to Production</small></span></label><label class="decision-option fail"><input name="final-result" type="radio" value="fail"><span><strong>FAIL</strong><small>Return the device for rework</small></span></label></div>
-                    <div id="failure-fields" class="form-grid two-columns failure-fields" hidden><div class="form-field"><label for="failure-department">Return department <span class="required-mark">Required</span></label><select id="failure-department"><option value="laboratory">Laboratory &amp; Glass</option><option value="frame">Frame Department</option><option value="parts">Parts</option></select></div><div class="form-field"><label for="failure-reason">Failure reason <span class="required-mark">Required</span></label><input id="failure-reason" type="text" placeholder="Example: Touch response is intermittent"></div></div>
-                    <div class="form-field detail-grid"><label for="final-qc-notes">Final QC notes</label><textarea id="final-qc-notes" rows="3" placeholder="Testing notes, cosmetic confirmation, or pass/fail details"></textarea></div>
-                  </section>
-                  <p id="final-qc-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
-                  <div class="form-actions"><button id="complete-final-qc" class="primary-button receive-submit" type="submit">Save Final QC →</button></div>
-                </form>
-                <aside class="qc-side"><section class="side-card final-qc-status"><p class="panel-kicker">Automatic outcome</p><h2 id="outcome-title">Production next</h2><p id="outcome-text">A passed device is sent to Production for final preparation.</p></section><section class="side-card"><span class="side-icon" aria-hidden="true">◉</span><h2>QC return history</h2><p>Every fail remains attached to the job. Returning a device increments the selected department’s rework count automatically.</p></section></aside>
-              </div>
+          <section id="final-qc-app" class="final-bulk-app" hidden>
+            <section class="final-bulk-toolbar">
+              <div><p class="panel-kicker">Final QC work tray</p><h2>Scan IMEIs, select Final Grade, then Pass or Fail</h2><p>Only scanned IMEIs are processed. Pending jobs are never loaded into the tray automatically.</p></div>
+              <div class="final-bulk-toolbar-actions"><button id="queue-count" class="final-queue-count" type="button">0 waiting</button><span id="tray-count" class="final-tray-count">10 lines</span><button id="add-ten-rows" class="secondary-button" type="button">+ Add 10 lines</button><button id="clear-tray" class="secondary-button" type="button">Clear tray</button><button id="refresh-queue" class="secondary-button" type="button">Refresh</button></div>
             </section>
+            <p id="final-qc-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
+            <form id="final-qc-form" class="final-bulk-form" novalidate>
+              <section class="final-bulk-panel">
+                <div id="final-top-scroll" class="final-top-scroll" aria-label="Horizontal table scroll"><div id="final-top-scroll-track"></div></div>
+                <div id="final-table-scroll" class="final-table-scroll">
+                  <table class="final-bulk-table">
+                    <thead><tr><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>Supplier code</th><th>Supplier grade</th><th>Initial grade</th><th>Final grade</th><th>Pass</th><th>Fail</th><th>Save</th></tr></thead>
+                    <tbody id="final-bulk-body"></tbody>
+                  </table>
+                </div>
+              </section>
+              <div class="final-bulk-actions"><span>Pass sends the phone forward. Fail returns it to Laboratory for rework.</span><button id="complete-final-qc" class="primary-button receive-submit" type="submit">Complete scanned Final QC &rarr;</button></div>
+            </form>
           </section>
         </div>
       </main>
+    </div>
+    <div id="final-pending-modal" class="final-pending-modal" hidden>
+      <div class="final-pending-backdrop" data-close-pending></div>
+      <section class="final-pending-dialog" role="dialog" aria-modal="true" aria-labelledby="final-pending-title">
+        <header><div><p class="panel-kicker">Final QC queue</p><h2 id="final-pending-title">Phones waiting for Final QC</h2></div><button type="button" class="icon-button" data-close-pending aria-label="Close pending phones">&times;</button></header>
+        <label class="final-pending-search">Search pending IMEI or supplier<input id="final-pending-search" type="search" autocomplete="off" placeholder="Type IMEI, supplier code, or model"></label>
+        <div class="final-pending-table-wrap"><table class="final-pending-table"><thead><tr><th>#</th><th>IMEI</th><th>Supplier code</th><th>Model</th><th>GB</th><th>Color</th><th>Supplier grade</th><th>Initial grade</th></tr></thead><tbody id="final-pending-list-body"></tbody></table></div>
+      </section>
     </div>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   </body>

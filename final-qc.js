@@ -4,30 +4,34 @@
   const config = window.GREENLOOP_CONFIG || {};
   const app = document.querySelector("#final-qc-app");
   const permissionMessage = document.querySelector("#permission-message");
-  const stepSelect = document.querySelector("#final-qc-step-select");
-  const imeiScan = document.querySelector("#final-qc-imei-scan");
   const queueCount = document.querySelector("#queue-count");
-  const emptyState = document.querySelector("#final-qc-empty");
-  const workspace = document.querySelector("#final-qc-workspace");
-  const deviceSummary = document.querySelector("#final-qc-device-summary");
+  const trayCount = document.querySelector("#tray-count");
+  const tableBody = document.querySelector("#final-bulk-body");
   const form = document.querySelector("#final-qc-form");
-  const finalGradeSelect = document.querySelector("#final-qc-grade");
   const message = document.querySelector("#final-qc-message");
+  const tableScroll = document.querySelector("#final-table-scroll");
+  const topScroll = document.querySelector("#final-top-scroll");
+  const topScrollTrack = document.querySelector("#final-top-scroll-track");
+  const pendingModal = document.querySelector("#final-pending-modal");
+  const pendingSearch = document.querySelector("#final-pending-search");
+  const pendingListBody = document.querySelector("#final-pending-list-body");
   const sidebar = document.querySelector("#sidebar");
   const backdrop = document.querySelector("#menu-backdrop");
   const toast = document.querySelector("#toast");
+  const rowSteps = new Map();
+  const rowTimers = new WeakMap();
   let client;
   let queueSteps = [];
-  let selectedStep;
+  let gradeItems = [];
+  let rowSequence = 0;
   let toastTimer;
 
   function getClient() {
-    if (!client) client = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
-    return client;
+    return (client ||= window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey));
   }
 
   function escapeHtml(value) {
-    return String(value || "").replace(/[&<>'"]/g, (character) => ({
+    return String(value ?? "").replace(/[&<>'"]/g, (character) => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;"
     })[character]);
   }
@@ -38,6 +42,12 @@
     document.body.classList.toggle("menu-open", isOpen);
   }
 
+  function setMessage(text = "", success = false) {
+    message.textContent = text;
+    message.classList.toggle("is-visible", Boolean(text));
+    message.classList.toggle("is-success", success);
+  }
+
   function showToast(text) {
     window.clearTimeout(toastTimer);
     toast.textContent = text;
@@ -46,179 +56,299 @@
     toastTimer = window.setTimeout(() => {
       toast.hidden = true;
       toast.classList.remove("is-visible");
-    }, 3600);
-  }
-
-  function setMessage(text = "", type = "error") {
-    message.textContent = text;
-    message.classList.toggle("is-visible", Boolean(text));
-    message.classList.toggle("is-success", type === "success");
+    }, 3800);
   }
 
   function setSubmitting(button, isSubmitting, label) {
-    button.disabled = isSubmitting;
     if (isSubmitting) button.dataset.originalLabel = button.textContent.trim();
+    button.disabled = isSubmitting;
     button.textContent = isSubmitting ? label : button.dataset.originalLabel || button.textContent.trim();
   }
 
-  async function loadFinalGrades(selectedValue = "") {
-    const { data, error } = await getClient().rpc("get_entry_options", { p_option_group: "grade" });
-    if (error) throw error;
-    finalGradeSelect.replaceChildren(new Option("Select final grade", ""));
-    (data || []).forEach((item) => {
-      const option = new Option(item.option_value, item.option_value);
-      option.dataset.optionId = item.id;
-      finalGradeSelect.add(option);
+  function getWorkOrder(step) {
+    return Array.isArray(step?.work_order) ? step.work_order[0] : step?.work_order;
+  }
+
+  function getJob(step) {
+    const workOrder = getWorkOrder(step) || {};
+    return Array.isArray(workOrder.job) ? workOrder.job[0] : workOrder.job;
+  }
+
+  function getDevice(step) {
+    const job = getJob(step) || {};
+    return Array.isArray(job.device) ? job.device[0] : job.device;
+  }
+
+  function getSupplier(job) {
+    return Array.isArray(job?.supplier) ? job.supplier[0] : job?.supplier;
+  }
+
+  function supplierLabel(supplier) {
+    return [supplier?.supplier_code, supplier?.company_name].filter((value) => String(value || "").trim()).join(" - ") || "-";
+  }
+
+  function gradeOptions(selectedValue = "") {
+    return `<option value="">Select final grade</option>${gradeItems.map((item) => `<option value="${escapeHtml(item.option_value)}" data-option-id="${escapeHtml(item.id)}"${String(item.option_value) === String(selectedValue) ? " selected" : ""}>${escapeHtml(item.option_value)}</option>`).join("")}`;
+  }
+
+  function resultValue(row) {
+    return row.querySelector("[data-result]:checked")?.value || "pass";
+  }
+
+  function rowMarkup() {
+    rowSequence += 1;
+    const rowId = `final-qc-row-${rowSequence}`;
+    return `<tr data-row-id="${rowId}">
+      <td class="final-imei-cell"><input class="final-row-imei" inputmode="numeric" autocomplete="off" maxlength="15" placeholder="Scan IMEI"><small data-row-state>Line ${rowSequence} · Waiting</small></td>
+      <td class="final-auto-cell" data-auto="model">-</td>
+      <td class="final-auto-cell" data-auto="storage">-</td>
+      <td class="final-auto-cell" data-auto="color">-</td>
+      <td class="final-supplier-cell" data-auto="supplier">-</td>
+      <td class="final-auto-cell" data-auto="supplier-grade">-</td>
+      <td class="final-auto-cell" data-auto="initial-grade">-</td>
+      <td class="final-grade-cell"><div class="final-grade-control"><select data-final-grade>${gradeOptions()}</select><button type="button" data-add-grade title="Add final grade">+</button><button type="button" class="remove" data-remove-grade title="Remove final grade">−</button></div></td>
+      <td class="final-result-cell pass"><label><input type="radio" name="result-${rowId}" value="pass" data-result checked><span>Pass</span></label></td>
+      <td class="final-result-cell fail"><label><input type="radio" name="result-${rowId}" value="fail" data-result><span>Fail</span></label></td>
+      <td class="final-save-cell"><button type="button" class="final-row-save" data-save-row>Save</button></td>
+    </tr>`;
+  }
+
+  function createRows(quantity) {
+    const previous = tableBody.lastElementChild;
+    const inheritedGrade = previous?.querySelector("[data-final-grade]")?.value || "";
+    const inheritedResult = previous ? resultValue(previous) : "pass";
+    tableBody.insertAdjacentHTML("beforeend", Array.from({ length: quantity }, rowMarkup).join(""));
+    [...tableBody.rows].slice(-quantity).forEach((row) => {
+      row.querySelector("[data-final-grade]").value = inheritedGrade;
+      const result = row.querySelector(`[data-result][value="${inheritedResult}"]`);
+      if (result) result.checked = true;
     });
-    if (selectedValue && [...finalGradeSelect.options].some((option) => option.value === selectedValue)) {
-      finalGradeSelect.value = selectedValue;
+    trayCount.textContent = `${tableBody.rows.length} lines`;
+    window.requestAnimationFrame(syncHorizontalScrollWidth);
+  }
+
+  function setRowState(row, text, state = "") {
+    const element = row.querySelector("[data-row-state]");
+    element.textContent = text;
+    element.className = state;
+  }
+
+  function clearRowData(row) {
+    ["model", "storage", "color", "supplier", "supplier-grade", "initial-grade"].forEach((field) => {
+      row.querySelector(`[data-auto="${field}"]`).textContent = "-";
+    });
+    row.classList.remove("is-loaded", "is-error");
+    rowSteps.delete(row.dataset.rowId);
+    setRowState(row, `Line ${[...tableBody.rows].indexOf(row) + 1} · Waiting`);
+  }
+
+  function focusNextScan(row) {
+    let next = row.nextElementSibling;
+    while (next) {
+      const input = next.querySelector(".final-row-imei");
+      if (!input.disabled && !input.value) {
+        input.focus();
+        return;
+      }
+      next = next.nextElementSibling;
+    }
+    const firstGrade = [...tableBody.rows].find((candidate) => rowSteps.has(candidate.dataset.rowId) && candidate.dataset.completed !== "yes");
+    firstGrade?.querySelector("[data-final-grade]")?.focus();
+  }
+
+  function focusNextInspection(row) {
+    let next = row.nextElementSibling;
+    while (next) {
+      if (rowSteps.has(next.dataset.rowId) && next.dataset.completed !== "yes") {
+        next.querySelector("[data-final-grade]")?.focus();
+        return;
+      }
+      next = next.nextElementSibling;
+    }
+    const nextScan = [...tableBody.querySelectorAll(".final-row-imei:not(:disabled)")].find((input) => !input.value);
+    nextScan?.focus();
+  }
+
+  function carryGrade(row) {
+    const value = row.querySelector("[data-final-grade]").value;
+    let next = row.nextElementSibling;
+    while (next) {
+      if (next.dataset.manualGrade === "yes") break;
+      if (next.dataset.completed !== "yes") next.querySelector("[data-final-grade]").value = value;
+      next = next.nextElementSibling;
     }
   }
 
-  async function addFinalGrade() {
-    const value = window.prompt("Enter a new Final QC grade.");
-    if (value === null || !value.trim()) return;
-    const { data, error } = await getClient().rpc("add_entry_option", {
-      p_option_group: "grade",
-      p_option_value: value.trim()
-    });
+  function carryResult(row) {
+    const value = resultValue(row);
+    let next = row.nextElementSibling;
+    while (next) {
+      if (next.dataset.manualResult === "yes") break;
+      if (next.dataset.completed !== "yes") {
+        const input = next.querySelector(`[data-result][value="${value}"]`);
+        if (input) input.checked = true;
+      }
+      next = next.nextElementSibling;
+    }
+  }
+
+  async function loadFinalGrades(preferredRow, preferredValue = "") {
+    const preserved = [...tableBody.querySelectorAll("[data-final-grade]")].map((select) => select.value);
+    const { data, error } = await getClient().rpc("get_entry_options", { p_option_group: "grade" });
     if (error) throw error;
-    const row = Array.isArray(data) ? data[0] : data;
-    await loadFinalGrades(row?.saved_value || value.trim());
+    gradeItems = data || [];
+    tableBody.querySelectorAll("[data-final-grade]").forEach((select, index) => {
+      const chosen = select.closest("tr") === preferredRow ? preferredValue : preserved[index];
+      select.innerHTML = gradeOptions(chosen);
+      if ([...select.options].some((option) => option.value === chosen)) select.value = chosen;
+    });
+  }
+
+  async function addFinalGrade(row) {
+    const value = window.prompt("Enter a new Final QC grade.");
+    if (!value?.trim()) return;
+    const { data, error } = await getClient().rpc("add_entry_option", { p_option_group: "grade", p_option_value: value.trim() });
+    if (error) throw error;
+    const result = Array.isArray(data) ? data[0] : data;
+    await loadFinalGrades(row, result?.saved_value || value.trim());
+    row.dataset.manualGrade = "yes";
+    carryGrade(row);
     showToast("Final QC grade is ready to use.");
   }
 
-  async function removeFinalGrade() {
-    const option = finalGradeSelect.options[finalGradeSelect.selectedIndex];
+  async function removeFinalGrade(row) {
+    const select = row.querySelector("[data-final-grade]");
+    const option = select.options[select.selectedIndex];
     const optionId = option?.dataset.optionId;
-    if (!optionId) { setMessage("Select a Final QC grade first."); return; }
+    if (!optionId) {
+      setMessage("Select a Final Grade before removing it.");
+      return;
+    }
     const code = window.prompt(`Enter deletion code to remove ${option.text}.`);
     if (code === null) return;
-    const { error } = await getClient().rpc("delete_entry_option", {
-      p_option_id: optionId,
-      p_deletion_code: code
-    });
+    const { error } = await getClient().rpc("delete_entry_option", { p_option_id: optionId, p_deletion_code: code });
     if (error) throw error;
     await loadFinalGrades();
     showToast("Final QC grade was removed.");
   }
 
-  function getWorkOrder(step) { return Array.isArray(step.work_order) ? step.work_order[0] : step.work_order; }
-  function getJob(step) { const workOrder = getWorkOrder(step) || {}; return Array.isArray(workOrder.job) ? workOrder.job[0] : workOrder.job; }
-  function getDevice(step) { const job = getJob(step) || {}; return Array.isArray(job.device) ? job.device[0] : job.device; }
-  function getSupplier(job) { return Array.isArray(job?.supplier) ? job.supplier[0] : job?.supplier; }
-  function supplierLabel(supplier) { return [supplier?.supplier_code, supplier?.company_name].filter((value) => String(value || "").trim()).join(" - ") || "Not recorded"; }
-  function selectedResult() { return document.querySelector('#final-qc-form input[name="final-result"]:checked').value; }
-
-  function renderWorkflow(events, jobNumber) {
-    const currentJobEvents = (events || [])
-      .filter((event) => String(event.job_number || "") === String(jobNumber || ""))
-      .reverse();
-    const titles = currentJobEvents.map((event) => String(event.title || "").trim()).filter(Boolean);
-
-    if (!titles.length) {
-      workflow.innerHTML = '<span class="workflow-empty">Stock Received → Initial QC → Laboratory → Final QC</span>';
+  async function loadScannedRow(row) {
+    const input = row.querySelector(".final-row-imei");
+    const imei = input.value.trim();
+    if (!/^\d{15}$/.test(imei) || row.dataset.loading === "yes" || row.dataset.completed === "yes") return;
+    const duplicate = [...tableBody.querySelectorAll(".final-row-imei")].find((other) => other !== input && other.value.trim() === imei);
+    if (duplicate) {
+      row.classList.add("is-error");
+      setRowState(row, "Duplicate IMEI in this tray", "is-error");
+      input.focus();
       return;
     }
 
-    workflow.innerHTML = titles.map((title, index) => `${index ? '<span class="workflow-arrow" aria-hidden="true">→</span>' : ""}<span class="workflow-step">${escapeHtml(title)}</span>`).join("");
-  }
+    row.dataset.loading = "yes";
+    setRowState(row, "Loading...", "is-loading");
+    let step = queueSteps.find((candidate) => String(getDevice(candidate)?.imei_1 || "") === imei);
+    if (!step) {
+      await loadQueue();
+      step = queueSteps.find((candidate) => String(getDevice(candidate)?.imei_1 || "") === imei);
+    }
+    row.dataset.loading = "";
+    if (!step) {
+      row.classList.add("is-error");
+      setRowState(row, "Not waiting in Final QC", "is-error");
+      input.focus();
+      return;
+    }
 
-  async function renderSelectedStep() {
-    selectedStep = queueSteps.find((step) => step.id === stepSelect.value);
-    workspace.hidden = !selectedStep;
-    setMessage();
-    form.reset();
-    if (!selectedStep) return;
-
-    const job = getJob(selectedStep) || {};
-    const device = getDevice(selectedStep) || {};
+    const job = getJob(step) || {};
+    const device = getDevice(step) || {};
     const supplier = getSupplier(job) || {};
-    const cells = [
-      ["IMEI", device.imei_1 || "—"],
-      ["Model", [device.brand, device.model].filter(Boolean).join(" ") || "—"],
-      ["GB", device.storage_gb ? `${device.storage_gb} GB` : "—"],
-      ["Color", device.color || "—"]
-    ];
-    cells.push(
-      ["Supplier Code", supplierLabel(supplier)],
-      ["Supplier Grade", job.supplier_grade || "Not recorded"],
-      ["Initial Grade", device.gc_grade || "Not recorded"]
-    );
-    deviceSummary.innerHTML = cells.map(([label, value]) => `<div class="final-qc-summary-cell"><span class="final-qc-cell-label">${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("");
-    return;
-    workflow.innerHTML = '<span class="workflow-empty">Loading workflow history…</span>';
-
-    const { data, error } = await getClient().rpc("search_imei_history", { p_imei: device.imei_1 });
-    if (error) {
-      renderWorkflow([], job.job_number);
-      return;
-    }
-    const history = Array.isArray(data) ? data[0] : data;
-    renderWorkflow(history?.events, job.job_number);
+    rowSteps.set(row.dataset.rowId, step);
+    row.querySelector('[data-auto="model"]').textContent = device.model || "-";
+    row.querySelector('[data-auto="storage"]').textContent = device.storage_gb ? `${device.storage_gb} GB` : "-";
+    row.querySelector('[data-auto="color"]').textContent = device.color || "-";
+    row.querySelector('[data-auto="supplier"]').textContent = supplierLabel(supplier);
+    row.querySelector('[data-auto="supplier-grade"]').textContent = job.supplier_grade || "-";
+    row.querySelector('[data-auto="initial-grade"]').textContent = device.gc_grade || "-";
+    row.classList.remove("is-error");
+    row.classList.add("is-loaded");
+    setRowState(row, "Loaded", "is-loaded");
   }
 
   async function loadQueue() {
-    const selectedId = stepSelect.value;
     const { data, error } = await getClient()
       .from("job_work_order_steps")
       .select("id, work_order:job_work_orders!inner(work_order_number, job:jobs!inner(id, job_number, supplier_grade, supplier:suppliers(supplier_code, company_name), device:devices(device_number, imei_1, brand, model, storage_gb, color, gc_grade)))")
       .eq("department", "final_qc")
       .eq("step_status", "in_progress")
       .order("created_at", { ascending: true });
-
     if (error) throw error;
     queueSteps = data || [];
     queueCount.textContent = `${queueSteps.length} waiting`;
-    stepSelect.replaceChildren(new Option(queueSteps.length ? "Select a Final QC job" : "No Final QC jobs waiting", ""));
-    queueSteps.forEach((step) => {
-      const job = getJob(step) || {};
-      const device = getDevice(step) || {};
-      const supplier = getSupplier(job) || {};
-      stepSelect.add(new Option(`${supplierLabel(supplier)} · ${job.job_number} · ${device.imei_1 || device.device_number || "Device"}`, step.id));
-    });
-    emptyState.hidden = queueSteps.length !== 0;
-    if (selectedId && queueSteps.some((step) => step.id === selectedId)) {
-      stepSelect.value = selectedId;
-      await renderSelectedStep();
-    } else {
-      stepSelect.value = "";
-      selectedStep = undefined;
-      workspace.hidden = true;
-      setMessage();
-    }
+    queueCount.setAttribute("aria-label", `View ${queueSteps.length} phones waiting for Final QC`);
+    if (!pendingModal.hidden) renderPendingJobs(pendingSearch.value);
   }
 
-  function selectScannedImei() {
-    const identifier = imeiScan.value.trim();
-    if (!identifier) return;
-    const match = queueSteps.find((step) => {
-      const device = getDevice(step) || {};
-      return device.imei_1 === identifier || String(device.device_number || "").toUpperCase() === identifier.toUpperCase();
-    });
-    if (!match) {
-      setMessage("This IMEI is not currently waiting in the Final QC queue.");
-      return;
-    }
-    stepSelect.value = match.id;
-    renderSelectedStep().catch((error) => setMessage(error.message || "Could not load this Final QC job."));
+  function pendingData(step) {
+    const job = getJob(step) || {};
+    const device = getDevice(step) || {};
+    return {
+      imei: device.imei_1 || "-",
+      supplier: supplierLabel(getSupplier(job) || {}),
+      model: device.model || "-",
+      storage: device.storage_gb ? `${device.storage_gb} GB` : "-",
+      color: device.color || "-",
+      supplierGrade: job.supplier_grade || "-",
+      initialGrade: device.gc_grade || "-"
+    };
   }
 
-  async function submitFinalQc(event) {
-    event.preventDefault();
-    setMessage();
-    if (!selectedStep) return;
+  function renderPendingJobs(filter = "") {
+    const search = String(filter || "").trim().toLocaleLowerCase();
+    const rows = queueSteps.map(pendingData).filter((row) => !search || Object.values(row).some((value) => String(value).toLocaleLowerCase().includes(search)));
+    pendingListBody.innerHTML = rows.length
+      ? rows.map((row, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(row.imei)}</td><td>${escapeHtml(row.supplier)}</td><td>${escapeHtml(row.model)}</td><td>${escapeHtml(row.storage)}</td><td>${escapeHtml(row.color)}</td><td>${escapeHtml(row.supplierGrade)}</td><td>${escapeHtml(row.initialGrade)}</td></tr>`).join("")
+      : '<tr><td colspan="8" class="final-pending-empty">No pending phones match this search.</td></tr>';
+  }
 
-    const result = selectedResult();
-    const finalGrade = document.querySelector("#final-qc-grade").value;
+  function openPendingModal() {
+    pendingSearch.value = "";
+    renderPendingJobs();
+    pendingModal.hidden = false;
+    document.body.classList.add("final-modal-open");
+    window.setTimeout(() => pendingSearch.focus(), 0);
+  }
+
+  function closePendingModal() {
+    pendingModal.hidden = true;
+    document.body.classList.remove("final-modal-open");
+    queueCount.focus();
+  }
+
+  async function saveOneRow(row, progressText = "Saving...") {
+    if (!row || row.dataset.saving === "yes" || row.dataset.completed === "yes") return { ok: false, error: "This row is already complete." };
+    const step = rowSteps.get(row.dataset.rowId);
+    if (!step) {
+      const errorText = "Scan and load this IMEI before saving.";
+      setRowState(row, errorText, "is-error");
+      row.querySelector(".final-row-imei")?.focus();
+      return { ok: false, error: errorText };
+    }
+    const result = resultValue(row);
+    const finalGrade = row.querySelector("[data-final-grade]").value;
     if (result === "pass" && !finalGrade) {
-      setMessage("Select the Final Grade before passing this device to Production.");
-      return;
+      const errorText = "Select the Final Grade before passing this phone.";
+      row.classList.add("is-error");
+      setRowState(row, errorText, "is-error");
+      row.querySelector("[data-final-grade]").focus();
+      return { ok: false, error: errorText };
     }
-    const button = document.querySelector("#complete-final-qc");
-    setSubmitting(button, true, "Saving...");
+
+    const rowButton = row.querySelector("[data-save-row]");
+    row.dataset.saving = "yes";
+    setSubmitting(rowButton, true, "Saving...");
+    setRowState(row, progressText, "is-loading");
     const { data, error } = await getClient().rpc("complete_final_qc_with_final_grade", {
-      p_job_id: getJob(selectedStep).id,
+      p_job_id: getJob(step).id,
       p_result: result,
       p_final_grade: result === "pass" ? finalGrade : null,
       p_notes: result === "pass" ? "Final QC passed" : "Final QC failed",
@@ -226,32 +356,107 @@
       p_failure_reason: result === "fail" ? "Final QC failed - return to Laboratory" : null,
       p_checks: []
     });
-    setSubmitting(button, false);
-
+    row.dataset.saving = "";
     if (error) {
-      setMessage(error.message || "Final QC could not be completed.");
-      return;
+      setSubmitting(rowButton, false);
+      row.classList.add("is-error");
+      setRowState(row, error.message || "Could not save", "is-error");
+      return { ok: false, error: error.message || "Could not save" };
     }
 
     const response = data?.[0];
-    const text = result === "pass"
-      ? `Final QC attempt ${response?.attempt_number} passed. Loading the next IMEI.`
-      : `Final QC attempt ${response?.attempt_number} failed. Device returned to Laboratory for rework.`;
-    showToast(text);
-    if (result === "pass") {
-      imeiScan.value = "";
-      await loadQueue();
+    row.dataset.completed = "yes";
+    row.classList.remove("is-error");
+    row.classList.add("is-completed");
+    row.querySelectorAll("input, select, button").forEach((control) => { control.disabled = true; });
+    rowButton.textContent = "Saved";
+    setRowState(row, result === "pass" ? `Passed · Attempt ${response?.attempt_number || "-"}` : `Failed · Laboratory rework`, "is-completed");
+    queueSteps = queueSteps.filter((candidate) => candidate.id !== step.id);
+    queueCount.textContent = `${queueSteps.length} waiting`;
+    return { ok: true, result };
+  }
+
+  async function saveRowFromButton(row) {
+    setMessage();
+    const result = await saveOneRow(row);
+    if (!result.ok) {
+      setMessage(result.error);
       return;
     }
-    await loadQueue();
+    renderPendingJobs(pendingSearch.value);
+    showToast(result.result === "pass" ? "Final QC passed. Phone sent forward." : "Final QC failed. Phone returned to Laboratory.");
+    focusNextInspection(row);
+  }
+
+  async function submitAll(event) {
+    event.preventDefault();
+    setMessage();
+    const rows = [...tableBody.rows].filter((row) => rowSteps.has(row.dataset.rowId) && row.dataset.completed !== "yes");
+    if (!rows.length) {
+      setMessage("Scan at least one IMEI that is waiting in Final QC.");
+      tableBody.querySelector(".final-row-imei:not(:disabled)")?.focus();
+      return;
+    }
+
+    const button = document.querySelector("#complete-final-qc");
+    setSubmitting(button, true, "Saving Final QC...");
+    let passed = 0;
+    let failed = 0;
+    const errors = [];
+    for (let index = 0; index < rows.length; index += 1) {
+      const result = await saveOneRow(rows[index], `Saving ${index + 1}/${rows.length}...`);
+      if (!result.ok) {
+        errors.push(`Line ${[...tableBody.rows].indexOf(rows[index]) + 1}: ${result.error}`);
+      } else if (result.result === "pass") {
+        passed += 1;
+      } else {
+        failed += 1;
+      }
+    }
+    setSubmitting(button, false);
+    renderPendingJobs(pendingSearch.value);
+    if (passed + failed) showToast(`${passed} passed and ${failed} failed.`);
+    if (errors.length) setMessage(`${passed + failed} completed. ${errors.length} row(s) need correction. ${errors[0]}`);
+    else setMessage(`${passed + failed} scanned Final QC row(s) completed successfully.`, true);
+  }
+
+  function resetTray() {
+    const unfinished = [...tableBody.rows].some((row) => rowSteps.has(row.dataset.rowId) && row.dataset.completed !== "yes");
+    if (unfinished && !window.confirm("Clear the unfinished Final QC tray? No database records will be deleted.")) return;
+    tableBody.innerHTML = "";
+    rowSteps.clear();
+    rowSequence = 0;
+    createRows(10);
+    setMessage();
+    tableBody.querySelector(".final-row-imei")?.focus();
+  }
+
+  function syncHorizontalScrollWidth() {
+    topScrollTrack.style.width = `${tableScroll.scrollWidth}px`;
+    topScroll.hidden = tableScroll.scrollWidth <= tableScroll.clientWidth + 2;
+  }
+
+  function setupHorizontalScroll() {
+    let syncing = false;
+    topScroll.addEventListener("scroll", () => {
+      if (syncing) return;
+      syncing = true;
+      tableScroll.scrollLeft = topScroll.scrollLeft;
+      window.requestAnimationFrame(() => { syncing = false; });
+    });
+    tableScroll.addEventListener("scroll", () => {
+      if (syncing) return;
+      syncing = true;
+      topScroll.scrollLeft = tableScroll.scrollLeft;
+      window.requestAnimationFrame(() => { syncing = false; });
+    });
+    if (window.ResizeObserver) new ResizeObserver(syncHorizontalScrollWidth).observe(tableScroll);
+    window.addEventListener("resize", syncHorizontalScrollWidth);
+    syncHorizontalScrollWidth();
   }
 
   async function initialize() {
-    if (!config.supabaseUrl || !config.supabaseAnonKey || !window.supabase) {
-      permissionMessage.textContent = "Supabase authentication is not configured.";
-      permissionMessage.hidden = false;
-      return;
-    }
+    if (!config.supabaseUrl || !config.supabaseAnonKey || !window.supabase) throw new Error("Supabase authentication is not configured.");
     const { data: sessionData } = await getClient().auth.getSession();
     if (!sessionData.session) {
       window.location.replace("index.html");
@@ -259,27 +464,77 @@
     }
     const { data: canInspect, error } = await getClient().rpc("has_role", { required_roles: ["super_admin", "owner", "manager", "final_qc"] });
     if (error) throw error;
-    if (!canInspect) {
-      permissionMessage.textContent = "Your account does not have Final QC permission.";
-      permissionMessage.hidden = false;
-      return;
-    }
+    if (!canInspect) throw new Error("Your account does not have Final QC permission.");
+    await Promise.all([loadFinalGrades(), loadQueue()]);
+    createRows(10);
     app.hidden = false;
-    await loadFinalGrades();
-    await loadQueue();
+    setupHorizontalScroll();
+    tableBody.querySelector(".final-row-imei")?.focus();
   }
 
+  tableBody.addEventListener("input", (event) => {
+    const input = event.target.closest(".final-row-imei");
+    if (!input) return;
+    input.value = input.value.replace(/\D/g, "").slice(0, 15);
+    const row = input.closest("tr");
+    window.clearTimeout(rowTimers.get(row));
+    if (input.value.length !== 15) {
+      clearRowData(row);
+      return;
+    }
+    focusNextScan(row);
+    rowTimers.set(row, window.setTimeout(() => loadScannedRow(row).catch((error) => setRowState(row, error.message || "Could not load IMEI", "is-error")), 120));
+  });
+
+  tableBody.addEventListener("keydown", (event) => {
+    const input = event.target.closest(".final-row-imei");
+    if (!input || event.key !== "Enter") return;
+    event.preventDefault();
+    focusNextScan(input.closest("tr"));
+    loadScannedRow(input.closest("tr")).catch((error) => setRowState(input.closest("tr"), error.message || "Could not load IMEI", "is-error"));
+  });
+
+  tableBody.addEventListener("change", (event) => {
+    const row = event.target.closest("tr");
+    if (!row || row.dataset.completed === "yes") return;
+    if (event.target.matches("[data-final-grade]")) {
+      row.dataset.manualGrade = "yes";
+      carryGrade(row);
+      return;
+    }
+    if (event.target.matches("[data-result]")) {
+      row.dataset.manualResult = "yes";
+      carryResult(row);
+    }
+  });
+
+  tableBody.addEventListener("click", (event) => {
+    const row = event.target.closest("tr");
+    if (!row || row.dataset.completed === "yes") return;
+    if (event.target.closest("[data-save-row]")) {
+      saveRowFromButton(row).catch((error) => setMessage(error.message || "Final QC row could not be saved."));
+      return;
+    }
+    if (event.target.closest("[data-add-grade]")) {
+      addFinalGrade(row).catch((error) => setMessage(error.message || "Final Grade could not be added."));
+      return;
+    }
+    if (event.target.closest("[data-remove-grade]")) {
+      removeFinalGrade(row).catch((error) => setMessage(error.message || "Final Grade could not be removed."));
+    }
+  });
+
+  document.querySelector("#add-ten-rows").addEventListener("click", () => createRows(10));
+  document.querySelector("#clear-tray").addEventListener("click", resetTray);
+  document.querySelector("#refresh-queue").addEventListener("click", () => loadQueue().then(() => showToast("Final QC queue refreshed.")).catch((error) => setMessage(error.message || "Queue could not be refreshed.")));
+  queueCount.addEventListener("click", openPendingModal);
+  pendingSearch.addEventListener("input", () => renderPendingJobs(pendingSearch.value));
+  pendingModal.addEventListener("click", (event) => { if (event.target.closest("[data-close-pending]")) closePendingModal(); });
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !pendingModal.hidden) closePendingModal(); });
+  form.addEventListener("submit", submitAll);
   document.querySelector("#open-menu").addEventListener("click", () => setMenu(true));
   document.querySelector("#close-menu").addEventListener("click", () => setMenu(false));
   backdrop.addEventListener("click", () => setMenu(false));
-  document.querySelectorAll(".module-link").forEach((button) => button.addEventListener("click", () => showToast(`${button.dataset.module} will be added in the next workflow steps.`)));
-  document.querySelector("#refresh-queue").addEventListener("click", () => loadQueue().catch((error) => showToast(error.message || "Could not refresh the queue.")));
-  stepSelect.addEventListener("change", () => renderSelectedStep().catch((error) => setMessage(error.message || "Final QC job could not be loaded.")));
-  imeiScan.addEventListener("input", () => { if (/^\d{15}$/.test(imeiScan.value.trim())) selectScannedImei(); });
-  imeiScan.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); selectScannedImei(); } });
-  document.querySelector("#add-final-grade").addEventListener("click", () => addFinalGrade().catch((error) => setMessage(error.message || "Final QC grade could not be added.")));
-  document.querySelector("#remove-final-grade").addEventListener("click", () => removeFinalGrade().catch((error) => setMessage(error.message || "Final QC grade could not be removed.")));
-  form.addEventListener("submit", submitFinalQc);
   initialize().catch((error) => {
     permissionMessage.textContent = error.message || "Final QC could not be loaded.";
     permissionMessage.hidden = false;
