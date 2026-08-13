@@ -10,11 +10,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="initial-qc.css?v=20260813-3">
+    <link rel="stylesheet" href="initial-qc.css?v=20260813-4">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script defer src="config.js"></script>
     <script defer src="part-notifications.js?v=20260813-1"></script>
-    <script defer src="initial-qc.js?v=20260813-3"></script>
+    <script defer src="initial-qc.js?v=20260813-4"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -48,14 +48,15 @@
           <section id="qc-app" class="qc-app" hidden>
             <section class="qc-bulk-toolbar">
               <div><p class="panel-kicker">Initial QC work tray</p><h2>Scan IMEIs first, then inspect every row</h2><p>Only scanned IMEIs are processed. Pending IMEIs are never loaded automatically.</p></div>
-              <div class="qc-bulk-toolbar-actions"><span id="queue-count" class="queue-count">0 waiting</span><span id="tray-count" class="queue-count tray-count">10 lines</span><button id="add-ten-rows" class="secondary-button" type="button">+ Add 10 lines</button><button id="clear-tray" class="secondary-button" type="button">Clear tray</button></div>
+              <div class="qc-bulk-toolbar-actions"><button id="queue-count" class="queue-count queue-count-button" type="button">0 waiting</button><span id="tray-count" class="queue-count tray-count">10 lines</span><button id="show-imei-columns" class="secondary-button" type="button">&larr; IMEI</button><button id="show-technician-columns" class="secondary-button" type="button">Technician &rarr;</button><button id="add-ten-rows" class="secondary-button" type="button">+ Add 10 lines</button><button id="clear-tray" class="secondary-button" type="button">Clear tray</button></div>
             </section>
             <p id="qc-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
             <form id="qc-form" class="qc-bulk-form" novalidate>
               <section class="qc-bulk-panel">
-                <div class="qc-bulk-scroll">
+                <div id="qc-top-scroll" class="qc-top-scroll" aria-label="Horizontal table scroll"><div id="qc-top-scroll-track"></div></div>
+                <div id="qc-bulk-scroll" class="qc-bulk-scroll">
                   <table class="qc-bulk-table">
-                    <thead><tr><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>BH</th><th>Supplier code</th><th>Supplier grade</th><th>GC grade</th><th>Parts needed</th><th>Service needed</th><th>Assign technician</th></tr></thead>
+                    <thead><tr><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>BH</th><th>Supplier code</th><th>Supplier grade</th><th>GC grade</th><th>Parts needed</th><th>Service needed</th><th>Assign technician</th><th>Save</th></tr></thead>
                     <tbody id="qc-bulk-body"></tbody>
                   </table>
                 </div>
@@ -65,6 +66,14 @@
           </section>
         </div>
       </main>
+    </div>
+    <div id="pending-modal" class="qc-pending-modal" hidden>
+      <div class="qc-pending-backdrop" data-close-pending></div>
+      <section class="qc-pending-dialog" role="dialog" aria-modal="true" aria-labelledby="pending-title">
+        <header><div><p class="panel-kicker">Initial QC queue</p><h2 id="pending-title">Phones waiting for Initial QC</h2></div><button type="button" class="icon-button" data-close-pending aria-label="Close pending phones">&times;</button></header>
+        <label class="qc-pending-search">Search pending IMEI or supplier<input id="pending-search" type="search" autocomplete="off" placeholder="Type IMEI, supplier code, or model"></label>
+        <div class="qc-pending-table-wrap"><table class="qc-pending-table"><thead><tr><th>#</th><th>IMEI</th><th>Supplier code</th><th>Model</th><th>GB</th><th>Color</th></tr></thead><tbody id="pending-list-body"></tbody></table></div>
+      </section>
     </div>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   </body>
