@@ -178,9 +178,15 @@
       stepSelect.add(new Option(`${supplierLabel(supplier)} · ${job.job_number} · ${device.imei_1 || device.device_number || "Device"}`, step.id));
     });
     emptyState.hidden = queueSteps.length !== 0;
-    if (queueSteps.some((step) => step.id === selectedId)) stepSelect.value = selectedId;
-    else if (queueSteps.length) stepSelect.value = queueSteps[0].id;
-    await renderSelectedStep();
+    if (selectedId && queueSteps.some((step) => step.id === selectedId)) {
+      stepSelect.value = selectedId;
+      await renderSelectedStep();
+    } else {
+      stepSelect.value = "";
+      selectedStep = undefined;
+      workspace.hidden = true;
+      setMessage();
+    }
   }
 
   function selectScannedImei() {

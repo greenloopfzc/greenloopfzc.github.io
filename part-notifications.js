@@ -4,8 +4,6 @@
   const config = window.GREENLOOP_CONFIG || {};
   let supabaseClient;
   let refreshTimer;
-  let autoPickTimer;
-  let manualImeiAction = false;
 
   function getClient() {
     if (!supabaseClient && window.supabase) {
@@ -244,7 +242,6 @@
   function initialize() {
     reorderSidebar();
     updateDashboardGreeting();
-    startManualImeiOnlyMode();
     refreshPartsNotification();
 
     window.clearInterval(refreshTimer);

@@ -157,9 +157,15 @@
       jobSelect.add(new Option(`${job.job_number} · ${device.device_number || "Device"} · ${device.brand || "Unknown"} ${device.model || ""}`.trim(), job.id));
     });
     emptyState.hidden = queueJobs.length !== 0;
-    if (queueJobs.some((job) => job.id === selectedId)) jobSelect.value = selectedId;
-    else if (queueJobs.length) jobSelect.value = queueJobs[0].id;
-    renderSelectedJob();
+    if (selectedId && queueJobs.some((job) => job.id === selectedId)) {
+      jobSelect.value = selectedId;
+      renderSelectedJob();
+    } else {
+      jobSelect.value = "";
+      selectedJob = undefined;
+      workspace.hidden = true;
+      setMessage();
+    }
   }
 
   async function completeStockOut(event) {

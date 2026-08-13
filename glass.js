@@ -147,9 +147,15 @@
       stepSelect.add(new Option(`${job.job_number} · ${device.device_number || "Device"} · ${device.brand || "Unknown"} ${device.model || ""}`.trim(), step.id));
     });
     emptyState.hidden = queueSteps.length !== 0;
-    if (queueSteps.some((step) => step.id === selectedId)) stepSelect.value = selectedId;
-    else if (queueSteps.length) stepSelect.value = queueSteps[0].id;
-    await loadSelectedStep();
+    if (selectedId && queueSteps.some((step) => step.id === selectedId)) {
+      stepSelect.value = selectedId;
+      await loadSelectedStep();
+    } else {
+      stepSelect.value = "";
+      selectedStep = undefined;
+      workspace.hidden = true;
+      setMessage();
+    }
   }
 
   async function startWork() {

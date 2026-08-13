@@ -214,17 +214,6 @@
     if ([...pendingImeiSelect.options].some((option) => option.value === selectedImei)) pendingImeiSelect.value = selectedImei;
   }
 
-  async function autoLoadPendingImei() {
-    if (selectedJob) return;
-    const recentImei = sessionStorage.getItem("greenloop-next-initial-qc-imei") || "";
-    const choices = [...pendingImeiSelect.options].slice(1).map((option) => option.value).filter(Boolean);
-    const nextImei = choices.includes(recentImei) ? recentImei : choices[0];
-    if (!nextImei) return;
-    pendingImeiSelect.value = nextImei;
-    imeiInput.value = nextImei;
-    await scanIdentifier();
-  }
-
   function buildSubmission() {
     const lines = currentLines();
     const selections = [];
@@ -294,7 +283,6 @@
     imeiInput.value = "";
     resetSheet();
     await loadPendingImeis();
-    await autoLoadPendingImei();
   }
 
   async function initialize() {
@@ -306,7 +294,6 @@
     if (!canInspect) throw new Error("Your account does not have Initial QC permission.");
     await Promise.all([loadTechnicians(), loadPendingImeis()]);
     app.hidden = false;
-    await autoLoadPendingImei();
     if (!selectedJob) imeiInput.focus();
   }
 

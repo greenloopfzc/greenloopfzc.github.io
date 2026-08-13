@@ -94,9 +94,15 @@
       jobSelect.add(new Option(`${supplierLabel(supplier)} · ${device.imei_1 || "No IMEI"} · ${device.model || "Unknown model"}`, job.id));
     });
     emptyState.hidden = queueJobs.length !== 0;
-    if (queueJobs.some((job) => job.id === selectedId)) jobSelect.value = selectedId;
-    else if (queueJobs.length) jobSelect.value = queueJobs[0].id;
-    renderSelectedJob();
+    if (selectedId && queueJobs.some((job) => job.id === selectedId)) {
+      jobSelect.value = selectedId;
+      renderSelectedJob();
+    } else {
+      jobSelect.value = "";
+      selectedJob = undefined;
+      workspace.hidden = true;
+      setMessage();
+    }
   }
 
   async function startProduction() {
