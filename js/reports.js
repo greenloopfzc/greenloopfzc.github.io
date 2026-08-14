@@ -25,12 +25,18 @@
   let correctionRecord = null;
   let canManageCorrections = false;
   let auditView = "deleted";
+  let selectedSupplier = "all";
 
   const reports = {
     stock_received: {
       title: "Stock received",
       description: "Every incoming IMEI received during the selected date range.",
       columns: [["Received", "received_at", "date"], ["IMEI", "imei"], ["Model", "model"], ["Memory", "memory"], ["Color", "color"], ["Battery", "battery", "percent"], ["Source", "source"], ["Job", "job_number"]]
+    },
+    supplier_progress: {
+      title: "Supplier stock progress",
+      description: "Supplier and model-wise stock received, pending department, Ready Stock, and exported quantity.",
+      columns: []
     },
     work_in_progress: {
       title: "Work in progress",
@@ -163,6 +169,65 @@
       ? rows.map((row) => `<tr>${report.columns.map(([, key, type]) => `<td>${formatCell(row[key], type)}</td>`).join("")}</tr>`).join("")
       : `<tr><td class="report-empty" colspan="${report.columns.length}">No records were found for this report.</td></tr>`;
     reportContent.innerHTML = `<div class="report-table-wrap"><table class="report-table"><thead><tr>${headers}</tr></thead><tbody>${body}</tbody></table></div>`;
+  }
+
+  function supplierTotal(rows, key) {
+    return rows.reduce((total, row) => total + Number(row[key] || 0), 0);
+  }
+
+  function renderSupplierProgress() {
+    const allRows = reportData.supplier_progress || [];
+    const suppliers = [...new Map(allRows.map((row) => [String(row.supplier_id), {
+      id: String(row.supplier_id),
+      label: [row.supplier_code, row.supplier_name].filter(Boolean).join(" - ")
+    }])).values()].sort((left, right) => left.label.localeCompare(right.label));
+
+    if (selectedSupplier !== "all" && !suppliers.some((supplier) => supplier.id === selectedSupplier)) selectedSupplier = "all";
+    const rows = selectedSupplier === "all" ? allRows : allRows.filter((row) => String(row.supplier_id) === selectedSupplier);
+    const received = supplierTotal(rows, "received_quantity");
+    const ready = supplierTotal(rows, "ready_quantity");
+    const exported = supplierTotal(rows, "exported_quantity");
+    const stagePending = supplierTotal(rows, "initial_qc_pending") + supplierTotal(rows, "lab_glass_pending") + supplierTotal(rows, "parts_pending") + supplierTotal(rows, "final_qc_pending") + supplierTotal(rows, "other_quantity");
+    const completedPercent = received ? Math.round(((ready + exported) / received) * 100) : 0;
+
+    panelKicker.textContent = "Supplier progress";
+    panelTitle.textContent = "Supplier stock progress";
+    panelDescription.textContent = `Models received from ${dateLabel(reportData.date_from)} to ${dateLabel(reportData.date_to)}, with their present workflow position.`;
+    rowCount.textContent = `${rows.length} model line${rows.length === 1 ? "" : "s"}`;
+
+    const supplierOptions = suppliers.map((supplier) => `<option value="${escapeHtml(supplier.id)}"${supplier.id === selectedSupplier ? " selected" : ""}>${escapeHtml(supplier.label)}</option>`).join("");
+    const tableBody = rows.length ? rows.map((row) => `<tr>
+      <td><strong>${escapeHtml(row.supplier_code)}</strong><small>${escapeHtml(row.supplier_name)}</small></td>
+      <td>${escapeHtml(row.model)}</td>
+      <td>${escapeHtml(row.storage_label || "—")}</td>
+      <td>${escapeHtml(row.batch_numbers)}</td>
+      <td>${escapeHtml(row.stock_channels)}</td>
+      <td>${escapeHtml(row.planned_quantity)}</td>
+      <td>${escapeHtml(row.received_quantity)}</td>
+      <td class="supplier-count pending">${escapeHtml(row.imei_entry_pending)}</td>
+      <td class="supplier-count pending">${escapeHtml(row.initial_qc_pending)}</td>
+      <td class="supplier-count pending">${escapeHtml(row.lab_glass_pending)}</td>
+      <td class="supplier-count pending">${escapeHtml(row.parts_pending)}</td>
+      <td class="supplier-count pending">${escapeHtml(row.final_qc_pending)}</td>
+      <td class="supplier-count ready">${escapeHtml(row.ready_quantity)}</td>
+      <td class="supplier-count exported">${escapeHtml(row.exported_quantity)}</td>
+      <td>${escapeHtml(row.other_quantity)}</td>
+    </tr>`).join("") : '<tr><td class="report-empty" colspan="15">No supplier stock was received in this date range.</td></tr>';
+
+    reportContent.innerHTML = `<div class="supplier-report-tools">
+      <label>Supplier<select id="supplier-progress-filter"><option value="all">All suppliers</option>${supplierOptions}</select></label>
+      <div class="supplier-progress-track"><span style="width:${Math.min(completedPercent, 100)}%"></span></div><strong>${completedPercent}% Ready / Exported</strong>
+    </div>
+    <div class="supplier-report-summary">
+      <article><span>Planned stock</span><strong>${supplierTotal(rows, "planned_quantity")}</strong></article>
+      <article><span>IMEIs entered</span><strong>${received}</strong></article>
+      <article><span>Workflow pending</span><strong>${stagePending}</strong></article>
+      <article class="ready"><span>Ready Stock</span><strong>${ready}</strong></article>
+      <article class="exported"><span>Exported</span><strong>${exported}</strong></article>
+    </div>
+    <div class="report-table-wrap"><table class="report-table supplier-progress-table"><thead><tr>
+      <th>Supplier</th><th>Model</th><th>GB</th><th>Batch</th><th>Channel</th><th>Planned</th><th>IMEIs entered</th><th>IMEI entry pending</th><th>Initial QC</th><th>Lab &amp; Glass</th><th>Parts</th><th>Final QC</th><th>Ready Stock</th><th>Exported</th><th>Other</th>
+    </tr></thead><tbody>${tableBody}</tbody></table></div>`;
   }
 
   function getExportBoxGroups() {
@@ -460,6 +525,7 @@
   function renderActiveReport() {
     document.querySelectorAll(".report-tab").forEach((tab) => tab.classList.toggle("active", tab.dataset.report === activeReport));
     if (activeReport === "overview") renderOverview();
+    else if (activeReport === "supplier_progress") renderSupplierProgress();
     else if (activeReport === "export_boxes") renderExportBoxes();
     else if (activeReport === "data_correction") renderDataCorrection();
     else if (activeReport === "deleted_history") renderDeletedHistory();
@@ -480,6 +546,9 @@
     reportData = Array.isArray(data) ? data[0] : data || {};
     const { data: exportBoxes, error: exportBoxesError } = await getClient().rpc("get_export_box_report", { p_date_from: dateFrom.value, p_date_to: dateTo.value });
     reportData.export_boxes = exportBoxesError ? [] : (exportBoxes || []);
+    const { data: supplierProgress, error: supplierProgressError } = await getClient().rpc("get_supplier_stock_progress", { p_date_from: dateFrom.value, p_date_to: dateTo.value });
+    reportData.supplier_progress = supplierProgressError ? [] : (supplierProgress || []);
+    if (supplierProgressError) setMessage(supplierProgressError.message || "Supplier Progress report could not be loaded.");
     const { data: deletedHistory, error: deletedHistoryError } = await getClient().rpc("get_deletion_history", { p_date_from: dateFrom.value, p_date_to: dateTo.value });
     reportData.deleted_history = deletedHistoryError ? [] : (deletedHistory || []);
     if (canManageCorrections) {
@@ -490,6 +559,7 @@
     }
     selectedExportBox = "";
     exportBoxImeiFilter = "";
+    selectedSupplier = "all";
     const { data: openPartsCount } = await getClient().rpc("get_open_parts_pending_count");
     if (Number.isFinite(Number(openPartsCount))) {
       reportData.summary = reportData.summary || {};
@@ -573,6 +643,11 @@
       filter.focus();
       filter.setSelectionRange(filter.value.length, filter.value.length);
     }
+  });
+  reportContent.addEventListener("change", (event) => {
+    if (event.target.id !== "supplier-progress-filter") return;
+    selectedSupplier = event.target.value || "all";
+    renderSupplierProgress();
   });
   initialize().catch((error) => { permissionMessage.textContent = error.message || "Reports could not be loaded."; permissionMessage.hidden = false; });
 })();
