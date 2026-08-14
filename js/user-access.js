@@ -28,22 +28,20 @@
   let selectedUserId = "";
   let currentUserIsSuperAdmin = false;
 
-  const roleGuideData = [
-    ["super_admin", "Super Admin", "All pages, settings, reports, deleted history, and user access."],
-    ["owner", "Owner", "Business-wide viewing, reports, cost, and user access."],
-    ["manager", "Manager", "All operational pages, reports, approvals, and deleted history."],
-    ["receiving", "Receiving", "Stock Received, IMEI Entry, and receiving history."],
-    ["initial_qc", "Initial QC", "Initial QC queue, diagnosis, technician assignment, and parts request."],
-    ["parts", "Parts", "Parts requests, issue sheet, and parts inventory."],
-    ["technician", "Technician", "Laboratory work, issued parts, and assigned repairs."],
-    ["final_qc", "Final QC", "Final QC inspection, final grade, pass, fail, and rework return."],
-    ["production", "Production", "Ready Stock, Production, and export box preparation."],
-    ["shipping", "Shipping", "Export Boxes, packing lists, and shipment handling."],
-    ["rma", "RMA", "RMA Stock Received and RMA workflow."],
-    ["shop_staff", "Retail Shop", "Retail Shop stock and shop-related device records."],
-    ["glass", "Glass", "Glass department work and device history."],
-    ["frame", "Frame", "Frame department work and device history."],
-    ["packing", "Packing", "Packing and outbound preparation."]
+  const pageGuideData = [
+    ["overview", "Overview", "Dashboard and live operational summary."],
+    ["stock_received", "Stock Received", "Create and view received stock batches."],
+    ["imei_entry", "IMEI Entry", "Enter IMEIs and the first device details."],
+    ["initial_qc", "Initial QC", "Inspect, grade, identify work, and assign technicians."],
+    ["lab_glass", "Lab & Glass", "Laboratory and glass repair work."],
+    ["parts", "Parts", "View requests and issue required parts."],
+    ["inventory", "Inventory", "Receive and control parts inventory."],
+    ["final_qc", "Final QC", "Final inspection, grade, Battery Health, Pass or Fail."],
+    ["ready_stock", "Ready Stock", "View all Final QC passed stock."],
+    ["export_boxes", "Export Boxes", "Create boxes and scan phones for export."],
+    ["ready_stock_journey", "Ready Stock Journey", "View complete IMEI workflow history."],
+    ["reports", "Reports", "View operational and management reports."],
+    ["user_access", "User Access", "Create users and control their page permissions."]
   ];
 
   function getClient() {
@@ -72,22 +70,22 @@
     document.body.classList.toggle("menu-open", open);
   }
 
-  function roleName(roleKey) {
-    return roleGuideData.find(([key]) => key === roleKey)?.[1] || String(roleKey).replaceAll("_", " ");
+  function pageName(pageKey) {
+    return pageGuideData.find(([key]) => key === pageKey)?.[1] || String(pageKey).replaceAll("_", " ");
   }
 
-  function roleCheckboxes(roles = roleGuideData, selectedRoles = new Set()) {
-    return roles.map(([key, name, scope]) => `
+  function pageCheckboxes(pages = pageGuideData, selectedPages = new Set()) {
+    return pages.map(([key, name, scope]) => `
       <label class="role-option">
-        <input type="checkbox" value="${escapeHtml(key)}"${selectedRoles.has(key) ? " checked" : ""}>
+        <input type="checkbox" value="${escapeHtml(key)}"${selectedPages.has(key) ? " checked" : ""}>
         <strong>${escapeHtml(name)}</strong>
         <small>${escapeHtml(scope)}</small>
       </label>
     `).join("");
   }
 
-  function renderRoleGuide() {
-    roleGuide.innerHTML = roleGuideData.map(([, name, scope]) => `
+  function renderPageGuide() {
+    roleGuide.innerHTML = pageGuideData.map(([, name, scope]) => `
       <article class="role-guide-item">
         <strong>${escapeHtml(name)}</strong>
         <span>${escapeHtml(scope)}</span>
@@ -95,21 +93,21 @@
     `).join("");
   }
 
-  function renderNewUserRoles() {
-    const availableRoles = currentUserIsSuperAdmin
-      ? roleGuideData
-      : roleGuideData.filter(([key]) => key !== "super_admin" && key !== "owner");
-    newRoleOptions.innerHTML = roleCheckboxes(availableRoles);
+  function renderNewUserPages() {
+    const availablePages = currentUserIsSuperAdmin
+      ? pageGuideData
+      : pageGuideData.filter(([key]) => key !== "user_access");
+    newRoleOptions.innerHTML = pageCheckboxes(availablePages);
   }
 
   function renderUsers() {
     userList.innerHTML = users.length ? users.map((user) => {
-      const roles = user.role_keys || [];
+      const pages = user.page_keys || [];
       return `
         <button class="user-list-item${user.user_id === selectedUserId ? " active" : ""}${user.is_active ? "" : " inactive"}" type="button" data-user-id="${escapeHtml(user.user_id)}">
           <strong>${escapeHtml(user.full_name || user.login_username || "Unnamed user")}</strong>
           <small>@${escapeHtml(user.login_username || "No username")}</small>
-          <span class="user-role-summary">${escapeHtml(roles.length ? roles.map(roleName).join(", ") : "No role assigned")}</span>
+          <span class="user-role-summary">${escapeHtml(pages.length ? pages.map(pageName).join(", ") : "No page assigned")}</span>
         </button>
       `;
     }).join("") : '<p class="access-empty">No user profiles were found.</p>';
@@ -125,11 +123,11 @@
     fullName.value = user.full_name || "";
     username.value = user.login_username || "";
     active.checked = Boolean(user.is_active);
-    roleOptions.innerHTML = roleCheckboxes(roleGuideData, new Set(user.role_keys || []));
+    roleOptions.innerHTML = pageCheckboxes(pageGuideData, new Set(user.page_keys || []));
   }
 
   async function loadUsers(preferredUserId = selectedUserId) {
-    const { data, error } = await getClient().rpc("get_user_access_matrix");
+    const { data, error } = await getClient().rpc("get_user_page_access_matrix");
     if (error) throw error;
     users = data || [];
     selectedUserId = users.some((user) => user.user_id === preferredUserId)
@@ -167,9 +165,9 @@
       return;
     }
 
-    const selectedRoles = [...newRoleOptions.querySelectorAll("input:checked")].map((input) => input.value);
-    if (!selectedRoles.length) {
-      setMessage(createUserMessage, "Select at least one role for this user.");
+    const selectedPages = [...newRoleOptions.querySelectorAll("input:checked")].map((input) => input.value);
+    if (!selectedPages.length) {
+      setMessage(createUserMessage, "Select at least one page for this user.");
       return;
     }
 
@@ -182,7 +180,7 @@
           full_name: newFullName.value.trim(),
           username: newUsername.value.trim(),
           password: newPassword.value,
-          role_keys: selectedRoles
+          page_keys: selectedPages
         }
       });
 
@@ -190,7 +188,7 @@
       if (!data?.success || !data?.user_id) throw new Error(data?.error || "The user account could not be created.");
 
       createUserForm.reset();
-      renderNewUserRoles();
+      renderNewUserPages();
       await loadUsers(data.user_id);
       setMessage(createUserMessage, `User @${data.username} was created and can sign in now.`, "success");
     } catch (error) {
@@ -203,19 +201,19 @@
 
   async function saveAccess(event) {
     event.preventDefault();
-    const selectedRoles = [...roleOptions.querySelectorAll("input:checked")].map((input) => input.value);
+    const selectedPages = [...roleOptions.querySelectorAll("input:checked")].map((input) => input.value);
     if (!selectedUserId) return;
 
     const button = document.querySelector("#save-access");
     button.disabled = true;
     button.textContent = "Saving...";
 
-    const { error } = await getClient().rpc("save_user_access", {
+    const { error } = await getClient().rpc("save_user_page_access", {
       p_user_id: selectedUserId,
       p_full_name: fullName.value.trim(),
       p_login_username: username.value.trim(),
       p_is_active: active.checked,
-      p_role_keys: selectedRoles
+      p_page_keys: selectedPages
     });
 
     button.disabled = false;
@@ -257,8 +255,8 @@
     currentUserIsSuperAdmin = Boolean(isSuperAdmin);
 
     app.hidden = false;
-    renderRoleGuide();
-    renderNewUserRoles();
+    renderPageGuide();
+    renderNewUserPages();
     await loadUsers();
   }
 
