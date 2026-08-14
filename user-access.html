@@ -9,11 +9,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css?v=20260811-5">
-    <link rel="stylesheet" href="css/user-access.css?v=20260814-1">
+    <link rel="stylesheet" href="css/user-access.css?v=20260814-2">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script defer src="js/config.js"></script>
     <script defer src="js/part-notifications.js"></script>
-    <script defer src="js/user-access.js?v=20260814-1"></script>
+    <script defer src="js/user-access.js?v=20260814-2"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -65,8 +65,8 @@
                 </div>
 
                 <div>
-                  <p class="permission-title">Select roles and pages</p>
-                  <p class="permission-help">Select at least one role. More than one role can be selected.</p>
+                  <p class="permission-title">Select page permissions</p>
+                  <p class="permission-help">Only selected pages will be visible and accessible to this user.</p>
                   <div id="new-role-options" class="role-options"></div>
                 </div>
 
@@ -94,8 +94,8 @@
                   </div>
 
                   <div>
-                    <p class="permission-title">Select roles and pages</p>
-                    <p class="permission-help">A user can access the pages listed under each selected role.</p>
+                    <p class="permission-title">Select page permissions</p>
+                    <p class="permission-help">Only selected pages will be visible and accessible to this user.</p>
                     <div id="role-options" class="role-options"></div>
                   </div>
 
@@ -107,7 +107,7 @@
             </div>
 
             <section class="access-panel role-guide-panel">
-              <div class="access-panel-heading"><div><p class="panel-kicker">Permission guide</p><h2>What every role can do</h2></div></div>
+              <div class="access-panel-heading"><div><p class="panel-kicker">Permission guide</p><h2>Greenloop pages</h2></div></div>
               <div id="role-guide" class="role-guide"></div>
             </section>
           </section>
