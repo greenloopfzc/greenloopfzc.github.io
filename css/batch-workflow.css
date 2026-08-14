@@ -1,0 +1,40 @@
+.batch-entry-panel { margin-top: 0; }
+.batch-entry-panel[hidden] { display: none; }
+.batch-entry-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.batch-entry-count { flex: 0 0 auto; padding: 7px 12px; border-radius: 999px; color: #087451; background: #e5f5ec; font-weight: 800; }
+.batch-table-scroll, .pending-table-scroll { overflow-x: auto; border: 1px solid #dbe8df; border-radius: 12px; background: #fff; }
+.batch-entry-table, .pending-stage-table { width: 100%; min-width: 980px; border-collapse: collapse; }
+.batch-entry-table th, .batch-entry-table td, .pending-stage-table th, .pending-stage-table td { padding: 10px; border-right: 1px solid #e0eae3; border-bottom: 1px solid #e0eae3; text-align: left; vertical-align: middle; }
+.batch-entry-table th:last-child, .batch-entry-table td:last-child, .pending-stage-table th:last-child, .pending-stage-table td:last-child { border-right: 0; }
+.batch-entry-table tbody tr:last-child td, .pending-stage-table tbody tr:last-child td { border-bottom: 0; }
+.batch-entry-table th, .pending-stage-table th { color: #476356; background: #eef7f1; font-size: .74rem; letter-spacing: .055em; text-transform: uppercase; white-space: nowrap; }
+.batch-entry-table input, .batch-entry-table select { width: 100%; min-width: 126px; height: 42px; padding: 0 10px; border: 1px solid #cddfd4; border-radius: 8px; background: #fff; font: inherit; }
+.batch-option-control { display: grid; grid-template-columns: minmax(126px, 1fr) 34px 34px; align-items: center; gap: 4px; min-width: 204px; }
+.batch-option-control button { width: 34px; height: 42px; border: 1px solid #bad9c8; border-radius: 8px; color: #087451; background: #f2faf5; font: inherit; font-size: 1rem; font-weight: 900; cursor: pointer; }
+.batch-option-control .batch-option-remove { border-color: #efccc6; color: #b84a3c; background: #fff7f5; }
+.batch-entry-table .batch-row-imei { min-width: 175px; }
+.batch-entry-table .batch-row-battery { min-width: 92px; }
+.batch-entry-table input:focus, .batch-entry-table select:focus { outline: 2px solid rgba(13, 122, 88, .22); border-color: #0d7a58; }
+.batch-save-button, .pending-open-button { min-height: 40px; padding: 8px 13px; border: 1px solid #0c7654; border-radius: 8px; color: #fff; background: #0c7654; font: inherit; font-weight: 800; cursor: pointer; white-space: nowrap; }
+.batch-save-button:disabled { cursor: wait; opacity: .62; }
+.batch-row-status { min-width: 125px; color: #6d7d74; font-size: .82rem; font-weight: 700; }
+.batch-row-status.is-saving { color: #9a6810; }
+.batch-row-status.is-saved { color: #087451; }
+.batch-row-status.is-error { color: #c22d22; }
+.batch-saved-row { background: #f2faf5; }
+.batch-saved-row input, .batch-saved-row select { color: #597066; background: #f4f8f5; }
+.batch-entry-help { margin: 13px 0 0; color: #687c70; font-size: .86rem; }
+.single-entry-heading { margin-top: 16px; padding: 10px 14px; border: 1px dashed #bfd5c7; border-radius: 10px; color: #496357; background: #f7fbf8; font-weight: 700; }
+.pending-stage-panel { grid-column: 1 / -1; margin-top: 14px; padding: 16px; border: 1px solid #dce8e0; border-radius: 13px; background: #fff; }
+.pending-stage-title { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+.pending-stage-title strong { color: #203b2e; font-family: "Manrope", Arial, sans-serif; font-size: 1rem; }
+.pending-stage-title span { padding: 6px 10px; border-radius: 999px; color: #087451; background: #e8f6ee; font-size: .78rem; font-weight: 800; }
+.pending-stage-table { min-width: 720px; }
+.pending-stage-table td { color: #324b3e; font-size: .88rem; }
+.pending-stage-table tr.is-selected { background: #edf8f2; }
+.pending-details-row > td { padding: 12px !important; background: #f5faf7; }
+.pending-inline-workspace { min-width: 0; }
+.pending-inline-workspace > .qc-workspace { margin: 0; }
+.pending-inline-workspace .qc-sheet-panel, .pending-inline-workspace .form-panel { box-shadow: none; }
+.pending-stage-empty { margin: 0; padding: 8px; color: #728078; text-align: center; }
+@media (max-width: 700px) { .batch-entry-heading, .pending-stage-title { align-items: stretch; flex-direction: column; } .batch-entry-count, .pending-stage-title span { width: fit-content; } }

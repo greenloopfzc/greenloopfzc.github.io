@@ -1,0 +1,3 @@
+.packing-layout { display:grid; grid-template-columns:minmax(0,1fr) 275px; align-items:start; gap:19px; }
+.packing-status { border-color:#d8e3cc; background:linear-gradient(150deg,#fbfdf7,#f2f8ea); }
+@media (max-width:960px) { .packing-layout { grid-template-columns:1fr; } }

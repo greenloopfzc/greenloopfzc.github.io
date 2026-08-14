@@ -1,0 +1,29 @@
+.stock-entry-content { max-width: 1360px; }
+.five-columns { grid-template-columns: minmax(235px, 1.35fr) minmax(200px, 1.2fr) minmax(175px, 1.05fr) minmax(190px, 1.15fr) minmax(145px, .85fr); }
+.five-columns .master-option-control { grid-template-columns: minmax(118px, 1fr) 28px 28px; gap: 4px; }
+.imei-scan-heading { align-items: center; }
+.imei-scan-heading > div { min-width: 0; }
+.iphone-read-button { margin-left: auto; min-height: 38px; white-space: nowrap; color: #0f714d; border-color: #b9dcca; background: #f3fbf6; }
+.iphone-read-button:hover { background: #e8f7ee; }
+.stock-plan-wrap { overflow-x: auto; border: 1px solid #dbe7df; border-radius: 9px; }
+.stock-plan-table { width: 100%; min-width: 860px; border-collapse: collapse; }
+.stock-plan-table th, .stock-plan-table td { border-right: 1px solid #e2ebe4; border-bottom: 1px solid #e2ebe4; padding: 8px; vertical-align: middle; }
+.stock-plan-table th { color: #547061; background: #f1f8f3; font-size: .67rem; font-weight: 800; letter-spacing: .055em; text-align: left; text-transform: uppercase; }
+.stock-plan-table th small { display: block; margin-top: 2px; color: #98a79e; font-size: .54rem; letter-spacing: .03em; }
+.stock-plan-table th:last-child, .stock-plan-table td:last-child { border-right: 0; text-align: center; }
+.stock-plan-table tbody tr:last-child td { border-bottom: 0; }
+.stock-plan-option-control { display: grid; grid-template-columns: minmax(118px, 1fr) 29px 29px; gap: 4px; }
+.stock-plan-option-control select, .stock-plan-table input { width: 100%; min-width: 0; min-height: 39px; border: 1px solid #d9e5dc; border-radius: 7px; padding: 0 9px; color: #2d4135; background: #fff; font: inherit; font-size: .75rem; }
+.stock-plan-option-control .master-add, .stock-plan-option-control .master-remove { min-height: 39px; border-radius: 7px; }
+.stock-plan-delete { min-width: 34px; min-height: 37px; border: 1px solid #efd2cd; border-radius: 7px; color: #b65345; background: #fff8f7; font: inherit; font-size: 1rem; font-weight: 800; cursor: pointer; }
+.stock-plan-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 13px; }
+.stock-plan-actions .secondary-button { min-height: 39px; padding: 0 13px; font-size: .72rem; }
+.stock-plan-actions strong { color: #176c48; font-family: Manrope, sans-serif; font-size: .84rem; }
+.batch-summary { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1px; margin-top: 17px; overflow: hidden; border: 1px solid #d8e6dc; border-radius: 9px; background: #d8e6dc; }
+.batch-summary > div { min-width: 0; padding: 12px; background: #f7fbf8; }
+.batch-summary span { display: block; color: #849189; font-size: .58rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.batch-summary strong { display: block; margin-top: 5px; overflow: hidden; color: #254234; font-size: .76rem; text-overflow: ellipsis; white-space: nowrap; }
+.batch-summary .batch-plan-lines { grid-column: 1 / -1; padding: 11px 12px; background: #fffdf7; }
+.batch-summary .batch-plan-lines strong { white-space: normal; line-height: 1.45; }
+@media (max-width: 1120px) { .five-columns { grid-template-columns: repeat(3, minmax(0, 1fr)); } .batch-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 680px) { .five-columns { grid-template-columns: 1fr; } .stock-plan-actions { display: grid; } .stock-plan-actions .secondary-button { width: 100%; } .batch-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } .imei-scan-heading { flex-wrap: wrap; } .iphone-read-button { width: 100%; margin-left: 41px; } }

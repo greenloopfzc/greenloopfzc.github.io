@@ -1,0 +1,27 @@
+/* Ready Stock */
+.ready-stock-content { max-width: 1300px; }
+.ready-stock-heading { align-items: center; }
+.ready-stock-heading-actions { display: flex; align-items: center; gap: 10px; }
+.ready-stock-filters { display: flex; align-items: end; gap: 11px; margin: 0 0 18px; border: 1px solid #d8e6dc; border-radius: 13px; padding: 15px 17px; background: #fff; }
+.ready-stock-filter-heading { display: grid; gap: 3px; margin-right: auto; color: #375544; }
+.ready-stock-filter-heading strong { font-family: Manrope, sans-serif; font-size: .85rem; }
+.ready-stock-filter-heading span { color: #7a897f; font-size: .69rem; }
+.ready-stock-filters label { display: grid; gap: 5px; color: #4b5f51; font-size: .7rem; font-weight: 800; }
+.ready-stock-filters input { min-height: 39px; border: 1px solid #d7e2da; border-radius: 7px; padding: 0 9px; color: #284032; background: #fff; font: inherit; font-size: .76rem; }
+.ready-stock-filters .primary-button, .ready-stock-filters .secondary-button { min-height: 39px; padding: 0 13px; font-size: .71rem; white-space: nowrap; }
+.ready-stock-total { display: grid; gap: 5px; width: min(310px, 100%); margin: 0 0 18px; padding: 20px; border: 1px solid #bfe0ca; border-radius: 13px; background: linear-gradient(135deg, #f5fcf7, #edf8f1); }
+.ready-stock-total span { color: #5a7868; font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.ready-stock-total strong { color: #0f5f42; font-family: Manrope, sans-serif; font-size: 2rem; }
+.ready-stock-total small { color: #718378; font-size: .72rem; }
+.ready-stock-panel { overflow: hidden; border: 1px solid #d6e2d9; border-radius: 13px; background: #fff; }
+.ready-stock-table-wrap { overflow-x: auto; }
+.ready-stock-table { width: 100%; min-width: 900px; border-collapse: collapse; }
+.ready-stock-table th, .ready-stock-table td { padding: 15px 18px; border-right: 1px solid #e0e9e2; border-bottom: 1px solid #e0e9e2; text-align: center; }
+.ready-stock-table th:first-child, .ready-stock-table td:first-child { text-align: left; }
+.ready-stock-table thead th { background: #edf6ef; color: #3d6650; font-size: .7rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.ready-stock-table tbody td { color: #213c2e; font-size: .9rem; font-weight: 700; }
+.ready-stock-table tfoot th { border-bottom: 0; background: #fff5df; color: #624600; font-family: Manrope, sans-serif; font-size: .88rem; }
+.ready-stock-table th:last-child, .ready-stock-table td:last-child { border-right: 0; }
+.ready-stock-empty { color: #78877e !important; font-weight: 600 !important; text-align: center !important; }
+@media (max-width: 850px) { .ready-stock-filters { display: grid; grid-template-columns: 1fr 1fr; align-items: end; } .ready-stock-filter-heading { grid-column: 1 / -1; } }
+@media (max-width: 650px) { .ready-stock-heading { align-items: flex-start; } .ready-stock-heading-actions { width: 100%; display: grid; } .ready-stock-heading-actions .secondary-button { width: 100%; } .ready-stock-filters { grid-template-columns: 1fr; } .ready-stock-filter-heading { grid-column: auto; } .ready-stock-filters .primary-button, .ready-stock-filters .secondary-button { width: 100%; } }

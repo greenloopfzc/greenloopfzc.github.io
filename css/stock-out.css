@@ -1,0 +1,4 @@
+.stock-out-layout { display: grid; grid-template-columns: minmax(0, 1fr) 275px; align-items: start; gap: 19px; }
+.stock-out-status { border-color: #d8e3cc; background: linear-gradient(150deg, #fbfdf7, #f2f8ea); }
+.required-mark { margin-left: 4px; color: #c74d3b; font-size: 0.63rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+@media (max-width: 960px) { .stock-out-layout { grid-template-columns: 1fr; } }
