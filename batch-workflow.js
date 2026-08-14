@@ -48,12 +48,12 @@
     panel.id = "batch-entry-panel";
     panel.className = "form-panel batch-entry-panel";
     panel.hidden = true;
-    originalPanel.insertAdjacentElement("beforebegin", panel);
+    originalPanel.insertAdjacentElement("afterend", panel);
 
     const label = document.createElement("div");
     label.className = "single-entry-heading";
     label.textContent = "Single IMEI entry and dropdown management";
-    originalPanel.insertAdjacentElement("beforebegin", label);
+    panel.insertAdjacentElement("beforebegin", label);
     label.hidden = true;
 
     let currentBatch;
