@@ -147,3 +147,105 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
   });
   link.href = "stock-entry.html";
 });
+
+// Page-level access is shared by every Greenloop screen. The database returns
+// the exact pages selected in User Access; unselected links are removed and a
+// direct URL is redirected to the first permitted page.
+(() => {
+  const pageRoutes = Object.freeze({
+    overview: "dashboard.html",
+    stock_received: "stock-entry.html",
+    imei_entry: "imei-entry.html",
+    initial_qc: "initial-qc.html",
+    lab_glass: "laboratory.html",
+    parts: "parts.html",
+    inventory: "inventory.html",
+    final_qc: "final-qc.html",
+    ready_stock: "ready-stock.html",
+    export_boxes: "export-box.html",
+    ready_stock_journey: "ready-stock-journey.html",
+    reports: "reports.html",
+    user_access: "user-access.html"
+  });
+
+  const filePageKeys = Object.freeze({
+    "dashboard.html": "overview",
+    "stock-entry.html": "stock_received",
+    "receiving.html": "stock_received",
+    "imei-entry.html": "imei_entry",
+    "initial-qc.html": "initial_qc",
+    "laboratory.html": "lab_glass",
+    "glass.html": "lab_glass",
+    "parts.html": "parts",
+    "inventory.html": "inventory",
+    "final-qc.html": "final_qc",
+    "ready-stock.html": "ready_stock",
+    "export-box.html": "export_boxes",
+    "ready-stock-journey.html": "ready_stock_journey",
+    "reports.html": "reports",
+    "user-access.html": "user_access"
+  });
+
+  function pageKeyForLink(link) {
+    const fileName = new URL(link.href, window.location.href).pathname.split("/").pop().toLowerCase();
+    return filePageKeys[fileName] || "";
+  }
+
+  function cleanNavigationLabels(navigation) {
+    const children = [...navigation.children];
+    children.forEach((child, index) => {
+      if (!child.classList.contains("nav-label")) return;
+      let hasVisibleLink = false;
+      for (let next = index + 1; next < children.length; next += 1) {
+        if (children[next].classList.contains("nav-label")) break;
+        if (children[next].matches("a.nav-item") && !children[next].hidden) {
+          hasVisibleLink = true;
+          break;
+        }
+      }
+      child.hidden = !hasVisibleLink;
+    });
+  }
+
+  async function applyPageAccess() {
+    if (!window.supabase || !window.GREENLOOP_CONFIG?.supabaseUrl || !window.GREENLOOP_CONFIG?.supabaseAnonKey) return;
+
+    const client = window.supabase.createClient(
+      window.GREENLOOP_CONFIG.supabaseUrl,
+      window.GREENLOOP_CONFIG.supabaseAnonKey
+    );
+    const { data: sessionData } = await client.auth.getSession();
+    if (!sessionData?.session) return;
+
+    const { data, error } = await client.rpc("get_my_page_access");
+    if (error) {
+      console.error("Page permissions could not be loaded:", error.message);
+      return;
+    }
+
+    const allowedPages = new Set(Array.isArray(data) ? data : []);
+    const navigation = document.querySelector(".sidebar-nav");
+    if (navigation) {
+      navigation.querySelectorAll("a.nav-item").forEach((link) => {
+        const pageKey = pageKeyForLink(link);
+        if (pageKey) link.hidden = !allowedPages.has(pageKey);
+      });
+      cleanNavigationLabels(navigation);
+    }
+
+    const currentFile = (window.location.pathname.split("/").pop() || "dashboard.html").toLowerCase();
+    const currentPageKey = filePageKeys[currentFile];
+    if (!currentPageKey || allowedPages.has(currentPageKey)) return;
+
+    const firstAllowedPage = Object.keys(pageRoutes).find((pageKey) => allowedPages.has(pageKey));
+    if (firstAllowedPage) {
+      window.location.replace(pageRoutes[firstAllowedPage]);
+      return;
+    }
+
+    document.querySelector(".app-main")?.setAttribute("hidden", "");
+    if (navigation) navigation.innerHTML = '<p class="nav-label">No pages assigned</p>';
+  }
+
+  applyPageAccess().catch((error) => console.error("Page access error:", error));
+})();
