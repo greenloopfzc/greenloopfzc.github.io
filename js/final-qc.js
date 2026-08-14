@@ -103,6 +103,8 @@
       <td class="final-auto-cell" data-auto="model">-</td>
       <td class="final-auto-cell" data-auto="storage">-</td>
       <td class="final-auto-cell" data-auto="color">-</td>
+      <td class="final-auto-cell" data-auto="battery">-</td>
+      <td class="final-battery-cell"><input type="number" min="0" max="100" step="1" inputmode="numeric" data-final-battery placeholder="BH %" aria-label="Final Battery Health"></td>
       <td class="final-supplier-cell" data-auto="supplier">-</td>
       <td class="final-auto-cell" data-auto="supplier-grade">-</td>
       <td class="final-auto-cell" data-auto="initial-grade">-</td>
@@ -134,9 +136,10 @@
   }
 
   function clearRowData(row) {
-    ["model", "storage", "color", "supplier", "supplier-grade", "initial-grade"].forEach((field) => {
+    ["model", "storage", "color", "battery", "supplier", "supplier-grade", "initial-grade"].forEach((field) => {
       row.querySelector(`[data-auto="${field}"]`).textContent = "-";
     });
+    row.querySelector("[data-final-battery]").value = "";
     row.classList.remove("is-loaded", "is-error");
     rowSteps.delete(row.dataset.rowId);
     setRowState(row, `Line ${[...tableBody.rows].indexOf(row) + 1} · Waiting`);
@@ -268,6 +271,8 @@
     row.querySelector('[data-auto="model"]').textContent = device.model || "-";
     row.querySelector('[data-auto="storage"]').textContent = device.storage_gb ? `${device.storage_gb} GB` : "-";
     row.querySelector('[data-auto="color"]').textContent = device.color || "-";
+    row.querySelector('[data-auto="battery"]').textContent = device.battery_health !== null && device.battery_health !== undefined ? `${device.battery_health}%` : "-";
+    row.querySelector("[data-final-battery]").value = device.battery_health !== null && device.battery_health !== undefined ? String(device.battery_health) : "";
     row.querySelector('[data-auto="supplier"]').textContent = supplierLabel(supplier);
     row.querySelector('[data-auto="supplier-grade"]').textContent = job.supplier_grade || "-";
     row.querySelector('[data-auto="initial-grade"]').textContent = device.gc_grade || "-";
@@ -279,7 +284,7 @@
   async function loadQueue() {
     const { data, error } = await getClient()
       .from("job_work_order_steps")
-      .select("id, work_order:job_work_orders!inner(work_order_number, job:jobs!inner(id, job_number, supplier_grade, supplier:suppliers(supplier_code, company_name), device:devices(device_number, imei_1, brand, model, storage_gb, color, gc_grade)))")
+      .select("id, work_order:job_work_orders!inner(work_order_number, job:jobs!inner(id, job_number, supplier_grade, supplier:suppliers(supplier_code, company_name), device:devices(device_number, imei_1, brand, model, storage_gb, color, battery_health, gc_grade)))")
       .eq("department", "final_qc")
       .eq("step_status", "in_progress")
       .order("created_at", { ascending: true });
@@ -299,6 +304,7 @@
       model: device.model || "-",
       storage: device.storage_gb ? `${device.storage_gb} GB` : "-",
       color: device.color || "-",
+      battery: device.battery_health !== null && device.battery_health !== undefined ? `${device.battery_health}%` : "-",
       supplierGrade: job.supplier_grade || "-",
       initialGrade: device.gc_grade || "-"
     };
@@ -308,8 +314,8 @@
     const search = String(filter || "").trim().toLocaleLowerCase();
     const rows = queueSteps.map(pendingData).filter((row) => !search || Object.values(row).some((value) => String(value).toLocaleLowerCase().includes(search)));
     pendingListBody.innerHTML = rows.length
-      ? rows.map((row, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(row.imei)}</td><td>${escapeHtml(row.supplier)}</td><td>${escapeHtml(row.model)}</td><td>${escapeHtml(row.storage)}</td><td>${escapeHtml(row.color)}</td><td>${escapeHtml(row.supplierGrade)}</td><td>${escapeHtml(row.initialGrade)}</td></tr>`).join("")
-      : '<tr><td colspan="8" class="final-pending-empty">No pending phones match this search.</td></tr>';
+      ? rows.map((row, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(row.imei)}</td><td>${escapeHtml(row.supplier)}</td><td>${escapeHtml(row.model)}</td><td>${escapeHtml(row.storage)}</td><td>${escapeHtml(row.color)}</td><td>${escapeHtml(row.battery)}</td><td>${escapeHtml(row.supplierGrade)}</td><td>${escapeHtml(row.initialGrade)}</td></tr>`).join("")
+      : '<tr><td colspan="9" class="final-pending-empty">No pending phones match this search.</td></tr>';
   }
 
   function openPendingModal() {
@@ -337,11 +343,28 @@
     }
     const result = resultValue(row);
     const finalGrade = row.querySelector("[data-final-grade]").value;
+    const finalBatteryInput = row.querySelector("[data-final-battery]");
+    const finalBatteryText = finalBatteryInput.value.trim();
+    const finalBattery = finalBatteryText === "" ? null : Number(finalBatteryText);
     if (result === "pass" && !finalGrade) {
       const errorText = "Select the Final Grade before passing this phone.";
       row.classList.add("is-error");
       setRowState(row, errorText, "is-error");
       row.querySelector("[data-final-grade]").focus();
+      return { ok: false, error: errorText };
+    }
+    if (result === "pass" && (!Number.isInteger(finalBattery) || finalBattery < 0 || finalBattery > 100)) {
+      const errorText = "Enter Final Battery Health from 0 to 100 before passing this phone.";
+      row.classList.add("is-error");
+      setRowState(row, errorText, "is-error");
+      finalBatteryInput.focus();
+      return { ok: false, error: errorText };
+    }
+    if (finalBattery !== null && (!Number.isInteger(finalBattery) || finalBattery < 0 || finalBattery > 100)) {
+      const errorText = "Final Battery Health must be from 0 to 100.";
+      row.classList.add("is-error");
+      setRowState(row, errorText, "is-error");
+      finalBatteryInput.focus();
       return { ok: false, error: errorText };
     }
 
@@ -353,6 +376,7 @@
       p_job_id: getJob(step).id,
       p_result: result,
       p_final_grade: result === "pass" ? finalGrade : null,
+      p_final_battery_health: finalBattery,
       p_notes: result === "pass" ? "Final QC passed" : "Final QC failed",
       p_failure_department: result === "fail" ? "laboratory" : null,
       p_failure_reason: result === "fail" ? "Final QC failed - return to Laboratory" : null,
