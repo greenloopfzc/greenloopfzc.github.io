@@ -207,24 +207,67 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     });
   }
 
+  function lockApplication(navigation, main) {
+    if (navigation) {
+      navigation.querySelectorAll("a.nav-item").forEach((link) => {
+        if (pageKeyForLink(link)) link.hidden = true;
+      });
+      cleanNavigationLabels(navigation);
+    }
+    if (main) {
+      main.style.visibility = "hidden";
+      main.setAttribute("aria-busy", "true");
+    }
+  }
+
+  function unlockApplication(main) {
+    if (!main) return;
+    main.style.visibility = "";
+    main.removeAttribute("aria-busy");
+  }
+
+  function showAccessError(navigation, main) {
+    if (navigation) {
+      navigation.innerHTML = '<p class="nav-label">Access unavailable</p>';
+    }
+    if (!main) return;
+    main.style.visibility = "";
+    main.removeAttribute("aria-busy");
+    main.innerHTML = '<div class="page-content"><section class="panel"><p class="form-message error-message">Your page permissions could not be loaded. Please logout, sign in again, and refresh the page.</p></section></div>';
+  }
+
   async function applyPageAccess() {
-    if (!window.supabase || !window.GREENLOOP_CONFIG?.supabaseUrl || !window.GREENLOOP_CONFIG?.supabaseAnonKey) return;
+    const currentFile = (window.location.pathname.split("/").pop() || "dashboard.html").toLowerCase();
+    const currentPageKey = filePageKeys[currentFile];
+    if (!currentPageKey) return;
+
+    const navigation = document.querySelector(".sidebar-nav");
+    const main = document.querySelector(".app-main");
+    lockApplication(navigation, main);
+
+    if (!window.supabase || !window.GREENLOOP_CONFIG?.supabaseUrl || !window.GREENLOOP_CONFIG?.supabaseAnonKey) {
+      showAccessError(navigation, main);
+      return;
+    }
 
     const client = window.supabase.createClient(
       window.GREENLOOP_CONFIG.supabaseUrl,
       window.GREENLOOP_CONFIG.supabaseAnonKey
     );
     const { data: sessionData } = await client.auth.getSession();
-    if (!sessionData?.session) return;
+    if (!sessionData?.session) {
+      window.location.replace("index.html");
+      return;
+    }
 
     const { data, error } = await client.rpc("get_my_page_access");
     if (error) {
       console.error("Page permissions could not be loaded:", error.message);
+      showAccessError(navigation, main);
       return;
     }
 
     const allowedPages = new Set(Array.isArray(data) ? data : []);
-    const navigation = document.querySelector(".sidebar-nav");
     if (navigation) {
       navigation.querySelectorAll("a.nav-item").forEach((link) => {
         const pageKey = pageKeyForLink(link);
@@ -233,9 +276,10 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
       cleanNavigationLabels(navigation);
     }
 
-    const currentFile = (window.location.pathname.split("/").pop() || "dashboard.html").toLowerCase();
-    const currentPageKey = filePageKeys[currentFile];
-    if (!currentPageKey || allowedPages.has(currentPageKey)) return;
+    if (allowedPages.has(currentPageKey)) {
+      unlockApplication(main);
+      return;
+    }
 
     const firstAllowedPage = Object.keys(pageRoutes).find((pageKey) => allowedPages.has(pageKey));
     if (firstAllowedPage) {
@@ -243,7 +287,7 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
       return;
     }
 
-    document.querySelector(".app-main")?.setAttribute("hidden", "");
+    if (main) main.style.display = "none";
     if (navigation) navigation.innerHTML = '<p class="nav-label">No pages assigned</p>';
   }
 
