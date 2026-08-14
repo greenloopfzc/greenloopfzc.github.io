@@ -9,17 +9,17 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="final-qc.css?v=20260813-7">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/final-qc.css?v=20260814-2">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script defer src="config.js"></script>
-    <script defer src="part-notifications.js?v=20260813-1"></script>
-    <script defer src="final-qc.js?v=20260813-9"></script>
+    <script defer src="js/config.js"></script>
+    <script defer src="js/part-notifications.js?v=20260813-1"></script>
+    <script defer src="js/final-qc.js?v=20260814-2"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
       <aside id="sidebar" class="sidebar" aria-label="Main navigation">
-        <div class="sidebar-top"><a class="app-brand" href="dashboard.html" aria-label="Greenloop dashboard"><img class="brand-image" src="looplogo.jpg" alt=""><span>greenloop</span></a><button id="close-menu" class="icon-button close-menu" type="button" aria-label="Close menu">&times;</button></div>
+        <div class="sidebar-top"><a class="app-brand" href="dashboard.html" aria-label="Greenloop dashboard"><img class="brand-image" src="assets/looplogo.jpg" alt=""><span>greenloop</span></a><button id="close-menu" class="icon-button close-menu" type="button" aria-label="Close menu">&times;</button></div>
         <nav class="sidebar-nav">
           <p class="nav-label">Workspace</p>
           <a class="nav-item" href="dashboard.html"><span class="nav-icon" aria-hidden="true">⌘</span>Overview</a>
@@ -54,7 +54,7 @@
                 <div id="final-top-scroll" class="final-top-scroll" aria-label="Horizontal table scroll"><div id="final-top-scroll-track"></div></div>
                 <div id="final-table-scroll" class="final-table-scroll">
                   <table class="final-bulk-table">
-                    <thead><tr><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>Supplier code</th><th>Supplier grade</th><th>Initial grade</th><th>Final grade</th><th>Pass</th><th>Fail</th><th>Save</th></tr></thead>
+                    <thead><tr><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>Initial BH</th><th>Final BH</th><th>Supplier code</th><th>Supplier grade</th><th>Initial grade</th><th>Final grade</th><th>Pass</th><th>Fail</th><th>Save</th></tr></thead>
                     <tbody id="final-bulk-body"></tbody>
                   </table>
                 </div>
@@ -70,7 +70,7 @@
       <section class="final-pending-dialog" role="dialog" aria-modal="true" aria-labelledby="final-pending-title">
         <header><div><p class="panel-kicker">Final QC queue</p><h2 id="final-pending-title">Phones waiting for Final QC</h2></div><button type="button" class="icon-button" data-close-pending aria-label="Close pending phones">&times;</button></header>
         <label class="final-pending-search">Search pending IMEI or supplier<input id="final-pending-search" type="search" autocomplete="off" placeholder="Type IMEI, supplier code, or model"></label>
-        <div class="final-pending-table-wrap"><table class="final-pending-table"><thead><tr><th>#</th><th>IMEI</th><th>Supplier code</th><th>Model</th><th>GB</th><th>Color</th><th>Supplier grade</th><th>Initial grade</th></tr></thead><tbody id="final-pending-list-body"></tbody></table></div>
+        <div class="final-pending-table-wrap"><table class="final-pending-table"><thead><tr><th>#</th><th>IMEI</th><th>Supplier code</th><th>Model</th><th>GB</th><th>Color</th><th>Initial BH</th><th>Supplier grade</th><th>Initial grade</th></tr></thead><tbody id="final-pending-list-body"></tbody></table></div>
       </section>
     </div>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
