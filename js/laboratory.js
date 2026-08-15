@@ -9,6 +9,10 @@
   const queueCount = document.querySelector("#queue-count");
   const technicianCards = document.querySelector("#technician-cards");
   const technicianBoardTitle = document.querySelector("#technician-board-title");
+  const technicianLinesTitle = document.querySelector("#technician-lines-title");
+  const technicianLinesCount = document.querySelector("#technician-lines-count");
+  const technicianWorkRows = document.querySelector("#technician-work-rows");
+  const boardMessage = document.querySelector("#lab-board-message");
   const addTechnicianButton = document.querySelector("#add-lab-technician");
   const removeTechnicianButton = document.querySelector("#remove-lab-technician");
   const emptyState = document.querySelector("#lab-empty");
@@ -27,12 +31,14 @@
   const statusText = document.querySelector("#lab-status-text");
   const activeTime = document.querySelector("#lab-active-time");
   const reworkCount = document.querySelector("#lab-rework-count");
+  const additionalServiceButton = document.querySelector("#additional-service-button");
   const sidebar = document.querySelector("#sidebar");
   const backdrop = document.querySelector("#menu-backdrop");
   const toast = document.querySelector("#toast");
   let client;
   let queueSteps = [];
   let technicians = [];
+  let technicianRows = [];
   let activeTechnicianId = "";
   let selectedStep;
   let currentRecord;
@@ -68,6 +74,12 @@
     message.textContent = text;
     message.classList.toggle("is-visible", Boolean(text));
     message.classList.toggle("is-success", type === "success");
+  }
+
+  function setBoardMessage(text = "", type = "error") {
+    boardMessage.textContent = text;
+    boardMessage.classList.toggle("is-visible", Boolean(text));
+    boardMessage.classList.toggle("is-success", type === "success");
   }
 
   function setSubmitting(button, isSubmitting, label) {
@@ -106,14 +118,92 @@
   function renderTechnicianCards() {
     technicianCards.innerHTML = technicians.length
       ? technicians.map((technician) => {
-        const count = queueSteps.filter((step) => String(technicianForStep(step)?.id || "") === String(technician.id)).length;
+        const count = Number(technician.pending_count || 0);
         const active = String(technician.id) === String(activeTechnicianId);
         return `<button class="technician-card${active ? " is-active" : ""}" type="button" role="listitem" data-technician-id="${escapeHtml(technician.id)}" aria-pressed="${active}"><span class="technician-avatar" aria-hidden="true">${escapeHtml(initials(technician.full_name))}</span><span class="technician-card-copy"><strong>${escapeHtml(technician.full_name)}</strong><span>${count} assigned IMEI${count === 1 ? "" : "s"}</span></span><span class="technician-card-count${count ? "" : " is-zero"}">${count > 99 ? "99+" : count}</span></button>`;
       }).join("")
       : '<p class="history-empty">No technicians are available. Add the first technician.</p>';
     const selected = technicians.find((technician) => String(technician.id) === String(activeTechnicianId));
     technicianBoardTitle.textContent = selected ? `${selected.full_name}'s assigned work` : "Select a technician";
+    technicianLinesTitle.textContent = selected ? `${selected.full_name}'s phone lines` : "Assigned phone lines";
     removeTechnicianButton.disabled = !selected;
+  }
+
+  function asList(value) {
+    if (Array.isArray(value)) return value;
+    if (!value) return [];
+    if (typeof value === "string") {
+      try { return JSON.parse(value); } catch { return []; }
+    }
+    return [];
+  }
+
+  function lineTags(items, formatter, emptyText = "None") {
+    const values = asList(items);
+    if (!values.length) return `<span class="line-empty">${escapeHtml(emptyText)}</span>`;
+    return `<div class="line-tags">${values.map((item) => `<span>${formatter(item)}</span>`).join("")}</div>`;
+  }
+
+  function renderTechnicianLines() {
+    const technician = technicians.find((item) => String(item.id) === String(activeTechnicianId));
+    technicianLinesCount.textContent = `${technicianRows.length} line${technicianRows.length === 1 ? "" : "s"}`;
+    if (!activeTechnicianId) {
+      technicianWorkRows.innerHTML = '<tr><td colspan="11" class="technician-lines-empty">Select a technician.</td></tr>';
+      return;
+    }
+    if (!technicianRows.length) {
+      technicianWorkRows.innerHTML = `<tr><td colspan="11" class="technician-lines-empty">${escapeHtml(technician?.full_name || "This technician")} has no pending phones.</td></tr>`;
+      return;
+    }
+
+    technicianWorkRows.innerHTML = technicianRows.map((row) => {
+      const initialParts = lineTags(row.initial_parts, (item) => `${escapeHtml(item.name)} × ${Number(item.quantity || 1)} <small>${escapeHtml(String(item.status || "identified").replaceAll("_", " "))}</small>`);
+      const initialServices = lineTags(row.initial_services, (item) => `${escapeHtml(item.name)} <small>${escapeHtml(item.lab_decision || "Awaiting Lab review")}</small>`);
+      const confirmedParts = asList(row.lab_part_requests).map((item) => ({
+        label: `${item.name} × ${Number(item.quantity || 1)}`,
+        detail: [item.repeat_cause, item.status].filter(Boolean).join(" · ")
+      }));
+      const confirmedServices = asList(row.lab_services).map((item) => ({
+        label: item.name,
+        detail: item.required === false ? "Not required" : (item.source === "laboratory" ? "Added by Lab" : "Confirmed")
+      }));
+      const confirmed = [...confirmedParts, ...confirmedServices];
+      const confirmedMarkup = confirmed.length
+        ? `<div class="line-tags confirmed">${confirmed.map((item) => `<span>${escapeHtml(item.label)} <small>${escapeHtml(String(item.detail || "").replaceAll("_", " "))}</small></span>`).join("")}</div>`
+        : '<span class="line-empty">No Lab changes yet</span>';
+      const department = String(row.department || "laboratory");
+      const action = department === "laboratory"
+        ? `<button class="line-action" type="button" data-open-lab-step="${escapeHtml(row.step_id)}">Open Lab</button>`
+        : department === "frame"
+          ? `<button class="line-action frame" type="button" data-complete-frame-step="${escapeHtml(row.step_id)}">Complete Frame</button>`
+          : '<a class="line-action glass" href="glass.html">Open Glass</a>';
+      return `<tr>
+        <td><span class="stage-chip ${escapeHtml(department)}">${escapeHtml(department.replaceAll("_", " "))}</span></td>
+        <td class="line-imei">${escapeHtml(row.imei || "—")}</td>
+        <td>${escapeHtml([row.supplier_code, row.supplier_name].filter(Boolean).join(" - ") || "—")}</td>
+        <td>${escapeHtml(row.model || "—")}</td>
+        <td>${escapeHtml(row.storage_gb === null || row.storage_gb === undefined ? "—" : `${row.storage_gb} GB`)}</td>
+        <td>${escapeHtml(row.color || "—")}</td>
+        <td>${escapeHtml(row.battery_health === null || row.battery_health === undefined ? "—" : `${row.battery_health}%`)}</td>
+        <td>${initialParts}</td>
+        <td>${initialServices}</td>
+        <td>${confirmedMarkup}</td>
+        <td>${action}</td>
+      </tr>`;
+    }).join("");
+  }
+
+  async function loadTechnicianRows() {
+    setBoardMessage();
+    if (!activeTechnicianId) {
+      technicianRows = [];
+      renderTechnicianLines();
+      return;
+    }
+    const { data, error } = await getClient().rpc("get_lab_technician_rows", { p_technician_id: activeTechnicianId });
+    if (error) throw error;
+    technicianRows = data || [];
+    renderTechnicianLines();
   }
 
   async function loadTechnicians(preferredId = activeTechnicianId) {
@@ -308,16 +398,25 @@
     const workOrder = getWorkOrder(selectedStep) || {};
     deviceSummary.innerHTML = `<dl><div><dt>IMEI</dt><dd>${escapeHtml(device.imei_1 || "—")}</dd></div><div><dt>Supplier code</dt><dd>${escapeHtml(supplierLabel(supplier))}</dd></div><div><dt>Model</dt><dd>${escapeHtml(device.model || "—")}</dd></div><div><dt>GB</dt><dd>${escapeHtml(device.storage_gb ? `${device.storage_gb} GB` : "—")}</dd></div><div><dt>Color</dt><dd>${escapeHtml(device.color || "—")}</dd></div><div><dt>Grade</dt><dd>${escapeHtml(job.supplier_grade || device.original_grade || "—")}</dd></div><div><dt>Technician</dt><dd>${escapeHtml(selectedStep.assigned_technician_name || "Not assigned")}</dd></div></dl>`;
 
-    const [findings, plannedParts, recordResponse, issuedParts] = await Promise.all([
+    const [findings, plannedParts, recordResponse, issuedParts, serviceReviewsResponse] = await Promise.all([
       loadFindings(job.id),
       loadPlannedParts(job.id),
       getClient().from("laboratory_work_records").select("id, rework_cycle, started_at, paused_at, paused_seconds, completed_at").eq("work_order_step_id", selectedStep.id).eq("rework_cycle", selectedStep.rework_count).maybeSingle(),
-      loadIssuedParts(job.id)
+      loadIssuedParts(job.id),
+      getClient().from("lab_service_reviews").select("id, initial_finding_id, service_name, source, is_required, notes, reviewed_at").eq("work_order_step_id", selectedStep.id).order("reviewed_at", { ascending: true })
     ]);
     if (recordResponse.error) throw recordResponse.error;
+    if (serviceReviewsResponse.error) throw serviceReviewsResponse.error;
+    const serviceReviews = serviceReviewsResponse.data || [];
     findingsList.innerHTML = findings.length
-      ? findings.map((finding) => `<li><strong>${escapeHtml(finding.check_item)}</strong><span>${escapeHtml(finding.action_required)} · ${escapeHtml(finding.priority)} priority${finding.notes ? ` · ${escapeHtml(finding.notes)}` : ""}</span></li>`).join("")
+      ? findings.map((finding) => {
+        const review = serviceReviews.find((item) => item.initial_finding_id === finding.id);
+        const status = review ? (review.is_required ? "Confirmed by Lab" : "Not required by Lab") : "Awaiting Lab review";
+        return `<li><div><strong>${escapeHtml(finding.check_item)}</strong><span>${escapeHtml(finding.action_required)} · ${escapeHtml(finding.priority)} priority${finding.notes ? ` · ${escapeHtml(finding.notes)}` : ""}</span><small class="service-review-status${review?.is_required === false ? " rejected" : ""}">${escapeHtml(status)}</small></div><div class="service-review-actions"><button type="button" data-review-service="${escapeHtml(finding.id)}" data-required="true">Required</button><button type="button" data-review-service="${escapeHtml(finding.id)}" data-required="false">Not required</button></div></li>`;
+      }).join("")
       : "<li><strong>Laboratory work required</strong><span>Review the work order and complete the assigned technical repair.</span></li>";
+    const addedServices = serviceReviews.filter((item) => item.source === "laboratory");
+    if (addedServices.length) findingsList.insertAdjacentHTML("beforeend", addedServices.map((item) => `<li class="lab-added-service"><div><strong>${escapeHtml(item.service_name)}</strong><span>${escapeHtml(item.notes || "Added during Laboratory inspection")}</span><small class="service-review-status">Added by Lab</small></div></li>`).join(""));
     renderPlannedParts(plannedParts);
     renderIssuedParts(issuedParts);
     setWorkState(recordResponse.data);
@@ -365,6 +464,7 @@
     renderTechnicianCards();
     renderQueueOptions(selectedId);
     if (stepSelect.value) await loadSelectedStep();
+    await loadTechnicianRows();
   }
 
   function selectScannedImei() {
@@ -429,6 +529,7 @@
     if (error) { setMessage(error.message || "Laboratory work could not be completed."); return; }
     const result = data?.[0];
     showToast(`Laboratory work completed. Active time: ${secondsToClock(result?.active_seconds)}. Next: ${String(result?.next_department || "next department").replaceAll("_", " ")}.`);
+    await loadTechnicians(activeTechnicianId);
     await loadQueue();
   }
 
@@ -462,10 +563,12 @@
     if (!name || !Number.isInteger(quantity) || quantity < 1) { setMessage("Enter an additional part name and valid quantity."); return; }
     const button = document.querySelector("#additional-part-button");
     setSubmitting(button, true, "Requesting...");
-    const { error } = await getClient().rpc("request_additional_part", {
-      p_job_id: getJob(selectedStep).id,
+    const repeatCause = document.querySelector("#additional-part-cause").value;
+    const { error } = await getClient().rpc("request_lab_part", {
+      p_work_order_step_id: selectedStep.id,
       p_part_name: name,
       p_quantity: quantity,
+      p_repeat_cause: repeatCause,
       p_notes: document.querySelector("#additional-part-notes").value
     });
     setSubmitting(button, false);
@@ -473,9 +576,53 @@
     document.querySelector("#additional-part-name").value = "";
     document.querySelector("#additional-part-notes").value = "";
     document.querySelector("#additional-part-quantity").value = 1;
-    showToast("Additional part requested from Laboratory. The mobile remains in Laboratory.");
+    document.querySelector("#additional-part-cause").value = "additional_need";
+    showToast(repeatCause === "additional_need" ? "Additional part requested from Laboratory." : "Repeated part request saved with its cause.");
     document.dispatchEvent(new CustomEvent("greenloop:notifications-changed"));
     await loadSelectedStep();
+    await loadTechnicianRows();
+  }
+
+  async function reviewInitialService(event) {
+    const button = event.target.closest("[data-review-service]");
+    if (!button || !selectedStep) return;
+    const required = button.dataset.required === "true";
+    const notes = window.prompt(required ? "Optional Lab confirmation note:" : "Why is this service not required?", "");
+    if (notes === null) return;
+    setSubmitting(button, true, "Saving...");
+    const { error } = await getClient().rpc("review_initial_qc_service_from_lab", {
+      p_work_order_step_id: selectedStep.id,
+      p_finding_id: button.dataset.reviewService,
+      p_is_required: required,
+      p_notes: notes
+    });
+    setSubmitting(button, false);
+    if (error) { setMessage(error.message || "The service review could not be saved."); return; }
+    showToast(required ? "Initial QC service confirmed by Lab." : "Initial QC service marked not required.");
+    await loadSelectedStep();
+    await loadTechnicianRows();
+  }
+
+  async function addLabService(event) {
+    event.preventDefault();
+    if (!selectedStep) return;
+    const nameInput = document.querySelector("#additional-service-name");
+    const notesInput = document.querySelector("#additional-service-notes");
+    const name = nameInput.value.trim();
+    if (!name) { setMessage("Enter the additional service name."); nameInput.focus(); return; }
+    setSubmitting(additionalServiceButton, true, "Adding...");
+    const { error } = await getClient().rpc("add_lab_service_requirement", {
+      p_work_order_step_id: selectedStep.id,
+      p_service_name: name,
+      p_notes: notesInput.value
+    });
+    setSubmitting(additionalServiceButton, false);
+    if (error) { setMessage(error.message || "The additional service could not be saved."); return; }
+    nameInput.value = "";
+    notesInput.value = "";
+    showToast("Additional Laboratory service added.");
+    await loadSelectedStep();
+    await loadTechnicianRows();
   }
 
   async function handlePlannedPartAction(event) {
@@ -505,6 +652,40 @@
       : "Part marked as not required by Laboratory.");
     document.dispatchEvent(new CustomEvent("greenloop:notifications-changed"));
     await loadSelectedStep();
+    await loadTechnicianRows();
+  }
+
+  async function handleTechnicianLineAction(event) {
+    const openButton = event.target.closest("[data-open-lab-step]");
+    const frameButton = event.target.closest("[data-complete-frame-step]");
+    if (openButton) {
+      const stepId = openButton.dataset.openLabStep;
+      const matchingStep = queueSteps.find((step) => step.id === stepId);
+      if (!matchingStep) {
+        setBoardMessage("This Laboratory line is no longer active. Refresh the workboard.");
+        return;
+      }
+      renderQueueOptions(stepId);
+      stepSelect.value = stepId;
+      await loadSelectedStep();
+      workspace.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    if (!frameButton) return;
+    const notes = window.prompt("Frame completion note (optional):", "Frame work completed");
+    if (notes === null) return;
+    setSubmitting(frameButton, true, "Saving...");
+    const { error } = await getClient().rpc("complete_frame_and_return_to_final_qc", {
+      p_work_order_step_id: frameButton.dataset.completeFrameStep,
+      p_notes: notes
+    });
+    setSubmitting(frameButton, false);
+    if (error) { setBoardMessage(error.message || "Frame work could not be completed."); return; }
+    setBoardMessage("Frame completed. The IMEI has returned to Final QC.", "success");
+    showToast("Frame completed and returned to Final QC.");
+    document.dispatchEvent(new CustomEvent("greenloop:notifications-changed"));
+    await loadTechnicians(activeTechnicianId);
+    await loadQueue();
   }
 
   async function initialize() {
@@ -538,7 +719,9 @@
     activeTechnicianId = card.dataset.technicianId;
     renderTechnicianCards();
     renderQueueOptions("");
+    loadTechnicianRows().catch((error) => setBoardMessage(error.message || "Technician lines could not be loaded."));
   });
+  technicianWorkRows.addEventListener("click", (event) => handleTechnicianLineAction(event).catch((error) => setBoardMessage(error.message || "The technician line action failed.")));
   addTechnicianButton.addEventListener("click", () => addTechnician().catch((error) => setMessage(error.message || "Technician could not be added.")));
   removeTechnicianButton.addEventListener("click", () => removeTechnician().catch((error) => setMessage(error.message || "Technician could not be removed.")));
   stepSelect.addEventListener("change", () => loadSelectedStep().catch((error) => setMessage(error.message || "Could not load this Laboratory job.")));
@@ -549,7 +732,9 @@
   resumeButton.addEventListener("click", resumeWork);
   form.addEventListener("submit", completeWork);
   plannedPartsList.addEventListener("click", handlePlannedPartAction);
+  findingsList.addEventListener("click", (event) => reviewInitialService(event).catch((error) => setMessage(error.message || "Service review could not be saved.")));
   partsList.addEventListener("click", handlePartAction);
   document.querySelector("#additional-part-button").addEventListener("click", requestAdditionalPart);
+  additionalServiceButton.addEventListener("click", (event) => addLabService(event).catch((error) => setMessage(error.message || "Additional service could not be saved.")));
   initialize().catch((error) => { permissionMessage.textContent = error.message || "Laboratory could not be loaded."; permissionMessage.hidden = false; });
 })();

@@ -111,6 +111,7 @@
       <td class="final-auto-cell" data-auto="initial-grade">-</td>
       <td class="final-grade-cell"><div class="final-grade-control"><select data-final-grade>${gradeOptions()}</select><button type="button" data-add-grade title="Add final grade">+</button><button type="button" class="remove" data-remove-grade title="Remove final grade">−</button></div></td>
       <td class="final-result-cell pass"><label><input type="radio" name="result-${rowId}" value="pass" data-result checked><span>Pass</span></label></td>
+      <td class="final-result-cell frame"><label><input type="radio" name="result-${rowId}" value="frame" data-result><span>Frame</span></label></td>
       <td class="final-result-cell fail"><label><input type="radio" name="result-${rowId}" value="fail" data-result><span>Fail</span></label></td>
       <td class="final-save-cell"><button type="button" class="final-row-save" data-save-row>Save</button></td>
     </tr>`;
@@ -422,16 +423,23 @@
     row.dataset.saving = "yes";
     setSubmitting(rowButton, true, "Saving...");
     setRowState(row, progressText, "is-loading");
-    const { data, error } = await getClient().rpc("complete_final_qc_with_final_grade", {
-      p_job_id: getJob(step).id,
-      p_result: result,
-      p_final_grade: result === "pass" ? finalGrade : null,
-      p_final_battery_health: finalBattery,
-      p_notes: result === "pass" ? "Final QC passed" : "Final QC failed",
-      p_failure_department: result === "fail" ? "laboratory" : null,
-      p_failure_reason: result === "fail" ? "Final QC failed - return to Laboratory" : null,
-      p_checks: []
-    });
+    const rpcResponse = result === "frame"
+      ? await getClient().rpc("route_final_qc_pass_to_frame", {
+        p_job_id: getJob(step).id,
+        p_final_battery_health: finalBattery,
+        p_notes: "Final QC passed technical inspection; Frame finishing required"
+      })
+      : await getClient().rpc("complete_final_qc_with_final_grade", {
+        p_job_id: getJob(step).id,
+        p_result: result,
+        p_final_grade: result === "pass" ? finalGrade : null,
+        p_final_battery_health: finalBattery,
+        p_notes: result === "pass" ? "Final QC passed" : "Final QC failed",
+        p_failure_department: result === "fail" ? "laboratory" : null,
+        p_failure_reason: result === "fail" ? "Final QC failed - return to Laboratory" : null,
+        p_checks: []
+      });
+    const { data, error } = rpcResponse;
     row.dataset.saving = "";
     if (error) {
       setSubmitting(rowButton, false);
@@ -446,7 +454,9 @@
     row.classList.add("is-completed");
     row.querySelectorAll("input, select, button").forEach((control) => { control.disabled = true; });
     rowButton.textContent = "Saved";
-    setRowState(row, result === "pass" ? `Passed · Attempt ${response?.attempt_number || "-"}` : `Failed · Laboratory rework`, "is-completed");
+    setRowState(row, result === "pass"
+      ? `Passed · Attempt ${response?.attempt_number || "-"}`
+      : result === "frame" ? "Passed · Sent to Frame" : "Failed · Laboratory rework", "is-completed");
     queueSteps = queueSteps.filter((candidate) => candidate.id !== step.id);
     queueCount.textContent = `${queueSteps.length} waiting`;
     return { ok: true, result };
@@ -460,7 +470,9 @@
       return;
     }
     renderPendingJobs(pendingSearch.value);
-    showToast(result.result === "pass" ? "Final QC passed. Phone sent forward." : "Final QC failed. Phone returned to Laboratory.");
+    showToast(result.result === "pass"
+      ? "Final QC passed. Phone sent to Ready Stock."
+      : result.result === "frame" ? "Phone sent to Frame. It will return to Final QC after Frame completion." : "Final QC failed. Phone returned to Laboratory.");
     focusNextInspection(row);
   }
 
@@ -477,6 +489,7 @@
     const button = document.querySelector("#complete-final-qc");
     setSubmitting(button, true, "Saving Final QC...");
     let passed = 0;
+    let framed = 0;
     let failed = 0;
     const errors = [];
     for (let index = 0; index < rows.length; index += 1) {
@@ -485,15 +498,17 @@
         errors.push(`Line ${[...tableBody.rows].indexOf(rows[index]) + 1}: ${result.error}`);
       } else if (result.result === "pass") {
         passed += 1;
+      } else if (result.result === "frame") {
+        framed += 1;
       } else {
         failed += 1;
       }
     }
     setSubmitting(button, false);
     renderPendingJobs(pendingSearch.value);
-    if (passed + failed) showToast(`${passed} passed and ${failed} failed.`);
-    if (errors.length) setMessage(`${passed + failed} completed. ${errors.length} row(s) need correction. ${errors[0]}`);
-    else setMessage(`${passed + failed} scanned Final QC row(s) completed successfully.`, true);
+    if (passed + framed + failed) showToast(`${passed} ready, ${framed} sent to Frame, and ${failed} failed.`);
+    if (errors.length) setMessage(`${passed + framed + failed} completed. ${errors.length} row(s) need correction. ${errors[0]}`);
+    else setMessage(`${passed + framed + failed} scanned Final QC row(s) completed successfully.`, true);
   }
 
   function resetTray() {
