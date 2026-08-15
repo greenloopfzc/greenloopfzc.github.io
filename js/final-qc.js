@@ -23,7 +23,6 @@
   const rowTimers = new WeakMap();
   let client;
   let queueSteps = [];
-  let postFrameJobIds = new Set();
   let gradeItems = [];
   let rowSequence = 0;
   let toastTimer;
@@ -94,22 +93,34 @@
   }
 
   function resultValue(row) {
-    return row.querySelector("[data-result]:checked")?.value || "pass";
+    const pass = row.querySelector('[data-result="pass"]')?.checked;
+    const frame = row.querySelector('[data-result="frame"]')?.checked;
+    const fail = row.querySelector('[data-result="fail"]')?.checked;
+    if (fail) return "fail";
+    if (pass && frame) return "frame";
+    if (pass) return "pass";
+    return "";
   }
 
-  function isPostFrameRow(row) {
-    return row?.dataset.afterFrame === "yes";
+  function setResultSelection(row, value) {
+    row.querySelector('[data-result="pass"]').checked = value === "pass" || value === "frame";
+    row.querySelector('[data-result="frame"]').checked = value === "frame";
+    row.querySelector('[data-result="fail"]').checked = value === "fail";
   }
 
-  function applyCycleControls(row, step) {
-    const jobId = String(getJob(step)?.id || "");
-    const afterFrame = postFrameJobIds.has(jobId);
-    row.dataset.afterFrame = afterFrame ? "yes" : "no";
-    const frameInput = row.querySelector('[data-result][value="frame"]');
-    if (frameInput) {
-      frameInput.disabled = afterFrame;
-      frameInput.closest("label")?.classList.toggle("is-disabled", afterFrame);
-      frameInput.closest("label")?.setAttribute("title", afterFrame ? "This phone already returned from Frame. Select Pass or Fail." : "Send this phone to Frame after this inspection.");
+  function applyResultRules(row, changedInput) {
+    const pass = row.querySelector('[data-result="pass"]');
+    const frame = row.querySelector('[data-result="frame"]');
+    const fail = row.querySelector('[data-result="fail"]');
+    if (changedInput === fail && fail.checked) {
+      pass.checked = false;
+      frame.checked = false;
+    } else if (changedInput === frame && frame.checked) {
+      pass.checked = true;
+      fail.checked = false;
+    } else if (changedInput === pass) {
+      if (pass.checked) fail.checked = false;
+      else frame.checked = false;
     }
   }
 
@@ -127,9 +138,9 @@
       <td class="final-auto-cell" data-auto="supplier-grade">-</td>
       <td class="final-auto-cell" data-auto="initial-grade">-</td>
       <td class="final-grade-cell"><div class="final-grade-control"><select data-final-grade>${gradeOptions()}</select><button type="button" data-add-grade title="Add final grade">+</button><button type="button" class="remove" data-remove-grade title="Remove final grade">−</button></div></td>
-      <td class="final-result-cell pass"><label><input type="radio" name="result-${rowId}" value="pass" data-result checked><span>Pass</span></label></td>
-      <td class="final-result-cell frame"><label><input type="radio" name="result-${rowId}" value="frame" data-result><span>Frame</span></label></td>
-      <td class="final-result-cell fail"><label><input type="radio" name="result-${rowId}" value="fail" data-result><span>Fail</span></label></td>
+      <td class="final-result-cell pass"><label><input type="checkbox" data-result="pass"><span>Pass</span></label></td>
+      <td class="final-result-cell frame"><label><input type="checkbox" data-result="frame"><span>Frame</span></label></td>
+      <td class="final-result-cell fail"><label><input type="checkbox" data-result="fail"><span>Fail</span></label></td>
       <td class="final-save-cell"><button type="button" class="final-row-save" data-save-row>Save</button></td>
     </tr>`;
   }
@@ -137,12 +148,11 @@
   function createRows(quantity) {
     const templateRow = tableBody.firstElementChild;
     const inheritedGrade = templateRow?.querySelector("[data-final-grade]")?.value || "";
-    const inheritedResult = templateRow ? resultValue(templateRow) : "pass";
+    const inheritedResult = templateRow ? resultValue(templateRow) : "";
     tableBody.insertAdjacentHTML("beforeend", Array.from({ length: quantity }, rowMarkup).join(""));
     [...tableBody.rows].slice(-quantity).forEach((row) => {
       row.querySelector("[data-final-grade]").value = inheritedGrade;
-      const result = row.querySelector(`[data-result][value="${inheritedResult}"]`);
-      if (result) result.checked = true;
+      setResultSelection(row, inheritedResult);
     });
     trayCount.textContent = `${tableBody.rows.length} lines`;
     window.requestAnimationFrame(syncHorizontalScrollWidth);
@@ -209,8 +219,7 @@
     let next = row.nextElementSibling;
     while (next) {
       if (next.dataset.manualResult !== "yes" && next.dataset.completed !== "yes") {
-        const input = next.querySelector(`[data-result][value="${value}"]`);
-        if (input) input.checked = true;
+        setResultSelection(next, value);
       }
       next = next.nextElementSibling;
     }
@@ -287,7 +296,6 @@
     const device = getDevice(step) || {};
     const supplier = getSupplier(job) || {};
     rowSteps.set(row.dataset.rowId, step);
-    applyCycleControls(row, step);
     row.querySelector('[data-auto="model"]').textContent = device.model || "-";
     row.querySelector('[data-auto="storage"]').textContent = device.storage_gb ? `${device.storage_gb} GB` : "-";
     row.querySelector('[data-auto="color"]').textContent = device.color || "-";
@@ -310,17 +318,6 @@
       .order("created_at", { ascending: true });
     if (error) throw error;
     queueSteps = data || [];
-    const jobIds = [...new Set(queueSteps.map((step) => String(getJob(step)?.id || "")).filter(Boolean))];
-    postFrameJobIds = new Set();
-    for (let start = 0; start < jobIds.length; start += 100) {
-      const { data: frameInspections, error: frameError } = await getClient()
-        .from("final_qc_inspections")
-        .select("job_id")
-        .in("job_id", jobIds.slice(start, start + 100))
-        .eq("routed_to_frame", true);
-      if (frameError) throw frameError;
-      (frameInspections || []).forEach((inspection) => postFrameJobIds.add(String(inspection.job_id)));
-    }
     queueCount.textContent = `${queueSteps.length} waiting`;
     queueCount.setAttribute("aria-label", `View ${queueSteps.length} phones waiting for Final QC`);
     if (!pendingModal.hidden) renderPendingJobs(pendingSearch.value);
@@ -426,21 +423,20 @@
     const finalBatteryInput = row.querySelector("[data-final-battery]");
     const finalBatteryText = finalBatteryInput.value.trim();
     const finalBattery = finalBatteryText === "" ? null : Number(finalBatteryText);
-    const afterFrame = isPostFrameRow(row);
-    if (result === "frame" && afterFrame) {
-      const errorText = "This phone already returned from Frame. Select Pass or Fail.";
+    if (!result) {
+      const errorText = "Tick Pass, Pass + Frame, or Fail.";
       row.classList.add("is-error");
       setRowState(row, errorText, "is-error");
       return { ok: false, error: errorText };
     }
-    if (result === "pass" && !finalGrade) {
+    if ((result === "pass" || result === "frame") && !finalGrade) {
       const errorText = "Select the Final Grade before passing this phone.";
       row.classList.add("is-error");
       setRowState(row, errorText, "is-error");
       row.querySelector("[data-final-grade]").focus();
       return { ok: false, error: errorText };
     }
-    if (result === "pass" && (!Number.isInteger(finalBattery) || finalBattery < 0 || finalBattery > 100)) {
+    if ((result === "pass" || result === "frame") && (!Number.isInteger(finalBattery) || finalBattery < 0 || finalBattery > 100)) {
       const errorText = "Enter Final Battery Health from 0 to 100 before passing this phone.";
       row.classList.add("is-error");
       setRowState(row, errorText, "is-error");
@@ -459,12 +455,12 @@
     row.dataset.saving = "yes";
     setSubmitting(rowButton, true, "Saving...");
     setRowState(row, progressText, "is-loading");
-    const failureDepartment = result === "fail" ? (afterFrame ? "frame" : "laboratory") : null;
     const rpcResponse = result === "frame"
-      ? await getClient().rpc("route_final_qc_pass_to_frame", {
+      ? await getClient().rpc("route_final_qc_pass_to_frame_v2", {
         p_job_id: getJob(step).id,
+        p_final_grade: finalGrade,
         p_final_battery_health: finalBattery,
-        p_notes: "Final QC passed technical inspection; Frame finishing required"
+        p_notes: "Final QC passed; Frame work required"
       })
       : await getClient().rpc("complete_final_qc_with_final_grade", {
         p_job_id: getJob(step).id,
@@ -472,10 +468,8 @@
         p_final_grade: result === "pass" ? finalGrade : null,
         p_final_battery_health: finalBattery,
         p_notes: result === "pass" ? "Final QC passed" : "Final QC failed",
-        p_failure_department: failureDepartment,
-        p_failure_reason: result === "fail"
-          ? (afterFrame ? "Final QC failed after Frame - return to Frame" : "Final QC failed - return to Laboratory")
-          : null,
+        p_failure_department: result === "fail" ? "laboratory" : null,
+        p_failure_reason: result === "fail" ? "Final QC failed - return to Laboratory" : null,
         p_checks: []
       });
     const { data, error } = rpcResponse;
@@ -495,10 +489,10 @@
     rowButton.textContent = "Saved";
     setRowState(row, result === "pass"
       ? `Passed · Attempt ${response?.attempt_number || "-"}`
-      : result === "frame" ? "Sent to Frame" : afterFrame ? "Failed · Frame rework" : "Failed · Laboratory rework", "is-completed");
+      : result === "frame" ? "Passed · Sent to Frame" : "Failed · Laboratory rework", "is-completed");
     queueSteps = queueSteps.filter((candidate) => candidate.id !== step.id);
     queueCount.textContent = `${queueSteps.length} waiting`;
-    return { ok: true, result, failureDepartment };
+    return { ok: true, result };
   }
 
   async function saveRowFromButton(row) {
@@ -513,9 +507,7 @@
       ? "Final QC passed. Phone sent to Ready Stock."
       : result.result === "frame"
         ? "Phone sent to Frame. It will return to Final QC after Frame completion."
-        : result.failureDepartment === "frame"
-          ? "Final QC failed after Frame. Phone returned to Frame."
-          : "Final QC failed. Phone returned to Laboratory.");
+        : "Final QC failed. Phone returned to Laboratory.");
     focusNextInspection(row);
   }
 
@@ -641,6 +633,7 @@
       return;
     }
     if (event.target.matches("[data-result]")) {
+      applyResultRules(row, event.target);
       row.dataset.manualResult = "yes";
       carryResult(row);
     }

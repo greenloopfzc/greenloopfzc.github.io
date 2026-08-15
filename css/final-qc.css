@@ -45,7 +45,7 @@
 .final-grade-control button.remove { border-color: #efcec8; color: #b64a3d; background: #fff7f5; }
 .final-result-cell { width: auto; min-width: 0; padding: 4px !important; text-align: center; }
 .final-result-cell label { display: flex; align-items: center; justify-content: center; gap: 3px; min-height: 31px; border: 1px solid #cbdcd1; border-radius: 6px; cursor: pointer; font-size: .62rem; font-weight: 800; }
-.final-result-cell input { width: 12px; min-height: 12px; margin: 0; padding: 0; accent-color: #087451; }
+.final-result-cell input { width: 15px; height: 15px; min-height: 15px; margin: 0; padding: 0; accent-color: #087451; }
 .final-result-cell.pass label { color: #087451; background: #eff9f2; }
 .final-result-cell.frame label { color: #936018; background: #fff5e2; border-color: #e2c48d; }
 .final-result-cell.frame input { accent-color: #c58728; }

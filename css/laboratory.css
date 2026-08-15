@@ -45,6 +45,24 @@
 .line-save { width: 100%; min-height: 34px; border: 0; border-radius: 7px; padding: 5px; color: #fff; background: #087451; font: inherit; font-size: .62rem; font-weight: 850; cursor: pointer; }
 .line-save:disabled { opacity: .58; cursor: wait; }
 .line-save.frame { background: #c98525; }
+.frame-lines-actions { display: flex; align-items: center; gap: 8px; }
+.frame-mode .technician-lines-table { width: 100%; min-width: 0; table-layout: fixed; font-size: .62rem; }
+.frame-mode .technician-lines-table th, .frame-mode .technician-lines-table td { width: auto; padding: 5px 4px; vertical-align: middle; white-space: normal; overflow-wrap: anywhere; }
+.frame-mode .technician-lines-table th:nth-child(1){width:11%}
+.frame-mode .technician-lines-table th:nth-child(2){width:7%}
+.frame-mode .technician-lines-table th:nth-child(3){width:5%}
+.frame-mode .technician-lines-table th:nth-child(4){width:7%}
+.frame-mode .technician-lines-table th:nth-child(5){width:5%}
+.frame-mode .technician-lines-table th:nth-child(6){width:17%}
+.frame-mode .technician-lines-table th:nth-child(7),
+.frame-mode .technician-lines-table th:nth-child(8),
+.frame-mode .technician-lines-table th:nth-child(9){width:8%}
+.frame-mode .technician-lines-table th:nth-child(10){width:7%}
+.frame-mode .technician-lines-table th:nth-child(11){width:9%}
+.frame-supplier { color: #176b4d; font-weight: 750; line-height: 1.15; }
+.frame-pass-check { display: flex; align-items: center; justify-content: center; gap: 4px; min-height: 31px; border: 1px solid #bcd9c8; border-radius: 6px; color: #087451; background: #eff9f2; font-weight: 850; cursor: pointer; }
+.frame-pass-check input { width: 15px; height: 15px; accent-color: #087451; }
+.line-save.frame-ready { background: #087451; }
 .line-status { display: block; margin-top: 3px; color: #74847a; font-size: .5rem; text-align: center; }
 .line-status.success { color: #087451; font-weight: 800; }
 .line-status.error { color: #c3271c; }

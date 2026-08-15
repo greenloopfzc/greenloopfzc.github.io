@@ -10,11 +10,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/laboratory.css?v=20260815-simple-1">
+    <link rel="stylesheet" href="css/laboratory.css?v=20260815-frame-lines-2">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script defer src="js/config.js?v=20260815-simple-1"></script>
     <script defer src="js/part-notifications.js?v=20260815-simple-1"></script>
-    <script defer src="js/laboratory.js?v=20260815-simple-1"></script>
+    <script defer src="js/laboratory.js?v=20260815-frame-lines-2"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -30,16 +30,16 @@
           <section class="page-heading lab-heading"><div><p class="eyebrow dashboard-eyebrow">Lab, Glass &amp; Frame</p><h1 id="page-title">Technician workbench</h1><p id="page-subtitle" class="heading-subtitle">Select a technician. Every assigned IMEI appears on one simple line.</p></div><a class="quiet-link" href="initial-qc.html">← Back to Initial QC</a></section>
           <div id="permission-message" class="access-message" hidden></div>
           <section id="lab-app" class="lab-app" hidden>
-            <section class="technician-board">
+            <section id="technician-board" class="technician-board">
               <div class="technician-board-heading"><div><p class="panel-kicker">Technicians</p><h2 id="technician-board-title">Select a technician</h2><p>Click a name to see all assigned phones.</p></div><div class="technician-board-actions"><button id="refresh-lab" class="secondary-button" type="button">Refresh</button><button id="add-lab-technician" class="secondary-button" type="button">+ Add technician</button><button id="remove-lab-technician" class="secondary-button danger-button" type="button">− Remove selected</button></div></div>
               <div id="technician-cards" class="technician-cards" role="list"></div>
             </section>
             <section class="technician-lines-panel">
-              <div class="technician-lines-heading"><div><p class="panel-kicker">Selected technician</p><h2 id="technician-lines-title">Assigned phone lines</h2><p id="technician-lines-help">Confirm parts and services, then save that IMEI line.</p></div><span id="technician-lines-count" class="queue-count">0 lines</span></div>
+              <div class="technician-lines-heading"><div><p id="lines-kicker" class="panel-kicker">Selected technician</p><h2 id="technician-lines-title">Assigned phone lines</h2><p id="technician-lines-help">Confirm parts and services, then save that IMEI line.</p></div><div class="frame-lines-actions"><span id="technician-lines-count" class="queue-count">0 lines</span><button id="refresh-frame" class="secondary-button" type="button" hidden>Refresh</button></div></div>
               <p id="lab-board-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
-              <div class="technician-lines-scroll"><table class="technician-lines-table"><thead><tr><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>BH</th><th>QC 1 Parts</th><th>QC 1 Service</th><th>Lab Parts</th><th>Lab Service</th><th>Extra Parts Req.</th><th>Extra Service Req.</th><th>Save</th></tr></thead><tbody id="technician-work-rows"><tr><td colspan="12" class="technician-lines-empty">Select a technician.</td></tr></tbody></table></div>
+              <div class="technician-lines-scroll"><table class="technician-lines-table"><thead><tr id="technician-lines-head"><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>BH</th><th>QC 1 Parts</th><th>QC 1 Service</th><th>Lab Parts</th><th>Lab Service</th><th>Extra Parts Req.</th><th>Extra Service Req.</th><th>Save</th></tr></thead><tbody id="technician-work-rows"><tr><td colspan="12" class="technician-lines-empty">Select a technician.</td></tr></tbody></table></div>
             </section>
-            <section class="lab-rule-card"><strong>Workflow rule</strong><span>Laboratory saves parts and services. Only parts create a Parts Department notification. Laboratory completion sends the phone to Final QC. Final QC may pass it to Ready Stock or send it to Frame; Frame returns it to Final QC.</span></section>
+            <section class="lab-rule-card"><strong>Workflow rule</strong><span id="workflow-rule-text">Laboratory saves parts and services. Only parts create a Parts Department notification. Laboratory completion sends the phone to Final QC. Final QC may pass it to Ready Stock or send it to Frame. A Frame Pass sends the phone directly to Ready Stock.</span></section>
           </section>
         </div>
       </main>

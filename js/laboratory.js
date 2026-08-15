@@ -9,6 +9,10 @@
   const app = document.querySelector("#lab-app");
   const permissionMessage = document.querySelector("#permission-message");
   const technicianCards = document.querySelector("#technician-cards");
+  const technicianBoard = document.querySelector("#technician-board");
+  const linesKicker = document.querySelector("#lines-kicker");
+  const linesHead = document.querySelector("#technician-lines-head");
+  const refreshFrameButton = document.querySelector("#refresh-frame");
   const technicianBoardTitle = document.querySelector("#technician-board-title");
   const technicianLinesTitle = document.querySelector("#technician-lines-title");
   const technicianLinesHelp = document.querySelector("#technician-lines-help");
@@ -40,11 +44,20 @@
 
   function configureMode() {
     if (!isFrameMode) return;
+    document.body.classList.add("frame-mode");
     document.title = "Frame Department | Greenloop";
     document.querySelector("#breadcrumb-stage").textContent = "Frame Department";
-    document.querySelector("#page-title").textContent = "Frame technician workbench";
-    document.querySelector("#page-subtitle").textContent = "Phones sent by Final QC appear here and return to Final QC after Frame completion.";
-    technicianLinesHelp.textContent = "Complete each Frame line to return that IMEI to Final QC.";
+    document.querySelector("#page-title").textContent = "Frame Department";
+    document.querySelector("#page-subtitle").textContent = "Phones selected as Pass + Frame in Final QC appear here as compact lines.";
+    document.querySelector(".lab-heading .quiet-link").href = "final-qc.html";
+    document.querySelector(".lab-heading .quiet-link").textContent = "← Back to Final QC";
+    technicianBoard.hidden = true;
+    linesKicker.textContent = "Frame queue";
+    technicianLinesTitle.textContent = "Phones waiting for Frame completion";
+    technicianLinesHelp.textContent = "Tick Pass and save only after Frame work is complete. Unchecked phones stay here.";
+    refreshFrameButton.hidden = false;
+    linesHead.innerHTML = "<th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>BH</th><th>Supplier code</th><th>Supplier grade</th><th>Initial grade</th><th>Final grade</th><th>Pass</th><th>Save</th>";
+    document.querySelector("#workflow-rule-text").textContent = "A checked Frame Pass sends the phone directly to Ready Stock. An unchecked phone remains pending in Frame.";
   }
 
   function renderTechnicianCards() {
@@ -93,6 +106,30 @@
     }).join("");
   }
 
+  function renderFrameLines() {
+    technicianLinesCount.textContent = `${technicianRows.length} waiting`;
+    if (!technicianRows.length) {
+      technicianWorkRows.innerHTML = '<tr><td colspan="11" class="technician-lines-empty">No phones are waiting in Frame.</td></tr>';
+      return;
+    }
+    technicianWorkRows.innerHTML = technicianRows.map((row) => {
+      const supplier = [row.supplier_code, row.supplier_name].filter(Boolean).join(" - ") || "—";
+      return `<tr data-step-id="${escapeHtml(row.step_id)}">
+        <td><strong class="line-imei">${escapeHtml(row.imei || "—")}</strong></td>
+        <td>${escapeHtml(row.model || "—")}</td>
+        <td>${escapeHtml(row.storage_gb == null ? "—" : `${row.storage_gb} GB`)}</td>
+        <td>${escapeHtml(row.color || "—")}</td>
+        <td>${escapeHtml(row.battery_health == null ? "—" : `${row.battery_health}%`)}</td>
+        <td class="frame-supplier">${escapeHtml(supplier)}</td>
+        <td>${escapeHtml(row.supplier_grade || "—")}</td>
+        <td>${escapeHtml(row.initial_grade || "—")}</td>
+        <td>${escapeHtml(row.final_grade || "—")}</td>
+        <td><label class="frame-pass-check"><input type="checkbox" data-frame-pass><span>Pass</span></label></td>
+        <td><button class="line-save frame-ready" type="button" data-complete-frame="${escapeHtml(row.step_id)}" disabled>Save</button><small class="line-status">Stays pending until Pass</small></td>
+      </tr>`;
+    }).join("");
+  }
+
   async function loadPartOptions() {
     const { data, error } = await getClient().rpc("get_entry_options", { p_option_group: "part_name" });
     if (!error && data?.length) partOptions = unique([...standardParts, ...data.map((item) => item.option_value)]);
@@ -105,6 +142,13 @@
     technicianRows = data || [];
     renderTechnicianLines();
   }
+  async function loadFrameRows() {
+    setBoardMessage();
+    const { data, error } = await getClient().rpc("get_frame_department_rows");
+    if (error) throw error;
+    technicianRows = data || [];
+    renderFrameLines();
+  }
   async function loadTechnicians(preferredId = activeTechnicianId) {
     const { data, error } = await getClient().rpc("get_lab_technician_workboard_by_stage", { p_stage: isFrameMode ? "frame" : "laboratory" });
     if (error) throw error;
@@ -112,7 +156,11 @@
     activeTechnicianId = technicians.some((item) => String(item.id) === String(preferredId)) ? String(preferredId) : String(technicians.find((item) => Number(item.pending_count || 0) > 0)?.id || technicians[0]?.id || "");
     renderTechnicianCards();
   }
-  async function refreshAll() { await loadTechnicians(activeTechnicianId); await loadTechnicianRows(); }
+  async function refreshAll() {
+    if (isFrameMode) { await loadFrameRows(); return; }
+    await loadTechnicians(activeTechnicianId);
+    await loadTechnicianRows();
+  }
 
   async function addTechnician() {
     const fullName = window.prompt("Enter the technician name:");
@@ -175,11 +223,13 @@
     await refreshAll();
   }
   async function completeFrame(button) {
+    const row = button.closest("tr");
+    if (!row.querySelector("[data-frame-pass]")?.checked) return;
     setSubmitting(button, true, "Saving...");
-    const { error } = await getClient().rpc("complete_frame_and_return_to_final_qc", { p_work_order_step_id: button.dataset.completeFrame, p_notes: "Frame work completed" });
+    const { error } = await getClient().rpc("complete_frame_to_ready_stock", { p_work_order_step_id: button.dataset.completeFrame, p_notes: "Frame work passed" });
     setSubmitting(button, false);
     if (error) { setBoardMessage(error.message); return; }
-    showToast("Frame completed. Phone returned to Final QC.");
+    showToast("Frame passed. Phone sent directly to Ready Stock.");
     document.dispatchEvent(new CustomEvent("greenloop:notifications-changed"));
     await refreshAll();
   }
@@ -193,7 +243,7 @@
     if (error) throw error;
     if (!allowed) { permissionMessage.textContent = "Your account does not have Laboratory permission."; permissionMessage.hidden = false; return; }
     app.hidden = false;
-    await loadPartOptions();
+    if (!isFrameMode) await loadPartOptions();
     await refreshAll();
   }
 
@@ -201,6 +251,7 @@
   document.querySelector("#close-menu").addEventListener("click", () => setMenu(false));
   backdrop.addEventListener("click", () => setMenu(false));
   document.querySelector("#refresh-lab").addEventListener("click", () => refreshAll().catch((error) => setBoardMessage(error.message)));
+  refreshFrameButton.addEventListener("click", () => refreshAll().catch((error) => setBoardMessage(error.message)));
   addTechnicianButton.addEventListener("click", () => addTechnician().catch((error) => setBoardMessage(error.message)));
   removeTechnicianButton.addEventListener("click", () => removeTechnician().catch((error) => setBoardMessage(error.message)));
   technicianCards.addEventListener("click", (event) => { const card = event.target.closest("[data-technician-id]"); if (!card) return; activeTechnicianId = card.dataset.technicianId; renderTechnicianCards(); loadTechnicianRows().catch((error) => setBoardMessage(error.message)); });
@@ -210,6 +261,12 @@
     const save = event.target.closest("[data-save-line]"); if (save) saveLine(save).catch((error) => setBoardMessage(error.message));
     const completeLabButton = event.target.closest("[data-complete-lab]"); if (completeLabButton) completeLab(completeLabButton).catch((error) => setBoardMessage(error.message));
     const completeFrameButton = event.target.closest("[data-complete-frame]"); if (completeFrameButton) completeFrame(completeFrameButton).catch((error) => setBoardMessage(error.message));
+  });
+  technicianWorkRows.addEventListener("change", (event) => {
+    const checkbox = event.target.closest("[data-frame-pass]");
+    if (!checkbox) return;
+    const button = checkbox.closest("tr").querySelector("[data-complete-frame]");
+    button.disabled = !checkbox.checked;
   });
   initialize().catch((error) => { permissionMessage.textContent = error.message || "Laboratory could not be loaded."; permissionMessage.hidden = false; });
 })();
