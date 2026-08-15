@@ -23,6 +23,7 @@
   const rowTimers = new WeakMap();
   let client;
   let queueSteps = [];
+  let postFrameJobIds = new Set();
   let gradeItems = [];
   let rowSequence = 0;
   let toastTimer;
@@ -94,6 +95,22 @@
 
   function resultValue(row) {
     return row.querySelector("[data-result]:checked")?.value || "pass";
+  }
+
+  function isPostFrameRow(row) {
+    return row?.dataset.afterFrame === "yes";
+  }
+
+  function applyCycleControls(row, step) {
+    const jobId = String(getJob(step)?.id || "");
+    const afterFrame = postFrameJobIds.has(jobId);
+    row.dataset.afterFrame = afterFrame ? "yes" : "no";
+    const frameInput = row.querySelector('[data-result][value="frame"]');
+    if (frameInput) {
+      frameInput.disabled = afterFrame;
+      frameInput.closest("label")?.classList.toggle("is-disabled", afterFrame);
+      frameInput.closest("label")?.setAttribute("title", afterFrame ? "This phone already returned from Frame. Select Pass or Fail." : "Send this phone to Frame after this inspection.");
+    }
   }
 
   function rowMarkup() {
@@ -270,6 +287,7 @@
     const device = getDevice(step) || {};
     const supplier = getSupplier(job) || {};
     rowSteps.set(row.dataset.rowId, step);
+    applyCycleControls(row, step);
     row.querySelector('[data-auto="model"]').textContent = device.model || "-";
     row.querySelector('[data-auto="storage"]').textContent = device.storage_gb ? `${device.storage_gb} GB` : "-";
     row.querySelector('[data-auto="color"]').textContent = device.color || "-";
@@ -292,6 +310,17 @@
       .order("created_at", { ascending: true });
     if (error) throw error;
     queueSteps = data || [];
+    const jobIds = [...new Set(queueSteps.map((step) => String(getJob(step)?.id || "")).filter(Boolean))];
+    postFrameJobIds = new Set();
+    for (let start = 0; start < jobIds.length; start += 100) {
+      const { data: frameInspections, error: frameError } = await getClient()
+        .from("final_qc_inspections")
+        .select("job_id")
+        .in("job_id", jobIds.slice(start, start + 100))
+        .eq("routed_to_frame", true);
+      if (frameError) throw frameError;
+      (frameInspections || []).forEach((inspection) => postFrameJobIds.add(String(inspection.job_id)));
+    }
     queueCount.textContent = `${queueSteps.length} waiting`;
     queueCount.setAttribute("aria-label", `View ${queueSteps.length} phones waiting for Final QC`);
     if (!pendingModal.hidden) renderPendingJobs(pendingSearch.value);
@@ -397,6 +426,13 @@
     const finalBatteryInput = row.querySelector("[data-final-battery]");
     const finalBatteryText = finalBatteryInput.value.trim();
     const finalBattery = finalBatteryText === "" ? null : Number(finalBatteryText);
+    const afterFrame = isPostFrameRow(row);
+    if (result === "frame" && afterFrame) {
+      const errorText = "This phone already returned from Frame. Select Pass or Fail.";
+      row.classList.add("is-error");
+      setRowState(row, errorText, "is-error");
+      return { ok: false, error: errorText };
+    }
     if (result === "pass" && !finalGrade) {
       const errorText = "Select the Final Grade before passing this phone.";
       row.classList.add("is-error");
@@ -423,6 +459,7 @@
     row.dataset.saving = "yes";
     setSubmitting(rowButton, true, "Saving...");
     setRowState(row, progressText, "is-loading");
+    const failureDepartment = result === "fail" ? (afterFrame ? "frame" : "laboratory") : null;
     const rpcResponse = result === "frame"
       ? await getClient().rpc("route_final_qc_pass_to_frame", {
         p_job_id: getJob(step).id,
@@ -435,8 +472,10 @@
         p_final_grade: result === "pass" ? finalGrade : null,
         p_final_battery_health: finalBattery,
         p_notes: result === "pass" ? "Final QC passed" : "Final QC failed",
-        p_failure_department: result === "fail" ? "laboratory" : null,
-        p_failure_reason: result === "fail" ? "Final QC failed - return to Laboratory" : null,
+        p_failure_department: failureDepartment,
+        p_failure_reason: result === "fail"
+          ? (afterFrame ? "Final QC failed after Frame - return to Frame" : "Final QC failed - return to Laboratory")
+          : null,
         p_checks: []
       });
     const { data, error } = rpcResponse;
@@ -456,10 +495,10 @@
     rowButton.textContent = "Saved";
     setRowState(row, result === "pass"
       ? `Passed · Attempt ${response?.attempt_number || "-"}`
-      : result === "frame" ? "Passed · Sent to Frame" : "Failed · Laboratory rework", "is-completed");
+      : result === "frame" ? "Sent to Frame" : afterFrame ? "Failed · Frame rework" : "Failed · Laboratory rework", "is-completed");
     queueSteps = queueSteps.filter((candidate) => candidate.id !== step.id);
     queueCount.textContent = `${queueSteps.length} waiting`;
-    return { ok: true, result };
+    return { ok: true, result, failureDepartment };
   }
 
   async function saveRowFromButton(row) {
@@ -472,7 +511,11 @@
     renderPendingJobs(pendingSearch.value);
     showToast(result.result === "pass"
       ? "Final QC passed. Phone sent to Ready Stock."
-      : result.result === "frame" ? "Phone sent to Frame. It will return to Final QC after Frame completion." : "Final QC failed. Phone returned to Laboratory.");
+      : result.result === "frame"
+        ? "Phone sent to Frame. It will return to Final QC after Frame completion."
+        : result.failureDepartment === "frame"
+          ? "Final QC failed after Frame. Phone returned to Frame."
+          : "Final QC failed. Phone returned to Laboratory.");
     focusNextInspection(row);
   }
 

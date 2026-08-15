@@ -3,6 +3,7 @@
 
   const config = window.GREENLOOP_CONFIG || {};
   const isFrameMode = window.location.hash.toLowerCase() === "#frame";
+  window.addEventListener("hashchange", () => window.location.reload());
   const standardParts = ["Case", "Glass", "Touch panel", "NFC flex", "Vibrator", "Speaker", "Camera", "Face ID flex", "LCD display", "Battery", "Charging flex"];
   const standardServices = ["Polish", "Cleaning", "Software", "Testing", "Face ID calibration", "Camera calibration", "Housing repair", "Glass work", "Frame work"];
   const app = document.querySelector("#lab-app");

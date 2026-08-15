@@ -4,9 +4,10 @@
   const config = window.GREENLOOP_CONFIG || {};
   const stages = [
     { file: "initial-qc.html", key: "initial_qc", label: "Initial QC" },
-    { file: "laboratory.html", key: "lab_glass_frame", label: "Laboratory" },
+    { file: "laboratory.html", key: ["laboratory", "glass"], badgeKey: "lab_glass", label: "Lab & Glass" },
     { file: "parts.html", key: "parts", label: "Parts" },
-    { file: "final-qc.html", key: "final_qc", label: "Final QC" }
+    { file: "final-qc.html", key: "final_qc", label: "Final QC" },
+    { file: "laboratory.html#frame", key: "frame", badgeKey: "frame", label: "Frame Department" }
   ];
   let supabaseClient;
   let refreshTimer;
@@ -21,14 +22,15 @@
   }
 
   function findSidebarLink(fileName) {
+    const wanted = new URL(fileName, window.location.href);
     return [...document.querySelectorAll(".sidebar-nav a")].find((link) => {
       const url = new URL(link.href, window.location.href);
-      return url.pathname.endsWith(`/${fileName}`);
+      return url.pathname === wanted.pathname && url.hash === wanted.hash;
     });
   }
 
   function reorderSidebar() {
-    // config.js owns the permanent order. Do not move Parts ahead of Frame.
+    // config.js owns the permanent production workflow order.
   }
 
   function updateDashboardGreeting() {
@@ -43,10 +45,11 @@
   function createBadge(stage) {
     const link = findSidebarLink(stage.file);
     if (!link) return null;
-    let badge = link.querySelector(`[data-workflow-badge="${stage.key}"]`);
+    const badgeKey = stage.badgeKey || stage.key;
+    let badge = link.querySelector(`[data-workflow-badge="${badgeKey}"]`);
     if (badge) return badge;
     badge = document.createElement("span");
-    badge.dataset.workflowBadge = stage.key;
+    badge.dataset.workflowBadge = badgeKey;
     badge.hidden = true;
     Object.assign(badge.style, {
       minWidth: "22px", height: "22px", marginLeft: "auto", border: "2px solid white",
@@ -76,7 +79,9 @@
     stages.forEach((stage) => {
       const badge = createBadge(stage);
       if (!badge) return;
-      const count = Math.max(0, Number(counts[stage.key] || 0));
+      const count = Math.max(0, Array.isArray(stage.key)
+        ? stage.key.reduce((total, key) => total + Number(counts[key] || 0), 0)
+        : Number(counts[stage.key] || 0));
       badge.textContent = count > 99 ? "99+" : String(count);
       badge.hidden = count === 0;
       badge.title = `${count} ${stage.label} item(s) pending`;

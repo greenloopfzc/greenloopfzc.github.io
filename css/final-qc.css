@@ -49,6 +49,7 @@
 .final-result-cell.pass label { color: #087451; background: #eff9f2; }
 .final-result-cell.frame label { color: #936018; background: #fff5e2; border-color: #e2c48d; }
 .final-result-cell.frame input { accent-color: #c58728; }
+.final-result-cell.frame label.is-disabled { cursor: not-allowed; opacity: .42; filter: grayscale(.35); }
 .final-result-cell.fail label { color: #b8483b; background: #fff4f2; }
 .final-bulk-table th:nth-child(1), .final-bulk-table td:nth-child(1) { width: 11%; }
 .final-bulk-table th:nth-child(2), .final-bulk-table td:nth-child(2) { width: 6%; }
