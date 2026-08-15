@@ -4,7 +4,7 @@
   const config = window.GREENLOOP_CONFIG || {};
   const stages = [
     { file: "initial-qc.html", key: "initial_qc", label: "Initial QC" },
-    { file: "laboratory.html", key: "lab_glass_frame", label: "Lab, Glass & Frame" },
+    { file: "laboratory.html", key: "lab_glass_frame", label: "Laboratory" },
     { file: "parts.html", key: "parts", label: "Parts" },
     { file: "final-qc.html", key: "final_qc", label: "Final QC" }
   ];
@@ -28,12 +28,7 @@
   }
 
   function reorderSidebar() {
-    const files = ["initial-qc.html", "laboratory.html", "parts.html", "inventory.html", "final-qc.html"];
-    const links = files.map(findSidebarLink);
-    if (links.some((link) => !link)) return;
-    const parent = links[0].parentElement;
-    if (links.some((link) => link.parentElement !== parent)) return;
-    links.slice(1).forEach((link, index) => links[index].after(link));
+    // config.js owns the permanent order. Do not move Parts ahead of Frame.
   }
 
   function updateDashboardGreeting() {

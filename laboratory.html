@@ -4,77 +4,42 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#0d5c43">
-    <meta name="description" content="Laboratory technician work queue for Greenloop.">
+    <meta name="description" content="Greenloop Laboratory and Frame technician workbench.">
     <title>Laboratory | Greenloop</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/initial-qc.css">
-    <link rel="stylesheet" href="css/laboratory.css?v=20260815-lines-3">
-    <link rel="stylesheet" href="css/batch-workflow.css?v=20260813-2">
+    <link rel="stylesheet" href="css/laboratory.css?v=20260815-simple-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script defer src="js/config.js"></script>
-    <script defer src="js/part-notifications.js?v=20260815-1"></script>
-    <script defer src="js/laboratory.js?v=20260815-lines-3"></script>
-    <script defer src="js/batch-workflow.js?v=20260813-4"></script>
+    <script defer src="js/config.js?v=20260815-simple-1"></script>
+    <script defer src="js/part-notifications.js?v=20260815-simple-1"></script>
+    <script defer src="js/laboratory.js?v=20260815-simple-1"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
       <aside id="sidebar" class="sidebar" aria-label="Main navigation">
         <div class="sidebar-top"><a class="app-brand" href="dashboard.html"><img class="brand-image" src="assets/looplogo.jpg" alt=""><span>greenloop</span></a><button id="close-menu" class="icon-button close-menu" type="button" aria-label="Close menu">×</button></div>
-        <nav class="sidebar-nav">
-          <p class="nav-label">Workspace</p>
-          <a class="nav-item" href="dashboard.html"><span class="nav-icon" aria-hidden="true">⌘</span>Overview</a>
-          <a class="nav-item" href="receiving.html"><span class="nav-icon" aria-hidden="true">+</span>Receiving</a>
-          <button class="nav-item module-link" type="button" data-module="IMEI Search"><span class="nav-icon" aria-hidden="true">⌕</span>IMEI Search</button>
-          <p class="nav-label">Operations</p>
-          <a class="nav-item" href="initial-qc.html"><span class="nav-icon" aria-hidden="true">✓</span>Initial QC</a>
-          <button class="nav-item module-link" type="button" data-module="Parts"><span class="nav-icon" aria-hidden="true">▦</span>Parts</button>
-          <a class="nav-item active" href="laboratory.html"><span class="nav-icon" aria-hidden="true">⌁</span>Laboratory &amp; Glass</a>
-          <button class="nav-item module-link" type="button" data-module="Frame"><span class="nav-icon" aria-hidden="true">□</span>Frame</button>
-          <a class="nav-item" href="final-qc.html"><span class="nav-icon" aria-hidden="true">◉</span>Final QC</a>
-          <button class="nav-item module-link" type="button" data-module="Production"><span class="nav-icon" aria-hidden="true">↗</span>Production</button>
-          <button class="nav-item module-link" type="button" data-module="Shipping"><span class="nav-icon" aria-hidden="true">↝</span>Shipping</button>
-          <p class="nav-label">Control</p>
-          <button class="nav-item module-link" type="button" data-module="RMA"><span class="nav-icon" aria-hidden="true">↶</span>RMA</button>
-          <button class="nav-item module-link" type="button" data-module="Retail Shop"><span class="nav-icon" aria-hidden="true">⌂</span>Retail Shop</button>
-          <button class="nav-item module-link" type="button" data-module="Reports"><span class="nav-icon" aria-hidden="true">▤</span>Reports</button>
-        </nav>
+        <nav class="sidebar-nav"></nav>
         <div class="sidebar-user"><span class="user-avatar">SA</span><span><strong>System Admin</strong><small>Super Admin</small></span></div>
       </aside>
       <div id="menu-backdrop" class="menu-backdrop" hidden></div>
       <main class="app-main">
-        <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Overview</a><span aria-hidden="true">/</span><strong>Laboratory</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span><a class="topbar-profile" href="dashboard.html"><span class="user-avatar small">SA</span><span class="profile-name">System Admin</span></a></div></header>
-        <div class="page-content qc-content">
-          <section class="page-heading qc-heading"><div><p class="eyebrow dashboard-eyebrow">Lab, Glass &amp; Frame</p><h1>Technician workbench</h1><p class="heading-subtitle">Select a technician to view assigned phones, Initial QC work, services, and parts.</p></div><a class="quiet-link" href="initial-qc.html">← Back to Initial QC</a></section>
+        <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Overview</a><span>/</span><strong id="breadcrumb-stage">Laboratory</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span><a class="topbar-profile" href="dashboard.html"><span class="user-avatar small">SA</span><span class="profile-name">System Admin</span></a></div></header>
+        <div class="page-content lab-page-content">
+          <section class="page-heading lab-heading"><div><p class="eyebrow dashboard-eyebrow">Lab, Glass &amp; Frame</p><h1 id="page-title">Technician workbench</h1><p id="page-subtitle" class="heading-subtitle">Select a technician. Every assigned IMEI appears on one simple line.</p></div><a class="quiet-link" href="initial-qc.html">← Back to Initial QC</a></section>
           <div id="permission-message" class="access-message" hidden></div>
-          <section id="lab-app" class="qc-app" hidden>
-            <section class="technician-board" aria-labelledby="technician-board-title">
-              <div class="technician-board-heading"><div><p class="panel-kicker">Technician workboard</p><h2 id="technician-board-title">Select a technician</h2><p>Each card shows the live number of assigned IMEIs.</p></div><div class="technician-board-actions"><button id="add-lab-technician" class="secondary-button" type="button">+ Add technician</button><button id="remove-lab-technician" class="secondary-button danger-button" type="button">− Remove selected</button></div></div>
+          <section id="lab-app" class="lab-app" hidden>
+            <section class="technician-board">
+              <div class="technician-board-heading"><div><p class="panel-kicker">Technicians</p><h2 id="technician-board-title">Select a technician</h2><p>Click a name to see all assigned phones.</p></div><div class="technician-board-actions"><button id="refresh-lab" class="secondary-button" type="button">Refresh</button><button id="add-lab-technician" class="secondary-button" type="button">+ Add technician</button><button id="remove-lab-technician" class="secondary-button danger-button" type="button">− Remove selected</button></div></div>
               <div id="technician-cards" class="technician-cards" role="list"></div>
             </section>
-            <section id="technician-lines-panel" class="technician-lines-panel" aria-labelledby="technician-lines-title">
-              <div class="technician-lines-heading"><div><p class="panel-kicker">Selected technician</p><h2 id="technician-lines-title">Assigned phone lines</h2><p>Every assigned IMEI appears on its own line. Open a Laboratory row to review or change parts and services.</p></div><span id="technician-lines-count" class="queue-count">0 lines</span></div>
+            <section class="technician-lines-panel">
+              <div class="technician-lines-heading"><div><p class="panel-kicker">Selected technician</p><h2 id="technician-lines-title">Assigned phone lines</h2><p id="technician-lines-help">Confirm parts and services, then save that IMEI line.</p></div><span id="technician-lines-count" class="queue-count">0 lines</span></div>
               <p id="lab-board-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
-              <div class="technician-lines-scroll"><table class="technician-lines-table"><thead><tr><th>Stage</th><th>IMEI</th><th>Supplier code</th><th>Model</th><th>GB</th><th>Color</th><th>BH</th><th>Initial QC parts</th><th>Initial QC services</th><th>Lab confirmed / changed</th><th>Action</th></tr></thead><tbody id="technician-work-rows"><tr><td colspan="11" class="technician-lines-empty">Select a technician.</td></tr></tbody></table></div>
+              <div class="technician-lines-scroll"><table class="technician-lines-table"><thead><tr><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>BH</th><th>QC 1 Parts</th><th>QC 1 Service</th><th>Lab Parts</th><th>Lab Service</th><th>Extra Parts Req.</th><th>Extra Service Req.</th><th>Save</th></tr></thead><tbody id="technician-work-rows"><tr><td colspan="12" class="technician-lines-empty">Select a technician.</td></tr></tbody></table></div>
             </section>
-            <div class="qc-queue-bar"><div><p class="panel-kicker">Laboratory queue</p><h2>Jobs ready for technician work</h2></div><button id="refresh-queue" class="secondary-button" type="button">Refresh queue</button></div>
-            <div class="qc-picker-row"><label class="qc-imei-picker" for="lab-imei-scan"><span>Scan IMEI</span><input id="lab-imei-scan" type="text" inputmode="numeric" autocomplete="off" maxlength="15" placeholder="Scan 15-digit IMEI"></label><label class="qc-job-picker" for="lab-step-select"><span>Select a Laboratory work order</span><select id="lab-step-select"><option value="">Loading queue...</option></select></label><span id="queue-count" class="queue-count">0 waiting</span></div>
-            <div id="lab-empty" class="qc-empty" hidden><strong>Laboratory queue is clear.</strong><span>Initial QC will send technical jobs here automatically.</span></div>
-            <section id="lab-workspace" class="qc-workspace" hidden>
-              <div id="lab-device-summary" class="qc-device-summary"></div>
-              <div class="lab-layout">
-                <form id="lab-form" class="qc-form" novalidate>
-                  <section class="form-panel"><div class="form-panel-heading"><span class="section-number">01</span><div><h2>Initial QC services</h2><p>Keep or reject every Initial QC service, and add anything found during the Laboratory check.</p></div></div><ul id="lab-findings" class="lab-findings"></ul><div class="additional-service-form"><div class="form-field"><label for="additional-service-name">Additional service required</label><input id="additional-service-name" placeholder="Example: Face ID calibration"></div><div class="form-field"><label for="additional-service-notes">Service notes</label><input id="additional-service-notes" placeholder="Why this service is required"></div><button id="additional-service-button" class="inline-add-button" type="button">+ Add service</button></div></section>
-                  <section class="form-panel"><div class="form-panel-heading"><span class="section-number">02</span><div><h2>Supervisor parts confirmation</h2><p>Confirmed parts immediately appear in Parts with this technician's name.</p></div></div><h3 class="lab-subheading">Parts identified by Initial QC</h3><div id="lab-planned-parts" class="lab-planned-parts"><p class="history-empty">No parts were identified by Initial QC.</p></div><h3 class="lab-subheading">Parts issued to technician</h3><div id="lab-parts" class="lab-parts"><p class="history-empty">No issued parts for this job.</p></div><div id="additional-part-form" class="additional-part-form"><div class="form-grid two-columns"><div class="form-field"><label for="additional-part-name">Additional or repeated part</label><input id="additional-part-name" placeholder="Example: Charging flex"></div><div class="form-field"><label for="additional-part-quantity">Quantity</label><input id="additional-part-quantity" type="number" min="1" step="1" value="1"></div></div><div class="form-field"><label for="additional-part-cause">Request reason</label><select id="additional-part-cause"><option value="additional_need">Additional requirement</option><option value="faulty_part">Faulty replacement part</option><option value="technician_damage">Technician damaged part</option></select></div><div class="form-field"><label for="additional-part-notes">Reason / notes</label><input id="additional-part-notes" placeholder="Required detail for a repeated part"></div><button id="additional-part-button" class="inline-add-button" type="button">+ Confirm part request</button></div></section>
-                  <section class="form-panel"><div class="form-panel-heading"><span class="section-number">03</span><div><h2>Completion record</h2><p>Pause time is excluded automatically from the final active repair time.</p></div></div><div class="form-field"><label for="lab-work-done">Work done <span class="required-mark">Required</span></label><input id="lab-work-done" type="text" placeholder="Example: Housing repaired and charging tested" required></div><div class="form-field"><label for="lab-material-cost">Material cost (AED)</label><input id="lab-material-cost" type="number" min="0" step="0.01" value="0" placeholder="0.00"><small>Glass, housing, or other material cost used in Laboratory.</small></div><div class="form-field detail-grid"><label for="lab-notes">Technician notes</label><textarea id="lab-notes" rows="3" placeholder="Repair work, testing result, or additional findings"></textarea></div></section>
-                  <p id="lab-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
-                  <div class="lab-actions"><button id="start-lab-work" class="secondary-button" type="button">Start work</button><button id="pause-lab-work" class="secondary-button" type="button" hidden>Pause</button><button id="resume-lab-work" class="secondary-button" type="button" hidden>Resume</button><button id="complete-lab-work" class="primary-button receive-submit" type="submit" disabled>Complete and route →</button></div>
-                </form>
-                <aside class="qc-side"><section class="side-card lab-status-card"><p class="panel-kicker">Time tracking</p><h2 id="lab-status-title">Ready to start</h2><p id="lab-status-text">Start work to save the assigned technician and automatic start time.</p><div class="lab-time"><span>Active time</span><strong id="lab-active-time">00:00:00</strong></div><div class="lab-rework"><span>Rework count</span><strong id="lab-rework-count">0</strong></div></section><section class="side-card"><span class="side-icon" aria-hidden="true">⌁</span><h2>Next department</h2><p>On completion, Greenloop closes this technician step and sends the IMEI to the next required department automatically.</p></section></aside>
-              </div>
-            </section>
+            <section class="lab-rule-card"><strong>Workflow rule</strong><span>Laboratory saves parts and services. Only parts create a Parts Department notification. Laboratory completion sends the phone to Final QC. Final QC may pass it to Ready Stock or send it to Frame; Frame returns it to Final QC.</span></section>
           </section>
         </div>
       </main>

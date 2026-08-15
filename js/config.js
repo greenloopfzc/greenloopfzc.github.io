@@ -16,7 +16,7 @@ document.addEventListener("click", (event) => {
     "Laboratory": "laboratory.html",
     "Lab, Glass & Frame": "laboratory.html",
     "Glass": "laboratory.html",
-    "Frame": "module.html?module=Frame",
+    "Frame": "laboratory.html#frame",
     "Final QC": "final-qc.html",
     "Ready Stock": "ready-stock.html",
     "Export Boxes": "export-box.html",
@@ -51,9 +51,10 @@ document.addEventListener("click", (event) => {
     item("IMEI Entry", "imei-entry.html", "⌕", page === "imei-entry.html"),
     '<p class="nav-label">Operations</p>',
     // Permanent production workflow order:
-    // Initial QC -> Lab, Glass & Frame -> Parts -> Inventory -> Final QC.
+    // Initial QC -> Laboratory -> Frame Department -> Parts -> Inventory -> Final QC.
     item("Initial QC", "initial-qc.html", "✓", page === "initial-qc.html"),
-    item("Lab, Glass &amp; Frame", "laboratory.html", "⌁", page === "laboratory.html" || page === "glass.html"),
+    item("Laboratory", "laboratory.html", "⌁", (page === "laboratory.html" || page === "glass.html") && window.location.hash !== "#frame"),
+    item("Frame Department", "laboratory.html#frame", "□", page === "laboratory.html" && window.location.hash === "#frame"),
     item("Parts", "parts.html", "▦", page === "parts.html"),
     item("Inventory", "inventory.html", "▧", page === "inventory.html"),
     item("Final QC", "final-qc.html", "◉", page === "final-qc.html"),
