@@ -11,7 +11,7 @@ window.GREENLOOP_CONFIG = Object.freeze({
   window.__GREENLOOP_CURRENT_CONFIG_LOADING__ = true;
 
   const script = document.createElement("script");
-  script.src = "js/config.js?v=20260814-143817-2";
+  script.src = "js/config.js?v=20260815-sidebar-order-1";
   script.async = false;
   script.dataset.greenloopCurrentConfig = "true";
   document.head.append(script);

@@ -27,20 +27,23 @@
     const initialQcLink = findSidebarLink("initial-qc.html");
     const laboratoryLink = findSidebarLink("laboratory.html");
     const partsLink = findSidebarLink("parts.html");
+    const inventoryLink = findSidebarLink("inventory.html");
 
-    if (!initialQcLink || !laboratoryLink || !partsLink) return;
+    if (!initialQcLink || !laboratoryLink || !partsLink || !inventoryLink) return;
 
     const parent = initialQcLink.parentElement;
 
     if (
       laboratoryLink.parentElement !== parent ||
-      partsLink.parentElement !== parent
+      partsLink.parentElement !== parent ||
+      inventoryLink.parentElement !== parent
     ) {
       return;
     }
 
     initialQcLink.after(laboratoryLink);
     laboratoryLink.after(partsLink);
+    partsLink.after(inventoryLink);
   }
 
   function updateDashboardGreeting() {
