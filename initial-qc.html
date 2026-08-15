@@ -10,11 +10,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/initial-qc.css?v=20260814-compact-1">
+    <link rel="stylesheet" href="css/initial-qc.css?v=20260815-auto-pick-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script defer src="js/config.js"></script>
     <script defer src="js/part-notifications.js?v=20260813-1"></script>
-    <script defer src="js/initial-qc.js?v=20260813-6"></script>
+    <script defer src="js/initial-qc.js?v=20260815-auto-pick-1"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -48,7 +48,7 @@
           <section id="qc-app" class="qc-app" hidden>
             <section class="qc-bulk-toolbar">
               <div><p class="panel-kicker">Initial QC work tray</p><h2>Scan IMEIs first, then inspect every row</h2><p>Only scanned IMEIs are processed. Pending IMEIs are never loaded automatically.</p></div>
-              <div class="qc-bulk-toolbar-actions"><button id="queue-count" class="queue-count queue-count-button" type="button">0 waiting</button><span id="tray-count" class="queue-count tray-count">10 lines</span><button id="show-imei-columns" class="secondary-button" type="button">&larr; IMEI</button><button id="show-technician-columns" class="secondary-button" type="button">Technician &rarr;</button><button id="add-ten-rows" class="secondary-button" type="button">+ Add 10 lines</button><button id="clear-tray" class="secondary-button" type="button">Clear tray</button></div>
+              <div class="qc-bulk-toolbar-actions"><button id="queue-count" class="queue-count queue-count-button" type="button">0 waiting</button><button id="auto-pick-pending" class="secondary-button auto-pick-button" type="button">Auto pick all</button><span id="tray-count" class="queue-count tray-count">10 lines</span><button id="show-imei-columns" class="secondary-button" type="button">&larr; IMEI</button><button id="show-technician-columns" class="secondary-button" type="button">Technician &rarr;</button><button id="add-ten-rows" class="secondary-button" type="button">+ Add 10 lines</button><button id="clear-tray" class="secondary-button" type="button">Clear tray</button></div>
             </section>
             <p id="qc-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
             <form id="qc-form" class="qc-bulk-form" novalidate>

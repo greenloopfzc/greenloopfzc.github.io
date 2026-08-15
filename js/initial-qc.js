@@ -21,6 +21,7 @@
   const app = document.querySelector("#qc-app");
   const permissionMessage = document.querySelector("#permission-message");
   const queueCount = document.querySelector("#queue-count");
+  const autoPickButton = document.querySelector("#auto-pick-pending");
   const trayCount = document.querySelector("#tray-count");
   const tableBody = document.querySelector("#qc-bulk-body");
   const tableScroll = document.querySelector("#qc-bulk-scroll");
@@ -402,6 +403,65 @@
     if (!pendingModal.hidden) renderPendingJobs(pendingSearch.value);
   }
 
+  async function autoPickAllPending() {
+    setMessage();
+    setSubmitting(autoPickButton, true, "Loading...");
+    try {
+      await loadPendingCount();
+      const imeis = pendingJobs
+        .map(pendingJobData)
+        .map((job) => String(job.imei || "").trim())
+        .filter((imei) => /^\d{15}$/.test(imei));
+
+      if (!imeis.length) {
+        setMessage("No valid IMEIs are waiting in Initial QC.");
+        return;
+      }
+
+      const trayHasData = rowJobs.size > 0 || [...tableBody.querySelectorAll(".qc-bulk-imei")].some((input) => input.value.trim());
+      if (trayHasData && !window.confirm(`Replace the current tray and load all ${imeis.length} pending Initial QC IMEIs? Unsaved tray entries will be cleared.`)) return;
+
+      tableBody.innerHTML = "";
+      rowJobs.clear();
+      rowSequence = 0;
+      createRows(imeis.length);
+      const rows = [...tableBody.rows];
+      const batchSize = 6;
+
+      for (let start = 0; start < imeis.length; start += batchSize) {
+        const end = Math.min(start + batchSize, imeis.length);
+        await Promise.all(imeis.slice(start, end).map((imei, offset) => {
+          const row = rows[start + offset];
+          row.querySelector(".qc-bulk-imei").value = imei;
+          return loadScannedRow(row);
+        }));
+        autoPickButton.textContent = `Loading ${end}/${imeis.length}`;
+      }
+
+      // Auto-pick may contain different suppliers and grades. Keep every row's
+      // own saved grades instead of carrying line 1 across the whole queue.
+      rows.forEach((row) => {
+        const selectedJob = rowJobs.get(row.dataset.rowId);
+        if (!selectedJob) return;
+        row.querySelector('[data-carry-field="supplierGrade"]').value = selectedJob.supplier_grade ? String(selectedJob.supplier_grade).toUpperCase() : "";
+        row.querySelector('[data-carry-field="gcGrade"]').value = selectedJob.device?.gc_grade ? String(selectedJob.device.gc_grade).toUpperCase() : "";
+      });
+
+      const loadedCount = rows.filter((row) => rowJobs.has(row.dataset.rowId)).length;
+      if (loadedCount === imeis.length) {
+        setMessage(`${loadedCount} pending Initial QC IMEIs loaded. Review every row, then save.`, true);
+      } else {
+        setMessage(`${loadedCount} of ${imeis.length} pending Initial QC IMEIs loaded. Check the highlighted rows.`);
+      }
+      rows.find((row) => rowJobs.has(row.dataset.rowId))?.querySelector('[data-carry-field="supplierGrade"]')?.focus();
+      window.requestAnimationFrame(syncHorizontalScrollWidth);
+    } catch (error) {
+      setMessage(error.message || "Pending Initial QC IMEIs could not be loaded.");
+    } finally {
+      setSubmitting(autoPickButton, false);
+    }
+  }
+
   function uniqueValues(values) {
     return [...new Set(values.filter(Boolean))];
   }
@@ -658,6 +718,7 @@
 
   document.querySelector("#add-ten-rows").addEventListener("click", () => createRows(10));
   document.querySelector("#clear-tray").addEventListener("click", resetTray);
+  autoPickButton.addEventListener("click", autoPickAllPending);
   queueCount.addEventListener("click", openPendingModal);
   pendingSearch.addEventListener("input", () => renderPendingJobs(pendingSearch.value));
   pendingModal.addEventListener("click", (event) => { if (event.target.closest("[data-close-pending]")) closePendingModal(); });

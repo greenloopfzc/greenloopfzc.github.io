@@ -10,11 +10,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/final-qc.css?v=20260814-compact-1">
+    <link rel="stylesheet" href="css/final-qc.css?v=20260815-auto-pick-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script defer src="js/config.js"></script>
     <script defer src="js/part-notifications.js?v=20260813-1"></script>
-    <script defer src="js/final-qc.js?v=20260814-2"></script>
+    <script defer src="js/final-qc.js?v=20260815-auto-pick-1"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -46,7 +46,7 @@
           <section id="final-qc-app" class="final-bulk-app" hidden>
             <section class="final-bulk-toolbar">
               <div><p class="panel-kicker">Final QC work tray</p><h2>Scan IMEIs, select Final Grade, then Pass or Fail</h2><p>Only scanned IMEIs are processed. Pending jobs are never loaded into the tray automatically.</p></div>
-              <div class="final-bulk-toolbar-actions"><button id="queue-count" class="final-queue-count" type="button">0 waiting</button><span id="tray-count" class="final-tray-count">10 lines</span><button id="add-ten-rows" class="secondary-button" type="button">+ Add 10 lines</button><button id="clear-tray" class="secondary-button" type="button">Clear tray</button><button id="refresh-queue" class="secondary-button" type="button">Refresh</button></div>
+              <div class="final-bulk-toolbar-actions"><button id="queue-count" class="final-queue-count" type="button">0 waiting</button><button id="auto-pick-pending" class="secondary-button auto-pick-button" type="button">Auto pick all</button><span id="tray-count" class="final-tray-count">10 lines</span><button id="add-ten-rows" class="secondary-button" type="button">+ Add 10 lines</button><button id="clear-tray" class="secondary-button" type="button">Clear tray</button><button id="refresh-queue" class="secondary-button" type="button">Refresh</button></div>
             </section>
             <p id="final-qc-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
             <form id="final-qc-form" class="final-bulk-form" novalidate>

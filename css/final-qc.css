@@ -90,6 +90,15 @@ body.final-modal-open { overflow: hidden; }
 .final-pending-table td:nth-child(2), .final-pending-table td:nth-child(3) { color: #0b6c4c; font-weight: 800; }
 .final-pending-empty { padding: 28px !important; color: #738279 !important; text-align: center !important; }
 
+.final-bulk-toolbar-actions .auto-pick-button {
+  border-color: #0f7654;
+  color: #fff;
+  background: #117a56;
+  box-shadow: 0 8px 18px rgba(17, 122, 86, .16);
+}
+.final-bulk-toolbar-actions .auto-pick-button:hover { background: #0d6848; }
+.final-bulk-toolbar-actions .auto-pick-button:disabled { cursor: wait; opacity: .72; }
+
 @media (max-width: 850px) {
   .final-bulk-content { padding-right: 15px; padding-left: 15px; }
   .final-bulk-heading, .final-bulk-toolbar, .final-bulk-actions { align-items: flex-start; flex-direction: column; }

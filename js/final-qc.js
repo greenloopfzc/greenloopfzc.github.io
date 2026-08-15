@@ -5,6 +5,7 @@
   const app = document.querySelector("#final-qc-app");
   const permissionMessage = document.querySelector("#permission-message");
   const queueCount = document.querySelector("#queue-count");
+  const autoPickButton = document.querySelector("#auto-pick-pending");
   const trayCount = document.querySelector("#tray-count");
   const tableBody = document.querySelector("#final-bulk-body");
   const form = document.querySelector("#final-qc-form");
@@ -295,6 +296,55 @@
     if (!pendingModal.hidden) renderPendingJobs(pendingSearch.value);
   }
 
+  async function autoPickAllPending() {
+    setMessage();
+    setSubmitting(autoPickButton, true, "Loading...");
+    try {
+      await loadQueue();
+      const pending = queueSteps
+        .map((step) => ({ step, imei: String(getDevice(step)?.imei_1 || "").trim() }))
+        .filter((item) => /^\d{15}$/.test(item.imei));
+
+      if (!pending.length) {
+        setMessage("No valid IMEIs are waiting in Final QC.");
+        return;
+      }
+
+      const trayHasData = rowSteps.size > 0 || [...tableBody.querySelectorAll(".final-row-imei")].some((input) => input.value.trim());
+      if (trayHasData && !window.confirm(`Replace the current tray and load all ${pending.length} pending Final QC IMEIs? Unsaved tray entries will be cleared.`)) return;
+
+      tableBody.innerHTML = "";
+      rowSteps.clear();
+      rowSequence = 0;
+      createRows(pending.length);
+      const rows = [...tableBody.rows];
+      const batchSize = 20;
+
+      for (let start = 0; start < pending.length; start += batchSize) {
+        const end = Math.min(start + batchSize, pending.length);
+        await Promise.all(pending.slice(start, end).map((item, offset) => {
+          const row = rows[start + offset];
+          row.querySelector(".final-row-imei").value = item.imei;
+          return loadScannedRow(row);
+        }));
+        autoPickButton.textContent = `Loading ${end}/${pending.length}`;
+      }
+
+      const loadedCount = rows.filter((row) => rowSteps.has(row.dataset.rowId)).length;
+      if (loadedCount === pending.length) {
+        setMessage(`${loadedCount} pending Final QC IMEIs loaded. Review Final Grade, Battery Health, and result before saving.`, true);
+      } else {
+        setMessage(`${loadedCount} of ${pending.length} pending Final QC IMEIs loaded. Check the highlighted rows.`);
+      }
+      rows.find((row) => rowSteps.has(row.dataset.rowId))?.querySelector("[data-final-grade]")?.focus();
+      window.requestAnimationFrame(syncHorizontalScrollWidth);
+    } catch (error) {
+      setMessage(error.message || "Pending Final QC IMEIs could not be loaded.");
+    } finally {
+      setSubmitting(autoPickButton, false);
+    }
+  }
+
   function pendingData(step) {
     const job = getJob(step) || {};
     const device = getDevice(step) || {};
@@ -556,6 +606,7 @@
 
   document.querySelector("#add-ten-rows").addEventListener("click", () => createRows(10));
   document.querySelector("#clear-tray").addEventListener("click", resetTray);
+  autoPickButton.addEventListener("click", autoPickAllPending);
   document.querySelector("#refresh-queue").addEventListener("click", () => loadQueue().then(() => showToast("Final QC queue refreshed.")).catch((error) => setMessage(error.message || "Queue could not be refreshed.")));
   queueCount.addEventListener("click", openPendingModal);
   pendingSearch.addEventListener("input", () => renderPendingJobs(pendingSearch.value));
