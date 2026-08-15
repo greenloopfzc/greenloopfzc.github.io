@@ -97,13 +97,13 @@
     const frame = row.querySelector('[data-result="frame"]')?.checked;
     const fail = row.querySelector('[data-result="fail"]')?.checked;
     if (fail) return "fail";
-    if (pass && frame) return "frame";
+    if (frame) return "frame";
     if (pass) return "pass";
     return "";
   }
 
   function setResultSelection(row, value) {
-    row.querySelector('[data-result="pass"]').checked = value === "pass" || value === "frame";
+    row.querySelector('[data-result="pass"]').checked = value === "pass";
     row.querySelector('[data-result="frame"]').checked = value === "frame";
     row.querySelector('[data-result="fail"]').checked = value === "fail";
   }
@@ -116,11 +116,9 @@
       pass.checked = false;
       frame.checked = false;
     } else if (changedInput === frame && frame.checked) {
-      pass.checked = true;
       fail.checked = false;
-    } else if (changedInput === pass) {
-      if (pass.checked) fail.checked = false;
-      else frame.checked = false;
+    } else if (changedInput === pass && pass.checked) {
+      fail.checked = false;
     }
   }
 
@@ -424,7 +422,7 @@
     const finalBatteryText = finalBatteryInput.value.trim();
     const finalBattery = finalBatteryText === "" ? null : Number(finalBatteryText);
     if (!result) {
-      const errorText = "Tick Pass, Pass + Frame, or Fail.";
+      const errorText = "Tick Pass, Frame, or Fail.";
       row.classList.add("is-error");
       setRowState(row, errorText, "is-error");
       return { ok: false, error: errorText };
@@ -460,7 +458,7 @@
         p_job_id: getJob(step).id,
         p_final_grade: finalGrade,
         p_final_battery_health: finalBattery,
-        p_notes: "Final QC passed; Frame work required"
+        p_notes: "Final QC routed to Frame for required work"
       })
       : await getClient().rpc("complete_final_qc_with_final_grade", {
         p_job_id: getJob(step).id,
@@ -489,7 +487,7 @@
     rowButton.textContent = "Saved";
     setRowState(row, result === "pass"
       ? `Passed · Attempt ${response?.attempt_number || "-"}`
-      : result === "frame" ? "Passed · Sent to Frame" : "Failed · Laboratory rework", "is-completed");
+      : result === "frame" ? "Sent to Frame" : "Failed · Laboratory rework", "is-completed");
     queueSteps = queueSteps.filter((candidate) => candidate.id !== step.id);
     queueCount.textContent = `${queueSteps.length} waiting`;
     return { ok: true, result };
@@ -506,7 +504,7 @@
     showToast(result.result === "pass"
       ? "Final QC passed. Phone sent to Ready Stock."
       : result.result === "frame"
-        ? "Phone sent to Frame. It will return to Final QC after Frame completion."
+        ? "Phone sent to Frame. A Frame Pass will send it to Ready Stock."
         : "Final QC failed. Phone returned to Laboratory.");
     focusNextInspection(row);
   }
