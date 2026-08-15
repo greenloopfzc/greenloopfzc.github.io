@@ -7,6 +7,10 @@
   const stepSelect = document.querySelector("#lab-step-select");
   const imeiScan = document.querySelector("#lab-imei-scan");
   const queueCount = document.querySelector("#queue-count");
+  const technicianCards = document.querySelector("#technician-cards");
+  const technicianBoardTitle = document.querySelector("#technician-board-title");
+  const addTechnicianButton = document.querySelector("#add-lab-technician");
+  const removeTechnicianButton = document.querySelector("#remove-lab-technician");
   const emptyState = document.querySelector("#lab-empty");
   const workspace = document.querySelector("#lab-workspace");
   const deviceSummary = document.querySelector("#lab-device-summary");
@@ -28,6 +32,8 @@
   const toast = document.querySelector("#toast");
   let client;
   let queueSteps = [];
+  let technicians = [];
+  let activeTechnicianId = "";
   let selectedStep;
   let currentRecord;
   let timer;
@@ -75,6 +81,84 @@
   function getDevice(step) { const job = getJob(step) || {}; return Array.isArray(job.device) ? job.device[0] : job.device; }
   function getSupplier(job) { return Array.isArray(job?.supplier) ? job.supplier[0] : job?.supplier; }
   function supplierLabel(supplier) { return [supplier?.supplier_code, supplier?.company_name].filter((value) => String(value || "").trim()).join(" - ") || "Not recorded"; }
+
+  function normaliseName(value) {
+    return String(value || "").trim().replace(/\s+/g, " ").toLocaleLowerCase();
+  }
+
+  function initials(value) {
+    return String(value || "T").trim().split(/\s+/).slice(0, 2).map((part) => part[0] || "").join("").toUpperCase() || "T";
+  }
+
+  function technicianForStep(step) {
+    if (!step) return undefined;
+    const rosterId = String(step.assigned_technician_roster_id || "");
+    if (rosterId) return technicians.find((technician) => String(technician.id) === rosterId);
+    const name = normaliseName(step.assigned_technician_name);
+    return technicians.find((technician) => normaliseName(technician.full_name) === name);
+  }
+
+  function visibleQueueSteps() {
+    if (!activeTechnicianId) return [];
+    return queueSteps.filter((step) => String(technicianForStep(step)?.id || "") === String(activeTechnicianId));
+  }
+
+  function renderTechnicianCards() {
+    technicianCards.innerHTML = technicians.length
+      ? technicians.map((technician) => {
+        const count = queueSteps.filter((step) => String(technicianForStep(step)?.id || "") === String(technician.id)).length;
+        const active = String(technician.id) === String(activeTechnicianId);
+        return `<button class="technician-card${active ? " is-active" : ""}" type="button" role="listitem" data-technician-id="${escapeHtml(technician.id)}" aria-pressed="${active}"><span class="technician-avatar" aria-hidden="true">${escapeHtml(initials(technician.full_name))}</span><span class="technician-card-copy"><strong>${escapeHtml(technician.full_name)}</strong><span>${count} assigned IMEI${count === 1 ? "" : "s"}</span></span><span class="technician-card-count${count ? "" : " is-zero"}">${count > 99 ? "99+" : count}</span></button>`;
+      }).join("")
+      : '<p class="history-empty">No technicians are available. Add the first technician.</p>';
+    const selected = technicians.find((technician) => String(technician.id) === String(activeTechnicianId));
+    technicianBoardTitle.textContent = selected ? `${selected.full_name}'s assigned work` : "Select a technician";
+    removeTechnicianButton.disabled = !selected;
+  }
+
+  async function loadTechnicians(preferredId = activeTechnicianId) {
+    const { data, error } = await getClient().rpc("get_lab_technician_workboard");
+    if (error) throw error;
+    technicians = data || [];
+    const preferredExists = technicians.some((technician) => String(technician.id) === String(preferredId));
+    if (preferredExists) activeTechnicianId = String(preferredId);
+    else {
+      const firstAssigned = technicians.find((technician) => Number(technician.pending_count || 0) > 0);
+      activeTechnicianId = String(firstAssigned?.id || technicians[0]?.id || "");
+    }
+    renderTechnicianCards();
+  }
+
+  async function addTechnician() {
+    const fullName = window.prompt("Enter the technician name:");
+    if (!fullName?.trim()) return;
+    addTechnicianButton.disabled = true;
+    const { data, error } = await getClient().rpc("add_lab_technician", { p_full_name: fullName.trim() });
+    addTechnicianButton.disabled = false;
+    if (error) { setMessage(error.message || "Technician could not be added."); return; }
+    const saved = data?.[0] || data;
+    await loadTechnicians(saved?.id || "");
+    renderQueueOptions();
+    showToast(`${saved?.full_name || fullName.trim()} added to the Laboratory workboard.`);
+  }
+
+  async function removeTechnician() {
+    const technician = technicians.find((item) => String(item.id) === String(activeTechnicianId));
+    if (!technician) return;
+    if (visibleQueueSteps().length) {
+      setMessage("Move or complete this technician's assigned IMEIs before removing the name.");
+      return;
+    }
+    if (window.prompt(`Enter deletion code to remove ${technician.full_name}:`) !== "1213") return;
+    removeTechnicianButton.disabled = true;
+    const { error } = await getClient().rpc("remove_lab_technician", { p_technician_id: technician.id, p_deletion_code: "1213" });
+    removeTechnicianButton.disabled = false;
+    if (error) { setMessage(error.message || "Technician could not be removed."); return; }
+    activeTechnicianId = "";
+    await loadTechnicians();
+    renderQueueOptions();
+    showToast("Technician removed from the active workboard.");
+  }
 
   function money(value) {
     return `AED ${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -188,7 +272,7 @@
         ? "Requested from Parts"
         : requirement.status === "not_required" ? "Not required" : "Waiting for Laboratory review";
       const actions = isPending
-        ? `<div class="lab-planned-actions"><button type="button" data-request-planned-part="${requirement.id}">Request from Parts</button><button type="button" data-skip-planned-part="${requirement.id}">Not required</button></div>`
+        ? `<div class="lab-planned-actions"><button type="button" data-request-planned-part="${requirement.id}">Confirm &amp; request</button><button type="button" data-skip-planned-part="${requirement.id}">Not required</button></div>`
         : `<span class="lab-plan-status ${requirement.status}">${statusLabel}</span>`;
       return `<article class="lab-planned-row"><div><strong>${escapeHtml(requirement.part_name)}</strong><span>Quantity ${Number(requirement.quantity_required || 1)}${requirement.notes ? ` · ${escapeHtml(requirement.notes)}` : ""}</span></div>${actions}</article>`;
     }).join("");
@@ -239,34 +323,48 @@
     setWorkState(recordResponse.data);
   }
 
-  async function loadQueue() {
-    const selectedId = stepSelect.value;
-    const { data, error } = await getClient()
-      .from("job_work_order_steps")
-      .select("id, step_order, rework_count, assigned_technician_name, work_order:job_work_orders!inner(work_order_number, job:jobs!inner(id, job_number, current_status, supplier_grade, supplier:suppliers(supplier_code, company_name), device:devices(device_number, imei_1, model, storage_gb, color, original_grade)))")
-      .eq("department", "laboratory")
-      .eq("step_status", "in_progress")
-      .order("created_at", { ascending: true });
-    if (error) throw error;
-    queueSteps = (data || []).filter((step) => ["laboratory_pending", "laboratory_in_progress"].includes(getJob(step)?.current_status));
-    queueCount.textContent = `${queueSteps.length} waiting`;
-    stepSelect.replaceChildren(new Option(queueSteps.length ? "Select a Laboratory work order" : "No Laboratory jobs waiting", ""));
-    queueSteps.forEach((step) => {
+  function renderQueueOptions(selectedId = stepSelect.value) {
+    const visibleSteps = visibleQueueSteps();
+    const technician = technicians.find((item) => String(item.id) === String(activeTechnicianId));
+    queueCount.textContent = `${visibleSteps.length} assigned`;
+    stepSelect.replaceChildren(new Option(visibleSteps.length ? `Select ${technician?.full_name || "technician"}'s work order` : "No assigned jobs waiting", ""));
+    visibleSteps.forEach((step) => {
       const job = getJob(step) || {};
       const device = getDevice(step) || {};
       const supplier = getSupplier(job) || {};
-      stepSelect.add(new Option(`${supplierLabel(supplier)} · ${job.job_number} · ${device.device_number || "Device"} · ${device.brand || "Unknown"} ${device.model || ""}`.trim(), step.id));
+      stepSelect.add(new Option(`${supplierLabel(supplier)} · ${job.job_number} · ${device.imei_1 || device.device_number || "Device"} · ${device.model || ""}`.trim(), step.id));
     });
-    emptyState.hidden = queueSteps.length !== 0;
-    if (selectedId && queueSteps.some((step) => step.id === selectedId)) {
-      stepSelect.value = selectedId;
-      await loadSelectedStep();
-    } else {
+    emptyState.hidden = visibleSteps.length !== 0;
+    if (!visibleSteps.length) {
+      emptyState.querySelector("strong").textContent = technician ? `${technician.full_name}'s queue is clear.` : "Select a technician.";
+      emptyState.querySelector("span").textContent = technician ? "No active IMEI is assigned to this technician." : "Choose a technician card to view assigned work.";
+    }
+    if (selectedId && visibleSteps.some((step) => step.id === selectedId)) stepSelect.value = selectedId;
+    else {
       stepSelect.value = "";
       selectedStep = undefined;
       workspace.hidden = true;
       setMessage();
     }
+  }
+
+  async function loadQueue() {
+    const selectedId = stepSelect.value;
+    const { data, error } = await getClient()
+      .from("job_work_order_steps")
+      .select("id, step_order, rework_count, assigned_technician_roster_id, assigned_technician_name, work_order:job_work_orders!inner(work_order_number, job:jobs!inner(id, job_number, current_status, supplier_grade, supplier:suppliers(supplier_code, company_name), device:devices(device_number, imei_1, model, storage_gb, color, original_grade)))")
+      .eq("department", "laboratory")
+      .eq("step_status", "in_progress")
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    queueSteps = (data || []).filter((step) => ["laboratory_pending", "laboratory_in_progress"].includes(getJob(step)?.current_status));
+    if (!activeTechnicianId) {
+      const firstAssignedStep = queueSteps.find((step) => technicianForStep(step));
+      activeTechnicianId = String(technicianForStep(firstAssignedStep)?.id || technicians[0]?.id || "");
+    }
+    renderTechnicianCards();
+    renderQueueOptions(selectedId);
+    if (stepSelect.value) await loadSelectedStep();
   }
 
   function selectScannedImei() {
@@ -280,6 +378,10 @@
       setMessage("This IMEI is not currently waiting in the Laboratory queue.");
       return;
     }
+    const technician = technicianForStep(match);
+    if (technician) activeTechnicianId = String(technician.id);
+    renderTechnicianCards();
+    renderQueueOptions(match.id);
     stepSelect.value = match.id;
     loadSelectedStep().catch((error) => setMessage(error.message || "Could not load this Laboratory job."));
   }
@@ -372,6 +474,7 @@
     document.querySelector("#additional-part-notes").value = "";
     document.querySelector("#additional-part-quantity").value = 1;
     showToast("Additional part requested from Laboratory. The mobile remains in Laboratory.");
+    document.dispatchEvent(new CustomEvent("greenloop:notifications-changed"));
     await loadSelectedStep();
   }
 
@@ -400,6 +503,7 @@
     showToast(requestButton
       ? "Part requested from Laboratory. It is now visible to the Parts Department."
       : "Part marked as not required by Laboratory.");
+    document.dispatchEvent(new CustomEvent("greenloop:notifications-changed"));
     await loadSelectedStep();
   }
 
@@ -419,6 +523,7 @@
       return;
     }
     app.hidden = false;
+    await loadTechnicians();
     await loadQueue();
   }
 
@@ -427,6 +532,15 @@
   backdrop.addEventListener("click", () => setMenu(false));
   document.querySelectorAll(".module-link").forEach((button) => button.addEventListener("click", () => showToast(`${button.dataset.module} will be added in the next workflow steps.`)));
   document.querySelector("#refresh-queue").addEventListener("click", () => loadQueue().catch((error) => showToast(error.message || "Could not refresh the queue.")));
+  technicianCards.addEventListener("click", (event) => {
+    const card = event.target.closest("[data-technician-id]");
+    if (!card) return;
+    activeTechnicianId = card.dataset.technicianId;
+    renderTechnicianCards();
+    renderQueueOptions("");
+  });
+  addTechnicianButton.addEventListener("click", () => addTechnician().catch((error) => setMessage(error.message || "Technician could not be added.")));
+  removeTechnicianButton.addEventListener("click", () => removeTechnician().catch((error) => setMessage(error.message || "Technician could not be removed.")));
   stepSelect.addEventListener("change", () => loadSelectedStep().catch((error) => setMessage(error.message || "Could not load this Laboratory job.")));
   imeiScan.addEventListener("input", () => { if (/^\d{15}$/.test(imeiScan.value.trim())) selectScannedImei(); });
   imeiScan.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); selectScannedImei(); } });
