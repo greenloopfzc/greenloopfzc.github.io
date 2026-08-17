@@ -46,6 +46,12 @@ body:not(.frame-mode) .technician-lines-table > tbody > tr > td { border-right: 
 .lab-repeat-select:disabled { color: #89958e; background: #f4f6f5; cursor: not-allowed; }
 .lab-line-actions { display: grid; align-content: center; gap: 5px; padding: 9px; background: #edf7f1; }
 .lab-line-actions .line-save.complete { background: #155d83; }
+.line-save.order-parts { background: #087451; }
+.line-save.job-completed { background: #196b91; }
+.line-save.job-completed:disabled { color: #718078; background: #e4ebe7; opacity: 1; cursor: not-allowed; }
+.line-save.line-state:disabled { opacity: 1; cursor: default; }
+.line-save.parts-ordered { color: #805713; background: #fff0cd; }
+.line-save.parts-issued { color: #087451; background: #dff3e7; }
 .line-imei { color: #087451; font-size: .68rem; font-weight: 850; }
 .line-supplier { display: block; margin-top: 2px; color: #7b887f; font-size: .51rem; line-height: 1.15; }
 .line-list { display: flex; flex-wrap: wrap; gap: 3px; }

@@ -97,6 +97,24 @@
   function repeatReasonMarkup() {
     return `<option value="">Select repeat reason</option><option value="faulty_part">Faulty Part</option><option value="technician_damage">Damaged by Technician</option><option value="other">Other</option>`;
   }
+  function lineWorkflowState(row) {
+    const requests = asList(row.lab_part_requests).filter((item) => item.status !== "cancelled");
+    const initialParts = asList(row.initial_parts);
+    const submitted = requests.length > 0 || asList(row.lab_services).length > 0 || initialParts.some((item) => ["requested", "not_required"].includes(String(item.status)));
+    const allIssued = submitted && requests.every((item) => Number(item.issued || 0) >= Number(item.quantity || 1));
+    return { requests, submitted, allIssued, hasParts: requests.length > 0 };
+  }
+  function actionCell(row) {
+    const state = lineWorkflowState(row);
+    if (!state.submitted) {
+      return `<button class="line-save order-parts" type="button" data-order-parts="${escapeHtml(row.step_id)}">Order Parts</button><button class="line-save job-completed" type="button" data-complete-lab="${escapeHtml(row.step_id)}" disabled>✓ Job Completed</button><small class="line-status" data-line-status>Order parts and save services first</small>`;
+    }
+    if (!state.allIssued) {
+      return `<button class="line-save line-state parts-ordered" type="button" data-order-parts="${escapeHtml(row.step_id)}" disabled>Parts Ordered</button><button class="line-save job-completed" type="button" data-complete-lab="${escapeHtml(row.step_id)}" disabled>✓ Job Completed</button><small class="line-status" data-line-status>Waiting for Parts Department</small>`;
+    }
+    const issuedLabel = state.hasParts ? "✓ Parts Issued" : "✓ No Parts Required";
+    return `<button class="line-save line-state parts-issued" type="button" data-order-parts="${escapeHtml(row.step_id)}" disabled>${issuedLabel}</button><button class="line-save job-completed" type="button" data-complete-lab="${escapeHtml(row.step_id)}">✓ Job Completed</button><small class="line-status success" data-line-status>Ready to send to Final QC</small>`;
+  }
 
   function renderTechnicianLines() {
     const selectedTech = technicians.find((item) => String(item.id) === String(activeTechnicianId));
@@ -110,7 +128,7 @@
       const supplier = row.supplier_code || row.supplier_name || "—";
       const saveCell = isFrameMode
         ? `<button class="line-save frame" type="button" data-complete-frame="${escapeHtml(row.step_id)}">Complete Frame</button><small class="line-status">Returns to Final QC</small>`
-        : `<button class="line-save" type="button" data-save-line="${escapeHtml(row.step_id)}">Save</button><button class="line-save complete" type="button" data-complete-lab="${escapeHtml(row.step_id)}">Complete → QC</button><small class="line-status" data-line-status>Not saved</small>`;
+        : actionCell(row);
       if (isFrameMode) {
         return `<tr data-step-id="${escapeHtml(row.step_id)}"><td><strong class="line-imei">${escapeHtml(row.imei || "—")}</strong><small class="line-supplier">${escapeHtml(supplier)}</small></td><td>${escapeHtml(row.model || "—")}</td><td>${escapeHtml(row.storage_gb == null ? "—" : `${row.storage_gb} GB`)}</td><td>${escapeHtml(row.color || "—")}</td><td>${escapeHtml(row.battery_health == null ? "—" : `${row.battery_health}%`)}</td><td>${readOnlyList(qcParts)}</td><td>${readOnlyList(qcServices)}</td><td>${readOnlyList(labPartNames(row))}</td><td>${readOnlyList(labServiceNames(row))}</td><td>—</td><td>—</td><td>${saveCell}</td></tr>`;
       }
@@ -214,8 +232,24 @@
     if (!value || selectedChoices(button.closest("tr"), holder.dataset.choice).some((item) => normalise(item) === normalise(value))) return;
     holder.querySelector(".lab-choice-tags").insertAdjacentHTML("beforeend", `<button type="button" data-remove-choice="${holder.dataset.choice}" data-value="${escapeHtml(value)}" title="Remove">${escapeHtml(value)}</button>`);
     select.value = "";
+    markLineChanged(button.closest("tr"));
   }
-  async function saveLine(button) {
+  function markLineChanged(row) {
+    const orderButton = row.querySelector("[data-order-parts]");
+    const completeButton = row.querySelector("[data-complete-lab]");
+    const status = row.querySelector("[data-line-status]");
+    if (!orderButton) return;
+    row.dataset.dirty = "true";
+    orderButton.disabled = false;
+    orderButton.textContent = "Order Updated Parts";
+    orderButton.className = "line-save order-parts";
+    if (completeButton) completeButton.disabled = true;
+    if (status) {
+      status.textContent = "Submit the updated order before completing the job";
+      status.className = "line-status";
+    }
+  }
+  async function orderParts(button) {
     const row = button.closest("tr");
     const status = row.querySelector("[data-line-status]");
     const repeatPart = row.querySelector("[data-repeat-part]")?.value || "";
@@ -226,7 +260,7 @@
       row.querySelector("[data-repeat-reason]").focus();
       return;
     }
-    setSubmitting(button, true, "Saving...");
+    setSubmitting(button, true, "Ordering...");
     const { data, error } = await getClient().rpc("save_lab_technician_line_v2", {
       p_work_order_step_id: row.dataset.stepId,
       p_lab_parts: selectedChoices(row, "part"),
@@ -242,15 +276,15 @@
     status.textContent = data?.repeat_part_requested ? `${notifications} part notification(s); repeat order #${Number(data.repeat_number || 2)}` : `${notifications} part notification(s)`;
     status.className = "line-status success";
     document.dispatchEvent(new CustomEvent("greenloop:notifications-changed"));
-    showToast("Lab line saved. Only parts were sent to Parts.");
+    showToast("Parts order submitted. Services were saved without a Parts notification.");
     await refreshAll();
   }
   async function completeLab(button) {
-    setSubmitting(button, true, "Checking...");
+    setSubmitting(button, true, "Completing...");
     const { error } = await getClient().rpc("complete_lab_technician_line", { p_work_order_step_id: button.dataset.completeLab });
     setSubmitting(button, false);
     if (error) { setBoardMessage(error.message); return; }
-    showToast("Laboratory completed. Phone sent to Final QC.");
+    showToast("Job completed. Phone sent to Final QC.");
     document.dispatchEvent(new CustomEvent("greenloop:notifications-changed"));
     await refreshAll();
   }
@@ -277,6 +311,12 @@
     app.hidden = false;
     if (!isFrameMode) await loadPartOptions();
     await refreshAll();
+    if (!isFrameMode) {
+      window.setInterval(() => {
+        if (document.visibilityState !== "visible" || app.hidden || technicianWorkRows.querySelector('tr[data-dirty="true"]')) return;
+        loadTechnicianRows().catch(() => {});
+      }, 12000);
+    }
   }
 
   document.querySelector("#open-menu").addEventListener("click", () => setMenu(true));
@@ -289,8 +329,8 @@
   technicianCards.addEventListener("click", (event) => { const card = event.target.closest("[data-technician-id]"); if (!card) return; activeTechnicianId = card.dataset.technicianId; renderTechnicianCards(); loadTechnicianRows().catch((error) => setBoardMessage(error.message)); });
   technicianWorkRows.addEventListener("click", (event) => {
     const add = event.target.closest("[data-add-choice]"); if (add) { addChoice(add); return; }
-    const remove = event.target.closest("[data-remove-choice]"); if (remove) { remove.remove(); return; }
-    const save = event.target.closest("[data-save-line]"); if (save) saveLine(save).catch((error) => setBoardMessage(error.message));
+    const remove = event.target.closest("[data-remove-choice]"); if (remove) { const row = remove.closest("tr"); remove.remove(); markLineChanged(row); return; }
+    const order = event.target.closest("[data-order-parts]"); if (order && !order.disabled) orderParts(order).catch((error) => setBoardMessage(error.message));
     const completeLabButton = event.target.closest("[data-complete-lab]"); if (completeLabButton) completeLab(completeLabButton).catch((error) => setBoardMessage(error.message));
     const completeFrameButton = event.target.closest("[data-complete-frame]"); if (completeFrameButton) completeFrame(completeFrameButton).catch((error) => setBoardMessage(error.message));
   });
@@ -300,8 +340,11 @@
       const reason = repeatPart.closest("tr").querySelector("[data-repeat-reason]");
       reason.disabled = !repeatPart.value;
       if (!repeatPart.value) reason.value = "";
+      markLineChanged(repeatPart.closest("tr"));
       return;
     }
+    const repeatReason = event.target.closest("[data-repeat-reason]");
+    if (repeatReason) { markLineChanged(repeatReason.closest("tr")); return; }
     const checkbox = event.target.closest("[data-frame-pass]");
     if (!checkbox) return;
     const button = checkbox.closest("tr").querySelector("[data-complete-frame]");
