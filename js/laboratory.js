@@ -88,6 +88,15 @@
     return `<div class="lab-choice" data-choice="${kind}"><div class="lab-choice-row"><select>${optionsMarkup(options, kind === "part" ? "Select part" : "Select service")}</select><button type="button" data-add-choice="${kind}" title="Add">+</button></div><div class="lab-choice-tags">${unique(selected).map((value) => `<button type="button" data-remove-choice="${kind}" data-value="${escapeHtml(value)}" title="Remove">${escapeHtml(value)}</button>`).join("")}</div></div>`;
   }
   function selectedChoices(row, kind) { return unique([...row.querySelectorAll(`[data-choice="${kind}"] [data-remove-choice]`)].map((button) => button.dataset.value)); }
+  function labelledStatic(label, value, className = "") {
+    return `<div class="lab-static-field ${className}"><span class="lab-field-label">${escapeHtml(label)}</span><div class="lab-static-value">${value}</div></div>`;
+  }
+  function repeatPartOptions(row) {
+    return unique([...partOptions, ...initialNames(row.initial_parts), ...labPartNames(row)]);
+  }
+  function repeatReasonMarkup() {
+    return `<option value="">Select repeat reason</option><option value="faulty_part">Faulty Part</option><option value="technician_damage">Damaged by Technician</option><option value="other">Other</option>`;
+  }
 
   function renderTechnicianLines() {
     const selectedTech = technicians.find((item) => String(item.id) === String(activeTechnicianId));
@@ -98,11 +107,24 @@
     technicianWorkRows.innerHTML = filtered.map((row) => {
       const qcParts = initialNames(row.initial_parts);
       const qcServices = initialNames(row.initial_services);
-      const supplier = [row.supplier_code, row.supplier_name].filter(Boolean).join(" - ");
+      const supplier = row.supplier_code || row.supplier_name || "—";
       const saveCell = isFrameMode
         ? `<button class="line-save frame" type="button" data-complete-frame="${escapeHtml(row.step_id)}">Complete Frame</button><small class="line-status">Returns to Final QC</small>`
         : `<button class="line-save" type="button" data-save-line="${escapeHtml(row.step_id)}">Save</button><button class="line-save complete" type="button" data-complete-lab="${escapeHtml(row.step_id)}">Complete → QC</button><small class="line-status" data-line-status>Not saved</small>`;
-      return `<tr data-step-id="${escapeHtml(row.step_id)}"><td><strong class="line-imei">${escapeHtml(row.imei || "—")}</strong><small class="line-supplier">${escapeHtml(supplier || "Supplier not recorded")}</small></td><td>${escapeHtml(row.model || "—")}</td><td>${escapeHtml(row.storage_gb == null ? "—" : `${row.storage_gb} GB`)}</td><td>${escapeHtml(row.color || "—")}</td><td>${escapeHtml(row.battery_health == null ? "—" : `${row.battery_health}%`)}</td><td>${readOnlyList(qcParts)}</td><td>${readOnlyList(qcServices)}</td><td>${isFrameMode ? readOnlyList(labPartNames(row)) : choiceCell("part", partOptions, labPartNames(row))}</td><td>${isFrameMode ? readOnlyList(labServiceNames(row)) : choiceCell("service", standardServices, labServiceNames(row))}</td><td>${isFrameMode ? "—" : '<input class="lab-extra-input" data-extra-parts placeholder="Part(s), comma separated">'}</td><td>${isFrameMode ? "—" : '<input class="lab-extra-input" data-extra-services placeholder="Service(s), comma separated">'}</td><td>${saveCell}</td></tr>`;
+      if (isFrameMode) {
+        return `<tr data-step-id="${escapeHtml(row.step_id)}"><td><strong class="line-imei">${escapeHtml(row.imei || "—")}</strong><small class="line-supplier">${escapeHtml(supplier)}</small></td><td>${escapeHtml(row.model || "—")}</td><td>${escapeHtml(row.storage_gb == null ? "—" : `${row.storage_gb} GB`)}</td><td>${escapeHtml(row.color || "—")}</td><td>${escapeHtml(row.battery_health == null ? "—" : `${row.battery_health}%`)}</td><td>${readOnlyList(qcParts)}</td><td>${readOnlyList(qcServices)}</td><td>${readOnlyList(labPartNames(row))}</td><td>${readOnlyList(labServiceNames(row))}</td><td>—</td><td>—</td><td>${saveCell}</td></tr>`;
+      }
+      const staticLine = [
+        labelledStatic("IMEI", `<strong class="line-imei">${escapeHtml(row.imei || "—")}</strong>`, "imei"),
+        labelledStatic("Model", escapeHtml(row.model || "—")),
+        labelledStatic("GB", escapeHtml(row.storage_gb == null ? "—" : `${row.storage_gb} GB`)),
+        labelledStatic("Color", escapeHtml(row.color || "—")),
+        labelledStatic("BH", escapeHtml(row.battery_health == null ? "—" : `${row.battery_health}%`)),
+        labelledStatic("Supplier Code", escapeHtml(supplier), "supplier"),
+        labelledStatic("Initial QC Parts", readOnlyList(qcParts)),
+        labelledStatic("Initial QC Service", readOnlyList(qcServices))
+      ].join("");
+      return `<tr class="lab-phone-row" data-step-id="${escapeHtml(row.step_id)}"><td colspan="12"><article class="lab-phone-card"><div class="lab-static-grid">${staticLine}</div><div class="lab-edit-grid"><div class="lab-edit-field"><span class="lab-field-label">Lab Parts</span>${choiceCell("part", partOptions, labPartNames(row))}</div><div class="lab-edit-field"><span class="lab-field-label">Lab Service</span>${choiceCell("service", standardServices, labServiceNames(row))}</div><div class="lab-edit-field"><span class="lab-field-label">Same Part Ordered Again</span><select class="lab-repeat-select" data-repeat-part>${optionsMarkup(repeatPartOptions(row), "Select repeated part")}</select><small>Use only for the second or later order.</small></div><div class="lab-edit-field"><span class="lab-field-label">Repeat Reason</span><select class="lab-repeat-select" data-repeat-reason disabled>${repeatReasonMarkup()}</select><small data-repeat-help>Required when the same part is ordered again.</small></div><div class="lab-line-actions">${saveCell}</div></div></article></td></tr>`;
     }).join("");
   }
 
@@ -196,18 +218,28 @@
   async function saveLine(button) {
     const row = button.closest("tr");
     const status = row.querySelector("[data-line-status]");
-    const split = (value) => unique(String(value || "").split(","));
+    const repeatPart = row.querySelector("[data-repeat-part]")?.value || "";
+    const repeatReason = row.querySelector("[data-repeat-reason]")?.value || "";
+    if (repeatPart && !repeatReason) {
+      status.textContent = "Select why the same part is being ordered again.";
+      status.className = "line-status error";
+      row.querySelector("[data-repeat-reason]").focus();
+      return;
+    }
     setSubmitting(button, true, "Saving...");
-    const { data, error } = await getClient().rpc("save_lab_technician_line", {
+    const { data, error } = await getClient().rpc("save_lab_technician_line_v2", {
       p_work_order_step_id: row.dataset.stepId,
       p_lab_parts: selectedChoices(row, "part"),
       p_lab_services: selectedChoices(row, "service"),
-      p_extra_parts: split(row.querySelector("[data-extra-parts]").value),
-      p_extra_services: split(row.querySelector("[data-extra-services]").value)
+      p_extra_parts: [],
+      p_extra_services: [],
+      p_repeat_part: repeatPart || null,
+      p_repeat_reason: repeatReason || null
     });
     setSubmitting(button, false);
     if (error) { status.textContent = error.message; status.className = "line-status error"; return; }
-    status.textContent = `${Number(data?.parts_notified || 0)} part notification(s)`;
+    const notifications = Number(data?.parts_notified || 0) + (data?.repeat_part_requested ? 1 : 0);
+    status.textContent = data?.repeat_part_requested ? `${notifications} part notification(s); repeat order #${Number(data.repeat_number || 2)}` : `${notifications} part notification(s)`;
     status.className = "line-status success";
     document.dispatchEvent(new CustomEvent("greenloop:notifications-changed"));
     showToast("Lab line saved. Only parts were sent to Parts.");
@@ -263,6 +295,13 @@
     const completeFrameButton = event.target.closest("[data-complete-frame]"); if (completeFrameButton) completeFrame(completeFrameButton).catch((error) => setBoardMessage(error.message));
   });
   technicianWorkRows.addEventListener("change", (event) => {
+    const repeatPart = event.target.closest("[data-repeat-part]");
+    if (repeatPart) {
+      const reason = repeatPart.closest("tr").querySelector("[data-repeat-reason]");
+      reason.disabled = !repeatPart.value;
+      if (!repeatPart.value) reason.value = "";
+      return;
+    }
     const checkbox = event.target.closest("[data-frame-pass]");
     if (!checkbox) return;
     const button = checkbox.closest("tr").querySelector("[data-complete-frame]");

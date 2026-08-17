@@ -22,7 +22,7 @@
 .technician-lines-panel { overflow: hidden; }
 .technician-lines-heading { padding: 14px 16px; background: linear-gradient(118deg,#f3faf6,#fff); }
 .technician-lines-panel > .form-message { margin: 0 12px 10px; }
-.technician-lines-scroll { width: 100%; overflow-x: auto; }
+.technician-lines-scroll { width: 100%; overflow-x: hidden; }
 .technician-lines-table { width: 100%; min-width: 1320px; table-layout: fixed; border-collapse: collapse; color: #294334; font-size: .65rem; }
 .technician-lines-table th, .technician-lines-table td { border-top: 1px solid #dce7df; border-right: 1px solid #dce7df; padding: 5px; vertical-align: top; }
 .technician-lines-table th:last-child, .technician-lines-table td:last-child { border-right: 0; }
@@ -30,6 +30,22 @@
 .technician-lines-table th:nth-child(1){width:11%}.technician-lines-table th:nth-child(2){width:6%}.technician-lines-table th:nth-child(3){width:4%}.technician-lines-table th:nth-child(4){width:6%}.technician-lines-table th:nth-child(5){width:4%}.technician-lines-table th:nth-child(6){width:9%}.technician-lines-table th:nth-child(7){width:9%}.technician-lines-table th:nth-child(8){width:12%}.technician-lines-table th:nth-child(9){width:12%}.technician-lines-table th:nth-child(10){width:10%}.technician-lines-table th:nth-child(11){width:10%}.technician-lines-table th:nth-child(12){width:7%}
 .technician-lines-table tbody tr:hover td { background: #fbfefc; }
 .technician-lines-empty { padding: 25px!important; color: #74847a; text-align: center; }
+body:not(.frame-mode) .technician-lines-table { min-width: 0; table-layout: auto; }
+body:not(.frame-mode) .technician-lines-table thead { display: none; }
+body:not(.frame-mode) .technician-lines-table > tbody > tr > td { border-right: 0; padding: 0; }
+.lab-phone-card { display: grid; gap: 0; border-top: 1px solid #dce7df; background: #fff; }
+.lab-static-grid { display: grid; grid-template-columns: 1.15fr .7fr .55fr .7fr .5fr 1.25fr 1.1fr 1.1fr; background: #f5faf7; }
+.lab-static-field { min-width: 0; border-right: 1px solid #dce7df; padding: 8px 9px; }
+.lab-static-field:last-child { border-right: 0; }
+.lab-field-label { display: block; margin-bottom: 5px; color: #557064; font-size: .54rem; font-weight: 850; letter-spacing: .045em; line-height: 1.1; text-transform: uppercase; }
+.lab-static-value { min-height: 22px; color: #254435; font-size: .68rem; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+.lab-edit-grid { display: grid; grid-template-columns: 1.35fr 1.35fr 1.05fr 1.15fr .75fr; align-items: stretch; border-top: 1px solid #dce7df; background: #fff; }
+.lab-edit-field { min-width: 0; border-right: 1px solid #dce7df; padding: 9px; }
+.lab-edit-field > small { display: block; margin-top: 4px; color: #7b887f; font-size: .52rem; line-height: 1.15; }
+.lab-repeat-select { width: 100%; min-height: 31px; border: 1px solid #cfe0d5; border-radius: 6px; padding: 4px 6px; color: #294334; background: #fff; font: inherit; font-size: .61rem; }
+.lab-repeat-select:disabled { color: #89958e; background: #f4f6f5; cursor: not-allowed; }
+.lab-line-actions { display: grid; align-content: center; gap: 5px; padding: 9px; background: #edf7f1; }
+.lab-line-actions .line-save.complete { background: #155d83; }
 .line-imei { color: #087451; font-size: .68rem; font-weight: 850; }
 .line-supplier { display: block; margin-top: 2px; color: #7b887f; font-size: .51rem; line-height: 1.15; }
 .line-list { display: flex; flex-wrap: wrap; gap: 3px; }
@@ -46,6 +62,7 @@
 .line-save:disabled { opacity: .58; cursor: wait; }
 .line-save.frame { background: #c98525; }
 .frame-lines-actions { display: flex; align-items: center; gap: 8px; }
+.frame-mode .technician-lines-scroll { overflow-x: auto; }
 .frame-mode .technician-lines-table { width: 100%; min-width: 0; table-layout: fixed; font-size: .62rem; }
 .frame-mode .technician-lines-table th, .frame-mode .technician-lines-table td { width: auto; padding: 5px 4px; vertical-align: middle; white-space: normal; overflow-wrap: anywhere; }
 .frame-mode .technician-lines-table th:nth-child(1){width:11%}
@@ -68,4 +85,6 @@
 .line-status.error { color: #c3271c; }
 .lab-rule-card { display: flex; gap: 12px; align-items: flex-start; padding: 13px 16px; color: #3e5c49; background: #f2faf5; font-size: .72rem; }
 .lab-rule-card strong { white-space: nowrap; color: #087451; }
-@media(max-width:800px){.technician-board-heading,.technician-lines-heading{align-items:flex-start;flex-direction:column}.technician-board-actions{width:100%}.technician-board-actions button{flex:1}.lab-rule-card{flex-direction:column}.technician-lines-table{min-width:1250px}}
+@media(max-width:1200px){.lab-static-grid{grid-template-columns:repeat(4,1fr)}.lab-static-field{border-bottom:1px solid #dce7df}.lab-edit-grid{grid-template-columns:repeat(2,1fr)}.lab-line-actions{grid-column:1/-1;grid-template-columns:repeat(2,minmax(120px,220px))}.lab-line-actions .line-status{grid-column:1/-1;text-align:left}}
+@media(max-width:800px){.technician-board-heading,.technician-lines-heading{align-items:flex-start;flex-direction:column}.technician-board-actions{width:100%}.technician-board-actions button{flex:1}.lab-rule-card{flex-direction:column}.lab-static-grid,.lab-edit-grid{grid-template-columns:1fr 1fr}.frame-mode .technician-lines-table{min-width:900px}}
+@media(max-width:560px){.lab-static-grid,.lab-edit-grid{grid-template-columns:1fr}.lab-line-actions{grid-template-columns:1fr}.lab-static-field,.lab-edit-field{border-right:0}}

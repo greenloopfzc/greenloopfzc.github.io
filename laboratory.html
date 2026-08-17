@@ -10,11 +10,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/laboratory.css?v=20260815-frame-lines-2">
+    <link rel="stylesheet" href="css/laboratory.css?v=20260817-two-line-lab-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script defer src="js/config.js?v=20260815-simple-1"></script>
     <script defer src="js/part-notifications.js?v=20260815-simple-1"></script>
-    <script defer src="js/laboratory.js?v=20260815-frame-lines-2"></script>
+    <script defer src="js/laboratory.js?v=20260817-two-line-lab-1"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -35,7 +35,7 @@
               <div id="technician-cards" class="technician-cards" role="list"></div>
             </section>
             <section class="technician-lines-panel">
-              <div class="technician-lines-heading"><div><p id="lines-kicker" class="panel-kicker">Selected technician</p><h2 id="technician-lines-title">Assigned phone lines</h2><p id="technician-lines-help">Confirm parts and services, then save that IMEI line.</p></div><div class="frame-lines-actions"><span id="technician-lines-count" class="queue-count">0 lines</span><button id="refresh-frame" class="secondary-button" type="button" hidden>Refresh</button></div></div>
+              <div class="technician-lines-heading"><div><p id="lines-kicker" class="panel-kicker">Selected technician</p><h2 id="technician-lines-title">Assigned phone lines</h2><p id="technician-lines-help">The upper line is fixed QC data. Review Laboratory parts and services on the lower line.</p></div><div class="frame-lines-actions"><span id="technician-lines-count" class="queue-count">0 lines</span><button id="refresh-frame" class="secondary-button" type="button" hidden>Refresh</button></div></div>
               <p id="lab-board-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
               <div class="technician-lines-scroll"><table class="technician-lines-table"><thead><tr id="technician-lines-head"><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>BH</th><th>QC 1 Parts</th><th>QC 1 Service</th><th>Lab Parts</th><th>Lab Service</th><th>Extra Parts Req.</th><th>Extra Service Req.</th><th>Save</th></tr></thead><tbody id="technician-work-rows"><tr><td colspan="12" class="technician-lines-empty">Select a technician.</td></tr></tbody></table></div>
             </section>
