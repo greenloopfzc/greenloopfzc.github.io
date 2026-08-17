@@ -29,6 +29,12 @@
     if (Number.isNaN(date.getTime())) return "—";
     return date.toLocaleString("en-GB", { timeZone: "Asia/Dubai", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
   }
+  function formatMoney(value) {
+    const amount = Number(value || 0);
+    return Number.isFinite(amount)
+      ? amount.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : "0.00";
+  }
   function setMenu(isOpen) { sidebar.classList.toggle("is-open", isOpen); backdrop.hidden = !isOpen; document.body.classList.toggle("menu-open", isOpen); }
   function showToast(text) { clearTimeout(toastTimer); toast.textContent = text; toast.hidden = false; toast.classList.add("is-visible"); toastTimer = setTimeout(() => { toast.hidden = true; toast.classList.remove("is-visible"); }, 3200); }
   function supplierLabel(code) { return supplierLabels.get(code) || code || "—"; }
@@ -39,8 +45,8 @@
       ? `Final QC passed from ${rangeFrom.value} to ${rangeTo.value}. Latest pass appears first.`
       : "All current Ready Stock devices. Latest Final QC pass appears first.";
     body.innerHTML = rows.length
-      ? rows.map((row) => `<tr><td>${escapeHtml(formatDateTime(row.stock_received_at))}</td><td>${escapeHtml(supplierLabel(row.supplier_code))}</td><td>${escapeHtml(row.stock_channel)}</td><td>${escapeHtml(row.stock_batch)}</td><td class="journey-imei">${escapeHtml(row.imei)}</td><td>${escapeHtml(row.model)}</td><td>${row.storage_gb ? `${escapeHtml(row.storage_gb)} GB` : "—"}</td><td>${escapeHtml(row.color)}</td><td>${escapeHtml(row.supplier_grade)}</td><td>${escapeHtml(row.company_initial_grade)}</td><td>${escapeHtml(row.company_final_qc_grade)}</td><td>${escapeHtml(row.parts_used)}</td><td>${escapeHtml(row.work_done)}</td><td>${escapeHtml(row.worked_by)}</td><td>${escapeHtml(row.step_by_step)}</td><td>${escapeHtml(formatDateTime(row.final_qc_passed_at))}</td></tr>`).join("")
-      : '<tr><td class="journey-empty" colspan="16">No Final-QC-passed device is waiting in Ready Stock for this date range.</td></tr>';
+      ? rows.map((row) => `<tr><td>${escapeHtml(formatDateTime(row.stock_received_at))}</td><td>${escapeHtml(supplierLabel(row.supplier_code))}</td><td>${escapeHtml(row.stock_channel)}</td><td>${escapeHtml(row.stock_batch)}</td><td class="journey-imei">${escapeHtml(row.imei)}</td><td>${escapeHtml(row.model)}</td><td>${row.storage_gb ? `${escapeHtml(row.storage_gb)} GB` : "—"}</td><td>${escapeHtml(row.color)}</td><td>${escapeHtml(row.supplier_grade)}</td><td>${escapeHtml(row.company_initial_grade)}</td><td>${escapeHtml(row.company_final_qc_grade)}</td><td class="journey-parts">${escapeHtml(row.parts_used)}</td><td class="journey-money">${escapeHtml(formatMoney(row.parts_cost))}</td><td>${escapeHtml(row.work_done)}</td><td>${escapeHtml(row.worked_by)}</td><td>${escapeHtml(row.step_by_step)}</td><td>${escapeHtml(formatDateTime(row.final_qc_passed_at))}</td></tr>`).join("")
+      : '<tr><td class="journey-empty" colspan="17">No Final-QC-passed device is waiting in Ready Stock for this date range.</td></tr>';
   }
 
   async function loadJourney() {
