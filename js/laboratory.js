@@ -74,14 +74,22 @@
 
   function optionsMarkup(options, placeholder) { return `<option value="">${escapeHtml(placeholder)}</option>${options.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("")}`; }
   function initialNames(items, requiredOnly = false) { return unique(asList(items).filter((item) => !requiredOnly || item.lab_decision !== "not_required").map((item) => item.name)); }
+  function initialServiceNames(row, requiredOnly = false) {
+    const partNames = new Set(initialNames(row.initial_parts).map(normalise));
+    return unique(asList(row.initial_services)
+      .filter((item) => !requiredOnly || item.lab_decision !== "not_required")
+      .map((item) => item.name)
+      .filter((name) => !partNames.has(normalise(name))));
+  }
   function labPartNames(row) {
     const existing = unique(asList(row.lab_part_requests).filter((item) => item.status !== "cancelled").map((item) => item.name));
     return existing.length ? existing : initialNames(row.initial_parts).filter((name) => !asList(row.initial_parts).some((item) => normalise(item.name) === normalise(name) && item.status === "not_required"));
   }
   function labServiceNames(row) {
+    const partNames = new Set(initialNames(row.initial_parts).map(normalise));
     const reviewed = asList(row.lab_services);
-    if (reviewed.length) return unique(reviewed.filter((item) => item.required !== false).map((item) => item.name));
-    return initialNames(row.initial_services, true);
+    if (reviewed.length) return unique(reviewed.filter((item) => item.required !== false).map((item) => item.name).filter((name) => !partNames.has(normalise(name))));
+    return initialServiceNames(row, true);
   }
   function readOnlyList(values) { const list = unique(values); return list.length ? `<div class="line-list">${list.map((value) => `<span>${escapeHtml(value)}</span>`).join("")}</div>` : '<span class="line-empty">None</span>'; }
   function choiceCell(kind, options, selected) {
@@ -115,6 +123,17 @@
     const issuedLabel = state.hasParts ? "✓ Parts Issued" : "✓ No Parts Required";
     return `<button class="line-save line-state parts-issued" type="button" data-order-parts="${escapeHtml(row.step_id)}" disabled>${issuedLabel}</button><button class="line-save job-completed" type="button" data-complete-lab="${escapeHtml(row.step_id)}">✓ Job Completed</button><small class="line-status success" data-line-status>Ready to send to Final QC</small>`;
   }
+  function returnableParts(row) {
+    return asList(row.lab_part_requests).filter((item) => item.status !== "cancelled" && Number(item.issued || 0) - Number(item.installed || 0) - Number(item.returned || 0) > 0);
+  }
+  function returnPanel(row) {
+    const parts = returnableParts(row);
+    if (!parts.length) return "";
+    return `<div class="lab-return-panel"><span class="lab-field-label">Issued Part Not Required</span><div class="lab-return-list">${parts.map((part) => {
+      const available = Number(part.issued || 0) - Number(part.installed || 0) - Number(part.returned || 0);
+      return `<div class="lab-return-item" data-return-item><strong>${escapeHtml(part.name)} · ${available} unused</strong><select data-return-reason><option value="">Select return reason</option><option value="Not required after Laboratory inspection">Not Required</option><option value="Wrong part issued">Wrong Part</option><option value="Different repair solution used">Different Repair Solution</option><option value="Other Laboratory return">Other</option></select><button type="button" data-return-part-request="${escapeHtml(part.id)}">Return to Parts</button></div>`;
+    }).join("")}</div></div>`;
+  }
 
   function renderTechnicianLines() {
     const selectedTech = technicians.find((item) => String(item.id) === String(activeTechnicianId));
@@ -124,7 +143,7 @@
     if (!filtered.length) { technicianWorkRows.innerHTML = `<tr><td colspan="12" class="technician-lines-empty">${escapeHtml(selectedTech?.full_name || "This technician")} has no ${isFrameMode ? "Frame" : "Laboratory"} phones pending.</td></tr>`; return; }
     technicianWorkRows.innerHTML = filtered.map((row) => {
       const qcParts = initialNames(row.initial_parts);
-      const qcServices = initialNames(row.initial_services);
+      const qcServices = initialServiceNames(row);
       const supplier = row.supplier_code || row.supplier_name || "—";
       const saveCell = isFrameMode
         ? `<button class="line-save frame" type="button" data-complete-frame="${escapeHtml(row.step_id)}">Complete Frame</button><small class="line-status">Returns to Final QC</small>`
@@ -142,7 +161,7 @@
         labelledStatic("Initial QC Parts", readOnlyList(qcParts)),
         labelledStatic("Initial QC Service", readOnlyList(qcServices))
       ].join("");
-      return `<tr class="lab-phone-row" data-step-id="${escapeHtml(row.step_id)}"><td colspan="12"><article class="lab-phone-card"><div class="lab-static-grid">${staticLine}</div><div class="lab-edit-grid"><div class="lab-edit-field"><span class="lab-field-label">Lab Parts</span>${choiceCell("part", partOptions, labPartNames(row))}</div><div class="lab-edit-field"><span class="lab-field-label">Lab Service</span>${choiceCell("service", standardServices, labServiceNames(row))}</div><div class="lab-edit-field"><span class="lab-field-label">Same Part Ordered Again</span><select class="lab-repeat-select" data-repeat-part>${optionsMarkup(repeatPartOptions(row), "Select repeated part")}</select><small>Use only for the second or later order.</small></div><div class="lab-edit-field"><span class="lab-field-label">Repeat Reason</span><select class="lab-repeat-select" data-repeat-reason disabled>${repeatReasonMarkup()}</select><small data-repeat-help>Required when the same part is ordered again.</small></div><div class="lab-line-actions">${saveCell}</div></div></article></td></tr>`;
+      return `<tr class="lab-phone-row" data-step-id="${escapeHtml(row.step_id)}"><td colspan="12"><article class="lab-phone-card"><div class="lab-static-grid">${staticLine}</div><div class="lab-edit-grid"><div class="lab-edit-field"><span class="lab-field-label">Lab Parts</span>${choiceCell("part", partOptions, labPartNames(row))}</div><div class="lab-edit-field"><span class="lab-field-label">Lab Service</span>${choiceCell("service", standardServices, labServiceNames(row))}</div><div class="lab-edit-field"><span class="lab-field-label">Same Part Ordered Again</span><select class="lab-repeat-select" data-repeat-part>${optionsMarkup(repeatPartOptions(row), "Select repeated part")}</select><small>Use only for the second or later order.</small></div><div class="lab-edit-field"><span class="lab-field-label">Repeat Reason</span><select class="lab-repeat-select" data-repeat-reason disabled>${repeatReasonMarkup()}</select><small data-repeat-help>Required when the same part is ordered again.</small></div><div class="lab-line-actions">${saveCell}</div></div>${returnPanel(row)}</article></td></tr>`;
     }).join("");
   }
 
@@ -288,6 +307,25 @@
     document.dispatchEvent(new CustomEvent("greenloop:notifications-changed"));
     await refreshAll();
   }
+  async function returnUnusedPart(button) {
+    const item = button.closest("[data-return-item]");
+    const reason = item.querySelector("[data-return-reason]").value;
+    if (!reason) {
+      item.querySelector("[data-return-reason]").focus();
+      throw new Error("Select why this issued part is being returned.");
+    }
+    if (!window.confirm("Return this unused part to Parts Inventory?")) return;
+    setSubmitting(button, true, "Returning...");
+    const { data, error } = await getClient().rpc("return_lab_unused_part", {
+      p_part_request_id: button.dataset.returnPartRequest,
+      p_reason: reason
+    });
+    setSubmitting(button, false);
+    if (error) throw error;
+    showToast(`${Number(data?.quantity_returned || 0)} unused part(s) returned to Parts.`);
+    document.dispatchEvent(new CustomEvent("greenloop:notifications-changed"));
+    await refreshAll();
+  }
   async function completeFrame(button) {
     const row = button.closest("tr");
     if (!row.querySelector("[data-frame-pass]")?.checked) return;
@@ -331,6 +369,7 @@
     const add = event.target.closest("[data-add-choice]"); if (add) { addChoice(add); return; }
     const remove = event.target.closest("[data-remove-choice]"); if (remove) { const row = remove.closest("tr"); remove.remove(); markLineChanged(row); return; }
     const order = event.target.closest("[data-order-parts]"); if (order && !order.disabled) orderParts(order).catch((error) => setBoardMessage(error.message));
+    const returnPart = event.target.closest("[data-return-part-request]"); if (returnPart) returnUnusedPart(returnPart).catch((error) => setBoardMessage(error.message));
     const completeLabButton = event.target.closest("[data-complete-lab]"); if (completeLabButton) completeLab(completeLabButton).catch((error) => setBoardMessage(error.message));
     const completeFrameButton = event.target.closest("[data-complete-frame]"); if (completeFrameButton) completeFrame(completeFrameButton).catch((error) => setBoardMessage(error.message));
   });
