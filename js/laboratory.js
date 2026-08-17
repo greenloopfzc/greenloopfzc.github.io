@@ -129,7 +129,7 @@
   function returnPanel(row) {
     const parts = returnableParts(row);
     if (!parts.length) return "";
-    return `<div class="lab-return-panel"><span class="lab-field-label">Issued Part Not Required</span><div class="lab-return-list">${parts.map((part) => {
+    return `<div class="lab-return-inline"><span class="lab-field-label">Return Issued Part</span><div class="lab-return-list">${parts.map((part) => {
       const available = Number(part.issued || 0) - Number(part.installed || 0) - Number(part.returned || 0);
       return `<div class="lab-return-item" data-return-item><strong>${escapeHtml(part.name)} · ${available} unused</strong><select data-return-reason><option value="">Select return reason</option><option value="Not required after Laboratory inspection">Not Required</option><option value="Wrong part issued">Wrong Part</option><option value="Different repair solution used">Different Repair Solution</option><option value="Other Laboratory return">Other</option></select><button type="button" data-return-part-request="${escapeHtml(part.id)}">Return to Parts</button></div>`;
     }).join("")}</div></div>`;
@@ -161,7 +161,7 @@
         labelledStatic("Initial QC Parts", readOnlyList(qcParts)),
         labelledStatic("Initial QC Service", readOnlyList(qcServices))
       ].join("");
-      return `<tr class="lab-phone-row" data-step-id="${escapeHtml(row.step_id)}"><td colspan="12"><article class="lab-phone-card"><div class="lab-static-grid">${staticLine}</div><div class="lab-edit-grid"><div class="lab-edit-field"><span class="lab-field-label">Lab Parts</span>${choiceCell("part", partOptions, labPartNames(row))}</div><div class="lab-edit-field"><span class="lab-field-label">Lab Service</span>${choiceCell("service", standardServices, labServiceNames(row))}</div><div class="lab-edit-field"><span class="lab-field-label">Same Part Ordered Again</span><select class="lab-repeat-select" data-repeat-part>${optionsMarkup(repeatPartOptions(row), "Select repeated part")}</select><small>Use only for the second or later order.</small></div><div class="lab-edit-field"><span class="lab-field-label">Repeat Reason</span><select class="lab-repeat-select" data-repeat-reason disabled>${repeatReasonMarkup()}</select><small data-repeat-help>Required when the same part is ordered again.</small></div><div class="lab-line-actions">${saveCell}</div></div>${returnPanel(row)}</article></td></tr>`;
+      return `<tr class="lab-phone-row" data-step-id="${escapeHtml(row.step_id)}"><td colspan="12"><article class="lab-phone-card"><div class="lab-static-grid">${staticLine}</div><div class="lab-edit-grid"><div class="lab-edit-field lab-parts-field"><span class="lab-field-label">Lab Parts</span>${choiceCell("part", partOptions, labPartNames(row))}${returnPanel(row)}</div><div class="lab-edit-field"><span class="lab-field-label">Lab Service</span>${choiceCell("service", standardServices, labServiceNames(row))}</div><div class="lab-edit-field"><span class="lab-field-label">Same Part Ordered Again</span><select class="lab-repeat-select" data-repeat-part>${optionsMarkup(repeatPartOptions(row), "Select repeated part")}</select><small>Use only for the second or later order.</small></div><div class="lab-edit-field"><span class="lab-field-label">Repeat Reason</span><select class="lab-repeat-select" data-repeat-reason disabled>${repeatReasonMarkup()}</select><small data-repeat-help>Required when the same part is ordered again.</small></div><div class="lab-line-actions">${saveCell}</div></div></article></td></tr>`;
     }).join("");
   }
 
