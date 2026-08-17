@@ -134,7 +134,7 @@
 
   async function loadData() {
     const [stockResponse, receiptResponse] = await Promise.all([
-      api().rpc("get_part_inventory_overview"),
+      api().rpc("get_part_inventory_breakdown"),
       api().rpc("get_part_inventory_receipts", { p_limit: 150 })
     ]);
     if (missingInventoryFunction(stockResponse.error) || missingInventoryFunction(receiptResponse.error)) {
