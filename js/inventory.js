@@ -69,6 +69,8 @@
       const legacy = legacyReceiptDetails(row);
       return {
         ...row,
+        total_received: Number(row.stock_quantity || 0), used_in_phones: 0,
+        damaged_quantity: 0, faulty_quantity: 0, issued_pending: 0,
         stock_value: Number(row.stock_quantity || 0) * Number(row.unit_cost || 0),
         last_invoice_number: legacy.invoice,
         last_origin: legacy.origin,
@@ -115,8 +117,8 @@
 
   function renderStock(rows) {
     stockList.innerHTML = rows.length
-      ? rows.map((row) => `<tr><td>${escapeHtml(row.sku)}</td><td><strong>${escapeHtml(row.part_name)}</strong></td><td>${Number(row.stock_quantity).toLocaleString()}</td><td>${money(row.unit_cost)}</td><td>${money(row.stock_value)}</td><td>${escapeHtml(row.last_invoice_number || "—")}</td><td class="history-origin">${escapeHtml(row.last_origin || "—")}</td><td>${dateTime(row.last_received_at)}</td></tr>`).join("")
-      : '<tr><td colspan="8" class="inventory-empty">No parts have been received yet.</td></tr>';
+      ? rows.map((row) => `<tr><td>${escapeHtml(row.sku)}</td><td><strong>${escapeHtml(row.part_name)}</strong></td><td>${Number(row.total_received||0).toLocaleString()}</td><td>${Number(row.stock_quantity||0).toLocaleString()}</td><td>${Number(row.used_in_phones||0).toLocaleString()}</td><td>${Number(row.damaged_quantity||0).toLocaleString()}</td><td>${Number(row.faulty_quantity||0).toLocaleString()}</td><td>${Number(row.issued_pending||0).toLocaleString()}</td><td>${money(row.unit_cost)}</td><td>${money(row.stock_value)}</td><td>${escapeHtml(row.last_invoice_number||"—")}</td><td class="history-origin">${escapeHtml(row.last_origin||"—")}</td><td>${dateTime(row.last_received_at)}</td></tr>`).join("")
+      : '<tr><td colspan="13" class="inventory-empty">No parts have been received yet.</td></tr>';
     document.querySelector("#stat-part-types").textContent = rows.length.toLocaleString();
     document.querySelector("#stat-units").textContent = rows.reduce((total, row) => total + Number(row.stock_quantity || 0), 0).toLocaleString();
     document.querySelector("#stat-value").textContent = money(rows.reduce((total, row) => total + Number(row.stock_value || 0), 0));
