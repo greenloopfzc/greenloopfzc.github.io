@@ -126,7 +126,7 @@
 .test-cleanup-icon { display: grid; flex: 0 0 36px; height: 36px; place-items: center; border-radius: 9px; background: #fee7e2; color: #ba4035; font: 900 .9rem/1 Manrope, sans-serif; }
 .test-cleanup-copy h3 { margin: 1px 0 5px; color: #87352e; font: 800 .92rem/1.2 Manrope, sans-serif; }
 .test-cleanup-copy p { max-width: 980px; margin: 0; color: #80635f; font-size: .69rem; line-height: 1.5; }
-.test-cleanup-form { display: grid; grid-template-columns: repeat(2, minmax(150px, 190px)) minmax(140px, 180px) minmax(230px, 1fr) auto; align-items: end; gap: 10px; margin-top: 14px; padding-top: 14px; border-top: 1px solid #f1d8d3; }
+.test-cleanup-form { display: grid; grid-template-columns: minmax(150px, 190px) minmax(300px, 1fr) auto; align-items: end; gap: 10px; margin-top: 14px; padding-top: 14px; border-top: 1px solid #f1d8d3; }
 .test-cleanup-form label { display: grid; gap: 6px; color: #694e4a; font-size: .68rem; font-weight: 800; }
 .test-cleanup-form input { width: 100%; min-height: 40px; border: 1px solid #e8c8c2; border-radius: 8px; padding: 8px 10px; background: #fff; color: #493531; font: 600 .76rem/1.3 "DM Sans", sans-serif; }
 .test-cleanup-form input:focus { border-color: #bd4b40; outline: 2px solid #fae4df; }

@@ -302,14 +302,12 @@
       <section class="test-cleanup-card">
         <div class="test-cleanup-copy">
           <span class="test-cleanup-icon" aria-hidden="true">!</span>
-          <div><h3>Delete test phone data by received date</h3><p>Deletes phones received within the selected date range and their complete job, QC, Laboratory, Parts issue, Final QC, Ready Stock, and Export Box workflow records. Other dates, users, suppliers, dropdowns, technicians, and Parts Inventory are kept. Issued part quantities return to inventory, and every deleted row remains in Deleted History.</p></div>
+          <div><h3>Reset all operational data to zero</h3><p>Permanently clears every supplier code, customer, stock batch, phone, QC record, Laboratory job, Parts inventory/receipt/issue/return, Ready Stock record, Export Box, correction, and deletion-history entry. Users, permissions, roles, technicians, locations, stock channels, and dropdown options are preserved.</p></div>
         </div>
         <form id="test-data-cleanup-form" class="test-cleanup-form" novalidate>
-          <label>From received date<input name="date_from" type="date" value="${escapeHtml(dateFrom.value || "")}" required></label>
-          <label>To received date<input name="date_to" type="date" value="${escapeHtml(dateTo.value || "")}" required></label>
           <label>Deletion code<input name="deletion_code" type="password" inputmode="numeric" autocomplete="off" placeholder="Enter code" required></label>
-          <label>Type DELETE TEST DATA<input name="confirmation" type="text" autocomplete="off" placeholder="DELETE TEST DATA" required></label>
-          <button class="danger-button" type="submit">Delete test data</button>
+          <label>Type RESET GREENLOOP TO ZERO<input name="confirmation" type="text" autocomplete="off" placeholder="RESET GREENLOOP TO ZERO" required></label>
+          <button class="danger-button" type="submit">Reset everything to zero</button>
         </form>
       </section>`;
   }
@@ -495,31 +493,27 @@
 
   async function deleteAllTestData(form) {
     const formData = new FormData(form);
-    const cleanupDateFrom = String(formData.get("date_from") || "").trim();
-    const cleanupDateTo = String(formData.get("date_to") || "").trim();
-    if (!cleanupDateFrom || !cleanupDateTo || cleanupDateFrom > cleanupDateTo) { setMessage("Select a valid From received date and To received date."); return; }
     const confirmation = String(formData.get("confirmation") || "").trim();
-    if (confirmation !== "DELETE TEST DATA") { setMessage("Type DELETE TEST DATA exactly to confirm."); return; }
-    const approved = window.confirm(`This will permanently remove phones received from ${cleanupDateFrom} to ${cleanupDateTo} and their complete workflow data. Deleted History will be kept. Continue?`);
+    if (confirmation !== "RESET GREENLOOP TO ZERO") { setMessage("Type RESET GREENLOOP TO ZERO exactly to confirm."); return; }
+    const approved = window.confirm("This will permanently delete ALL operational data, including suppliers, phones, parts stock, workflow, export boxes, and audit histories. Dropdowns, users, permissions, and technicians will stay. Continue?");
     if (!approved) return;
 
     const submit = form.querySelector('button[type="submit"]');
     submit.disabled = true;
     submit.textContent = "Deleting...";
     setMessage();
-    const { data, error } = await getClient().rpc("delete_all_test_operational_data", {
+    const { data, error } = await getClient().rpc("reset_greenloop_to_zero", {
       p_deletion_code: formData.get("deletion_code"),
-      p_confirmation: confirmation,
-      p_date_from: cleanupDateFrom,
-      p_date_to: cleanupDateTo
+      p_confirmation: confirmation
     });
     submit.disabled = false;
-    submit.textContent = "Delete test data";
-    if (error) { setMessage(error.message || "Test data could not be deleted."); return; }
+    submit.textContent = "Reset everything to zero";
+    if (error) { setMessage(error.message || "Greenloop data could not be reset."); return; }
 
     correctionRecord = null;
     await loadReports();
-    setMessage(`${Number(data?.deleted_devices || 0)} phone(s) received from ${cleanupDateFrom} to ${cleanupDateTo}, ${Number(data?.deleted_jobs || 0)} job(s), and ${Number(data?.deleted_batches || 0)} empty batch(es) were deleted. ${Number(data?.restored_part_units || 0)} issued part unit(s) returned to inventory. ${Number(data?.history_records_saved || 0)} audit record(s) were saved.`, "success");
+    form.reset();
+    setMessage(`Greenloop is now at zero. Deleted: ${Number(data?.deleted_devices || 0)} phone(s), ${Number(data?.deleted_jobs || 0)} job(s), ${Number(data?.deleted_suppliers || 0)} supplier(s), ${Number(data?.deleted_batches || 0)} stock batch(es), ${Number(data?.deleted_inventory_items || 0)} Parts inventory item(s), and ${Number(data?.deleted_export_boxes || 0)} export box(es). Dropdowns, users, permissions, and technicians were preserved.`, "success");
   }
 
   function renderActiveReport() {
@@ -631,7 +625,7 @@
     }
     if (event.target.id === "test-data-cleanup-form") {
       event.preventDefault();
-      deleteAllTestData(event.target).catch((error) => setMessage(error.message || "Test data could not be deleted."));
+      deleteAllTestData(event.target).catch((error) => setMessage(error.message || "Greenloop data could not be reset."));
     }
   });
   reportContent.addEventListener("input", (event) => {
