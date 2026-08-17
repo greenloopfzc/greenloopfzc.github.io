@@ -6,6 +6,7 @@
   window.addEventListener("hashchange", () => window.location.reload());
   const standardParts = ["Case", "Glass", "Touch panel", "NFC flex", "Vibrator", "Speaker", "Camera", "Face ID flex", "LCD display", "Battery", "Charging flex"];
   const standardServices = ["Polish", "Cleaning", "Software", "Testing", "Face ID calibration", "Camera calibration", "Housing repair", "Glass work", "Frame work"];
+  const initialQcServices = new Set(["polish", "cleaning", "software", "testing"]);
   const app = document.querySelector("#lab-app");
   const permissionMessage = document.querySelector("#permission-message");
   const technicianCards = document.querySelector("#technician-cards");
@@ -74,21 +75,23 @@
 
   function optionsMarkup(options, placeholder) { return `<option value="">${escapeHtml(placeholder)}</option>${options.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("")}`; }
   function initialNames(items, requiredOnly = false) { return unique(asList(items).filter((item) => !requiredOnly || item.lab_decision !== "not_required").map((item) => item.name)); }
+  function isInitialQcService(name) { return initialQcServices.has(normalise(name)); }
   function initialServiceNames(row, requiredOnly = false) {
-    const partNames = new Set(initialNames(row.initial_parts).map(normalise));
     return unique(asList(row.initial_services)
       .filter((item) => !requiredOnly || item.lab_decision !== "not_required")
       .map((item) => item.name)
-      .filter((name) => !partNames.has(normalise(name))));
+      .filter(isInitialQcService));
   }
   function labPartNames(row) {
     const existing = unique(asList(row.lab_part_requests).filter((item) => item.status !== "cancelled").map((item) => item.name));
     return existing.length ? existing : initialNames(row.initial_parts).filter((name) => !asList(row.initial_parts).some((item) => normalise(item.name) === normalise(name) && item.status === "not_required"));
   }
   function labServiceNames(row) {
-    const partNames = new Set(initialNames(row.initial_parts).map(normalise));
     const reviewed = asList(row.lab_services);
-    if (reviewed.length) return unique(reviewed.filter((item) => item.required !== false).map((item) => item.name).filter((name) => !partNames.has(normalise(name))));
+    if (reviewed.length) return unique(reviewed
+      .filter((item) => item.required !== false)
+      .filter((item) => item.source !== "initial_qc" || isInitialQcService(item.name))
+      .map((item) => item.name));
     return initialServiceNames(row, true);
   }
   function readOnlyList(values) { const list = unique(values); return list.length ? `<div class="line-list">${list.map((value) => `<span>${escapeHtml(value)}</span>`).join("")}</div>` : '<span class="line-empty">None</span>'; }
