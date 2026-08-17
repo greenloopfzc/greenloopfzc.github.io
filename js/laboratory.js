@@ -145,10 +145,10 @@
       return;
     }
     const parts = returnableParts(source);
-    details.innerHTML = `<span class="lab-field-label">Return Part and Reason</span><div class="lab-return-item" data-return-item><select data-return-part-select><option value="">Select issued part</option>${parts.map((part) => {
+    details.innerHTML = `<span class="lab-field-label">Return Part and Condition</span><div class="lab-return-item" data-return-item><select data-return-part-select><option value="">Select issued part</option>${parts.map((part) => {
       const available = Number(part.issued || 0) - Number(part.installed || 0) - Number(part.returned || 0);
       return `<option value="${escapeHtml(part.id)}">${escapeHtml(part.name)} · ${available} unused</option>`;
-    }).join("")}</select><select data-return-reason><option value="">Select return reason</option><option value="Not required after Laboratory inspection">Not Required</option><option value="Wrong part issued">Wrong Part</option><option value="Different repair solution used">Different Repair Solution</option><option value="Other Laboratory return">Other</option></select><button type="button" data-return-part-request disabled>Return to Parts</button></div>`;
+    }).join("")}</select><select data-return-reason><option value="">Select return condition</option><optgroup label="Return to usable inventory"><option value="restocked|Not required after Laboratory inspection">Not Required — Restock</option><option value="restocked|Wrong part issued">Wrong Part — Restock</option><option value="restocked|Different repair solution used">Different Solution — Restock</option><option value="restocked|Other usable return">Other Usable Return</option></optgroup><optgroup label="Do not add to usable inventory"><option value="damaged|Faulty part">Faulty Part</option><option value="damaged|Damaged by Technician">Damaged by Technician</option><option value="damaged|Other damaged return">Other Damaged Return</option></optgroup></select><button type="button" data-return-part-request disabled>Return to Parts</button></div>`;
   }
 
   function renderTechnicianLines() {
@@ -326,24 +326,32 @@
   async function returnUnusedPart(button) {
     const item = button.closest("[data-return-item]");
     const requestId = item.querySelector("[data-return-part-select]").value;
-    const reason = item.querySelector("[data-return-reason]").value;
+    const returnValue = item.querySelector("[data-return-reason]").value;
+    const [condition, ...reasonParts] = returnValue.split("|");
+    const reason = reasonParts.join("|");
     if (!requestId) {
       item.querySelector("[data-return-part-select]").focus();
       throw new Error("Select the issued part to return.");
     }
-    if (!reason) {
+    if (!condition || !reason) {
       item.querySelector("[data-return-reason]").focus();
-      throw new Error("Select why this issued part is being returned.");
+      throw new Error("Select the return condition and reason.");
     }
-    if (!window.confirm("Return this unused part to Parts Inventory?")) return;
+    const confirmation = condition === "restocked"
+      ? "Return this usable part to Parts Inventory?"
+      : "Record this part as damaged without adding it back to usable inventory?";
+    if (!window.confirm(confirmation)) return;
     setSubmitting(button, true, "Returning...");
-    const { data, error } = await getClient().rpc("return_lab_unused_part", {
+    const { data, error } = await getClient().rpc("return_lab_issued_part_v2", {
       p_part_request_id: requestId,
+      p_return_condition: condition,
       p_reason: reason
     });
     setSubmitting(button, false);
     if (error) throw error;
-    showToast(`${Number(data?.quantity_returned || 0)} unused part(s) returned to Parts.`);
+    showToast(condition === "restocked"
+      ? `${Number(data?.quantity_returned || 0)} usable part(s) returned to Inventory.`
+      : `${Number(data?.quantity_returned || 0)} damaged part(s) recorded outside usable Inventory.`);
     document.dispatchEvent(new CustomEvent("greenloop:notifications-changed"));
     await refreshAll();
   }
@@ -372,7 +380,7 @@
     await refreshAll();
     if (!isFrameMode) {
       window.setInterval(() => {
-        if (document.visibilityState !== "visible" || app.hidden || technicianWorkRows.querySelector('tr[data-dirty="true"]')) return;
+        if (document.visibilityState !== "visible" || app.hidden || technicianWorkRows.querySelector('tr[data-dirty="true"], tr[data-editing="true"]')) return;
         loadTechnicianRows().catch(() => {});
       }, 12000);
     }
@@ -397,7 +405,9 @@
   technicianWorkRows.addEventListener("change", (event) => {
     const additionalAction = event.target.closest("[data-additional-action]");
     if (additionalAction) {
-      renderAdditionalDetails(additionalAction.closest("tr"), additionalAction.value);
+      const row = additionalAction.closest("tr");
+      row.dataset.editing = additionalAction.value ? "true" : "false";
+      renderAdditionalDetails(row, additionalAction.value);
       return;
     }
     const repeatPart = event.target.closest("[data-repeat-part]");
@@ -412,6 +422,7 @@
     if (repeatReason) { markLineChanged(repeatReason.closest("tr")); return; }
     const returnControl = event.target.closest("[data-return-part-select], [data-return-reason]");
     if (returnControl) {
+      returnControl.closest("tr").dataset.editing = "true";
       const item = returnControl.closest("[data-return-item]");
       const button = item.querySelector("[data-return-part-request]");
       button.disabled = !(item.querySelector("[data-return-part-select]").value && item.querySelector("[data-return-reason]").value);

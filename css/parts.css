@@ -18,5 +18,18 @@
 .inventory-grid { display: grid; grid-template-columns: .9fr 1.45fr .7fr .8fr auto; align-items: end; gap: 11px; }
 .inventory-grid .secondary-button { min-height: 42px; white-space: nowrap; }
 .inventory-table { min-width: 600px; }
+.part-return-report-panel { display: grid; gap: 13px; }
+.return-report-heading { align-items: center; }
+.return-report-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-left: auto; }
+.return-report-tab { min-height: 35px; border: 1px solid #cfe1d5; border-radius: 8px; padding: 0 11px; color: #315443; background: #f7fbf8; font: inherit; font-size: .67rem; font-weight: 750; cursor: pointer; }
+.return-report-tab span { display: inline-grid; min-width: 20px; height: 20px; margin-left: 5px; place-items: center; border-radius: 999px; color: #436052; background: #e6eee9; font-size: .58rem; }
+.return-report-tab.is-active { border-color: #16805a; color: #fff; background: #147451; }
+.return-report-tab.is-active span { color: #147451; background: #fff; }
+.return-report-tab.damaged.is-active { border-color: #b8382f; background: #b8382f; }
+.return-report-tab.damaged.is-active span { color: #b8382f; }
+.return-report-table { min-width: 1180px; }
+.return-report-table td:nth-child(6) { min-width: 180px; white-space: normal; line-height: 1.25; }
+.return-report-table td strong { color: #166849; }
 @media (max-width: 960px) { .inventory-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .inventory-grid .secondary-button { width: 100%; } }
-@media (max-width: 650px) { .parts-summary { display: grid; align-items: start; } .parts-summary .queue-count { margin-left: 0; width: fit-content; } .parts-summary .secondary-button { width: 100%; } .inventory-grid { grid-template-columns: 1fr; } }
+@media (max-width: 960px) { .return-report-heading { align-items: flex-start; flex-direction: column; } .return-report-actions { width: 100%; margin-left: 0; } }
+@media (max-width: 650px) { .parts-summary { display: grid; align-items: start; } .parts-summary .queue-count { margin-left: 0; width: fit-content; } .parts-summary .secondary-button { width: 100%; } .inventory-grid { grid-template-columns: 1fr; } .return-report-actions { display: grid; grid-template-columns: 1fr; } }

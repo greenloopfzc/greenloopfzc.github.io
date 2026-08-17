@@ -11,6 +11,10 @@
   const inventoryName = document.querySelector("#inventory-name");
   const issueMessage = document.querySelector("#issue-message");
   const inventoryMessage = document.querySelector("#inventory-message");
+  const partReturnReport = document.querySelector("#part-return-report");
+  const returnReportMessage = document.querySelector("#return-report-message");
+  const returnedPartsCount = document.querySelector("#returned-parts-count");
+  const damagedPartsCount = document.querySelector("#damaged-parts-count");
   const sidebar = document.querySelector("#sidebar");
   const backdrop = document.querySelector("#menu-backdrop");
   const toast = document.querySelector("#toast");
@@ -18,11 +22,14 @@
   let requests = [];
   let inventory = [];
   let partNames = [];
+  let partReturns = [];
+  let activeReturnCondition = "restocked";
   let toastTimer;
 
   const getClient = () => (client ||= window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey));
   const escapeHtml = (value) => String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]);
   const money = (value) => `AED ${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const dateTime = (value) => value ? new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "—";
   const jobOf = (request) => Array.isArray(request.job) ? request.job[0] : request.job;
   const deviceOf = (request) => { const job = jobOf(request) || {}; return Array.isArray(job.device) ? job.device[0] : job.device; };
   const supplierOf = (request) => { const job = jobOf(request) || {}; return Array.isArray(job.supplier) ? job.supplier[0] : job.supplier; };
@@ -99,6 +106,38 @@
       const lot = invoiceDetails(part);
       return `<tr><td>${escapeHtml(lot.invoice)}</td><td>${escapeHtml(part.sku)}</td><td>${escapeHtml(part.part_name)}</td><td>${part.stock_quantity}</td><td>${money(part.unit_cost)}</td><td>${escapeHtml(lot.origin)}</td></tr>`;
     }).join("") : '<tr><td colspan="6">No inventory has been added yet.</td></tr>';
+  }
+
+  function renderPartReturnReport() {
+    const returned = partReturns.filter((item) => item.return_condition === "restocked");
+    const damaged = partReturns.filter((item) => item.return_condition === "damaged");
+    returnedPartsCount.textContent = returned.reduce((total, item) => total + Number(item.quantity || 0), 0);
+    damagedPartsCount.textContent = damaged.reduce((total, item) => total + Number(item.quantity || 0), 0);
+    document.querySelectorAll("[data-return-report]").forEach((button) => button.classList.toggle("is-active", button.dataset.returnReport === activeReturnCondition));
+    const rows = activeReturnCondition === "damaged" ? damaged : returned;
+    partReturnReport.innerHTML = rows.length ? rows.map((item) => `<tr>
+      <td>${escapeHtml(dateTime(item.returned_at))}</td>
+      <td><strong>${escapeHtml(item.imei || "—")}</strong><small>${escapeHtml(item.job_number || item.device_number || "")}</small></td>
+      <td>${escapeHtml(item.supplier_code || "—")}</td>
+      <td><strong>${escapeHtml(item.part_name || "—")}</strong></td>
+      <td>${Number(item.quantity || 0)}</td>
+      <td>${escapeHtml(item.reason || "—")}</td>
+      <td>${escapeHtml(item.invoice_number || "Legacy / unknown")}</td>
+      <td>${money(item.unit_cost)}</td>
+      <td>${money(item.total_value)}</td>
+      <td>${escapeHtml(item.returned_by_name || "System")}</td>
+    </tr>`).join("") : `<tr><td colspan="10">No ${activeReturnCondition === "damaged" ? "damaged" : "returned"} parts have been recorded yet.</td></tr>`;
+  }
+
+  async function loadPartReturnReport() {
+    setMessage(returnReportMessage);
+    const { data, error } = await getClient().rpc("get_part_return_report", { p_return_condition: null, p_limit: 500 });
+    if (error) {
+      setMessage(returnReportMessage, error.message || "Part return reports could not be loaded.");
+      return;
+    }
+    partReturns = data || [];
+    renderPartReturnReport();
   }
 
   async function loadData() {
@@ -198,7 +237,7 @@
     if (error) throw error;
     if (!canUse) { permissionMessage.textContent = "Your account does not have Parts permission."; permissionMessage.hidden = false; return; }
     app.hidden = false;
-    await Promise.all([loadPartNames(), loadData()]);
+    await Promise.all([loadPartNames(), loadData(), loadPartReturnReport()]);
   }
 
   queueList.addEventListener("click", (event) => { const button = event.target.closest("[data-issue-request]"); if (button) issueRequest(button); });
@@ -206,6 +245,11 @@
   document.querySelector("#add-part-name").addEventListener("click", addPartName);
   document.querySelector("#remove-part-name").addEventListener("click", removePartName);
   document.querySelector("#refresh-parts").addEventListener("click", () => loadData().catch((error) => toastMessage(error.message || "Parts data could not be refreshed.")));
+  document.querySelector("#refresh-return-report").addEventListener("click", () => loadPartReturnReport().catch((error) => setMessage(returnReportMessage, error.message || "Part return reports could not be refreshed.")));
+  document.querySelectorAll("[data-return-report]").forEach((button) => button.addEventListener("click", () => {
+    activeReturnCondition = button.dataset.returnReport;
+    renderPartReturnReport();
+  }));
   document.querySelector("#open-menu").addEventListener("click", () => { sidebar.classList.add("is-open"); backdrop.hidden = false; });
   document.querySelector("#close-menu").addEventListener("click", () => { sidebar.classList.remove("is-open"); backdrop.hidden = true; });
   backdrop.addEventListener("click", () => { sidebar.classList.remove("is-open"); backdrop.hidden = true; });

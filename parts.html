@@ -9,11 +9,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/parts.css">
+    <link rel="stylesheet" href="css/parts.css?v=20260817-return-reports-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script defer src="js/config.js"></script>
     <script defer src="js/part-notifications.js?v=20260815-1"></script>
-    <script defer src="js/parts.js?v=20260815-1"></script>
+    <script defer src="js/parts.js?v=20260817-return-reports-1"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -48,6 +48,19 @@
             <section class="parts-summary"><div><p class="panel-kicker">Parts queue</p><h2>Requests waiting for issue</h2></div><span id="request-count" class="queue-count">0 waiting</span><button id="refresh-parts" class="secondary-button" type="button">Refresh</button></section>
             <section class="form-panel parts-sheet-panel"><div class="form-panel-heading"><span class="section-number">01</span><div><h2>Issue requested parts</h2><p>Every confirmed request shows the technician who needs the part. Select the exact invoice lot before issue.</p></div></div><div class="parts-sheet-wrap"><table class="parts-sheet"><thead><tr><th>IMEI</th><th>Device</th><th>Job</th><th>Supplier code</th><th>Technician</th><th>Part / service</th><th>Required</th><th>Remaining</th><th>Invoice lot to issue</th><th>Qty</th><th>Issue</th></tr></thead><tbody id="parts-queue-list"></tbody></table></div><p id="issue-message" class="form-message receiving-message" role="status" aria-live="polite"></p></section>
             <section class="form-panel inventory-panel"><div class="form-panel-heading"><span class="section-number">02</span><div><h2>Inventory availability</h2><p>Each invoice is a separate stock lot with its own price. Receive stock from the Inventory page.</p></div><a class="secondary-button" href="inventory.html">Open Inventory</a></div><form id="inventory-form" class="inventory-form" novalidate hidden><div class="inventory-grid"><div class="form-field"><label for="inventory-sku">SKU</label><input id="inventory-sku" required></div><div class="form-field"><label for="inventory-name">Part name</label><div class="master-option-control"><select id="inventory-name" required><option value="">Loading part names...</option></select><button id="add-part-name" class="master-add" type="button">+</button><button id="remove-part-name" class="master-remove" type="button">−</button></div></div><div class="form-field"><label for="inventory-qty">Stock quantity</label><input id="inventory-qty" type="number" min="0" step="1" required value="0"></div><div class="form-field"><label for="inventory-cost">Unit cost (AED)</label><input id="inventory-cost" type="number" min="0" step="0.01" required value="0"></div><button id="inventory-button" class="secondary-button" type="submit">Save item</button></div></form><p id="inventory-message" class="form-message receiving-message" role="status" aria-live="polite" hidden></p><div class="parts-sheet-wrap"><table class="parts-sheet inventory-table"><thead><tr><th>Invoice</th><th>SKU</th><th>Part</th><th>In stock</th><th>Unit cost</th><th>Origin</th></tr></thead><tbody id="inventory-table"></tbody></table></div></section>
+            <section class="form-panel part-return-report-panel">
+              <div class="form-panel-heading return-report-heading">
+                <span class="section-number">03</span>
+                <div><h2>Parts returns and damage</h2><p>Usable returns go back into Inventory. Damaged or faulty parts remain outside usable stock.</p></div>
+                <div class="return-report-actions">
+                  <button class="return-report-tab is-active" type="button" data-return-report="restocked">Returned Parts <span id="returned-parts-count">0</span></button>
+                  <button class="return-report-tab damaged" type="button" data-return-report="damaged">Damaged Parts <span id="damaged-parts-count">0</span></button>
+                  <button id="refresh-return-report" class="secondary-button" type="button">Refresh</button>
+                </div>
+              </div>
+              <p id="return-report-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
+              <div class="parts-sheet-wrap"><table class="parts-sheet return-report-table"><thead><tr><th>Time</th><th>IMEI</th><th>Supplier</th><th>Part</th><th>Qty</th><th>Reason</th><th>Invoice</th><th>Unit cost</th><th>Total</th><th>Recorded by</th></tr></thead><tbody id="part-return-report"></tbody></table></div>
+            </section>
           </section>
         </div>
       </main>
