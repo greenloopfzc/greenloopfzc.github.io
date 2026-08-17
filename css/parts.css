@@ -15,6 +15,8 @@
 .parts-sheet input { width: 54px; text-align: center; }
 .issue-row-button { min-height: 34px; border: 1px solid #23734d; border-radius: 6px; padding: 0 10px; color: #fff; background: #147149; font: inherit; font-size: .65rem; font-weight: 700; cursor: pointer; }
 .issue-row-button:disabled { opacity: .55; cursor: not-allowed; }
+.request-actions { display: flex; gap: 5px; }
+.cancel-request-button { min-height: 34px; border: 1px solid #e4aaa4; border-radius: 6px; padding: 0 9px; color: #a8342c; background: #fff8f7; font: inherit; font-size: .62rem; font-weight: 750; cursor: pointer; }
 .inventory-grid { display: grid; grid-template-columns: .9fr 1.45fr .7fr .8fr auto; align-items: end; gap: 11px; }
 .inventory-grid .secondary-button { min-height: 42px; white-space: nowrap; }
 .inventory-table { min-width: 600px; }
@@ -27,9 +29,15 @@
 .return-report-tab.is-active span { color: #147451; background: #fff; }
 .return-report-tab.damaged.is-active { border-color: #b8382f; background: #b8382f; }
 .return-report-tab.damaged.is-active span { color: #b8382f; }
+.return-report-tab.faulty.is-active { border-color: #b56b12; background: #b56b12; }
+.return-report-tab.faulty.is-active span { color: #b56b12; }
 .return-report-table { min-width: 1180px; }
 .return-report-table td:nth-child(6) { min-width: 180px; white-space: normal; line-height: 1.25; }
 .return-report-table td strong { color: #166849; }
+.return-review-actions { display: flex; gap: 5px; }
+.return-review-actions button { min-height: 31px; border: 0; border-radius: 6px; padding: 0 9px; color: #fff; background: #147451; font: inherit; font-size: .61rem; font-weight: 800; cursor: pointer; }
+.return-review-actions .reject-return { background: #b8382f; }
+.return-report-status { color: #708078; font-size: .6rem; font-weight: 750; }
 @media (max-width: 960px) { .inventory-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .inventory-grid .secondary-button { width: 100%; } }
 @media (max-width: 960px) { .return-report-heading { align-items: flex-start; flex-direction: column; } .return-report-actions { width: 100%; margin-left: 0; } }
 @media (max-width: 650px) { .parts-summary { display: grid; align-items: start; } .parts-summary .queue-count { margin-left: 0; width: fit-content; } .parts-summary .secondary-button { width: 100%; } .inventory-grid { grid-template-columns: 1fr; } .return-report-actions { display: grid; grid-template-columns: 1fr; } }

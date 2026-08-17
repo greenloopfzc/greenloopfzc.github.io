@@ -110,13 +110,18 @@
   }
   function lineWorkflowState(row) {
     const requests = asList(row.lab_part_requests).filter((item) => item.status !== "cancelled");
+    const pendingReturns = asList(row.pending_part_returns).filter((item) => item.status === "pending");
     const initialParts = asList(row.initial_parts);
     const submitted = requests.length > 0 || asList(row.lab_services).length > 0 || initialParts.some((item) => ["requested", "not_required"].includes(String(item.status)));
     const allIssued = submitted && requests.every((item) => Number(item.issued || 0) >= Number(item.quantity || 1));
-    return { requests, submitted, allIssued, hasParts: requests.length > 0 };
+    return { requests, pendingReturns, submitted, allIssued, hasParts: requests.length > 0 };
   }
   function actionCell(row) {
     const state = lineWorkflowState(row);
+    if (state.pendingReturns.length) {
+      const names = unique(state.pendingReturns.map((item) => item.part_name)).join(", ");
+      return `<button class="line-save line-state return-pending" type="button" disabled>Return Pending</button><button class="line-save job-completed" type="button" data-complete-lab="${escapeHtml(row.step_id)}" disabled>✓ Job Completed</button><small class="line-status" data-line-status>Parts approval: ${escapeHtml(names)}</small>`;
+    }
     if (!state.submitted) {
       return `<button class="line-save order-parts" type="button" data-order-parts="${escapeHtml(row.step_id)}">Order Parts</button><button class="line-save job-completed" type="button" data-complete-lab="${escapeHtml(row.step_id)}" disabled>✓ Job Completed</button><small class="line-status" data-line-status>Order parts and save services first</small>`;
     }
@@ -131,7 +136,7 @@
   }
   function additionalInfoCell(row) {
     const canReturn = returnableParts(row).length > 0;
-    return `<div class="lab-additional-info"><select data-additional-action><option value="">Select additional action</option><option value="repeat">Order Same Part Again</option><option value="return"${canReturn ? "" : " disabled"}>Return Issued Part${canReturn ? "" : " (none available)"}</option></select><small>Select only when another order or return is required.</small></div>`;
+    return `<div class="lab-additional-info"><select data-additional-action><option value="">Select re-order / return</option><option value="reorder">Re-order Part</option><option value="return"${canReturn ? "" : " disabled"}>Return Issued Part${canReturn ? "" : " (none available)"}</option></select><small>Select only when a part must be re-ordered or returned.</small></div>`;
   }
   function rowData(rowElement) {
     return technicianRows.find((item) => String(item.step_id) === String(rowElement.dataset.stepId));
@@ -143,15 +148,15 @@
       details.innerHTML = '<span class="lab-field-label">Additional Details</span><select class="lab-repeat-select" disabled><option>Select Additional Information</option></select>';
       return;
     }
-    if (action === "repeat") {
-      details.innerHTML = `<span class="lab-field-label">Repeat Part and Reason</span><div class="lab-additional-controls"><select class="lab-repeat-select" data-repeat-part>${optionsMarkup(repeatPartOptions(source), "Select repeated part")}</select><select class="lab-repeat-select" data-repeat-reason disabled>${repeatReasonMarkup()}</select></div>`;
+    if (action === "reorder") {
+      details.innerHTML = `<span class="lab-field-label">Part Name and Reason</span><div class="lab-additional-controls"><select class="lab-repeat-select" data-repeat-part>${optionsMarkup(repeatPartOptions(source), "Select part name")}</select><select class="lab-repeat-select" data-repeat-reason disabled><option value="">Select reason</option><option value="technician_damage">Damaged</option><option value="faulty_part">Faulty</option></select></div>`;
       return;
     }
     const parts = returnableParts(source);
-    details.innerHTML = `<span class="lab-field-label">Return Part and Condition</span><div class="lab-return-item" data-return-item><select data-return-part-select><option value="">Select issued part</option>${parts.map((part) => {
+    details.innerHTML = `<span class="lab-field-label">Part Name and Reason</span><div class="lab-return-item" data-return-item><select data-return-part-select><option value="">Select issued part</option>${parts.map((part) => {
       const available = Number(part.issued || 0) - Number(part.installed || 0) - Number(part.returned || 0);
       return `<option value="${escapeHtml(part.id)}">${escapeHtml(part.name)} · ${available} unused</option>`;
-    }).join("")}</select><select data-return-reason><option value="">Select return condition</option><optgroup label="Return to usable inventory"><option value="restocked|Not required after Laboratory inspection">Not Required — Restock</option><option value="restocked|Wrong part issued">Wrong Part — Restock</option><option value="restocked|Different repair solution used">Different Solution — Restock</option><option value="restocked|Other usable return">Other Usable Return</option></optgroup><optgroup label="Do not add to usable inventory"><option value="damaged|Faulty part">Faulty Part</option><option value="damaged|Damaged by Technician">Damaged by Technician</option><option value="damaged|Other damaged return">Other Damaged Return</option></optgroup></select><button type="button" data-return-part-request disabled>Return to Parts</button></div>`;
+    }).join("")}</select><select data-return-reason><option value="">Select reason</option><option value="damaged">Damaged</option><option value="faulty">Faulty</option><option value="not_needed">Not Needed</option></select></div>`;
   }
 
   function renderTechnicianLines() {
@@ -180,7 +185,7 @@
         labelledStatic("Initial QC Parts", readOnlyList(qcParts)),
         labelledStatic("Initial QC Service", readOnlyList(qcServices))
       ].join("");
-      return `<tr class="lab-phone-row" data-step-id="${escapeHtml(row.step_id)}"><td colspan="12"><article class="lab-phone-card"><div class="lab-static-grid">${staticLine}</div><div class="lab-edit-grid"><div class="lab-edit-field lab-parts-field"><span class="lab-field-label">Lab Parts</span>${choiceCell("part", partOptions, labPartNames(row))}</div><div class="lab-edit-field"><span class="lab-field-label">Lab Service</span>${choiceCell("service", standardServices, labServiceNames(row))}</div><div class="lab-edit-field"><span class="lab-field-label">Additional Information</span>${additionalInfoCell(row)}</div><div class="lab-edit-field lab-additional-details" data-additional-details><span class="lab-field-label">Additional Details</span><select class="lab-repeat-select" disabled><option>Select Additional Information</option></select></div><div class="lab-line-actions">${saveCell}</div></div></article></td></tr>`;
+      return `<tr class="lab-phone-row" data-step-id="${escapeHtml(row.step_id)}"><td colspan="12"><article class="lab-phone-card"><div class="lab-static-grid">${staticLine}</div><div class="lab-edit-grid"><div class="lab-edit-field lab-parts-field"><span class="lab-field-label">Lab Parts</span>${choiceCell("part", partOptions, labPartNames(row))}</div><div class="lab-edit-field"><span class="lab-field-label">Lab Service</span>${choiceCell("service", standardServices, labServiceNames(row))}</div><div class="lab-edit-field"><span class="lab-field-label">Parts Re-order / Return</span>${additionalInfoCell(row)}</div><div class="lab-edit-field lab-additional-details" data-additional-details><span class="lab-field-label">Part Name and Reason</span><select class="lab-repeat-select" disabled><option>Select re-order / return first</option></select></div><div class="lab-line-actions">${saveCell}</div></div></article></td></tr>`;
     }).join("");
   }
 
@@ -215,9 +220,18 @@
   async function loadTechnicianRows() {
     setBoardMessage();
     if (!activeTechnicianId) { technicianRows = []; renderTechnicianLines(); return; }
-    const { data, error } = await getClient().rpc("get_lab_technician_rows", { p_technician_id: activeTechnicianId });
-    if (error) throw error;
-    technicianRows = data || [];
+    const [rowResponse, returnResponse] = await Promise.all([
+      getClient().rpc("get_lab_technician_rows", { p_technician_id: activeTechnicianId }),
+      getClient().rpc("get_lab_part_return_requests_for_technician", { p_technician_id: activeTechnicianId })
+    ]);
+    if (rowResponse.error) throw rowResponse.error;
+    if (returnResponse.error) throw returnResponse.error;
+    const pendingByStep = new Map();
+    (returnResponse.data || []).forEach((item) => {
+      const key = String(item.work_order_step_id);
+      pendingByStep.set(key, [...(pendingByStep.get(key) || []), item]);
+    });
+    technicianRows = (rowResponse.data || []).map((row) => ({ ...row, pending_part_returns: pendingByStep.get(String(row.step_id)) || [] }));
     renderTechnicianLines();
   }
   async function loadFrameRows() {
@@ -279,7 +293,8 @@
     if (!orderButton) return;
     row.dataset.dirty = "true";
     orderButton.disabled = false;
-    orderButton.textContent = "Order Updated Parts";
+    const action = row.querySelector("[data-additional-action]")?.value;
+    orderButton.textContent = action === "return" ? "Submit Part Return" : "Order Updated Parts";
     orderButton.className = "line-save order-parts";
     if (completeButton) completeButton.disabled = true;
     if (status) {
@@ -290,6 +305,28 @@
   async function orderParts(button) {
     const row = button.closest("tr");
     const status = row.querySelector("[data-line-status]");
+    const action = row.querySelector("[data-additional-action]")?.value || "";
+    if (action === "return") {
+      const requestId = row.querySelector("[data-return-part-select]")?.value || "";
+      const returnReason = row.querySelector("[data-return-reason]")?.value || "";
+      if (!requestId || !returnReason) {
+        status.textContent = "Select the issued part and return reason.";
+        status.className = "line-status error";
+        return;
+      }
+      setSubmitting(button, true, "Submitting...");
+      const { error } = await getClient().rpc("request_lab_part_return", {
+        p_work_order_step_id: row.dataset.stepId,
+        p_part_request_id: requestId,
+        p_return_reason: returnReason
+      });
+      setSubmitting(button, false);
+      if (error) { status.textContent = error.message; status.className = "line-status error"; return; }
+      showToast("Return sent to Parts Department for approval. Inventory was not changed.");
+      document.dispatchEvent(new CustomEvent("greenloop:notifications-changed"));
+      await refreshAll();
+      return;
+    }
     const repeatPart = row.querySelector("[data-repeat-part]")?.value || "";
     const repeatReason = row.querySelector("[data-repeat-reason]")?.value || "";
     if (repeatPart && !repeatReason) {
@@ -323,38 +360,6 @@
     setSubmitting(button, false);
     if (error) { setBoardMessage(error.message); return; }
     showToast("Job completed. Phone sent to Final QC.");
-    document.dispatchEvent(new CustomEvent("greenloop:notifications-changed"));
-    await refreshAll();
-  }
-  async function returnUnusedPart(button) {
-    const item = button.closest("[data-return-item]");
-    const requestId = item.querySelector("[data-return-part-select]").value;
-    const returnValue = item.querySelector("[data-return-reason]").value;
-    const [condition, ...reasonParts] = returnValue.split("|");
-    const reason = reasonParts.join("|");
-    if (!requestId) {
-      item.querySelector("[data-return-part-select]").focus();
-      throw new Error("Select the issued part to return.");
-    }
-    if (!condition || !reason) {
-      item.querySelector("[data-return-reason]").focus();
-      throw new Error("Select the return condition and reason.");
-    }
-    const confirmation = condition === "restocked"
-      ? "Return this usable part to Parts Inventory?"
-      : "Record this part as damaged without adding it back to usable inventory?";
-    if (!window.confirm(confirmation)) return;
-    setSubmitting(button, true, "Returning...");
-    const { data, error } = await getClient().rpc("return_lab_issued_part_v3", {
-      p_part_request_id: requestId,
-      p_return_condition: condition,
-      p_reason: reason
-    });
-    setSubmitting(button, false);
-    if (error) throw error;
-    showToast(condition === "restocked"
-      ? `${Number(data?.quantity_returned || 0)} usable part(s) returned to Inventory.`
-      : `${Number(data?.quantity_returned || 0)} damaged part(s) recorded outside usable Inventory.`);
     document.dispatchEvent(new CustomEvent("greenloop:notifications-changed"));
     await refreshAll();
   }
@@ -401,7 +406,6 @@
     const add = event.target.closest("[data-add-choice]"); if (add) { addChoice(add); return; }
     const remove = event.target.closest("[data-remove-choice]"); if (remove) { const row = remove.closest("tr"); remove.remove(); markLineChanged(row); return; }
     const order = event.target.closest("[data-order-parts]"); if (order && !order.disabled) orderParts(order).catch((error) => setBoardMessage(error.message));
-    const returnPart = event.target.closest("[data-return-part-request]"); if (returnPart) returnUnusedPart(returnPart).catch((error) => setBoardMessage(error.message));
     const completeLabButton = event.target.closest("[data-complete-lab]"); if (completeLabButton) completeLab(completeLabButton).catch((error) => setBoardMessage(error.message));
     const completeFrameButton = event.target.closest("[data-complete-frame]"); if (completeFrameButton) completeFrame(completeFrameButton).catch((error) => setBoardMessage(error.message));
   });
@@ -426,9 +430,7 @@
     const returnControl = event.target.closest("[data-return-part-select], [data-return-reason]");
     if (returnControl) {
       returnControl.closest("tr").dataset.editing = "true";
-      const item = returnControl.closest("[data-return-item]");
-      const button = item.querySelector("[data-return-part-request]");
-      button.disabled = !(item.querySelector("[data-return-part-select]").value && item.querySelector("[data-return-reason]").value);
+      markLineChanged(returnControl.closest("tr"));
       return;
     }
     const checkbox = event.target.closest("[data-frame-pass]");

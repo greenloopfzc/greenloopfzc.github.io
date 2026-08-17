@@ -52,6 +52,7 @@ body:not(.frame-mode) .technician-lines-table > tbody > tr > td { border-right: 
 .line-save.line-state:disabled { opacity: 1; cursor: default; }
 .line-save.parts-ordered { color: #805713; background: #fff0cd; }
 .line-save.parts-issued { color: #087451; background: #dff3e7; }
+.line-save.return-pending { color: #805713; background: #fff0cd; }
 .lab-additional-info { display: grid; gap: 4px; }
 .lab-additional-info select { width: 100%; min-height: 31px; border: 1px solid #cfe0d5; border-radius: 6px; padding: 4px 6px; color: #294334; background: #fff; font: inherit; font-size: .61rem; }
 .lab-additional-info small { color: #7b887f; font-size: .52rem; line-height: 1.15; }

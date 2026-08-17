@@ -15,6 +15,8 @@
   const returnReportMessage = document.querySelector("#return-report-message");
   const returnedPartsCount = document.querySelector("#returned-parts-count");
   const damagedPartsCount = document.querySelector("#damaged-parts-count");
+  const faultyPartsCount = document.querySelector("#faulty-parts-count");
+  const pendingReturnsCount = document.querySelector("#pending-returns-count");
   const sidebar = document.querySelector("#sidebar");
   const backdrop = document.querySelector("#menu-backdrop");
   const toast = document.querySelector("#toast");
@@ -23,7 +25,8 @@
   let inventory = [];
   let partNames = [];
   let partReturns = [];
-  let activeReturnCondition = "restocked";
+  let pendingReturns = [];
+  let activeReturnCondition = "pending";
   let toastTimer;
 
   const getClient = () => (client ||= window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey));
@@ -93,7 +96,7 @@
       const sourceLabel = request.request_source === "technician_additional"
         ? "Additional Laboratory request"
         : "Laboratory request from Initial QC plan";
-      return `<tr><td>${escapeHtml(device.imei_1 || "—")}</td><td>${escapeHtml(device.device_number || "—")}<small>${escapeHtml(device.model || "")}</small></td><td>${escapeHtml(job.job_number || "—")}</td><td>${escapeHtml(supplierLabel(supplier))}</td><td><strong>${escapeHtml(request.requested_for_technician || "Unassigned")}</strong><small>Lab request</small></td><td><strong>${escapeHtml(request.part_name)}</strong><small>${sourceLabel}</small></td><td>${request.quantity_requested}</td><td>${remaining}</td><td><select data-inventory-request="${request.id}">${inventoryOptions()}</select></td><td><input data-quantity-request="${request.id}" type="number" min="1" max="${remaining}" step="1" value="${Math.max(1, remaining)}"></td><td><button class="issue-row-button" type="button" data-issue-request="${request.id}">Issue</button></td></tr>`;
+      return `<tr><td>${escapeHtml(device.imei_1 || "—")}</td><td>${escapeHtml(device.device_number || "—")}<small>${escapeHtml(device.model || "")}</small></td><td>${escapeHtml(job.job_number || "—")}</td><td>${escapeHtml(supplierLabel(supplier))}</td><td><strong>${escapeHtml(request.requested_for_technician || "Unassigned")}</strong><small>Lab request</small></td><td><strong>${escapeHtml(request.part_name)}</strong><small>${sourceLabel}</small></td><td>${request.quantity_requested}</td><td>${remaining}</td><td><select data-inventory-request="${request.id}">${inventoryOptions()}</select></td><td><input data-quantity-request="${request.id}" type="number" min="1" max="${remaining}" step="1" value="${Math.max(1, remaining)}"></td><td><div class="request-actions"><button class="issue-row-button" type="button" data-issue-request="${request.id}">Issue</button><button class="cancel-request-button" type="button" data-cancel-request="${request.id}">Cancel</button></div></td></tr>`;
     }).join("") : '<tr><td colspan="11">No part requests are waiting.</td></tr>';
     queueList.querySelectorAll("[data-inventory-request]").forEach((select) => {
       const request = requests.find((item) => item.id === select.dataset.inventoryRequest);
@@ -111,10 +114,26 @@
   function renderPartReturnReport() {
     const returned = partReturns.filter((item) => item.return_condition === "restocked");
     const damaged = partReturns.filter((item) => item.return_condition === "damaged");
+    const faulty = partReturns.filter((item) => item.return_condition === "faulty");
+    pendingReturnsCount.textContent = pendingReturns.reduce((total, item) => total + Number(item.quantity || 0), 0);
     returnedPartsCount.textContent = returned.reduce((total, item) => total + Number(item.quantity || 0), 0);
     damagedPartsCount.textContent = damaged.reduce((total, item) => total + Number(item.quantity || 0), 0);
+    faultyPartsCount.textContent = faulty.reduce((total, item) => total + Number(item.quantity || 0), 0);
     document.querySelectorAll("[data-return-report]").forEach((button) => button.classList.toggle("is-active", button.dataset.returnReport === activeReturnCondition));
-    const rows = activeReturnCondition === "damaged" ? damaged : returned;
+    if (activeReturnCondition === "pending") {
+      partReturnReport.innerHTML = pendingReturns.length ? pendingReturns.map((item) => `<tr>
+        <td>${escapeHtml(dateTime(item.requested_at))}</td>
+        <td><strong>${escapeHtml(item.imei || "—")}</strong><small>${escapeHtml(item.job_number || item.device_number || "")}</small></td>
+        <td>${escapeHtml(item.supplier_code || "—")}</td>
+        <td><strong>${escapeHtml(item.part_name || "—")}</strong><small>${escapeHtml(item.technician_name || "")}</small></td>
+        <td>${Number(item.quantity || 0)}</td>
+        <td>${escapeHtml(String(item.return_reason || "").replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase()))}</td>
+        <td>Pending inspection</td><td>—</td><td>—</td><td>Laboratory</td>
+        <td><div class="return-review-actions"><button type="button" data-review-return="${escapeHtml(item.id)}" data-approve="true">Approve</button><button class="reject-return" type="button" data-review-return="${escapeHtml(item.id)}" data-approve="false">Reject</button></div></td>
+      </tr>`).join("") : '<tr><td colspan="11">No part returns are waiting for approval.</td></tr>';
+      return;
+    }
+    const rows = activeReturnCondition === "damaged" ? damaged : activeReturnCondition === "faulty" ? faulty : returned;
     partReturnReport.innerHTML = rows.length ? rows.map((item) => `<tr>
       <td>${escapeHtml(dateTime(item.returned_at))}</td>
       <td><strong>${escapeHtml(item.imei || "—")}</strong><small>${escapeHtml(item.job_number || item.device_number || "")}</small></td>
@@ -126,17 +145,22 @@
       <td>${money(item.unit_cost)}</td>
       <td>${money(item.total_value)}</td>
       <td>${escapeHtml(item.returned_by_name || "System")}</td>
-    </tr>`).join("") : `<tr><td colspan="10">No ${activeReturnCondition === "damaged" ? "damaged" : "returned"} parts have been recorded yet.</td></tr>`;
+      <td><span class="return-report-status">Approved</span></td>
+    </tr>`).join("") : `<tr><td colspan="11">No ${activeReturnCondition} parts have been recorded yet.</td></tr>`;
   }
 
   async function loadPartReturnReport() {
     setMessage(returnReportMessage);
-    const { data, error } = await getClient().rpc("get_part_return_report", { p_return_condition: null, p_limit: 500 });
-    if (error) {
-      setMessage(returnReportMessage, error.message || "Part return reports could not be loaded.");
+    const [reportResponse, pendingResponse] = await Promise.all([
+      getClient().rpc("get_part_return_report", { p_return_condition: null, p_limit: 500 }),
+      getClient().rpc("get_pending_part_return_requests")
+    ]);
+    if (reportResponse.error || pendingResponse.error) {
+      setMessage(returnReportMessage, reportResponse.error?.message || pendingResponse.error?.message || "Part return reports could not be loaded.");
       return;
     }
-    partReturns = data || [];
+    partReturns = reportResponse.data || [];
+    pendingReturns = pendingResponse.data || [];
     renderPartReturnReport();
   }
 
@@ -181,6 +205,47 @@
     setMessage(issueMessage, text, true);
     toastMessage(text);
     await loadData();
+  }
+
+  async function cancelRequest(button) {
+    const reason = window.prompt("Enter the reason for cancelling this parts request:");
+    if (reason === null) return;
+    if (!window.confirm("Cancel this unissued parts request?")) return;
+    button.disabled = true;
+    button.textContent = "Cancelling...";
+    const { error } = await getClient().rpc("cancel_part_request", {
+      p_part_request_id: button.dataset.cancelRequest,
+      p_notes: reason.trim() || null
+    });
+    button.disabled = false;
+    button.textContent = "Cancel";
+    if (error) { setMessage(issueMessage, error.message || "The request could not be cancelled."); return; }
+    setMessage(issueMessage, "Parts request cancelled by Parts Department.", true);
+    document.dispatchEvent(new CustomEvent("greenloop:notifications-changed"));
+    await loadData();
+  }
+
+  async function reviewReturn(button) {
+    const approve = button.dataset.approve === "true";
+    const message = approve
+      ? "Approve this returned part after checking its physical condition?"
+      : "Reject this returned part request?";
+    if (!window.confirm(message)) return;
+    button.disabled = true;
+    const { data, error } = await getClient().rpc("review_lab_part_return", {
+      p_return_request_id: button.dataset.reviewReturn,
+      p_approve: approve,
+      p_notes: null
+    });
+    button.disabled = false;
+    if (error) { setMessage(returnReportMessage, error.message || "The return could not be reviewed."); return; }
+    const text = approve
+      ? data?.inventory_updated ? "Return approved and usable stock added to Inventory." : "Return approved and recorded outside usable Inventory."
+      : "Return request rejected. Inventory was not changed.";
+    setMessage(returnReportMessage, text, true);
+    toastMessage(text);
+    document.dispatchEvent(new CustomEvent("greenloop:notifications-changed"));
+    await Promise.all([loadData(), loadPartReturnReport()]);
   }
 
   async function addPartName() {
@@ -240,7 +305,14 @@
     await Promise.all([loadPartNames(), loadData(), loadPartReturnReport()]);
   }
 
-  queueList.addEventListener("click", (event) => { const button = event.target.closest("[data-issue-request]"); if (button) issueRequest(button); });
+  queueList.addEventListener("click", (event) => {
+    const issue = event.target.closest("[data-issue-request]"); if (issue) { issueRequest(issue); return; }
+    const cancel = event.target.closest("[data-cancel-request]"); if (cancel) cancelRequest(cancel);
+  });
+  partReturnReport.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-review-return]");
+    if (button) reviewReturn(button);
+  });
   inventoryForm.addEventListener("submit", saveInventory);
   document.querySelector("#add-part-name").addEventListener("click", addPartName);
   document.querySelector("#remove-part-name").addEventListener("click", removePartName);
