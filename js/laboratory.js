@@ -342,7 +342,7 @@
       : "Record this part as damaged without adding it back to usable inventory?";
     if (!window.confirm(confirmation)) return;
     setSubmitting(button, true, "Returning...");
-    const { data, error } = await getClient().rpc("return_lab_issued_part_v2", {
+    const { data, error } = await getClient().rpc("return_lab_issued_part_v3", {
       p_part_request_id: requestId,
       p_return_condition: condition,
       p_reason: reason
