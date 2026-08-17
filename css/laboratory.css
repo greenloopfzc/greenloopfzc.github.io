@@ -52,14 +52,14 @@ body:not(.frame-mode) .technician-lines-table > tbody > tr > td { border-right: 
 .line-save.line-state:disabled { opacity: 1; cursor: default; }
 .line-save.parts-ordered { color: #805713; background: #fff0cd; }
 .line-save.parts-issued { color: #087451; background: #dff3e7; }
-.lab-return-inline { display: grid; gap: 5px; margin-top: 7px; border-top: 1px solid #e4c992; padding-top: 7px; }
-.lab-return-inline > .lab-field-label { margin: 0; color: #8a5c13; }
-.lab-return-list { display: grid; gap: 6px; }
-.lab-return-item { display: grid; grid-template-columns: minmax(0,1fr) 92px; align-items: center; gap: 5px; }
-.lab-return-item strong { color: #6d4a12; font-size: .62rem; }
-.lab-return-item select { grid-column: 1/2; width: 100%; min-width: 0; min-height: 29px; border: 1px solid #e2c78f; border-radius: 6px; padding: 3px 5px; color: #5c461f; background: #fff; font: inherit; font-size: .56rem; }
+.lab-additional-info { display: grid; gap: 4px; }
+.lab-additional-info select { width: 100%; min-height: 31px; border: 1px solid #cfe0d5; border-radius: 6px; padding: 4px 6px; color: #294334; background: #fff; font: inherit; font-size: .61rem; }
+.lab-additional-info small { color: #7b887f; font-size: .52rem; line-height: 1.15; }
+.lab-additional-controls { display: grid; gap: 5px; }
+.lab-return-item { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 5px; }
+.lab-return-item select { width: 100%; min-width: 0; min-height: 31px; border: 1px solid #e2c78f; border-radius: 6px; padding: 4px 5px; color: #5c461f; background: #fff; font: inherit; font-size: .56rem; }
 .lab-return-item button { min-height: 31px; border: 1px solid #d89f45; border-radius: 6px; color: #fff; background: #b87318; font: inherit; font-size: .59rem; font-weight: 850; cursor: pointer; }
-.lab-return-item strong { grid-column: 1/-1; }
+.lab-return-item button { grid-column: 1/-1; }
 .lab-return-item button:disabled { opacity: .6; cursor: wait; }
 .line-imei { color: #087451; font-size: .68rem; font-weight: 850; }
 .line-supplier { display: block; margin-top: 2px; color: #7b887f; font-size: .51rem; line-height: 1.15; }

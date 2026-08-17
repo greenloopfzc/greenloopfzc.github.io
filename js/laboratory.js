@@ -126,13 +126,29 @@
   function returnableParts(row) {
     return asList(row.lab_part_requests).filter((item) => item.status !== "cancelled" && Number(item.issued || 0) - Number(item.installed || 0) - Number(item.returned || 0) > 0);
   }
-  function returnPanel(row) {
-    const parts = returnableParts(row);
-    if (!parts.length) return "";
-    return `<div class="lab-return-inline"><span class="lab-field-label">Return Issued Part</span><div class="lab-return-list">${parts.map((part) => {
+  function additionalInfoCell(row) {
+    const canReturn = returnableParts(row).length > 0;
+    return `<div class="lab-additional-info"><select data-additional-action><option value="">Select additional action</option><option value="repeat">Order Same Part Again</option><option value="return"${canReturn ? "" : " disabled"}>Return Issued Part${canReturn ? "" : " (none available)"}</option></select><small>Select only when another order or return is required.</small></div>`;
+  }
+  function rowData(rowElement) {
+    return technicianRows.find((item) => String(item.step_id) === String(rowElement.dataset.stepId));
+  }
+  function renderAdditionalDetails(rowElement, action) {
+    const details = rowElement.querySelector("[data-additional-details]");
+    const source = rowData(rowElement);
+    if (!source || !action) {
+      details.innerHTML = '<span class="lab-field-label">Additional Details</span><select class="lab-repeat-select" disabled><option>Select Additional Information</option></select>';
+      return;
+    }
+    if (action === "repeat") {
+      details.innerHTML = `<span class="lab-field-label">Repeat Part and Reason</span><div class="lab-additional-controls"><select class="lab-repeat-select" data-repeat-part>${optionsMarkup(repeatPartOptions(source), "Select repeated part")}</select><select class="lab-repeat-select" data-repeat-reason disabled>${repeatReasonMarkup()}</select></div>`;
+      return;
+    }
+    const parts = returnableParts(source);
+    details.innerHTML = `<span class="lab-field-label">Return Part and Reason</span><div class="lab-return-item" data-return-item><select data-return-part-select><option value="">Select issued part</option>${parts.map((part) => {
       const available = Number(part.issued || 0) - Number(part.installed || 0) - Number(part.returned || 0);
-      return `<div class="lab-return-item" data-return-item><strong>${escapeHtml(part.name)} · ${available} unused</strong><select data-return-reason><option value="">Select return reason</option><option value="Not required after Laboratory inspection">Not Required</option><option value="Wrong part issued">Wrong Part</option><option value="Different repair solution used">Different Repair Solution</option><option value="Other Laboratory return">Other</option></select><button type="button" data-return-part-request="${escapeHtml(part.id)}">Return to Parts</button></div>`;
-    }).join("")}</div></div>`;
+      return `<option value="${escapeHtml(part.id)}">${escapeHtml(part.name)} · ${available} unused</option>`;
+    }).join("")}</select><select data-return-reason><option value="">Select return reason</option><option value="Not required after Laboratory inspection">Not Required</option><option value="Wrong part issued">Wrong Part</option><option value="Different repair solution used">Different Repair Solution</option><option value="Other Laboratory return">Other</option></select><button type="button" data-return-part-request disabled>Return to Parts</button></div>`;
   }
 
   function renderTechnicianLines() {
@@ -161,7 +177,7 @@
         labelledStatic("Initial QC Parts", readOnlyList(qcParts)),
         labelledStatic("Initial QC Service", readOnlyList(qcServices))
       ].join("");
-      return `<tr class="lab-phone-row" data-step-id="${escapeHtml(row.step_id)}"><td colspan="12"><article class="lab-phone-card"><div class="lab-static-grid">${staticLine}</div><div class="lab-edit-grid"><div class="lab-edit-field lab-parts-field"><span class="lab-field-label">Lab Parts</span>${choiceCell("part", partOptions, labPartNames(row))}${returnPanel(row)}</div><div class="lab-edit-field"><span class="lab-field-label">Lab Service</span>${choiceCell("service", standardServices, labServiceNames(row))}</div><div class="lab-edit-field"><span class="lab-field-label">Same Part Ordered Again</span><select class="lab-repeat-select" data-repeat-part>${optionsMarkup(repeatPartOptions(row), "Select repeated part")}</select><small>Use only for the second or later order.</small></div><div class="lab-edit-field"><span class="lab-field-label">Repeat Reason</span><select class="lab-repeat-select" data-repeat-reason disabled>${repeatReasonMarkup()}</select><small data-repeat-help>Required when the same part is ordered again.</small></div><div class="lab-line-actions">${saveCell}</div></div></article></td></tr>`;
+      return `<tr class="lab-phone-row" data-step-id="${escapeHtml(row.step_id)}"><td colspan="12"><article class="lab-phone-card"><div class="lab-static-grid">${staticLine}</div><div class="lab-edit-grid"><div class="lab-edit-field lab-parts-field"><span class="lab-field-label">Lab Parts</span>${choiceCell("part", partOptions, labPartNames(row))}</div><div class="lab-edit-field"><span class="lab-field-label">Lab Service</span>${choiceCell("service", standardServices, labServiceNames(row))}</div><div class="lab-edit-field"><span class="lab-field-label">Additional Information</span>${additionalInfoCell(row)}</div><div class="lab-edit-field lab-additional-details" data-additional-details><span class="lab-field-label">Additional Details</span><select class="lab-repeat-select" disabled><option>Select Additional Information</option></select></div><div class="lab-line-actions">${saveCell}</div></div></article></td></tr>`;
     }).join("");
   }
 
@@ -309,7 +325,12 @@
   }
   async function returnUnusedPart(button) {
     const item = button.closest("[data-return-item]");
+    const requestId = item.querySelector("[data-return-part-select]").value;
     const reason = item.querySelector("[data-return-reason]").value;
+    if (!requestId) {
+      item.querySelector("[data-return-part-select]").focus();
+      throw new Error("Select the issued part to return.");
+    }
     if (!reason) {
       item.querySelector("[data-return-reason]").focus();
       throw new Error("Select why this issued part is being returned.");
@@ -317,7 +338,7 @@
     if (!window.confirm("Return this unused part to Parts Inventory?")) return;
     setSubmitting(button, true, "Returning...");
     const { data, error } = await getClient().rpc("return_lab_unused_part", {
-      p_part_request_id: button.dataset.returnPartRequest,
+      p_part_request_id: requestId,
       p_reason: reason
     });
     setSubmitting(button, false);
@@ -374,6 +395,11 @@
     const completeFrameButton = event.target.closest("[data-complete-frame]"); if (completeFrameButton) completeFrame(completeFrameButton).catch((error) => setBoardMessage(error.message));
   });
   technicianWorkRows.addEventListener("change", (event) => {
+    const additionalAction = event.target.closest("[data-additional-action]");
+    if (additionalAction) {
+      renderAdditionalDetails(additionalAction.closest("tr"), additionalAction.value);
+      return;
+    }
     const repeatPart = event.target.closest("[data-repeat-part]");
     if (repeatPart) {
       const reason = repeatPart.closest("tr").querySelector("[data-repeat-reason]");
@@ -384,6 +410,13 @@
     }
     const repeatReason = event.target.closest("[data-repeat-reason]");
     if (repeatReason) { markLineChanged(repeatReason.closest("tr")); return; }
+    const returnControl = event.target.closest("[data-return-part-select], [data-return-reason]");
+    if (returnControl) {
+      const item = returnControl.closest("[data-return-item]");
+      const button = item.querySelector("[data-return-part-request]");
+      button.disabled = !(item.querySelector("[data-return-part-select]").value && item.querySelector("[data-return-reason]").value);
+      return;
+    }
     const checkbox = event.target.closest("[data-frame-pass]");
     if (!checkbox) return;
     const button = checkbox.closest("tr").querySelector("[data-complete-frame]");
