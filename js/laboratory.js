@@ -138,8 +138,16 @@
     const pendingReturns = asList(row.pending_part_returns).filter((item) => item.status === "pending");
     const initialParts = asList(row.initial_parts);
     const submitted = allRequests.length > 0 || asList(row.lab_services).length > 0 || initialParts.some((item) => ["requested", "not_required", "unused_returned"].includes(String(item.status)));
-    const allIssued = submitted && requests.every((item) => Number(item.issued || 0) >= Number(item.quantity || 1));
-    return { requests, pendingReturns, submitted, allIssued, hasParts: requests.length > 0 };
+    const needsParts = requests.length > 0 || labPartNames(row).length > 0;
+    const allIssued = submitted && (!needsParts || (requests.length > 0 && requests.every((item) => Number(item.issued || 0) >= Number(item.quantity || 1))));
+    return { requests, pendingReturns, submitted, allIssued, hasParts: needsParts };
+  }
+  function linePartVisual(row) {
+    const state = lineWorkflowState(row);
+    const needsParts = state.hasParts;
+    if (state.pendingReturns.length) return { className: "parts-pending", label: "Return pending" };
+    if (needsParts && !state.allIssued) return { className: "parts-pending", label: "Parts pending" };
+    return { className: "parts-issued", label: needsParts ? "Parts issued" : "No parts required" };
   }
   function actionCell(row) {
     const state = lineWorkflowState(row);
@@ -148,7 +156,14 @@
       return `<button class="line-save line-state return-pending" type="button" disabled>Return Pending</button><button class="line-save job-completed" type="button" data-complete-lab="${escapeHtml(row.step_id)}" disabled>✓ Job Completed</button><small class="line-status" data-line-status>Parts approval: ${escapeHtml(names)}</small>`;
     }
     if (!state.submitted) {
-      return `<button class="line-save order-parts" type="button" data-order-parts="${escapeHtml(row.step_id)}">Order Parts</button><button class="line-save job-completed" type="button" data-complete-lab="${escapeHtml(row.step_id)}" disabled>✓ Job Completed</button><small class="line-status" data-line-status>Order parts and save services first</small>`;
+      const plannedParts = labPartNames(row);
+      const plannedServices = labServiceNames(row);
+      if (!plannedParts.length && !plannedServices.length) {
+        return `<button class="line-save line-state parts-issued" type="button" disabled>✓ No Parts Required</button><button class="line-save job-completed" type="button" data-complete-lab="${escapeHtml(row.step_id)}">✓ Job Completed</button><small class="line-status success" data-line-status>Ready to send to Final QC</small>`;
+      }
+      const label = plannedParts.length ? "Request Parts" : "Save Services";
+      const help = plannedParts.length ? "Send only selected parts to Parts Department" : "Save services; no Parts notification will be sent";
+      return `<button class="line-save order-parts" type="button" data-order-parts="${escapeHtml(row.step_id)}">${label}</button><button class="line-save job-completed" type="button" data-complete-lab="${escapeHtml(row.step_id)}" disabled>✓ Job Completed</button><small class="line-status" data-line-status>${help}</small>`;
     }
     if (!state.allIssued) {
       return `<button class="line-save line-state parts-ordered" type="button" data-order-parts="${escapeHtml(row.step_id)}" disabled>Parts Ordered</button><button class="line-save job-completed" type="button" data-complete-lab="${escapeHtml(row.step_id)}" disabled>✓ Job Completed</button><small class="line-status" data-line-status>Waiting for Parts Department</small>`;
@@ -162,6 +177,11 @@
   function additionalInfoCell(row) {
     const canReturn = returnableParts(row).length > 0;
     return `<div class="lab-additional-info"><select data-additional-action><option value="">Select re-order / return</option><option value="reorder">Re-order Part</option><option value="return"${canReturn ? "" : " disabled"}>Return Issued Part${canReturn ? "" : " (none available)"}</option></select><small>Select only when a part must be re-ordered or returned.</small></div>`;
+  }
+  function issuedPartTools(row) {
+    const state = lineWorkflowState(row);
+    if (!state.allIssued || !state.hasParts) return "";
+    return `<details class="lab-issued-tools"><summary>Manage issued parts</summary><div class="lab-issued-tools-grid"><div class="lab-edit-field"><span class="lab-field-label">Action</span>${additionalInfoCell(row)}</div><div class="lab-edit-field lab-additional-details" data-additional-details><span class="lab-field-label">Part and reason</span><select class="lab-repeat-select" disabled><option>Select an action first</option></select></div></div></details>`;
   }
   function rowData(rowElement) {
     return technicianRows.find((item) => String(item.step_id) === String(rowElement.dataset.stepId));
@@ -210,7 +230,8 @@
         labelledStatic("Initial QC Parts", readOnlyList(qcParts)),
         labelledStatic("Initial QC Service", readOnlyList(qcServices))
       ].join("");
-      return `<tr class="lab-phone-row" data-step-id="${escapeHtml(row.step_id)}"><td colspan="12"><article class="lab-phone-card"><div class="lab-static-grid">${staticLine}</div><div class="lab-edit-grid"><div class="lab-edit-field lab-parts-field"><span class="lab-field-label">Lab Parts</span>${choiceCell("part", partOptions, labPartNames(row))}</div><div class="lab-edit-field"><span class="lab-field-label">Lab Service</span>${choiceCell("service", standardServices, labServiceNames(row))}</div><div class="lab-edit-field"><span class="lab-field-label">Parts Re-order / Return</span>${additionalInfoCell(row)}</div><div class="lab-edit-field lab-additional-details" data-additional-details><span class="lab-field-label">Part Name and Reason</span><select class="lab-repeat-select" disabled><option>Select re-order / return first</option></select></div><div class="lab-line-actions">${saveCell}</div></div></article></td></tr>`;
+      const visual = linePartVisual(row);
+      return `<tr class="lab-phone-row ${visual.className}" data-step-id="${escapeHtml(row.step_id)}"><td colspan="12"><article class="lab-phone-card"><div class="lab-card-status"><span>${escapeHtml(visual.label)}</span></div><div class="lab-static-grid">${staticLine}</div><div class="lab-edit-grid"><div class="lab-edit-field lab-parts-field"><span class="lab-field-label">Final parts required</span>${choiceCell("part", partOptions, labPartNames(row))}</div><div class="lab-edit-field"><span class="lab-field-label">Final services required</span>${choiceCell("service", standardServices, labServiceNames(row))}</div><div class="lab-line-actions">${saveCell}${issuedPartTools(row)}</div></div></article></td></tr>`;
     }).join("");
   }
 
@@ -334,7 +355,8 @@
     row.dataset.dirty = "true";
     orderButton.disabled = false;
     const action = row.querySelector("[data-additional-action]")?.value;
-    orderButton.textContent = action === "return" ? "Submit Part Return" : "Order Updated Parts";
+    const selectedParts = selectedChoices(row, "part");
+    orderButton.textContent = action === "return" ? "Submit Part Return" : selectedParts.length ? "Request Parts" : "Save Services";
     orderButton.className = "line-save order-parts";
     if (completeButton) completeButton.disabled = true;
     if (status) {

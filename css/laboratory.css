@@ -128,3 +128,23 @@ body:not(.frame-mode) .technician-lines-table > tbody > tr > td { border-right: 
 @media(max-width:1200px){.lab-static-grid{grid-template-columns:repeat(4,1fr)}.lab-static-field{border-bottom:1px solid #dce7df}.lab-edit-grid{grid-template-columns:repeat(2,1fr)}.lab-line-actions{grid-column:1/-1;grid-template-columns:repeat(2,minmax(120px,220px))}.lab-line-actions .line-status{grid-column:1/-1;text-align:left}}
 @media(max-width:800px){.technician-board-heading,.technician-lines-heading{align-items:flex-start;flex-direction:column}.technician-line-tools{width:100%;align-items:stretch;flex-direction:column}.technician-imei-scan{width:100%;min-width:0}.technician-board-actions{width:100%}.technician-board-actions button{flex:1}.lab-rule-card{flex-direction:column}.lab-static-grid,.lab-edit-grid{grid-template-columns:1fr 1fr}.frame-mode .technician-lines-table{min-width:960px}}
 @media(max-width:560px){.lab-static-grid,.lab-edit-grid{grid-template-columns:1fr}.lab-line-actions{grid-template-columns:1fr}.lab-static-field,.lab-edit-field{border-right:0}}
+
+/* Simple Lab / Parts workflow */
+.lab-phone-card { position: relative; overflow: hidden; border: 2px solid transparent; transition: border-color .18s ease, box-shadow .18s ease, background .18s ease; }
+.lab-phone-row.parts-pending .lab-phone-card { border-color: #efaaa4; background: #fff9f8; box-shadow: inset 5px 0 0 #cf4036; }
+.lab-phone-row.parts-issued .lab-phone-card { border-color: #8fcdb0; background: #f7fcf9; box-shadow: inset 5px 0 0 #16805a; }
+.lab-phone-row.parts-pending .lab-static-grid { background: #fff1ef; }
+.lab-phone-row.parts-pending .lab-edit-grid { background: #fffafa; }
+.lab-phone-row.parts-issued .lab-static-grid { background: #eaf8f0; }
+.lab-phone-row.parts-issued .lab-edit-grid { background: #f8fcfa; }
+.lab-card-status { position: absolute; top: 7px; right: 9px; z-index: 2; }
+.lab-card-status span { display: inline-flex; min-height: 23px; align-items: center; border-radius: 999px; padding: 0 9px; font-size: .58rem; font-weight: 800; letter-spacing: .025em; }
+.parts-pending .lab-card-status span { color: #a8322b; background: #ffe5e2; }
+.parts-issued .lab-card-status span { color: #0f704c; background: #dff4e8; }
+.lab-edit-grid { grid-template-columns: minmax(260px,1.35fr) minmax(230px,1.1fr) minmax(190px,.75fr); }
+.lab-issued-tools { grid-column: 1 / -1; width: 100%; border: 1px solid #cfe1d5; border-radius: 7px; background: #fff; }
+.lab-issued-tools summary { cursor: pointer; list-style: none; padding: 8px 10px; color: #196947; font-size: .61rem; font-weight: 800; text-align: center; }
+.lab-issued-tools summary::-webkit-details-marker { display: none; }
+.lab-issued-tools-grid { display: grid; grid-template-columns: .85fr 1.15fr; border-top: 1px solid #e2ebe5; }
+.lab-issued-tools-grid .lab-edit-field { min-height: 84px; }
+@media(max-width:900px){.lab-edit-grid{grid-template-columns:1fr}.lab-issued-tools-grid{grid-template-columns:1fr}}

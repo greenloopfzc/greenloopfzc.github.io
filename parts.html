@@ -9,11 +9,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/parts.css?v=20260817-return-approval-1">
+    <link rel="stylesheet" href="css/parts.css?v=20260818-status-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script defer src="js/config.js?v=20260818-3"></script>
     <script defer src="js/part-notifications.js?v=20260815-1"></script>
-    <script defer src="js/parts.js?v=20260817-return-approval-1"></script>
+    <script defer src="js/parts.js?v=20260818-status-1"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -45,7 +45,7 @@
           <section class="page-heading"><div><p class="eyebrow dashboard-eyebrow">Parts Department</p><h1>Parts issue sheet</h1><p class="heading-subtitle">Every request is visible in one horizontal row. Issue stock directly from this sheet.</p></div><a class="quiet-link" href="inventory.html">Open Inventory &rarr;</a></section>
           <div id="permission-message" class="access-message" hidden></div>
           <section id="parts-app" class="parts-app" hidden>
-            <section class="parts-summary"><div><p class="panel-kicker">Parts queue</p><h2>Requests waiting for issue</h2></div><span id="request-count" class="queue-count">0 waiting</span><button id="refresh-parts" class="secondary-button" type="button">Refresh</button></section>
+            <section class="parts-summary"><div><p class="panel-kicker">Parts queue</p><h2>Pending and issued requests</h2></div><span id="request-count" class="queue-count">0 waiting</span><button id="refresh-parts" class="secondary-button" type="button">Refresh</button></section>
             <section class="form-panel parts-sheet-panel"><div class="form-panel-heading"><span class="section-number">01</span><div><h2>Issue requested parts</h2><p>Every confirmed request shows the technician who needs the part. Parts Department may issue or cancel an unissued request.</p></div></div><div class="parts-sheet-wrap"><table class="parts-sheet"><thead><tr><th>IMEI</th><th>Device</th><th>Job</th><th>Supplier code</th><th>Technician</th><th>Part</th><th>Required</th><th>Remaining</th><th>Invoice lot to issue</th><th>Qty</th><th>Actions</th></tr></thead><tbody id="parts-queue-list"></tbody></table></div><p id="issue-message" class="form-message receiving-message" role="status" aria-live="polite"></p></section>
             <section class="form-panel inventory-panel"><div class="form-panel-heading"><span class="section-number">02</span><div><h2>Inventory availability</h2><p>Each invoice is a separate stock lot with its own price. Receive stock from the Inventory page.</p></div><a class="secondary-button" href="inventory.html">Open Inventory</a></div><form id="inventory-form" class="inventory-form" novalidate hidden><div class="inventory-grid"><div class="form-field"><label for="inventory-sku">SKU</label><input id="inventory-sku" required></div><div class="form-field"><label for="inventory-name">Part name</label><div class="master-option-control"><select id="inventory-name" required><option value="">Loading part names...</option></select><button id="add-part-name" class="master-add" type="button">+</button><button id="remove-part-name" class="master-remove" type="button">−</button></div></div><div class="form-field"><label for="inventory-qty">Stock quantity</label><input id="inventory-qty" type="number" min="0" step="1" required value="0"></div><div class="form-field"><label for="inventory-cost">Unit cost (AED)</label><input id="inventory-cost" type="number" min="0" step="0.01" required value="0"></div><button id="inventory-button" class="secondary-button" type="submit">Save item</button></div></form><p id="inventory-message" class="form-message receiving-message" role="status" aria-live="polite" hidden></p><div class="parts-sheet-wrap"><table class="parts-sheet inventory-table"><thead><tr><th>Invoice</th><th>SKU</th><th>Part</th><th>In stock</th><th>Unit cost</th><th>Origin</th></tr></thead><tbody id="inventory-table"></tbody></table></div></section>
             <section class="form-panel part-return-report-panel">

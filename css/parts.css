@@ -38,6 +38,14 @@
 .return-review-actions button { min-height: 31px; border: 0; border-radius: 6px; padding: 0 9px; color: #fff; background: #147451; font: inherit; font-size: .61rem; font-weight: 800; cursor: pointer; }
 .return-review-actions .reject-return { background: #b8382f; }
 .return-report-status { color: #708078; font-size: .6rem; font-weight: 750; }
+.part-request-row { transition: background-color .18s ease, box-shadow .18s ease; }
+.part-request-row.is-pending { background: #fff5f4; box-shadow: inset 5px 0 0 #cf4036; }
+.part-request-row.is-issued { background: #effaf4; box-shadow: inset 5px 0 0 #16805a; }
+.part-request-row.is-pending td { border-bottom-color: #f0d2cf; }
+.part-request-row.is-issued td { border-bottom-color: #cfe8d9; }
+.part-status-chip { display: inline-flex; min-height: 24px; align-items: center; border-radius: 999px; padding: 0 8px; font-size: .59rem; font-weight: 800; }
+.part-status-chip.pending { color: #a8322b; background: #ffe1de; }
+.part-status-chip.issued { color: #0d704b; background: #d9f1e3; }
 @media (max-width: 960px) { .inventory-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .inventory-grid .secondary-button { width: 100%; } }
 @media (max-width: 960px) { .return-report-heading { align-items: flex-start; flex-direction: column; } .return-report-actions { width: 100%; margin-left: 0; } }
 @media (max-width: 650px) { .parts-summary { display: grid; align-items: start; } .parts-summary .queue-count { margin-left: 0; width: fit-content; } .parts-summary .secondary-button { width: 100%; } .inventory-grid { grid-template-columns: 1fr; } .return-report-actions { display: grid; grid-template-columns: 1fr; } }

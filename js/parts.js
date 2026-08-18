@@ -87,16 +87,27 @@
   }
 
   function renderQueue() {
-    requestCount.textContent = `${requests.length} waiting`;
+    const waiting = requests.filter((request) => Number(request.quantity_issued || 0) < Number(request.quantity_requested || 0) && request.status !== "issued");
+    requestCount.textContent = `${waiting.length} waiting`;
     queueList.innerHTML = requests.length ? requests.map((request) => {
       const job = jobOf(request) || {};
       const device = deviceOf(request) || {};
       const supplier = supplierOf(request) || {};
       const remaining = Number(request.quantity_requested) - Number(request.quantity_issued);
+      const issued = remaining <= 0 || request.status === "issued";
       const sourceLabel = request.request_source === "technician_additional"
         ? "Additional Laboratory request"
         : "Laboratory request from Initial QC plan";
-      return `<tr><td>${escapeHtml(device.imei_1 || "—")}</td><td>${escapeHtml(device.device_number || "—")}<small>${escapeHtml(device.model || "")}</small></td><td>${escapeHtml(job.job_number || "—")}</td><td>${escapeHtml(supplierLabel(supplier))}</td><td><strong>${escapeHtml(request.requested_for_technician || "Unassigned")}</strong><small>Lab request</small></td><td><strong>${escapeHtml(request.part_name)}</strong><small>${sourceLabel}</small></td><td>${request.quantity_requested}</td><td>${remaining}</td><td><select data-inventory-request="${request.id}">${inventoryOptions()}</select></td><td><input data-quantity-request="${request.id}" type="number" min="1" max="${remaining}" step="1" value="${Math.max(1, remaining)}"></td><td><div class="request-actions"><button class="issue-row-button" type="button" data-issue-request="${request.id}">Issue</button><button class="cancel-request-button" type="button" data-cancel-request="${request.id}">Cancel</button></div></td></tr>`;
+      const stockControl = issued
+        ? `<span class="part-status-chip issued">Issued</span>`
+        : `<select data-inventory-request="${request.id}">${inventoryOptions()}</select>`;
+      const quantityControl = issued
+        ? `${Number(request.quantity_issued || 0)}`
+        : `<input data-quantity-request="${request.id}" type="number" min="1" max="${remaining}" step="1" value="${Math.max(1, remaining)}">`;
+      const actionControl = issued
+        ? `<span class="part-status-chip issued">✓ Complete</span>`
+        : `<div class="request-actions"><button class="issue-row-button" type="button" data-issue-request="${request.id}">Issue</button><button class="cancel-request-button" type="button" data-cancel-request="${request.id}">Cancel</button></div>`;
+      return `<tr class="part-request-row ${issued ? "is-issued" : "is-pending"}"><td>${escapeHtml(device.imei_1 || "—")}</td><td>${escapeHtml(device.device_number || "—")}<small>${escapeHtml(device.model || "")}</small></td><td>${escapeHtml(job.job_number || "—")}</td><td>${escapeHtml(supplierLabel(supplier))}</td><td><strong>${escapeHtml(request.requested_for_technician || "Unassigned")}</strong><small>Lab request</small></td><td><strong>${escapeHtml(request.part_name)}</strong><small>${sourceLabel}</small></td><td>${request.quantity_requested}</td><td><span class="part-status-chip ${issued ? "issued" : "pending"}">${issued ? "Issued" : `${remaining} pending`}</span></td><td>${stockControl}</td><td>${quantityControl}</td><td>${actionControl}</td></tr>`;
     }).join("") : '<tr><td colspan="11">No part requests are waiting.</td></tr>';
     queueList.querySelectorAll("[data-inventory-request]").forEach((select) => {
       const request = requests.find((item) => item.id === select.dataset.inventoryRequest);
@@ -166,7 +177,7 @@
 
   async function loadData() {
     const [requestResponse, inventoryResponse] = await Promise.all([
-      getClient().from("job_part_requests").select("id, part_name, quantity_requested, quantity_issued, request_source, requested_for_technician, notes, status, job:jobs!inner(job_number, supplier:suppliers(supplier_code, company_name), device:devices(device_number, imei_1, model))").in("status", ["requested", "partially_issued"]).order("requested_at", { ascending: true }),
+      getClient().from("job_part_requests").select("id, part_name, quantity_requested, quantity_issued, request_source, requested_for_technician, notes, status, requested_at, job:jobs!inner(job_number, supplier:suppliers(supplier_code, company_name), device:devices(device_number, imei_1, model))").in("status", ["requested", "partially_issued", "issued"]).order("requested_at", { ascending: false }).limit(500),
       getClient().from("part_inventory").select("id, sku, part_name, stock_quantity, unit_cost, is_active, notes").order("part_name")
     ]);
     if (requestResponse.error) throw requestResponse.error;
