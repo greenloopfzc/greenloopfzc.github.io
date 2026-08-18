@@ -145,6 +145,16 @@ body:not(.frame-mode) .technician-lines-table > tbody > tr > td { border-right: 
 .lab-issued-tools { grid-column: 1 / -1; width: 100%; border: 1px solid #cfe1d5; border-radius: 7px; background: #fff; }
 .lab-issued-tools summary { cursor: pointer; list-style: none; padding: 8px 10px; color: #196947; font-size: .61rem; font-weight: 800; text-align: center; }
 .lab-issued-tools summary::-webkit-details-marker { display: none; }
-.lab-issued-tools-grid { display: grid; grid-template-columns: .85fr 1.15fr; border-top: 1px solid #e2ebe5; }
-.lab-issued-tools-grid .lab-edit-field { min-height: 84px; }
-@media(max-width:900px){.lab-edit-grid{grid-template-columns:1fr}.lab-issued-tools-grid{grid-template-columns:1fr}}
+.lab-issued-manager { display: grid; gap: 8px; padding: 9px; border-top: 1px solid #e2ebe5; }
+.lab-issued-part-select { display: grid; gap: 4px; }
+.lab-issued-part-select select { width: 100%; min-height: 34px; border: 1px solid #bfd7c8; border-radius: 7px; padding: 5px 8px; color: #203b2d; background: #fff; font: inherit; font-size: .66rem; }
+.lab-return-reasons { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 6px; margin: 0; padding: 0; border: 0; }
+.lab-return-reasons legend { grid-column: 1 / -1; margin-bottom: 1px; color: #557065; font-size: .55rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.lab-return-reason { display: flex; min-height: 32px; align-items: center; justify-content: center; gap: 6px; border: 1px solid #d6e3db; border-radius: 7px; color: #3f5549; background: #fff; font-size: .62rem; font-weight: 800; cursor: pointer; }
+.lab-return-reason input { width: 15px; height: 15px; margin: 0; accent-color: #0c7b55; }
+.lab-return-reason.damaged:has(input:checked) { color: #a52f29; border-color: #e7a29d; background: #fff0ee; }
+.lab-return-reason.faulty:has(input:checked) { color: #9a5e05; border-color: #e2bd78; background: #fff7e7; }
+.lab-return-reason.not-needed:has(input:checked) { color: #087451; border-color: #8bc8aa; background: #eaf8f0; }
+.lab-return-rule { margin: 0; color: #748278; font-size: .53rem; line-height: 1.3; }
+@media(max-width:900px){.lab-edit-grid{grid-template-columns:1fr}}
+@media(max-width:560px){.lab-return-reasons{grid-template-columns:1fr}}
