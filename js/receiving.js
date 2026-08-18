@@ -260,7 +260,7 @@
     if (error) throw error;
 
     fillSelect(customerInput, customersResponse.data || [], "Select customer", (item) => `${item.company_name} · ${item.customer_code}`);
-    fillSelect(supplierInput, suppliersResponse.data || [], "Select supplier", (item) => `${item.company_name} · ${item.supplier_code}`);
+    fillSelect(supplierInput, suppliersResponse.data || [], "Select supplier", (item) => item.supplier_code || item.company_name);
     fillSelect(locationInput, locationsResponse.data || [], "Select location", (item) => item.location_name);
 
     const receivingLocation = (locationsResponse.data || []).find((location) => location.location_code === "RECEIVING");

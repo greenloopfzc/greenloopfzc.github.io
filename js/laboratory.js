@@ -242,7 +242,7 @@
       return;
     }
     technicianWorkRows.innerHTML = technicianRows.map((row) => {
-      const supplier = [row.supplier_code, row.supplier_name].filter(Boolean).join(" - ") || "—";
+      const supplier = row.supplier_code || row.supplier_name || "—";
       return `<tr data-step-id="${escapeHtml(row.step_id)}">
         <td><strong class="line-imei">${escapeHtml(row.imei || "—")}</strong></td>
         <td>${escapeHtml(row.model || "—")}</td>

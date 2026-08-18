@@ -36,7 +36,7 @@
   const jobOf = (request) => Array.isArray(request.job) ? request.job[0] : request.job;
   const deviceOf = (request) => { const job = jobOf(request) || {}; return Array.isArray(job.device) ? job.device[0] : job.device; };
   const supplierOf = (request) => { const job = jobOf(request) || {}; return Array.isArray(job.supplier) ? job.supplier[0] : job.supplier; };
-  const supplierLabel = (supplier) => [supplier?.supplier_code, supplier?.company_name].filter((value) => String(value || "").trim()).join(" - ") || "—";
+  const supplierLabel = (supplier) => String(supplier?.supplier_code || supplier?.company_name || "").trim() || "—";
   const normalisePartName = (value) => String(value || "").trim().replace(/\s+/g, " ").toLocaleLowerCase();
   const invoiceDetails = (part) => {
     const notes = String(part?.notes || "");

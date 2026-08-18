@@ -35,7 +35,7 @@
 
   function getDevice(job) { return Array.isArray(job.device) ? job.device[0] : job.device; }
   function getSupplier(job) { return Array.isArray(job.supplier) ? job.supplier[0] : job.supplier; }
-  function supplierLabel(supplier) { return [supplier?.supplier_code, supplier?.company_name].filter((value) => String(value || "").trim()).join(" - ") || "Not recorded"; }
+  function supplierLabel(supplier) { return String(supplier?.supplier_code || supplier?.company_name || "").trim() || "Not recorded"; }
   function setMenu(isOpen) { sidebar.classList.toggle("is-open", isOpen); backdrop.hidden = !isOpen; document.body.classList.toggle("menu-open", isOpen); }
   function showToast(text) { clearTimeout(toastTimer); toast.textContent = text; toast.hidden = false; toast.classList.add("is-visible"); toastTimer = setTimeout(() => { toast.hidden = true; toast.classList.remove("is-visible"); }, 3400); }
   function setMessage(text = "", type = "error") { message.textContent = text; message.classList.toggle("is-visible", Boolean(text)); message.classList.toggle("is-success", type === "success"); }

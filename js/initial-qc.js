@@ -57,7 +57,7 @@
   }
 
   function supplierLabel(code, name) {
-    return [code, name].filter((value) => String(value || "").trim()).join(" - ") || "-";
+    return String(code || name || "").trim() || "-";
   }
 
   function setMenu(isOpen) {

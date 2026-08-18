@@ -68,7 +68,7 @@
     refresh.textContent = "Refresh table";
     if (journeyResponse.error) throw journeyResponse.error;
     if (supplierResponse.error) throw supplierResponse.error;
-    supplierLabels = new Map((supplierResponse.data || []).map((supplier) => [supplier.supplier_code, [supplier.supplier_code, supplier.company_name].filter(Boolean).join(" - ")]));
+    supplierLabels = new Map((supplierResponse.data || []).map((supplier) => [supplier.supplier_code, supplier.supplier_code || supplier.company_name]));
     render(Array.isArray(journeyResponse.data) ? journeyResponse.data : []);
   }
 

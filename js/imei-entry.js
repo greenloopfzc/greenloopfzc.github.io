@@ -38,7 +38,7 @@
   function setMessage(value = "", type = "error") { message.textContent = value; message.classList.toggle("is-visible", Boolean(value)); message.classList.toggle("is-success", type === "success"); }
   function setBusy(button, busy, label) { if (busy) button.dataset.label = button.textContent; button.disabled = busy; button.textContent = busy ? label : (button.dataset.label || button.textContent); }
   function escapeHtml(value) { return String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]); }
-  function supplierLabel(batch) { return [batch?.supplier_code, batch?.supplier_name].filter((value) => String(value || "").trim()).join(" - ") || "No supplier"; }
+  function supplierLabel(batch) { return String(batch?.supplier_code || batch?.supplier_name || "").trim() || "No supplier"; }
 
   const masterFields = [
     ["model", model, "Select model"],

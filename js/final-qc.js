@@ -85,7 +85,7 @@
   }
 
   function supplierLabel(supplier) {
-    return [supplier?.supplier_code, supplier?.company_name].filter((value) => String(value || "").trim()).join(" - ") || "-";
+    return String(supplier?.supplier_code || supplier?.company_name || "").trim() || "-";
   }
 
   function gradeOptions(selectedValue = "") {

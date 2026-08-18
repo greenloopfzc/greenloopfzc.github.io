@@ -179,7 +179,7 @@
     const allRows = reportData.supplier_progress || [];
     const suppliers = [...new Map(allRows.map((row) => [String(row.supplier_id), {
       id: String(row.supplier_id),
-      label: [row.supplier_code, row.supplier_name].filter(Boolean).join(" - ")
+      label: row.supplier_code || row.supplier_name || "—"
     }])).values()].sort((left, right) => left.label.localeCompare(right.label));
 
     if (selectedSupplier !== "all" && !suppliers.some((supplier) => supplier.id === selectedSupplier)) selectedSupplier = "all";
@@ -197,7 +197,7 @@
 
     const supplierOptions = suppliers.map((supplier) => `<option value="${escapeHtml(supplier.id)}"${supplier.id === selectedSupplier ? " selected" : ""}>${escapeHtml(supplier.label)}</option>`).join("");
     const tableBody = rows.length ? rows.map((row) => `<tr>
-      <td><strong>${escapeHtml(row.supplier_code)}</strong><small>${escapeHtml(row.supplier_name)}</small></td>
+      <td><strong>${escapeHtml(row.supplier_code || row.supplier_name || "—")}</strong></td>
       <td>${escapeHtml(row.model)}</td>
       <td>${escapeHtml(row.storage_label || "—")}</td>
       <td>${escapeHtml(row.batch_numbers)}</td>
