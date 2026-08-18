@@ -123,9 +123,10 @@
   }
 
   function renderPartReturnReport() {
-    const returned = partReturns.filter((item) => item.return_condition === "restocked");
-    const damaged = partReturns.filter((item) => item.return_condition === "damaged");
-    const faulty = partReturns.filter((item) => item.return_condition === "faulty");
+    const condition = (item) => String(item?.return_condition || "").trim().toLowerCase();
+    const returned = partReturns.filter((item) => condition(item) === "restocked");
+    const damaged = partReturns.filter((item) => condition(item) === "damaged");
+    const faulty = partReturns.filter((item) => condition(item) === "faulty");
     pendingReturnsCount.textContent = pendingReturns.reduce((total, item) => total + Number(item.quantity || 0), 0);
     returnedPartsCount.textContent = returned.reduce((total, item) => total + Number(item.quantity || 0), 0);
     damagedPartsCount.textContent = damaged.reduce((total, item) => total + Number(item.quantity || 0), 0);
@@ -314,6 +315,9 @@
     if (!canUse) { permissionMessage.textContent = "Your account does not have Parts permission."; permissionMessage.hidden = false; return; }
     app.hidden = false;
     await Promise.all([loadPartNames(), loadData(), loadPartReturnReport()]);
+    window.setInterval(() => {
+      if (!document.hidden) loadPartReturnReport().catch(() => {});
+    }, 15000);
   }
 
   queueList.addEventListener("click", (event) => {
@@ -329,6 +333,7 @@
   document.querySelector("#remove-part-name").addEventListener("click", removePartName);
   document.querySelector("#refresh-parts").addEventListener("click", () => loadData().catch((error) => toastMessage(error.message || "Parts data could not be refreshed.")));
   document.querySelector("#refresh-return-report").addEventListener("click", () => loadPartReturnReport().catch((error) => setMessage(returnReportMessage, error.message || "Part return reports could not be refreshed.")));
+  document.addEventListener("greenloop:notifications-changed", () => loadPartReturnReport().catch(() => {}));
   document.querySelectorAll("[data-return-report]").forEach((button) => button.addEventListener("click", () => {
     activeReturnCondition = button.dataset.returnReport;
     renderPartReturnReport();
