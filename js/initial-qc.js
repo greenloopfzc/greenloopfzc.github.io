@@ -2,7 +2,7 @@
   "use strict";
 
   const config = window.GREENLOOP_CONFIG || {};
-  const workItems = [
+  const defaultPartItems = [
     { label: "Case", kind: "part", partName: "Case", action: "Replace case" },
     { label: "Glass", kind: "part", partName: "Glass", action: "Replace glass" },
     { label: "TP", kind: "part", partName: "Touch panel", action: "Replace touch panel" },
@@ -12,11 +12,14 @@
     { label: "Camera", kind: "part", partName: "Camera", action: "Replace or repair camera" },
     { label: "Face ID", kind: "part", partName: "Face ID flex", action: "Repair Face ID" },
     { label: "LCD", kind: "part", partName: "LCD display", action: "Replace LCD display" },
+  ];
+  const serviceItems = [
     { label: "Polish", kind: "service", partName: null, action: "Polish device" },
     { label: "Cleaning", kind: "service", partName: null, action: "Clean device" },
     { label: "Software", kind: "service", partName: null, action: "Complete software service" },
     { label: "Testing", kind: "service", partName: null, action: "Complete technical testing" }
   ];
+  let workItems = [...defaultPartItems, ...serviceItems];
 
   const app = document.querySelector("#qc-app");
   const permissionMessage = document.querySelector("#permission-message");
@@ -132,6 +135,27 @@
     const items = workItems.filter((item) => item.kind === kind);
     const placeholder = kind === "part" ? "Select part" : "Select service";
     return `<option value="">${placeholder}</option>${items.map((item) => `<option value="${escapeHtml(item.label)}"${selectedValue === item.label ? " selected" : ""}>${escapeHtml(item.label)}</option>`).join("")}`;
+  }
+
+  async function loadPartOptions() {
+    const { data, error } = await getClient().rpc("get_entry_options", { p_option_group: "part_name" });
+    if (error) throw error;
+
+    const partNames = [...defaultPartItems.map((item) => item.partName), ...(data || []).map((item) => item.option_value)]
+      .map((value) => String(value || "").trim())
+      .filter(Boolean)
+      .filter((value, index, values) => values.findIndex((candidate) => candidate.toLocaleLowerCase() === value.toLocaleLowerCase()) === index)
+      .sort((left, right) => left.localeCompare(right, undefined, { numeric: true, sensitivity: "base" }));
+
+    workItems = [
+      ...partNames.map((partName) => ({
+        label: partName,
+        kind: "part",
+        partName,
+        action: `Replace or use ${partName}`
+      })),
+      ...serviceItems
+    ];
   }
 
   function requirementSelect(kind, selectedValue = "") {
@@ -630,7 +654,7 @@
     const { data: canInspect, error } = await getClient().rpc("has_role", { required_roles: ["super_admin", "owner", "manager", "initial_qc"] });
     if (error) throw error;
     if (!canInspect) throw new Error("Your account does not have Initial QC permission.");
-    await Promise.all([loadTechnicians(), loadPendingCount()]);
+    await Promise.all([loadTechnicians(), loadPendingCount(), loadPartOptions()]);
     createRows(10);
     app.hidden = false;
     setupHorizontalScroll();
