@@ -315,6 +315,12 @@
     await loadTechnicianRows();
   }
 
+  function technicianEditorIsActive() {
+    const active = document.activeElement;
+    if (!active || !technicianWorkRows.contains(active)) return false;
+    return active.matches("select, input, textarea");
+  }
+
   async function addTechnician() {
     const fullName = window.prompt("Enter the technician name:");
     if (!fullName?.trim()) return;
@@ -475,7 +481,12 @@
     await refreshAll();
     if (!isFrameMode) {
       window.setInterval(() => {
-        if (document.visibilityState !== "visible" || app.hidden || technicianWorkRows.querySelector('tr[data-dirty="true"], tr[data-editing="true"]')) return;
+        if (
+          document.visibilityState !== "visible"
+          || app.hidden
+          || technicianEditorIsActive()
+          || technicianWorkRows.querySelector('tr[data-dirty="true"], tr[data-editing="true"]')
+        ) return;
         loadTechnicianRows().catch(() => {});
       }, 12000);
     }
