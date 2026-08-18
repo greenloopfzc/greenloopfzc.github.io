@@ -261,12 +261,20 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     function lockControls(root = document) {
       const controls = [];
       if (root.matches?.("button, input[type='submit'], input[type='button']")) controls.push(root);
-      controls.push(...root.querySelectorAll?.("button, input[type='submit'], input[type='button']") || []);
+      const descendants = root.querySelectorAll
+        ? root.querySelectorAll("button, input[type='submit'], input[type='button']")
+        : [];
+      controls.push(...descendants);
       controls.forEach((control) => {
         if (isMutationControl(control)) {
-          control.disabled = true;
+          // Do not continuously change the native `disabled` property. Several
+          // page modules update that property while loading; observing and
+          // rewriting it caused a feedback loop that froze view-only accounts.
+          control.setAttribute("aria-disabled", "true");
           control.title = "View-only access: entries and changes are disabled.";
           control.dataset.viewOnlyLocked = "true";
+          control.style.opacity = "0.55";
+          control.style.cursor = "not-allowed";
         }
       });
     }
@@ -280,14 +288,10 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     }
     lockControls();
     new MutationObserver((changes) => changes.forEach((change) => {
-      if (change.type === "attributes") {
-        lockControls(change.target);
-        return;
-      }
       change.addedNodes.forEach((node) => {
         if (node.nodeType === Node.ELEMENT_NODE) lockControls(node);
       });
-    })).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["disabled"] });
+    })).observe(document.body, { childList: true, subtree: true });
 
     document.addEventListener("click", (event) => {
       const control = event.target.closest?.("button, input[type='submit'], input[type='button']");
@@ -297,7 +301,10 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     }, true);
 
     document.addEventListener("submit", (event) => {
-      if ([...event.target.querySelectorAll?.("button, input[type='submit'], input[type='button']") || []].some(isMutationControl)) {
+      const formControls = event.target.querySelectorAll
+        ? [...event.target.querySelectorAll("button, input[type='submit'], input[type='button']")]
+        : [];
+      if (formControls.some(isMutationControl)) {
         event.preventDefault();
         event.stopImmediatePropagation();
       }
