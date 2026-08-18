@@ -31,11 +31,14 @@
 .permission-title { margin: 0; color: #2c4839; font-size: .78rem; font-weight: 800; }
 .permission-help { margin: 4px 0 11px; color: #7a8b81; font-size: .69rem; }
 .role-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.role-option { display: grid; gap: 3px; min-height: 74px; padding: 10px; border: 1px solid #dce8e0; border-radius: 9px; background: #fbfdfb; cursor: pointer; }
-.role-option:has(input:checked) { border-color: #66b58a; background: #eff9f2; }
-.role-option input { width: 16px; height: 16px; margin: 0 0 1px; accent-color: #0d7752; }
+.role-option { display: grid; grid-template-columns: minmax(0,1fr) 118px; align-items: center; gap: 5px 9px; min-height: 86px; padding: 10px; border: 1px solid #dce8e0; border-radius: 9px; background: #fbfdfb; }
+.role-option.is-selected { border-color: #66b58a; background: #eff9f2; }
+.permission-check { display: flex; align-items: center; gap: 7px; cursor: pointer; }
+.role-option input { width: 16px; height: 16px; margin: 0; accent-color: #0d7752; }
+.role-option select { min-height: 32px; border: 1px solid #c8dcd0; border-radius: 7px; padding: 0 7px; color: #28503b; background: #fff; font: 750 .63rem DM Sans,Arial,sans-serif; }
+.role-option select:disabled { color: #87938c; background: #f0f3f1; }
 .role-option strong { color: #28503b; font-size: .7rem; }
-.role-option small { color: #76877d; font-size: .61rem; line-height: 1.35; }
+.role-option small { grid-column: 1/-1; color: #76877d; font-size: .61rem; line-height: 1.35; }
 .access-empty { margin: 0; padding: 38px 18px; color: #829087; font-size: .75rem; text-align: center; }
 .role-guide-panel { margin-top: 18px; }
 .role-guide { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; }

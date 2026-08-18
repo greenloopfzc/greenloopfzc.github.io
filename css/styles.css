@@ -2604,3 +2604,5 @@ a[href="stock-out.html"],
 .receiving-channel-panel .form-field { margin: 0; }
 .receiving-channel-panel p { margin: 0 0 11px; color: #64746b; font-size: .78rem; line-height: 1.45; }
 @media (max-width: 640px) { .receiving-channel-panel { grid-template-columns: 1fr; gap: 8px; } .receiving-channel-panel p { margin-bottom: 0; } }
+.view-only-access-banner{margin:0 0 14px;padding:11px 14px;border:1px solid #e8cf91;border-radius:10px;color:#755313;background:#fff7df;font-size:.76rem;font-weight:800}
+html[data-page-access="view"] [data-view-only-locked="true"]{opacity:.55!important;cursor:not-allowed!important}

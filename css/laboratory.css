@@ -21,6 +21,14 @@
 .technician-card-count.is-zero { color: #6d7971; background: #e7ede9; }
 .technician-lines-panel { overflow: hidden; }
 .technician-lines-heading { padding: 14px 16px; background: linear-gradient(118deg,#f3faf6,#fff); }
+.technician-line-tools { display: flex; align-items: flex-end; gap: 12px; }
+.technician-imei-scan { display: grid; gap: 4px; min-width: 250px; color: #557064; font-size: .57rem; font-weight: 850; letter-spacing: .04em; text-transform: uppercase; }
+.technician-imei-scan-row { display: grid; grid-template-columns: minmax(205px,1fr) auto; gap: 6px; }
+.technician-imei-scan input { min-height: 38px; border: 1px solid #bdd9c8; border-radius: 8px; padding: 0 11px; color: #244535; background: #fff; font: 700 .72rem DM Sans,Arial,sans-serif; }
+.technician-imei-scan button { min-height: 38px; border: 0; border-radius: 8px; padding: 0 12px; color: #fff; background: #087451; font: 800 .65rem DM Sans,Arial,sans-serif; cursor: pointer; }
+.technician-imei-scan button:disabled { color: #87938c; background: #e6ece8; cursor: not-allowed; }
+.technician-imei-scan input:focus { border-color: #087451; outline: 3px solid rgba(8,116,81,.1); }
+.technician-imei-scan input:disabled { color: #85928a; background: #f4f7f5; }
 .technician-lines-panel > .form-message { margin: 0 12px 10px; }
 .technician-lines-scroll { width: 100%; overflow-x: hidden; }
 .technician-lines-table { width: 100%; min-width: 1320px; table-layout: fixed; border-collapse: collapse; color: #294334; font-size: .65rem; }
@@ -34,6 +42,7 @@ body:not(.frame-mode) .technician-lines-table { min-width: 0; table-layout: auto
 body:not(.frame-mode) .technician-lines-table thead { display: none; }
 body:not(.frame-mode) .technician-lines-table > tbody > tr > td { border-right: 0; padding: 0; }
 .lab-phone-card { display: grid; gap: 0; border-top: 1px solid #dce7df; background: #fff; }
+.lab-phone-row.scan-match .lab-phone-card { box-shadow: inset 0 0 0 3px #16a36f; background: #f0fbf5; }
 .lab-static-grid { display: grid; grid-template-columns: 1.15fr .7fr .55fr .7fr .5fr 1.25fr 1.1fr 1.1fr; background: #f5faf7; }
 .lab-static-field { min-width: 0; border-right: 1px solid #dce7df; padding: 8px 9px; }
 .lab-static-field:last-child { border-right: 0; }
@@ -95,12 +104,27 @@ body:not(.frame-mode) .technician-lines-table > tbody > tr > td { border-right: 
 .frame-supplier { color: #176b4d; font-weight: 750; line-height: 1.15; }
 .frame-pass-check { display: flex; align-items: center; justify-content: center; gap: 4px; min-height: 31px; border: 1px solid #bcd9c8; border-radius: 6px; color: #087451; background: #eff9f2; font-weight: 850; cursor: pointer; }
 .frame-pass-check input { width: 15px; height: 15px; accent-color: #087451; }
+.frame-fail-check { display: flex; align-items: center; justify-content: center; gap: 4px; min-height: 31px; border: 1px solid #edc3bd; border-radius: 6px; color: #b13026; background: #fff3f1; font-weight: 850; cursor: pointer; }
+.frame-fail-check input { width: 15px; height: 15px; accent-color: #c33a2f; }
 .line-save.frame-ready { background: #087451; }
 .line-status { display: block; margin-top: 3px; color: #74847a; font-size: .5rem; text-align: center; }
 .line-status.success { color: #087451; font-weight: 800; }
 .line-status.error { color: #c3271c; }
 .lab-rule-card { display: flex; gap: 12px; align-items: flex-start; padding: 13px 16px; color: #3e5c49; background: #f2faf5; font-size: .72rem; }
 .lab-rule-card strong { white-space: nowrap; color: #087451; }
+.frame-report-panel { overflow: hidden; border: 1px solid #d8e6dd; border-radius: 16px; background: #fff; box-shadow: 0 10px 28px rgba(28,83,57,.05); }
+.frame-report-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; background: #f7fbf8; }
+.frame-report-heading h2 { margin: 2px 0 0; color: #173426; font: 800 1rem Manrope,Arial,sans-serif; }
+.frame-report-counts { display: flex; gap: 7px; }
+.frame-report-counts span { border-radius: 999px; padding: 6px 10px; color: #176b4d; background: #e6f5eb; font-size: .66rem; font-weight: 850; }
+.frame-report-counts span:last-child { color: #a92d24; background: #fff0ee; }
+.frame-report-scroll { overflow-x: auto; }
+.frame-report-scroll table { width: 100%; border-collapse: collapse; font-size: .68rem; }
+.frame-report-scroll th,.frame-report-scroll td { border-top: 1px solid #e0e9e3; padding: 8px 10px; text-align: left; }
+.frame-report-scroll th { color: #557064; background: #f1f7f3; font-size: .56rem; text-transform: uppercase; }
+.frame-result { display: inline-flex; border-radius: 999px; padding: 3px 7px; font-size: .58rem; font-weight: 850; }
+.frame-result.pass { color: #087451; background: #e4f6eb; }
+.frame-result.fail { color: #b13026; background: #fff0ee; }
 @media(max-width:1200px){.lab-static-grid{grid-template-columns:repeat(4,1fr)}.lab-static-field{border-bottom:1px solid #dce7df}.lab-edit-grid{grid-template-columns:repeat(2,1fr)}.lab-line-actions{grid-column:1/-1;grid-template-columns:repeat(2,minmax(120px,220px))}.lab-line-actions .line-status{grid-column:1/-1;text-align:left}}
-@media(max-width:800px){.technician-board-heading,.technician-lines-heading{align-items:flex-start;flex-direction:column}.technician-board-actions{width:100%}.technician-board-actions button{flex:1}.lab-rule-card{flex-direction:column}.lab-static-grid,.lab-edit-grid{grid-template-columns:1fr 1fr}.frame-mode .technician-lines-table{min-width:900px}}
+@media(max-width:800px){.technician-board-heading,.technician-lines-heading{align-items:flex-start;flex-direction:column}.technician-line-tools{width:100%;align-items:stretch;flex-direction:column}.technician-imei-scan{width:100%;min-width:0}.technician-board-actions{width:100%}.technician-board-actions button{flex:1}.lab-rule-card{flex-direction:column}.lab-static-grid,.lab-edit-grid{grid-template-columns:1fr 1fr}.frame-mode .technician-lines-table{min-width:960px}}
 @media(max-width:560px){.lab-static-grid,.lab-edit-grid{grid-template-columns:1fr}.lab-line-actions{grid-template-columns:1fr}.lab-static-field,.lab-edit-field{border-right:0}}

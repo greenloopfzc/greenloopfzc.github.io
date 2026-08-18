@@ -242,6 +242,68 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     main.innerHTML = '<div class="page-content"><section class="panel"><p class="form-message error-message">Your page permissions could not be loaded. Please logout, sign in again, and refresh the page.</p></section></div>';
   }
 
+  function makePageViewOnly(main, pageKey) {
+    window.GREENLOOP_PAGE_ACCESS = { pageKey, accessLevel: "view", canEdit: false };
+    document.documentElement.dataset.pageAccess = "view";
+    const mutationWords = /\b(save|create|add|remove|delete|receive|issue|install|return|approve|reject|order|complete|route|pass|fail|cancel|submit|update|edit)\b/i;
+    const mutationSelector = [
+      "[data-save-row]", "[data-order-parts]", "[data-complete-lab]", "[data-complete-frame]",
+      "[data-add-choice]", "[data-remove-choice]", "[data-review-return]", "[data-delete]",
+      ".master-add", ".master-remove", ".danger-button"
+    ].join(",");
+
+    function isMutationControl(control) {
+      if (!control) return false;
+      const text = `${control.textContent || ""} ${control.value || ""} ${control.id || ""}`;
+      return control.matches(mutationSelector) || mutationWords.test(text);
+    }
+
+    function lockControls(root = document) {
+      const controls = [];
+      if (root.matches?.("button, input[type='submit'], input[type='button']")) controls.push(root);
+      controls.push(...root.querySelectorAll?.("button, input[type='submit'], input[type='button']") || []);
+      controls.forEach((control) => {
+        if (isMutationControl(control)) {
+          control.disabled = true;
+          control.title = "View-only access: entries and changes are disabled.";
+          control.dataset.viewOnlyLocked = "true";
+        }
+      });
+    }
+
+    if (main && !main.querySelector(".view-only-access-banner")) {
+      const banner = document.createElement("div");
+      banner.className = "view-only-access-banner";
+      banner.textContent = "View-only access — you can see this page, but entries and changes are disabled.";
+      const content = main.querySelector(".page-content");
+      (content || main).prepend(banner);
+    }
+    lockControls();
+    new MutationObserver((changes) => changes.forEach((change) => {
+      if (change.type === "attributes") {
+        lockControls(change.target);
+        return;
+      }
+      change.addedNodes.forEach((node) => {
+        if (node.nodeType === Node.ELEMENT_NODE) lockControls(node);
+      });
+    })).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["disabled"] });
+
+    document.addEventListener("click", (event) => {
+      const control = event.target.closest?.("button, input[type='submit'], input[type='button']");
+      if (!isMutationControl(control)) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }, true);
+
+    document.addEventListener("submit", (event) => {
+      if ([...event.target.querySelectorAll?.("button, input[type='submit'], input[type='button']") || []].some(isMutationControl)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    }, true);
+  }
+
   async function applyPageAccess() {
     const currentFile = (window.location.pathname.split("/").pop() || "dashboard.html").toLowerCase();
     const currentPageKey = filePageKeys[currentFile];
@@ -266,14 +328,22 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
       return;
     }
 
-    const { data, error } = await client.rpc("get_my_page_access");
+    let { data, error } = await client.rpc("get_my_page_access_v2");
+    let accessRows;
+    if (error && (error.code === "PGRST202" || String(error.message || "").includes("get_my_page_access_v2"))) {
+      ({ data, error } = await client.rpc("get_my_page_access"));
+      accessRows = (Array.isArray(data) ? data : []).map((pageKey) => ({ page_key: pageKey, access_level: "edit" }));
+    } else {
+      accessRows = Array.isArray(data) ? data : [];
+    }
     if (error) {
       console.error("Page permissions could not be loaded:", error.message);
       showAccessError(navigation, main);
       return;
     }
 
-    const allowedPages = new Set(Array.isArray(data) ? data : []);
+    const accessByPage = new Map(accessRows.map((row) => [row.page_key, row.access_level || "view"]));
+    const allowedPages = new Set(accessByPage.keys());
     if (navigation) {
       navigation.querySelectorAll("a.nav-item").forEach((link) => {
         const pageKey = pageKeyForLink(link);
@@ -283,6 +353,10 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     }
 
     if (allowedPages.has(currentPageKey)) {
+      const accessLevel = accessByPage.get(currentPageKey) || "view";
+      window.GREENLOOP_PAGE_ACCESS = { pageKey: currentPageKey, accessLevel, canEdit: accessLevel === "edit" };
+      document.documentElement.dataset.pageAccess = accessLevel;
+      if (accessLevel !== "edit") makePageViewOnly(main, currentPageKey);
       unlockApplication(main);
       return;
     }

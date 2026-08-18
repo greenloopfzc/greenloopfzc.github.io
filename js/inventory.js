@@ -21,7 +21,6 @@
   const toast = document.querySelector("#toast");
   let client;
   let toastTimer;
-  let invoiceHistoryAvailable = true;
 
   function api() { return (client ||= window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey)); }
   function escapeHtml(value) { return String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]); }
@@ -56,30 +55,6 @@
       invoice: invoiceMatch?.[1]?.trim() || "--",
       origin: originMatch?.[1]?.trim() || "--"
     };
-  }
-
-  async function loadLegacyInventory() {
-    const { data, error } = await api()
-      .from("part_inventory")
-      .select("id, sku, part_name, stock_quantity, unit_cost, notes, updated_at, created_at")
-      .eq("is_active", true)
-      .order("part_name");
-    if (error) throw error;
-    const rows = (data || []).map((row) => {
-      const legacy = legacyReceiptDetails(row);
-      return {
-        ...row,
-        total_received: Number(row.stock_quantity || 0), used_in_phones: 0,
-        damaged_quantity: 0, faulty_quantity: 0, issued_pending: 0,
-        stock_value: Number(row.stock_quantity || 0) * Number(row.unit_cost || 0),
-        last_invoice_number: legacy.invoice,
-        last_origin: legacy.origin,
-        last_received_at: row.updated_at || row.created_at
-      };
-    });
-    renderStock(rows);
-    renderReceipts([]);
-    return rows;
   }
 
   async function loadPartNames(selected = partName.value) {
@@ -138,14 +113,10 @@
       api().rpc("get_part_inventory_receipts", { p_limit: 150 })
     ]);
     if (missingInventoryFunction(stockResponse.error) || missingInventoryFunction(receiptResponse.error)) {
-      invoiceHistoryAvailable = false;
-      await loadLegacyInventory();
-      setMessage("Inventory is using the existing Parts stock system. Invoice and origin are saved with each stock item; detailed receipt history activates after the Inventory database SQL is run.", true);
-      return;
+      throw new Error("Run the latest Greenloop database update first. Inventory totals are not shown from an unsafe fallback.");
     }
     if (stockResponse.error) throw stockResponse.error;
     if (receiptResponse.error) throw receiptResponse.error;
-    invoiceHistoryAvailable = true;
     renderStock(stockResponse.data || []);
     renderReceipts(receiptResponse.data || []);
   }
@@ -194,15 +165,7 @@
       p_total_cost: Number(totalCost.value),
       p_notes: notes.value.trim() || null
     }));
-    if (missingInventoryFunction(error)) {
-      invoiceHistoryAvailable = false;
-      try {
-        data = await saveThroughExistingParts();
-        error = null;
-      } catch (fallbackError) {
-        error = fallbackError;
-      }
-    }
+    if (missingInventoryFunction(error)) error = new Error("Run the latest Greenloop database update before receiving parts.");
     button.disabled = false;
     button.textContent = "Receive parts";
     if (error) { setMessage(error.message || "Inventory receipt could not be saved."); return; }
@@ -210,8 +173,7 @@
     form.reset();
     origin.value = "local";
     updateUnitCost();
-    const fallbackNote = invoiceHistoryAvailable ? "" : " Invoice and origin were saved with this stock item.";
-    setMessage(`${result?.part_name || "Part"} received. ${result?.stock_quantity || 0} units are now in stock at ${money(result?.average_unit_cost)} average cost.${fallbackNote}`, true);
+    setMessage(`${result?.part_name || "Part"} received. ${result?.stock_quantity || 0} units are now in stock at ${money(result?.average_unit_cost)} average cost.`, true);
     showToast("Inventory receipt saved. Parts can now be issued to Laboratory jobs.");
     await loadData();
   }

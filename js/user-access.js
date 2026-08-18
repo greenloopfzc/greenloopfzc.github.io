@@ -74,14 +74,41 @@
     return pageGuideData.find(([key]) => key === pageKey)?.[1] || String(pageKey).replaceAll("_", " ");
   }
 
-  function pageCheckboxes(pages = pageGuideData, selectedPages = new Set()) {
-    return pages.map(([key, name, scope]) => `
-      <label class="role-option">
-        <input type="checkbox" value="${escapeHtml(key)}"${selectedPages.has(key) ? " checked" : ""}>
-        <strong>${escapeHtml(name)}</strong>
-        <small>${escapeHtml(scope)}</small>
-      </label>
-    `).join("");
+  function pageCheckboxes(pages = pageGuideData, selectedPermissions = {}) {
+    return pages.map(([key, name, scope]) => {
+      const accessLevel = selectedPermissions[key] || "edit";
+      const checked = Object.hasOwn(selectedPermissions, key);
+      return `
+        <article class="role-option${checked ? " is-selected" : ""}" data-page-permission="${escapeHtml(key)}">
+          <label class="permission-check"><input type="checkbox" value="${escapeHtml(key)}"${checked ? " checked" : ""}><strong>${escapeHtml(name)}</strong></label>
+          <select data-access-level aria-label="${escapeHtml(name)} access level"${checked ? "" : " disabled"}>
+            <option value="view"${accessLevel === "view" ? " selected" : ""}>Only View</option>
+            <option value="edit"${accessLevel !== "view" ? " selected" : ""}>Entry Allowed</option>
+          </select>
+          <small>${escapeHtml(scope)}</small>
+        </article>
+      `;
+    }).join("");
+  }
+
+  function permissionsForUser(user) {
+    if (user?.page_permissions && typeof user.page_permissions === "object" && !Array.isArray(user.page_permissions)) return user.page_permissions;
+    return Object.fromEntries((user?.page_keys || []).map((key) => [key, "edit"]));
+  }
+
+  function collectPagePermissions(container) {
+    const result = {};
+    container.querySelectorAll("[data-page-permission]").forEach((card) => {
+      const checkbox = card.querySelector('input[type="checkbox"]');
+      if (checkbox.checked) result[checkbox.value] = card.querySelector("[data-access-level]").value || "view";
+    });
+    return result;
+  }
+
+  function syncPermissionCard(checkbox) {
+    const card = checkbox.closest("[data-page-permission]");
+    card.classList.toggle("is-selected", checkbox.checked);
+    card.querySelector("[data-access-level]").disabled = !checkbox.checked;
   }
 
   function renderPageGuide() {
@@ -102,12 +129,13 @@
 
   function renderUsers() {
     userList.innerHTML = users.length ? users.map((user) => {
-      const pages = user.page_keys || [];
+      const permissions = permissionsForUser(user);
+      const pages = Object.keys(permissions);
       return `
         <button class="user-list-item${user.user_id === selectedUserId ? " active" : ""}${user.is_active ? "" : " inactive"}" type="button" data-user-id="${escapeHtml(user.user_id)}">
           <strong>${escapeHtml(user.full_name || user.login_username || "Unnamed user")}</strong>
           <small>@${escapeHtml(user.login_username || "No username")}</small>
-          <span class="user-role-summary">${escapeHtml(pages.length ? pages.map(pageName).join(", ") : "No page assigned")}</span>
+          <span class="user-role-summary">${escapeHtml(pages.length ? pages.map((key) => `${pageName(key)} (${permissions[key] === "view" ? "View" : "Entry"})`).join(", ") : "No page assigned")}</span>
         </button>
       `;
     }).join("") : '<p class="access-empty">No user profiles were found.</p>';
@@ -123,11 +151,14 @@
     fullName.value = user.full_name || "";
     username.value = user.login_username || "";
     active.checked = Boolean(user.is_active);
-    roleOptions.innerHTML = pageCheckboxes(pageGuideData, new Set(user.page_keys || []));
+    roleOptions.innerHTML = pageCheckboxes(pageGuideData, permissionsForUser(user));
   }
 
   async function loadUsers(preferredUserId = selectedUserId) {
-    const { data, error } = await getClient().rpc("get_user_page_access_matrix");
+    let { data, error } = await getClient().rpc("get_user_page_access_matrix_v2");
+    if (error && (error.code === "PGRST202" || String(error.message || "").includes("get_user_page_access_matrix_v2"))) {
+      ({ data, error } = await getClient().rpc("get_user_page_access_matrix"));
+    }
     if (error) throw error;
     users = data || [];
     selectedUserId = users.some((user) => user.user_id === preferredUserId)
@@ -165,7 +196,8 @@
       return;
     }
 
-    const selectedPages = [...newRoleOptions.querySelectorAll("input:checked")].map((input) => input.value);
+    const selectedPermissions = collectPagePermissions(newRoleOptions);
+    const selectedPages = Object.keys(selectedPermissions);
     if (!selectedPages.length) {
       setMessage(createUserMessage, "Select at least one page for this user.");
       return;
@@ -187,6 +219,15 @@
       if (error) throw new Error(await readFunctionError(error));
       if (!data?.success || !data?.user_id) throw new Error(data?.error || "The user account could not be created.");
 
+      const { error: accessError } = await getClient().rpc("save_user_page_access_v2", {
+        p_user_id: data.user_id,
+        p_full_name: newFullName.value.trim(),
+        p_login_username: data.username,
+        p_is_active: true,
+        p_page_permissions: selectedPermissions
+      });
+      if (accessError) throw accessError;
+
       createUserForm.reset();
       renderNewUserPages();
       await loadUsers(data.user_id);
@@ -201,19 +242,19 @@
 
   async function saveAccess(event) {
     event.preventDefault();
-    const selectedPages = [...roleOptions.querySelectorAll("input:checked")].map((input) => input.value);
+    const selectedPermissions = collectPagePermissions(roleOptions);
     if (!selectedUserId) return;
 
     const button = document.querySelector("#save-access");
     button.disabled = true;
     button.textContent = "Saving...";
 
-    const { error } = await getClient().rpc("save_user_page_access", {
+    let { error } = await getClient().rpc("save_user_page_access_v2", {
       p_user_id: selectedUserId,
       p_full_name: fullName.value.trim(),
       p_login_username: username.value.trim(),
       p_is_active: active.checked,
-      p_page_keys: selectedPages
+      p_page_permissions: selectedPermissions
     });
 
     button.disabled = false;
@@ -275,6 +316,14 @@
   });
   newUsername.addEventListener("blur", () => {
     newUsername.value = newUsername.value.trim().toLowerCase().replace(/\s+/g, "");
+  });
+  newRoleOptions.addEventListener("change", (event) => {
+    const checkbox = event.target.closest('input[type="checkbox"]');
+    if (checkbox) syncPermissionCard(checkbox);
+  });
+  roleOptions.addEventListener("change", (event) => {
+    const checkbox = event.target.closest('input[type="checkbox"]');
+    if (checkbox) syncPermissionCard(checkbox);
   });
   createUserForm.addEventListener("submit", (event) => {
     createUser(event).catch((error) => setMessage(createUserMessage, error.message || "The user account could not be created."));

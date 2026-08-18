@@ -10,11 +10,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/laboratory.css?v=20260817-return-approval-1">
+    <link rel="stylesheet" href="css/laboratory.css?v=20260818-2">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script defer src="js/config.js?v=20260815-simple-1"></script>
+    <script defer src="js/config.js?v=20260818-2"></script>
     <script defer src="js/part-notifications.js?v=20260815-simple-1"></script>
-    <script defer src="js/laboratory.js?v=20260817-return-approval-1"></script>
+    <script defer src="js/laboratory.js?v=20260818-2"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -35,9 +35,13 @@
               <div id="technician-cards" class="technician-cards" role="list"></div>
             </section>
             <section class="technician-lines-panel">
-              <div class="technician-lines-heading"><div><p id="lines-kicker" class="panel-kicker">Selected technician</p><h2 id="technician-lines-title">Assigned phone lines</h2><p id="technician-lines-help">Review the lower line, order required parts, then complete the job after Parts has issued them.</p></div><div class="frame-lines-actions"><span id="technician-lines-count" class="queue-count">0 lines</span><button id="refresh-frame" class="secondary-button" type="button" hidden>Refresh</button></div></div>
+              <div class="technician-lines-heading"><div><p id="lines-kicker" class="panel-kicker">Selected technician</p><h2 id="technician-lines-title">Assigned phone lines</h2><p id="technician-lines-help">Review the lower line, order required parts, then complete the job after Parts has issued them.</p></div><div class="technician-line-tools"><label id="technician-imei-scan-wrap" class="technician-imei-scan"><span>Scan IMEI for selected technician</span><span class="technician-imei-scan-row"><input id="technician-imei-scan" inputmode="numeric" maxlength="15" autocomplete="off" placeholder="Select technician first" disabled><button id="check-technician-imei" type="button" disabled>Open IMEI</button></span></label><div class="frame-lines-actions"><span id="technician-lines-count" class="queue-count">0 lines</span><button id="refresh-frame" class="secondary-button" type="button" hidden>Refresh</button></div></div></div>
               <p id="lab-board-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
               <div class="technician-lines-scroll"><table class="technician-lines-table"><thead><tr id="technician-lines-head"><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>BH</th><th>QC 1 Parts</th><th>QC 1 Service</th><th>Lab Parts</th><th>Lab Service</th><th>Extra Parts Req.</th><th>Extra Service Req.</th><th>Save</th></tr></thead><tbody id="technician-work-rows"><tr><td colspan="12" class="technician-lines-empty">Select a technician.</td></tr></tbody></table></div>
+            </section>
+            <section id="frame-report-panel" class="frame-report-panel" hidden>
+              <div class="frame-report-heading"><div><p class="panel-kicker">Frame performance</p><h2>Pass and Fail history</h2></div><div class="frame-report-counts"><span id="frame-pass-count">0 Pass</span><span id="frame-fail-count">0 Fail</span></div></div>
+              <div class="frame-report-scroll"><table><thead><tr><th>Time</th><th>IMEI</th><th>Supplier</th><th>Model</th><th>Result</th><th>Recorded by</th></tr></thead><tbody id="frame-report-rows"><tr><td colspan="6">No Frame results recorded yet.</td></tr></tbody></table></div>
             </section>
             <section class="lab-rule-card"><strong>Workflow rule</strong><span id="workflow-rule-text">Laboratory saves parts and services. Only parts create a Parts Department notification. Laboratory completion sends the phone to Final QC. Final QC may pass it to Ready Stock or send it to Frame. A Frame Pass sends the phone directly to Ready Stock.</span></section>
           </section>

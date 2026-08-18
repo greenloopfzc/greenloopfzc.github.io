@@ -19,6 +19,13 @@
   const technicianLinesHelp = document.querySelector("#technician-lines-help");
   const technicianLinesCount = document.querySelector("#technician-lines-count");
   const technicianWorkRows = document.querySelector("#technician-work-rows");
+  const technicianImeiScanWrap = document.querySelector("#technician-imei-scan-wrap");
+  const technicianImeiScan = document.querySelector("#technician-imei-scan");
+  const checkTechnicianImei = document.querySelector("#check-technician-imei");
+  const frameReportPanel = document.querySelector("#frame-report-panel");
+  const frameReportRows = document.querySelector("#frame-report-rows");
+  const framePassCount = document.querySelector("#frame-pass-count");
+  const frameFailCount = document.querySelector("#frame-fail-count");
   const boardMessage = document.querySelector("#lab-board-message");
   const addTechnicianButton = document.querySelector("#add-lab-technician");
   const removeTechnicianButton = document.querySelector("#remove-lab-technician");
@@ -53,12 +60,14 @@
     document.querySelector(".lab-heading .quiet-link").href = "final-qc.html";
     document.querySelector(".lab-heading .quiet-link").textContent = "← Back to Final QC";
     technicianBoard.hidden = true;
+    technicianImeiScanWrap.hidden = true;
+    frameReportPanel.hidden = false;
     linesKicker.textContent = "Frame queue";
     technicianLinesTitle.textContent = "Phones waiting for Frame completion";
-    technicianLinesHelp.textContent = "Tick Pass and save only after Frame work is complete. Unchecked phones stay here.";
+    technicianLinesHelp.textContent = "Select exactly one result. Pass sends to Ready Stock; Fail stays in Frame and is recorded.";
     refreshFrameButton.hidden = false;
-    linesHead.innerHTML = "<th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>BH</th><th>Supplier code</th><th>Supplier grade</th><th>Initial grade</th><th>Final grade</th><th>Pass</th><th>Save</th>";
-    document.querySelector("#workflow-rule-text").textContent = "A checked Frame Pass sends the phone directly to Ready Stock. An unchecked phone remains pending in Frame.";
+    linesHead.innerHTML = "<th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>BH</th><th>Supplier code</th><th>Supplier grade</th><th>Initial grade</th><th>Final grade</th><th>Pass</th><th>Fail</th><th>Save</th>";
+    document.querySelector("#workflow-rule-text").textContent = "Frame Pass sends the phone directly to Ready Stock. Frame Fail keeps it pending in Frame and adds to the permanent failure report.";
   }
 
   function renderTechnicianCards() {
@@ -71,11 +80,24 @@
     technicianBoardTitle.textContent = selected ? `${selected.full_name}'s assigned work` : "Select a technician";
     technicianLinesTitle.textContent = selected ? `${selected.full_name}'s phone lines` : "Assigned phone lines";
     removeTechnicianButton.disabled = !selected;
+    technicianImeiScan.disabled = !selected;
+    checkTechnicianImei.disabled = !selected;
+    technicianImeiScan.placeholder = selected ? `Scan IMEI assigned to ${selected.full_name}` : "Select technician first";
   }
 
   function optionsMarkup(options, placeholder) { return `<option value="">${escapeHtml(placeholder)}</option>${options.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("")}`; }
   function initialNames(items, requiredOnly = false) { return unique(asList(items).filter((item) => !requiredOnly || item.lab_decision !== "not_required").map((item) => item.name)); }
   function isInitialQcService(name) { return initialQcServices.has(normalise(name)); }
+  function isReturnedPartRequest(item, row) {
+    const status = normalise(item?.status).replaceAll(" ", "_");
+    const hasActiveReturn = asList(row?.pending_part_returns).some((request) =>
+      String(request.part_request_id) === String(item?.id) && ["pending", "approved"].includes(normalise(request.status))
+    );
+    return hasActiveReturn || status === "cancelled" || status === "unused_returned" ||
+      (Number(item?.issued || 0) > 0 && Number(item?.returned || 0) >= Number(item?.issued || 0) && Number(item?.installed || 0) === 0);
+  }
+  function allLabPartRequests(row) { return asList(row.lab_part_requests); }
+  function activeLabPartRequests(row) { return allLabPartRequests(row).filter((item) => !isReturnedPartRequest(item, row)); }
   function initialServiceNames(row, requiredOnly = false) {
     return unique(asList(row.initial_services)
       .filter((item) => !requiredOnly || item.lab_decision !== "not_required")
@@ -83,8 +105,10 @@
       .filter(isInitialQcService));
   }
   function labPartNames(row) {
-    const existing = unique(asList(row.lab_part_requests).filter((item) => item.status !== "cancelled").map((item) => item.name));
-    return existing.length ? existing : initialNames(row.initial_parts).filter((name) => !asList(row.initial_parts).some((item) => normalise(item.name) === normalise(name) && item.status === "not_required"));
+    const allRequests = allLabPartRequests(row);
+    const activeNames = unique(activeLabPartRequests(row).map((item) => item.name));
+    if (allRequests.length) return activeNames;
+    return initialNames(row.initial_parts).filter((name) => !asList(row.initial_parts).some((item) => normalise(item.name) === normalise(name) && ["not_required", "unused_returned", "cancelled"].includes(normalise(item.status))));
   }
   function labServiceNames(row) {
     const reviewed = asList(row.lab_services);
@@ -109,10 +133,11 @@
     return `<option value="">Select repeat reason</option><option value="faulty_part">Faulty Part</option><option value="technician_damage">Damaged by Technician</option><option value="other">Other</option>`;
   }
   function lineWorkflowState(row) {
-    const requests = asList(row.lab_part_requests).filter((item) => item.status !== "cancelled");
+    const allRequests = allLabPartRequests(row);
+    const requests = activeLabPartRequests(row);
     const pendingReturns = asList(row.pending_part_returns).filter((item) => item.status === "pending");
     const initialParts = asList(row.initial_parts);
-    const submitted = requests.length > 0 || asList(row.lab_services).length > 0 || initialParts.some((item) => ["requested", "not_required"].includes(String(item.status)));
+    const submitted = allRequests.length > 0 || asList(row.lab_services).length > 0 || initialParts.some((item) => ["requested", "not_required", "unused_returned"].includes(String(item.status)));
     const allIssued = submitted && requests.every((item) => Number(item.issued || 0) >= Number(item.quantity || 1));
     return { requests, pendingReturns, submitted, allIssued, hasParts: requests.length > 0 };
   }
@@ -132,7 +157,7 @@
     return `<button class="line-save line-state parts-issued" type="button" data-order-parts="${escapeHtml(row.step_id)}" disabled>${issuedLabel}</button><button class="line-save job-completed" type="button" data-complete-lab="${escapeHtml(row.step_id)}">✓ Job Completed</button><small class="line-status success" data-line-status>Ready to send to Final QC</small>`;
   }
   function returnableParts(row) {
-    return asList(row.lab_part_requests).filter((item) => item.status !== "cancelled" && Number(item.issued || 0) - Number(item.installed || 0) - Number(item.returned || 0) > 0);
+    return activeLabPartRequests(row).filter((item) => Number(item.issued || 0) - Number(item.installed || 0) - Number(item.returned || 0) > 0);
   }
   function additionalInfoCell(row) {
     const canReturn = returnableParts(row).length > 0;
@@ -192,7 +217,7 @@
   function renderFrameLines() {
     technicianLinesCount.textContent = `${technicianRows.length} waiting`;
     if (!technicianRows.length) {
-      technicianWorkRows.innerHTML = '<tr><td colspan="11" class="technician-lines-empty">No phones are waiting in Frame.</td></tr>';
+      technicianWorkRows.innerHTML = '<tr><td colspan="12" class="technician-lines-empty">No phones are waiting in Frame.</td></tr>';
       return;
     }
     technicianWorkRows.innerHTML = technicianRows.map((row) => {
@@ -207,10 +232,24 @@
         <td>${escapeHtml(row.supplier_grade || "—")}</td>
         <td>${escapeHtml(row.initial_grade || "—")}</td>
         <td>${escapeHtml(row.final_grade || "—")}</td>
-        <td><label class="frame-pass-check"><input type="checkbox" data-frame-pass><span>Pass</span></label></td>
-        <td><button class="line-save frame-ready" type="button" data-complete-frame="${escapeHtml(row.step_id)}" disabled>Save</button><small class="line-status">Stays pending until Pass</small></td>
+        <td><label class="frame-pass-check"><input type="checkbox" data-frame-result="pass"><span>Pass</span></label></td>
+        <td><label class="frame-fail-check"><input type="checkbox" data-frame-result="fail"><span>Fail</span></label></td>
+        <td><button class="line-save frame-ready" type="button" data-complete-frame="${escapeHtml(row.step_id)}" disabled>Save</button><small class="line-status">Select Pass or Fail</small></td>
       </tr>`;
     }).join("");
+  }
+
+  function formatDateTime(value) {
+    return value ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "—";
+  }
+
+  async function loadFrameReport() {
+    const { data, error } = await getClient().rpc("get_frame_department_report", { p_limit: 250 });
+    if (error) throw error;
+    const rows = data || [];
+    framePassCount.textContent = `${rows.filter((row) => row.result === "pass").length} Pass`;
+    frameFailCount.textContent = `${rows.filter((row) => row.result === "fail").length} Fail`;
+    frameReportRows.innerHTML = rows.length ? rows.map((row) => `<tr><td>${escapeHtml(formatDateTime(row.reviewed_at))}</td><td><strong>${escapeHtml(row.imei || "—")}</strong></td><td>${escapeHtml(row.supplier_code || "—")}</td><td>${escapeHtml(row.model || "—")}</td><td><span class="frame-result ${escapeHtml(row.result)}">${escapeHtml(String(row.result || "").toUpperCase())}</span></td><td>${escapeHtml(row.reviewed_by_name || "System")}</td></tr>`).join("") : '<tr><td colspan="6" class="technician-lines-empty">No Frame results recorded yet.</td></tr>';
   }
 
   async function loadPartOptions() {
@@ -240,6 +279,7 @@
     if (error) throw error;
     technicianRows = data || [];
     renderFrameLines();
+    await loadFrameReport();
   }
   async function loadTechnicians(preferredId = activeTechnicianId) {
     const { data, error } = await getClient().rpc("get_lab_technician_workboard_by_stage", { p_stage: isFrameMode ? "frame" : "laboratory" });
@@ -363,14 +403,39 @@
     document.dispatchEvent(new CustomEvent("greenloop:notifications-changed"));
     await refreshAll();
   }
+  async function scanTechnicianImei() {
+    const imei = technicianImeiScan.value.replace(/\D/g, "");
+    if (!activeTechnicianId) { setBoardMessage("Select a technician first."); return; }
+    if (imei.length !== 15) { setBoardMessage("Scan a valid 15-digit IMEI."); return; }
+    const { data, error } = await getClient().rpc("resolve_lab_imei_for_technician", {
+      p_technician_id: activeTechnicianId,
+      p_imei: imei
+    });
+    if (error) { setBoardMessage(error.message); technicianImeiScan.select(); return; }
+    const row = technicianWorkRows.querySelector(`tr[data-step-id="${CSS.escape(String(data.step_id))}"]`);
+    if (!row) { await loadTechnicianRows(); }
+    const target = technicianWorkRows.querySelector(`tr[data-step-id="${CSS.escape(String(data.step_id))}"]`);
+    if (!target) { setBoardMessage("The IMEI is assigned correctly but its line could not be displayed."); return; }
+    setBoardMessage(`IMEI ${data.imei} belongs to ${data.technician_name}.`, true);
+    target.classList.add("scan-match");
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+    window.setTimeout(() => target.classList.remove("scan-match"), 2600);
+    technicianImeiScan.value = "";
+    technicianImeiScan.focus();
+  }
   async function completeFrame(button) {
     const row = button.closest("tr");
-    if (!row.querySelector("[data-frame-pass]")?.checked) return;
+    const result = row.querySelector("[data-frame-result]:checked")?.dataset.frameResult || "";
+    if (!result) return;
     setSubmitting(button, true, "Saving...");
-    const { error } = await getClient().rpc("complete_frame_to_ready_stock", { p_work_order_step_id: button.dataset.completeFrame, p_notes: "Frame work passed" });
+    const { error } = await getClient().rpc("record_frame_department_result", {
+      p_work_order_step_id: button.dataset.completeFrame,
+      p_result: result,
+      p_notes: result === "pass" ? "Frame work passed" : "Frame work failed; remains pending"
+    });
     setSubmitting(button, false);
     if (error) { setBoardMessage(error.message); return; }
-    showToast("Frame passed. Phone sent directly to Ready Stock.");
+    showToast(result === "pass" ? "Frame passed. Phone sent directly to Ready Stock." : "Frame failed. Phone remains in Frame and the failure was recorded.");
     document.dispatchEvent(new CustomEvent("greenloop:notifications-changed"));
     await refreshAll();
   }
@@ -402,6 +467,12 @@
   addTechnicianButton.addEventListener("click", () => addTechnician().catch((error) => setBoardMessage(error.message)));
   removeTechnicianButton.addEventListener("click", () => removeTechnician().catch((error) => setBoardMessage(error.message)));
   technicianCards.addEventListener("click", (event) => { const card = event.target.closest("[data-technician-id]"); if (!card) return; activeTechnicianId = card.dataset.technicianId; renderTechnicianCards(); loadTechnicianRows().catch((error) => setBoardMessage(error.message)); });
+  technicianImeiScan.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    scanTechnicianImei().catch((error) => setBoardMessage(error.message));
+  });
+  checkTechnicianImei.addEventListener("click", () => scanTechnicianImei().catch((error) => setBoardMessage(error.message)));
   technicianWorkRows.addEventListener("click", (event) => {
     const add = event.target.closest("[data-add-choice]"); if (add) { addChoice(add); return; }
     const remove = event.target.closest("[data-remove-choice]"); if (remove) { const row = remove.closest("tr"); remove.remove(); markLineChanged(row); return; }
@@ -433,10 +504,15 @@
       markLineChanged(returnControl.closest("tr"));
       return;
     }
-    const checkbox = event.target.closest("[data-frame-pass]");
+    const checkbox = event.target.closest("[data-frame-result]");
     if (!checkbox) return;
-    const button = checkbox.closest("tr").querySelector("[data-complete-frame]");
-    button.disabled = !checkbox.checked;
+    const row = checkbox.closest("tr");
+    if (checkbox.checked) row.querySelectorAll("[data-frame-result]").forEach((other) => { if (other !== checkbox) other.checked = false; });
+    const button = row.querySelector("[data-complete-frame]");
+    const status = row.querySelector(".line-status");
+    const result = row.querySelector("[data-frame-result]:checked")?.dataset.frameResult || "";
+    button.disabled = !result;
+    status.textContent = result === "pass" ? "Will move to Ready Stock" : result === "fail" ? "Will stay in Frame" : "Select Pass or Fail";
   });
   initialize().catch((error) => { permissionMessage.textContent = error.message || "Laboratory could not be loaded."; permissionMessage.hidden = false; });
 })();
