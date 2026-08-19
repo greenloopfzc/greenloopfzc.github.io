@@ -10,12 +10,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/activate-print.css?v=20260819-native-activation-1">
+    <link rel="stylesheet" href="css/activate-print.css?v=20260819-auto-setup-2">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
     <script defer src="js/config.js?v=20260819-activate-label-1"></script>
     <script defer src="js/part-notifications.js?v=20260813-1"></script>
-    <script defer src="js/activate-print.js?v=20260819-native-activation-1"></script>
+    <script defer src="js/activate-print.js?v=20260819-auto-setup-2"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -29,7 +29,7 @@
         <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Overview</a><span>/</span><a href="stock-entry.html">Stock Received</a><span>/</span><strong>Activate &amp; Print Label</strong></div><div class="topbar-actions"><span class="live-chip">Local cable station</span></div></header>
         <div class="page-content activate-content">
           <section class="page-heading activate-heading">
-            <div><p class="eyebrow dashboard-eyebrow">Activation station</p><h1>Activate &amp; print phone label</h1><p class="heading-subtitle">Greenloop activates an eligible connected iPhone through Apple activation services, reads its details, then prints a scannable IMEI label.</p></div>
+            <div><p class="eyebrow dashboard-eyebrow">Activation station</p><h1>Automatic Home Screen setup &amp; label</h1><p class="heading-subtitle">After you manually erase the iPhone, connect its cable. Greenloop detects it, completes Setup Assistant automatically, and enables label printing.</p></div>
             <a id="continue-imei-top" class="quiet-link" href="imei-entry.html">Continue to IMEI Entry →</a>
           </section>
 
@@ -42,16 +42,16 @@
           </section>
 
           <section class="activate-panel activation-panel">
-            <div class="activate-panel-heading"><span class="section-number">02</span><div><h2>Activate the phone</h2><p>Greenloop checks the Apple activation state and activates eligible phones directly through the local Greenloop Cable Reader.</p></div><div class="activation-actions"><button id="activate-phone" class="primary-button" type="button">Activate iPhone</button></div></div>
+            <div class="activate-panel-heading"><span class="section-number">02</span><div><h2>Connect iPhone — Greenloop works automatically</h2><p>No Activate or Read button is required. Keep one manually erased iPhone connected by data cable.</p></div></div>
             <ol class="activation-steps">
-              <li><span>1</span><strong>Connect</strong><small>Connect one iPhone by data cable and keep it connected to the internet.</small></li>
-              <li><span>2</span><strong>Activate in Greenloop</strong><small>Click Activate iPhone. Greenloop sends the normal activation request to Apple.</small></li>
-              <li><span>3</span><strong>Read and print</strong><small>Unlock and tap Trust if asked, then read the phone and print its label.</small></li>
+              <li><span>1</span><strong>Connect</strong><small>Manually erase the phone first, then connect one iPhone by data cable.</small></li>
+              <li><span>2</span><strong>Automatic setup</strong><small>Greenloop verifies Apple security and completes the normal Setup Assistant flow.</small></li>
+              <li><span>3</span><strong>Print</strong><small>Activation Successful appears and Print label becomes available.</small></li>
             </ol>
+            <p class="setup-assistant-note"><strong>Greenloop never erases or restarts the phone.</strong> Erasing is performed manually by you. Greenloop only completes the eligible Setup Assistant session after the cable is connected.</p>
             <p class="activation-safety-note"><strong>Apple security remains enforced.</strong> Activation Lock, Lost Mode, carrier restrictions, and Apple ID ownership are never bypassed. A locked phone requires the legitimate owner or supplier.</p>
             <div class="reader-toolbar">
-              <label class="auto-read-control" for="activate-auto-read"><input id="activate-auto-read" type="checkbox"><span class="auto-read-switch" aria-hidden="true"><span></span></span><strong>Auto Read</strong></label>
-              <button id="read-activate-phone" class="primary-button" type="button">Read connected iPhone</button>
+              <span class="automatic-reader-label"><span class="automatic-reader-dot" aria-hidden="true"></span><strong>Automatic cable detection is always on</strong></span>
               <span id="reader-status" class="reader-status">Reader checking...</span>
             </div>
           </section>
@@ -68,7 +68,7 @@
                   <div><span>Battery Health</span><strong id="device-bh">—</strong></div>
                   <div><span>Activation</span><strong id="device-activation" class="activation-value">Waiting</strong></div>
                 </div>
-                <label class="home-screen-confirm" for="home-screen-confirm"><input id="home-screen-confirm" type="checkbox"><span><strong>Phone is on the Home Screen</strong><small>Greenloop ticks this when iOS reports Activated. If Apple still shows an approved Setup Assistant step, finish it once and confirm the Home Screen.</small></span></label>
+                <label class="home-screen-confirm" for="home-screen-confirm"><input id="home-screen-confirm" type="checkbox" disabled><span><strong id="home-screen-status">Waiting for automatic Home Screen setup</strong><small>Greenloop confirms this automatically. No button or manual tick is required.</small></span></label>
                 <div class="label-actions">
                   <button id="print-phone-label" class="primary-button" type="button" disabled>Print label</button>
                   <button id="next-activate-phone" class="secondary-button" type="button">Next phone</button>
@@ -87,6 +87,14 @@
           </section>
         </div>
       </main>
+    </div>
+    <div id="activation-popup" class="activation-popup" role="dialog" aria-modal="true" aria-labelledby="activation-popup-title" hidden>
+      <div class="activation-popup-card">
+        <span class="activation-popup-icon" aria-hidden="true">!</span>
+        <h2 id="activation-popup-title">Activation Status</h2>
+        <p id="activation-popup-message"></p>
+        <button id="close-activation-popup" class="primary-button" type="button">Close</button>
+      </div>
     </div>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   </body>

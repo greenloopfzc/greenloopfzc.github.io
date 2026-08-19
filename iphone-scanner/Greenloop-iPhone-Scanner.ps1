@@ -12,6 +12,13 @@ $appleSupportPath = Join-Path ${env:ProgramFiles} 'Common Files\Apple\Mobile Dev
 $mobileDeviceDll = Join-Path $appleSupportPath 'MobileDevice.dll'
 $activationToolFolder = Join-Path $PSScriptRoot 'libimobiledevice'
 $activationTool = Join-Path $activationToolFolder 'ideviceactivation.exe'
+$pairTool = Join-Path $activationToolFolder 'idevicepair.exe'
+$deviceInfoTool = Join-Path $activationToolFolder 'ideviceinfo.exe'
+$diagnosticsTool = Join-Path $activationToolFolder 'idevicediagnostics.exe'
+$deviceIdTool = Join-Path $activationToolFolder 'idevice_id.exe'
+$backupTool = Join-Path $activationToolFolder 'idevicebackup2.exe'
+$setupTemplateFolder = Join-Path $PSScriptRoot 'setup-assistant-template'
+$setupAssistantTool = Join-Path $PSScriptRoot 'Greenloop-Complete-Setup.exe'
 
 if (-not (Test-Path -LiteralPath $mobileDeviceDll)) {
   Write-Host 'Apple Mobile Device Support was not found.' -ForegroundColor Red
@@ -80,6 +87,9 @@ public static class GreenloopAppleDeviceReader
     private static extern IntPtr AMDeviceCopyValue(IntPtr device, IntPtr domain, IntPtr key);
 
     [DllImport("MobileDevice.dll", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int AMDeviceSetValue(IntPtr device, IntPtr domain, IntPtr key, IntPtr value);
+
+    [DllImport("MobileDevice.dll", CallingConvention = CallingConvention.Cdecl)]
     private static extern int AMDeviceSecureStartService(IntPtr device, IntPtr serviceName, IntPtr options, out IntPtr serviceConnection);
 
     [DllImport("MobileDevice.dll", CallingConvention = CallingConvention.Cdecl)]
@@ -126,6 +136,12 @@ public static class GreenloopAppleDeviceReader
 
     [DllImport("CoreFoundation.dll", CallingConvention = CallingConvention.Cdecl)]
     private static extern void CFRunLoopRun();
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern IntPtr GetModuleHandle(string moduleName);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Ansi, SetLastError = true)]
+    private static extern IntPtr GetProcAddress(IntPtr module, string procedureName);
 
     private static void DeviceChanged(IntPtr notificationInfo, IntPtr userData)
     {
@@ -204,6 +220,34 @@ public static class GreenloopAppleDeviceReader
         {
             if (value != IntPtr.Zero) CFRelease(value);
             CFRelease(key);
+            if (domain != IntPtr.Zero) CFRelease(domain);
+        }
+    }
+
+    private static IntPtr TrueBoolean()
+    {
+        IntPtr module = GetModuleHandle("CoreFoundation.dll");
+        if (module == IntPtr.Zero) throw new InvalidOperationException("CoreFoundation is not loaded.");
+        IntPtr symbol = GetProcAddress(module, "kCFBooleanTrue");
+        if (symbol == IntPtr.Zero) throw new InvalidOperationException("Apple CoreFoundation Boolean support is unavailable.");
+        IntPtr value = Marshal.ReadIntPtr(symbol);
+        if (value == IntPtr.Zero) throw new InvalidOperationException("Apple CoreFoundation returned an invalid Boolean value.");
+        return value;
+    }
+
+    private static void SetBooleanValue(IntPtr device, string domainName, string keyName)
+    {
+        IntPtr domain = CFStringCreateWithCString(IntPtr.Zero, domainName, Utf8);
+        IntPtr key = CFStringCreateWithCString(IntPtr.Zero, keyName, Utf8);
+        if (domain == IntPtr.Zero || key == IntPtr.Zero) throw new InvalidOperationException("Could not create the Apple setup preference key.");
+        try
+        {
+            int result = AMDeviceSetValue(device, domain, key, TrueBoolean());
+            if (result != 0) throw new InvalidOperationException("Apple rejected setup preference " + keyName + " (" + result + ").");
+        }
+        finally
+        {
+            if (key != IntPtr.Zero) CFRelease(key);
             if (domain != IntPtr.Zero) CFRelease(domain);
         }
     }
@@ -427,6 +471,57 @@ public static class GreenloopAppleDeviceReader
             return Error("Scanner error: " + error.Message);
         }
     }
+
+    public static Dictionary<string, string> CompleteSetupAssistant()
+    {
+        try
+        {
+            EnsureStarted();
+            IntPtr device = CurrentDevice;
+            if (device == IntPtr.Zero)
+            {
+                DeviceEvent.WaitOne(2500);
+                device = CurrentDevice;
+            }
+            if (device == IntPtr.Zero) return Error("No iPhone detected. Reconnect the cable, unlock the phone, and tap Trust.");
+
+            int connectResult = AMDeviceConnect(device);
+            if (connectResult != 0) return Error("iPhone connection failed (" + connectResult + ").");
+            bool sessionStarted = false;
+            try
+            {
+                if (AMDeviceIsPaired(device) == 0) return Error("Trust Required: unlock the iPhone and tap Trust This Computer.");
+                int pairingResult = AMDeviceValidatePairing(device);
+                if (pairingResult != 0) return Error("Trust validation failed (" + pairingResult + ").");
+                int sessionResult = AMDeviceStartSession(device);
+                if (sessionResult != 0) return Error("Could not start an iPhone session (" + sessionResult + ").");
+                sessionStarted = true;
+
+                string activationState = FirstValue(device, "ActivationState");
+                if (!String.Equals(activationState, "Activated", StringComparison.OrdinalIgnoreCase))
+                    return Error("The iPhone is not activated through Apple services. Setup Assistant was not changed.");
+
+                SetBooleanValue(device, "com.apple.purplebuddy", "SetupDone");
+                SetBooleanValue(device, "com.apple.purplebuddy", "SetupFinishedAllSteps");
+                SetBooleanValue(device, "com.apple.purplebuddy", "UserChoseLanguage");
+
+                return new Dictionary<string, string> {
+                    { "ok", "true" },
+                    { "activationState", activationState },
+                    { "setupAssistantCompleted", "true" }
+                };
+            }
+            finally
+            {
+                if (sessionStarted) AMDeviceStopSession(device);
+                AMDeviceDisconnect(device);
+            }
+        }
+        catch (Exception error)
+        {
+            return Error("Setup Assistant could not be completed: " + error.Message);
+        }
+    }
 }
 '@
 
@@ -478,14 +573,14 @@ function Send-Json($Client, [int]$StatusCode, $Body) {
   $stream.Flush()
 }
 
-function Invoke-GreenloopActivationTool([string]$Command, [int]$TimeoutSeconds = 120) {
-  if (-not (Test-Path -LiteralPath $activationTool)) {
+function Invoke-GreenloopCommand([string]$Executable, [string]$Arguments, [int]$TimeoutSeconds = 120) {
+  if (-not (Test-Path -LiteralPath $Executable)) {
     throw 'The Greenloop activation engine is not installed. Run Install-Greenloop-Cable-Reader.cmd once.'
   }
 
   $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
-  $startInfo.FileName = $activationTool
-  $startInfo.Arguments = "$Command --batch"
+  $startInfo.FileName = $Executable
+  $startInfo.Arguments = $Arguments
   $startInfo.WorkingDirectory = $activationToolFolder
   $startInfo.UseShellExecute = $false
   $startInfo.CreateNoWindow = $true
@@ -508,23 +603,159 @@ function Invoke-GreenloopActivationTool([string]$Command, [int]$TimeoutSeconds =
   return @{ ExitCode = $process.ExitCode; Output = (($outputLines -join "`n").Trim()) }
 }
 
+function Invoke-GreenloopActivationTool([string]$Command, [int]$TimeoutSeconds = 120) {
+  return Invoke-GreenloopCommand $activationTool "$Command --batch" $TimeoutSeconds
+}
+
+function Confirm-GreenloopPairing {
+  $validation = Invoke-GreenloopCommand $pairTool 'validate' 20
+  if ($validation.ExitCode -eq 0 -and $validation.Output -match '(?i)success|validated|paired') { return }
+
+  $pairing = Invoke-GreenloopCommand $pairTool 'pair' 45
+  if ($pairing.ExitCode -ne 0 -or $pairing.Output -notmatch '(?i)success|paired') {
+    throw 'Trust Required: unlock the iPhone and tap Trust This Computer. Greenloop will retry automatically.'
+  }
+}
+
 function Test-ActivatedState([string]$Value) {
   return ([string]$Value) -match '(?i)\bactivated\b' -and ([string]$Value) -notmatch '(?i)\bunactivated\b'
 }
 
+function Get-GreenloopSecurityState {
+  $information = Invoke-GreenloopCommand $deviceInfoTool '' 35
+  if ($information.ExitCode -ne 0 -or [string]::IsNullOrWhiteSpace([string]$information.Output)) {
+    throw 'Greenloop could not verify this iPhone security state. Setup Assistant was not changed.'
+  }
+  $output = [string]$information.Output
+  $activationState = if ($output -match '(?im)^ActivationState:\s*(.+)$') { $matches[1].Trim() } else { '' }
+  $encodedLock = if ($output -match '(?im)^\s*fm-activation-locked:\s*(\S+)\s*$') { $matches[1].Trim() } else { '' }
+  $activationLocked = $false
+  if ($encodedLock) {
+    try {
+      $decoded = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($encodedLock)).Trim()
+      $activationLocked = $decoded -match '^(?i:yes|true|1)$'
+    } catch {
+      throw 'Greenloop could not verify Apple ownership protection. Setup Assistant was not changed.'
+    }
+  }
+  if ($activationLocked) {
+    throw 'Apple Activation Lock is enabled. Greenloop will not complete Setup Assistant. The legitimate owner or supplier must remove the lock.'
+  }
+  if (-not (Test-ActivatedState $activationState)) {
+    throw 'This iPhone is not activated through Apple services. Setup Assistant was not changed.'
+  }
+  return @{ ActivationState = $activationState; ActivationLocked = $activationLocked }
+}
+
+function Get-GreenloopConnectedUdid {
+  $deviceList = Invoke-GreenloopCommand $deviceIdTool '-l' 20
+  if ($deviceList.ExitCode -ne 0) {
+    throw 'Greenloop could not identify the connected iPhone. Reconnect the cable and try again.'
+  }
+  $udids = @(([string]$deviceList.Output -split "`r?`n") | ForEach-Object { $_.Trim() } | Where-Object { $_ -match '^[A-Za-z0-9-]{12,}$' })
+  if ($udids.Count -eq 0) { throw 'No iPhone is connected.' }
+  if ($udids.Count -gt 1) { throw 'More than one iPhone is connected. Keep only the phone being activated connected, then try again.' }
+  return [string]$udids[0]
+}
+
+function Get-GreenloopConnectionProbe {
+  try {
+    $udid = Get-GreenloopConnectedUdid
+    $sha256 = [Security.Cryptography.SHA256]::Create()
+    try {
+      $bytes = [Text.Encoding]::UTF8.GetBytes($udid)
+      $deviceKey = ([BitConverter]::ToString($sha256.ComputeHash($bytes))).Replace('-', '').Substring(0, 16)
+    } finally {
+      $sha256.Dispose()
+    }
+    return @{ ok = $true; connected = $true; deviceKey = $deviceKey }
+  } catch {
+    if ($_.Exception.Message -match '(?i)no iphone is connected') {
+      return @{ ok = $true; connected = $false; deviceKey = '' }
+    }
+    throw
+  }
+}
+
+function Invoke-GreenloopSetupRestore([string]$Udid) {
+  if (-not (Test-Path -LiteralPath $setupTemplateFolder -PathType Container)) {
+    throw 'Greenloop Setup Assistant files are missing. Run Install-Greenloop-Cable-Reader.cmd again.'
+  }
+
+  $restoreBase = Join-Path $env:TEMP 'Greenloop\SetupRestore'
+  $restoreRoot = Join-Path $restoreBase ([guid]::NewGuid().ToString('N'))
+  $deviceBackup = Join-Path $restoreRoot $Udid
+  New-Item -ItemType Directory -Path $deviceBackup -Force | Out-Null
+  Get-ChildItem -LiteralPath $setupTemplateFolder -File | Copy-Item -Destination $deviceBackup -Force
+
+  try {
+    $arguments = '-u "{0}" -s "{0}" restore --system --no-reboot --skip-apps "{1}"' -f $Udid, $restoreRoot
+    $restore = Invoke-GreenloopCommand $backupTool $arguments 180
+    if ($restore.ExitCode -ne 0 -or $restore.Output -notmatch '(?i)Restore Successful') {
+      $detail = [string]$restore.Output
+      if ($detail -match '(?i)find my') {
+        throw 'Find My or Apple ownership protection is enabled. Greenloop will not complete Setup Assistant. The legitimate owner or supplier must remove it first.'
+      }
+      if ([string]::IsNullOrWhiteSpace($detail)) { $detail = 'Apple did not accept the Setup Assistant restore.' }
+      throw "Greenloop could not complete Setup Assistant: $detail"
+    }
+  } finally {
+    $safeBase = [IO.Path]::GetFullPath($restoreBase).TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
+    $safeTarget = [IO.Path]::GetFullPath($restoreRoot)
+    if ($safeTarget.StartsWith($safeBase, [StringComparison]::OrdinalIgnoreCase) -and (Test-Path -LiteralPath $safeTarget)) {
+      Remove-Item -LiteralPath $safeTarget -Recurse -Force -ErrorAction SilentlyContinue
+    }
+  }
+}
+
+function Invoke-GreenloopCompleteSetup {
+  Confirm-GreenloopPairing
+  $security = Get-GreenloopSecurityState
+
+  $udid = Get-GreenloopConnectedUdid
+  $setup = Invoke-GreenloopCommand $setupAssistantTool ('"{0}"' -f $udid) 90
+  if ($setup.ExitCode -ne 0) {
+    $detail = [string]$setup.Output
+    try {
+      $parsed = $detail | ConvertFrom-Json
+      if ($parsed.message) { $detail = [string]$parsed.message }
+    } catch {}
+    if ([string]::IsNullOrWhiteSpace($detail)) { $detail = 'Apple did not accept the Setup Assistant configuration.' }
+    throw "Greenloop could not complete Setup Assistant: $detail"
+  }
+
+  return @{
+    ok = $true
+    activationState = [string]$security.ActivationState
+    setupAssistantCompleted = $true
+    homeScreenReady = $true
+    restarting = $false
+    message = 'Activation Successful. Greenloop completed Setup Assistant and the phone is ready on the Home Screen.'
+  }
+}
+
 function Invoke-GreenloopActivation {
+  Confirm-GreenloopPairing
   $state = Invoke-GreenloopActivationTool 'state' 20
   if (Test-ActivatedState $state.Output) {
-    return @{ ok = $true; activationState = 'Activated'; alreadyActivated = $true; message = 'This iPhone is already activated. Read the phone and print its label.' }
+    $result = Invoke-GreenloopCompleteSetup
+    $result.alreadyActivated = $true
+    return $result
   }
 
   $activation = Invoke-GreenloopActivationTool 'activate' 120
   if ($activation.ExitCode -ne 0) {
     $detail = [string]$activation.Output
-    if ($detail -match '(?i)activation lock|locked to owner|apple id|lost mode') {
+    if ($detail -match '(?i)lost mode') {
+      throw 'Lost Mode is enabled. Greenloop will not activate this phone. The legitimate owner must remove Lost Mode first.'
+    }
+    if ($detail -match '(?i)activation lock|locked to owner|apple id|owner account') {
       throw 'Apple Activation Lock is enabled. The legitimate owner or supplier must remove the lock before Greenloop can continue.'
     }
-    if ($detail -match '(?i)sim|imsi|baseband') {
+    if ($detail -match '(?i)sim not supported|carrier lock|carrier restriction|unsupported carrier') {
+      throw 'Carrier Restriction: this iPhone cannot be activated with its current carrier status. The legitimate carrier or supplier must resolve it.'
+    }
+    if ($detail -match '(?i)sim|required sim|imsi|baseband') {
       throw 'Apple requires a valid SIM or baseband response for this phone. Insert a supported SIM, reconnect the phone, and try again.'
     }
     if ([string]::IsNullOrWhiteSpace($detail)) { $detail = 'Apple did not accept the activation request.' }
@@ -535,7 +766,29 @@ function Invoke-GreenloopActivation {
   if (-not (Test-ActivatedState $verified.Output)) {
     throw 'Apple activation finished without a confirmed Activated state. Reconnect the phone and try once more.'
   }
-  return @{ ok = $true; activationState = 'Activated'; alreadyActivated = $false; message = 'Greenloop activated the iPhone through Apple services. Unlock and tap Trust if asked, then read and print its label.' }
+  $result = Invoke-GreenloopCompleteSetup
+  $result.alreadyActivated = $false
+  return $result
+}
+
+function Get-GreenloopActivationError([string]$Message) {
+  $detail = [string]$Message
+  if ($detail -match '(?i)lost mode') {
+    return @{ ok = $false; securityBlocked = $true; blockCode = 'lost_mode'; title = 'Lost Mode'; message = 'This iPhone is in Lost Mode and cannot be activated by Greenloop. The legitimate owner must remove Lost Mode first.' }
+  }
+  if ($detail -match '(?i)activation lock|locked to owner|apple id|owner account') {
+    return @{ ok = $false; securityBlocked = $true; blockCode = 'activation_lock'; title = 'Activation Lock'; message = 'This iPhone is protected by Activation Lock or Apple ID ownership and cannot be activated by Greenloop. The legitimate owner or supplier must remove the lock.' }
+  }
+  if ($detail -match '(?i)carrier restriction|carrier lock|sim not supported|unsupported carrier') {
+    return @{ ok = $false; securityBlocked = $true; blockCode = 'carrier_restriction'; title = 'Carrier Restriction'; message = 'This iPhone has a carrier restriction and cannot be activated in its current state. The legitimate carrier or supplier must resolve it.' }
+  }
+  if ($detail -match '(?i)trust required|not trusted|lockdownd|invalid hostid|pair') {
+    return @{ ok = $false; securityBlocked = $false; blockCode = 'trust_required'; title = 'Trust Required'; message = 'Unlock the iPhone and tap Trust This Computer. Greenloop will retry automatically.' }
+  }
+  if ($detail -match '(?i)valid sim|required sim|imsi|baseband') {
+    return @{ ok = $false; securityBlocked = $false; blockCode = 'sim_required'; title = 'SIM Required'; message = 'Apple requires a supported SIM or baseband response for this iPhone. Insert a supported SIM, reconnect it, and try again.' }
+  }
+  return @{ ok = $false; securityBlocked = $false; blockCode = 'activation_error'; title = 'Activation Needs Attention'; message = $detail }
 }
 
 $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, $Port)
@@ -547,7 +800,7 @@ try {
 }
 
 Write-Host "Greenloop iPhone Scanner is ready on http://127.0.0.1:$Port" -ForegroundColor Green
-Write-Host 'Keep this window open. Connect, unlock, and trust the iPhone before using Read connected iPhone.' -ForegroundColor Yellow
+Write-Host 'Automatic detection is on. Connect one iPhone; Greenloop will start without a button.' -ForegroundColor Yellow
 
 while ($true) {
   $tcpClient = $null
@@ -569,10 +822,18 @@ while ($true) {
       continue
     }
     switch ($path) {
-      '/health' { Send-Json $tcpClient 200 @{ ok = $true; service = 'Greenloop iPhone Cable Reader'; version = '3.0'; appleMobileDeviceSupport = $true; activationEngine = (Test-Path -LiteralPath $activationTool) } }
+      '/health' { Send-Json $tcpClient 200 @{ ok = $true; service = 'Greenloop iPhone Cable Reader'; version = '3.7'; appleMobileDeviceSupport = $true; activationEngine = ((Test-Path -LiteralPath $activationTool) -and (Test-Path -LiteralPath $pairTool)); setupAssistantEngine = ((Test-Path -LiteralPath $deviceInfoTool) -and (Test-Path -LiteralPath $deviceIdTool) -and (Test-Path -LiteralPath $setupAssistantTool)) } }
+      '/v1/probe' {
+        try { Send-Json $tcpClient 200 (Get-GreenloopConnectionProbe) }
+        catch { Send-Json $tcpClient 422 @{ ok = $false; connected = $false; message = $_.Exception.Message } }
+      }
       '/v1/activate' {
         try { Send-Json $tcpClient 200 (Invoke-GreenloopActivation) }
-        catch { Send-Json $tcpClient 422 @{ ok = $false; message = $_.Exception.Message } }
+        catch { Send-Json $tcpClient 422 (Get-GreenloopActivationError $_.Exception.Message) }
+      }
+      '/v1/complete-setup' {
+        try { Send-Json $tcpClient 200 (Invoke-GreenloopCompleteSetup) }
+        catch { Send-Json $tcpClient 422 (Get-GreenloopActivationError $_.Exception.Message) }
       }
       '/v1/device' {
         $result = [GreenloopAppleDeviceReader]::ReadConnectedDevice()

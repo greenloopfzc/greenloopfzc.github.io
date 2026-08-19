@@ -8,11 +8,25 @@ $installedColors = Join-Path $installFolder 'devices_table.txt'
 $activationPackage = Join-Path $PSScriptRoot 'Greenloop-Activation-Tools.zip'
 $activationFolder = Join-Path $installFolder 'libimobiledevice'
 $activationExecutable = Join-Path $activationFolder 'ideviceactivation.exe'
+$setupTemplateSource = Join-Path $PSScriptRoot 'setup-assistant-template'
+$setupTemplateFolder = Join-Path $installFolder 'setup-assistant-template'
+$setupAssistantSource = Join-Path $PSScriptRoot 'Greenloop-Complete-Setup.exe'
+$setupAssistantExecutable = Join-Path $installFolder 'Greenloop-Complete-Setup.exe'
 $hiddenRunner = Join-Path $installFolder 'Run-Greenloop-Cable-Reader-Hidden.vbs'
 $startupFolder = [Environment]::GetFolderPath('Startup')
 $shortcutPath = Join-Path $startupFolder 'Greenloop Cable Reader.lnk'
 
 Write-Host 'Installing Greenloop Cable Reader...' -ForegroundColor Cyan
+
+# Stop the currently listening Greenloop reader even when Windows blocks
+# Win32_Process command-line inspection for a standard user account.
+try {
+  $readerLine = netstat -ano -p tcp | Where-Object { $_ -match '^\s*TCP\s+127\.0\.0\.1:51892\s+.*\s+LISTENING\s+\d+\s*$' } | Select-Object -First 1
+  if ($readerLine -and $readerLine -match 'LISTENING\s+(\d+)\s*$') {
+    Stop-Process -Id ([int]$Matches[1]) -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Milliseconds 500
+  }
+} catch {}
 
 Get-CimInstance Win32_Process -Filter "Name = 'powershell.exe' OR Name = 'pwsh.exe'" -ErrorAction SilentlyContinue |
   Where-Object { $_.CommandLine -and $_.CommandLine -like '*Greenloop-iPhone-Scanner.ps1*' } |
@@ -21,6 +35,10 @@ Get-CimInstance Win32_Process -Filter "Name = 'powershell.exe' OR Name = 'pwsh.e
 New-Item -ItemType Directory -Path $installFolder -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Greenloop-iPhone-Scanner.ps1') -Destination $installedScript -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'devices_table.txt') -Destination $installedColors -Force
+if (-not (Test-Path -LiteralPath $setupAssistantSource)) {
+  throw 'Greenloop Setup Assistant engine is missing beside the installer.'
+}
+Copy-Item -LiteralPath $setupAssistantSource -Destination $setupAssistantExecutable -Force
 
 if (-not (Test-Path -LiteralPath $activationPackage)) {
   throw 'Greenloop-Activation-Tools.zip is missing beside the installer.'
@@ -34,6 +52,14 @@ New-Item -ItemType Directory -Path $activationFolder -Force | Out-Null
 Expand-Archive -LiteralPath $activationPackage -DestinationPath $activationFolder -Force
 if (-not (Test-Path -LiteralPath $activationExecutable)) {
   throw 'The Greenloop activation engine could not be installed.'
+}
+if (-not (Test-Path -LiteralPath $setupTemplateSource -PathType Container)) {
+  throw 'The Greenloop Setup Assistant template is missing beside the installer.'
+}
+New-Item -ItemType Directory -Path $setupTemplateFolder -Force | Out-Null
+Get-ChildItem -LiteralPath $setupTemplateSource -File | Copy-Item -Destination $setupTemplateFolder -Force
+if (-not (Test-Path -LiteralPath (Join-Path $setupTemplateFolder 'Manifest.mbdb'))) {
+  throw 'The Greenloop Setup Assistant template could not be installed.'
 }
 
 $escapedScript = $installedScript.Replace('"', '""')
@@ -54,14 +80,19 @@ $shortcut.WorkingDirectory = $installFolder
 $shortcut.Description = 'Starts Greenloop iPhone Cable Reader silently at Windows sign-in.'
 $shortcut.Save()
 
-Start-Process -FilePath (Join-Path $env:WINDIR 'System32\wscript.exe') -ArgumentList ('"' + $hiddenRunner + '"') -WindowStyle Hidden
+Start-Process -FilePath 'powershell.exe' -ArgumentList @(
+  '-NoProfile',
+  '-WindowStyle', 'Hidden',
+  '-ExecutionPolicy', 'Bypass',
+  '-File', ('"' + $installedScript + '"')
+) -WindowStyle Hidden
 
 $ready = $false
 for ($attempt = 1; $attempt -le 8; $attempt += 1) {
   Start-Sleep -Milliseconds 500
   try {
     $health = Invoke-RestMethod -Uri 'http://127.0.0.1:51892/health' -TimeoutSec 2
-    if ($health.ok) { $ready = $true; break }
+    if ($health.ok -and [string]$health.version -eq '3.7') { $ready = $true; break }
   } catch {}
 }
 
