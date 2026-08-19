@@ -495,7 +495,6 @@
     const servicesSelected = uniqueValues(valuesForGroup(row, "service"));
     const selectedLabels = [...partsSelected, ...servicesSelected];
     const technicianId = row.querySelector('[data-carry-field="technician"]').value || null;
-    if (selectedLabels.length && !technicianId) throw new Error("Select a technician because parts or services are required.");
 
     const findings = selectedLabels.map((label) => {
       const item = workItems.find((entry) => entry.label === label);
@@ -548,7 +547,11 @@
       return { ok: false, error: error.message };
     }
 
-    const hasWork = submission.findings.length > 0 || submission.parts.length > 0;
+    // Any one of Part, Service, or Technician means Laboratory work is required.
+    // Only a completely blank repair selection may go directly to Final QC.
+    const hasWork = submission.findings.length > 0
+      || submission.parts.length > 0
+      || Boolean(submission.technicianId);
     const rowButton = row.querySelector("[data-save-row]");
     row.dataset.saving = "yes";
     setSubmitting(rowButton, true, "Saving...");
