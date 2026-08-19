@@ -177,13 +177,13 @@
 
   async function readActivatedDevice() {
     let lastError;
-    for (let attempt = 0; attempt < 12; attempt += 1) {
+    for (let attempt = 0; attempt < 24; attempt += 1) {
       try {
         const result = await fetchLocal("/v1/device", 6000);
         const device = normaliseDevice(result.device || {});
         if (device.imei) { renderDevice(device); return device; }
       } catch (error) { lastError = error; }
-      await new Promise((resolve) => window.setTimeout(resolve, 1000));
+      await new Promise((resolve) => window.setTimeout(resolve, 1500));
     }
     throw lastError || new Error("The phone is activated, but its label data is not ready yet.");
   }
@@ -195,18 +195,22 @@
     setMessage("iPhone detected. Greenloop is completing Apple activation and Setup Assistant automatically…", "success");
     setReaderStatus("Automatic Home Screen setup in progress");
     try {
-      const result = await fetchLocal("/v1/activate", 150000);
-      if (!result.setupAssistantCompleted && !result.homeScreenReady) throw new Error("Setup Assistant completion was not confirmed.");
-      markSetupComplete(deviceKey);
-      setReaderStatus("Activation Successful", "ready");
+      const result = await fetchLocal("/v1/activate", 360000);
+      if (!result.setupAssistantCompleted || !result.homeScreenReady) throw new Error("Setup Assistant completion was not confirmed.");
+      activationCompletedDeviceKey = deviceKey;
+      markSetupWaiting();
+      fields.activation.textContent = "Reading phone data";
+      setReaderStatus("Home Screen setup complete · reading phone data", "ready");
       try {
         await readActivatedDevice();
         markSetupComplete(deviceKey);
+        setReaderStatus("Activation Successful", "ready");
         setMessage("Activation Successful. The Home Screen is ready and Print label is available.", "success");
+        showActivationPopup({ title: "Activation Successful", popupMessage: "Greenloop completed Setup Assistant. The phone is ready on the Home Screen and its label can now be printed.", type: "success" });
       } catch {
-        setMessage("Activation Successful. The Home Screen is ready; Greenloop is still reading label data.", "success");
+        setMessage("Home Screen setup was applied. Unlock the iPhone and tap Trust if asked; Greenloop is waiting for IMEI and label data.", "success");
+        setReaderStatus("Waiting for IMEI data", "warning");
       }
-      showActivationPopup({ title: "Activation Successful", popupMessage: "Greenloop completed Setup Assistant. The phone is ready on the Home Screen and its label can now be printed.", type: "success" });
     } catch (error) {
       const details = error?.details || {};
       const offline = error?.name === "AbortError" || /failed to fetch|networkerror/i.test(String(error?.message || ""));
@@ -237,7 +241,7 @@
         markSetupWaiting();
         currentDevice = null;
       }
-      setReaderStatus(activationCompletedDeviceKey === probe.deviceKey ? "Activation Successful" : "iPhone detected", "ready");
+      setReaderStatus(activationCompletedDeviceKey === probe.deviceKey ? (currentDevice?.imei ? "Activation Successful" : "Reading phone data") : "iPhone detected", "ready");
       if (activationCompletedDeviceKey === probe.deviceKey) {
         if (!currentDevice?.imei) {
           try { await readActivatedDevice(); markSetupComplete(probe.deviceKey); } catch {}

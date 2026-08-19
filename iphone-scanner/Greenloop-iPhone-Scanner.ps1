@@ -537,6 +537,77 @@ function Get-NearestStorageGb([string]$capacity) {
   return $sizes | Sort-Object { [math]::Abs($_ - $estimated) } | Select-Object -First 1
 }
 
+function Get-GreenloopInfoValue([string]$Text, [string]$Key) {
+  if ([string]::IsNullOrWhiteSpace($Text)) { return '' }
+  $match = [regex]::Match($Text, ('(?im)^' + [regex]::Escape($Key) + ':\s*(.*?)\s*$'))
+  return $(if ($match.Success) { $match.Groups[1].Value.Trim() } else { '' })
+}
+
+function Get-GreenloopFriendlyModel([string]$ProductType) {
+  $models = @{
+    'iPhone12,1' = '11'; 'iPhone12,3' = '11 Pro'; 'iPhone12,5' = '11 Pro Max'; 'iPhone12,8' = 'SE 2'
+    'iPhone13,1' = '12 Mini'; 'iPhone13,2' = '12'; 'iPhone13,3' = '12 Pro'; 'iPhone13,4' = '12 Pro Max'
+    'iPhone14,2' = '13 Pro'; 'iPhone14,3' = '13 Pro Max'; 'iPhone14,4' = '13 Mini'; 'iPhone14,5' = '13'; 'iPhone14,6' = 'SE 3'
+    'iPhone14,7' = '14'; 'iPhone14,8' = '14 Plus'; 'iPhone15,2' = '14 Pro'; 'iPhone15,3' = '14 Pro Max'
+    'iPhone15,4' = '15'; 'iPhone15,5' = '15 Plus'; 'iPhone16,1' = '15 Pro'; 'iPhone16,2' = '15 Pro Max'
+    'iPhone17,1' = '16 Pro'; 'iPhone17,2' = '16 Pro Max'; 'iPhone17,3' = '16'; 'iPhone17,4' = '16 Plus'; 'iPhone17,5' = '16e'
+  }
+  if ($models.ContainsKey($ProductType)) { return [string]$models[$ProductType] }
+  return $ProductType
+}
+
+function Get-GreenloopCliDevice {
+  $basicResult = Invoke-GreenloopCommand $deviceInfoTool '' 35
+  if ($basicResult.ExitCode -ne 0 -or [string]::IsNullOrWhiteSpace([string]$basicResult.Output)) {
+    throw 'No iPhone data is available from Apple Mobile Device Support.'
+  }
+  $basic = [string]$basicResult.Output
+  $diskResult = Invoke-GreenloopCommand $deviceInfoTool '-q com.apple.disk_usage' 35
+  $disk = if ($diskResult.ExitCode -eq 0) { [string]$diskResult.Output } else { '' }
+  $batteryHealth = ''
+  if (Test-Path -LiteralPath $diagnosticsTool) {
+    $diagnostics = Invoke-GreenloopCommand $diagnosticsTool 'ioregentry AppleSmartBattery' 35
+    if ($diagnostics.ExitCode -eq 0) {
+      $xml = [string]$diagnostics.Output
+      foreach ($key in @('MaximumCapacityPercent', 'BatteryMaximumCapacity', 'HealthPercentage')) {
+        $match = [regex]::Match($xml, ('(?is)<key>\s*' + [regex]::Escape($key) + '\s*</key>\s*<(?:integer|real)>\s*([0-9.]+)'))
+        if ($match.Success -and [double]$match.Groups[1].Value -gt 0) {
+          $batteryHealth = [math]::Round([double]$match.Groups[1].Value).ToString()
+          break
+        }
+      }
+      if (-not $batteryHealth) {
+        $designMatch = [regex]::Match($xml, '(?is)<key>\s*DesignCapacity\s*</key>\s*<(?:integer|real)>\s*([0-9.]+)')
+        $maximumMatch = [regex]::Match($xml, '(?is)<key>\s*(?:NominalChargeCapacity|AppleRawMaxCapacity)\s*</key>\s*<(?:integer|real)>\s*([0-9.]+)')
+        if ($designMatch.Success -and $maximumMatch.Success) {
+          $design = [double]$designMatch.Groups[1].Value
+          $maximum = [double]$maximumMatch.Groups[1].Value
+          if ($design -gt 0 -and $maximum -gt 0) {
+            $batteryHealth = [math]::Round([math]::Min(100, [math]::Max(1, ($maximum / $design) * 100))).ToString()
+          }
+        }
+      }
+    }
+  }
+  $productType = Get-GreenloopInfoValue $basic 'ProductType'
+  $deviceColor = Get-GreenloopInfoValue $basic 'DeviceColor'
+  $enclosureColor = Get-GreenloopInfoValue $basic 'DeviceEnclosureColor'
+  $capacity = Get-GreenloopInfoValue $basic 'TotalDiskCapacity'
+  if (-not $capacity) { $capacity = Get-GreenloopInfoValue $disk 'TotalDiskCapacity' }
+  if (-not $capacity) { $capacity = Get-GreenloopInfoValue $disk 'TotalDataCapacity' }
+  return @{
+    imei = Get-GreenloopInfoValue $basic 'InternationalMobileEquipmentIdentity'
+    model = Get-GreenloopFriendlyModel $productType
+    productType = $productType
+    modelNumber = Get-GreenloopInfoValue $basic 'ModelNumber'
+    storageGb = Get-NearestStorageGb $capacity
+    color = Get-IPhoneColorName $productType $enclosureColor $deviceColor
+    batteryHealth = $batteryHealth
+    serialNumber = Get-GreenloopInfoValue $basic 'SerialNumber'
+    activationState = Get-GreenloopInfoValue $basic 'ActivationState'
+  }
+}
+
 function Get-IPhoneColorName([string]$ProductType, [string]$EnclosureColor, [string]$DeviceColor) {
   $rawColor = if (-not [string]::IsNullOrWhiteSpace($EnclosureColor)) { $EnclosureColor.Trim() } else { ([string]$DeviceColor).Trim() }
   if ($rawColor -and $rawColor -notmatch '^(?:#|\d+$)') {
@@ -647,6 +718,15 @@ function Get-GreenloopSecurityState {
   return @{ ActivationState = $activationState; ActivationLocked = $activationLocked }
 }
 
+function Test-GreenloopSetupAssistantFinished {
+  $result = Invoke-GreenloopCommand $deviceInfoTool '-q com.apple.purplebuddy' 35
+  if ($result.ExitCode -ne 0) { return $false }
+  $output = [string]$result.Output
+  $setupDone = $output -match '(?im)^SetupDone:\s*true\s*$'
+  $allStepsDone = $output -match '(?im)^SetupFinishedAllSteps:\s*true\s*$'
+  return ($setupDone -and $allStepsDone)
+}
+
 function Get-GreenloopConnectedUdid {
   $deviceList = Invoke-GreenloopCommand $deviceIdTool '-l' 20
   if ($deviceList.ExitCode -ne 0) {
@@ -689,8 +769,10 @@ function Invoke-GreenloopSetupRestore([string]$Udid) {
   Get-ChildItem -LiteralPath $setupTemplateFolder -File | Copy-Item -Destination $deviceBackup -Force
 
   try {
+    # Apply only Setup Assistant completion preferences. Greenloop performs
+    # one explicit normal restart afterwards; no erase occurs.
     $arguments = '-u "{0}" -s "{0}" restore --system --no-reboot --skip-apps "{1}"' -f $Udid, $restoreRoot
-    $restore = Invoke-GreenloopCommand $backupTool $arguments 180
+    $restore = Invoke-GreenloopCommand $backupTool $arguments 240
     if ($restore.ExitCode -ne 0 -or $restore.Output -notmatch '(?i)Restore Successful') {
       $detail = [string]$restore.Output
       if ($detail -match '(?i)find my') {
@@ -713,20 +795,42 @@ function Invoke-GreenloopCompleteSetup {
   $security = Get-GreenloopSecurityState
 
   $udid = Get-GreenloopConnectedUdid
-  $setup = Invoke-GreenloopCommand $setupAssistantTool ('"{0}"' -f $udid) 90
-  if ($setup.ExitCode -ne 0) {
-    $detail = [string]$setup.Output
+  Invoke-GreenloopSetupRestore $udid
+
+  $restart = Invoke-GreenloopCommand $diagnosticsTool 'restart' 30
+  if ($restart.ExitCode -ne 0) {
+    throw "Setup Assistant preferences were applied, but the normal iPhone restart could not be started: $($restart.Output)"
+  }
+
+  $reconnectDeadline = (Get-Date).AddSeconds(120)
+  $reconnected = $false
+  $disconnected = $false
+  while ((Get-Date) -lt $reconnectDeadline) {
+    Start-Sleep -Seconds 2
     try {
-      $parsed = $detail | ConvertFrom-Json
-      if ($parsed.message) { $detail = [string]$parsed.message }
-    } catch {}
-    if ([string]::IsNullOrWhiteSpace($detail)) { $detail = 'Apple did not accept the Setup Assistant configuration.' }
-    throw "Greenloop could not complete Setup Assistant: $detail"
+      if ((Get-GreenloopConnectedUdid) -eq $udid) {
+        if ($disconnected) {
+          $reconnected = $true
+          break
+        }
+      }
+    } catch {
+      $disconnected = $true
+    }
+  }
+  if (-not $reconnected) {
+    throw 'Setup Assistant preferences were applied, but the iPhone did not reconnect after its normal restart.'
+  }
+
+  Start-Sleep -Seconds 6
+  $verifiedSecurity = Get-GreenloopSecurityState
+  if (-not (Test-GreenloopSetupAssistantFinished)) {
+    throw 'The iPhone reconnected, but Apple did not confirm that Setup Assistant reached the Home Screen. Greenloop will not show a false success.'
   }
 
   return @{
     ok = $true
-    activationState = [string]$security.ActivationState
+    activationState = [string]$verifiedSecurity.ActivationState
     setupAssistantCompleted = $true
     homeScreenReady = $true
     restarting = $false
@@ -822,7 +926,7 @@ while ($true) {
       continue
     }
     switch ($path) {
-      '/health' { Send-Json $tcpClient 200 @{ ok = $true; service = 'Greenloop iPhone Cable Reader'; version = '3.7'; appleMobileDeviceSupport = $true; activationEngine = ((Test-Path -LiteralPath $activationTool) -and (Test-Path -LiteralPath $pairTool)); setupAssistantEngine = ((Test-Path -LiteralPath $deviceInfoTool) -and (Test-Path -LiteralPath $deviceIdTool) -and (Test-Path -LiteralPath $setupAssistantTool)) } }
+      '/health' { Send-Json $tcpClient 200 @{ ok = $true; service = 'Greenloop iPhone Cable Reader'; version = '3.9'; appleMobileDeviceSupport = $true; activationEngine = ((Test-Path -LiteralPath $activationTool) -and (Test-Path -LiteralPath $pairTool)); setupAssistantEngine = ((Test-Path -LiteralPath $deviceInfoTool) -and (Test-Path -LiteralPath $deviceIdTool) -and (Test-Path -LiteralPath $diagnosticsTool) -and (Test-Path -LiteralPath $backupTool) -and (Test-Path -LiteralPath $setupTemplateFolder)) } }
       '/v1/probe' {
         try { Send-Json $tcpClient 200 (Get-GreenloopConnectionProbe) }
         catch { Send-Json $tcpClient 422 @{ ok = $false; connected = $false; message = $_.Exception.Message } }
@@ -837,9 +941,20 @@ while ($true) {
       }
       '/v1/device' {
         $result = [GreenloopAppleDeviceReader]::ReadConnectedDevice()
-        if ($result['ok'] -ne 'true') { Send-Json $tcpClient 422 @{ ok = $false; message = $result['message'] }; continue }
-        $resolvedColor = Get-IPhoneColorName $result['productType'] $result['enclosureColor'] $result['deviceColor']
-        Send-Json $tcpClient 200 @{ ok = $true; device = @{ imei = $result['imei']; model = $result['model']; productType = $result['productType']; modelNumber = $result['modelNumber']; storageGb = (Get-NearestStorageGb $result['totalDiskCapacity']); color = $resolvedColor; batteryHealth = $result['batteryHealth']; serialNumber = $result['serialNumber']; activationState = $result['activationState'] } }
+        if ($result['ok'] -eq 'true' -and -not [string]::IsNullOrWhiteSpace([string]$result['imei'])) {
+          $resolvedColor = Get-IPhoneColorName $result['productType'] $result['enclosureColor'] $result['deviceColor']
+          Send-Json $tcpClient 200 @{ ok = $true; device = @{ imei = $result['imei']; model = $result['model']; productType = $result['productType']; modelNumber = $result['modelNumber']; storageGb = (Get-NearestStorageGb $result['totalDiskCapacity']); color = $resolvedColor; batteryHealth = $result['batteryHealth']; serialNumber = $result['serialNumber']; activationState = $result['activationState'] } }
+          continue
+        }
+        try {
+          $fallback = Get-GreenloopCliDevice
+          if ([string]::IsNullOrWhiteSpace([string]$fallback.imei)) { throw 'Apple did not return an IMEI for this phone.' }
+          Send-Json $tcpClient 200 @{ ok = $true; device = $fallback }
+        } catch {
+          $nativeMessage = [string]$result['message']
+          $message = if ($nativeMessage) { "$nativeMessage $($_.Exception.Message)" } else { $_.Exception.Message }
+          Send-Json $tcpClient 422 @{ ok = $false; message = $message }
+        }
       }
       default { Send-Json $tcpClient 404 @{ ok = $false; message = 'Endpoint not found.' } }
     }

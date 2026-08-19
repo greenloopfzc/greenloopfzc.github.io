@@ -92,7 +92,7 @@ for ($attempt = 1; $attempt -le 8; $attempt += 1) {
   Start-Sleep -Milliseconds 500
   try {
     $health = Invoke-RestMethod -Uri 'http://127.0.0.1:51892/health' -TimeoutSec 2
-    if ($health.ok -and [string]$health.version -eq '3.7') { $ready = $true; break }
+    if ($health.ok -and [string]$health.version -eq '3.9') { $ready = $true; break }
   } catch {}
 }
 
