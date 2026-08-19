@@ -12,9 +12,9 @@
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/stock-entry.css">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script defer src="js/config.js?v=20260818-3"></script>
+    <script defer src="js/config.js?v=20260819-activate-label-1"></script>
     <script defer src="js/part-notifications.js"></script>
-    <script defer src="js/stock-entry.js?v=20260818-full-supplier-1"></script>
+    <script defer src="js/stock-entry.js?v=20260819-activate-label-1"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -45,10 +45,10 @@
                 <div class="stock-plan-actions"><button id="add-stock-plan-line" class="secondary-button" type="button">+ Add model line</button><strong id="stock-plan-total">Total: 0 pcs</strong></div>
               </section>
               <p id="form-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
-              <div class="form-actions"><button id="create-batch" class="primary-button receive-submit" type="submit">Save batch and enter IMEIs →</button></div>
+              <div class="form-actions"><button id="create-batch" class="primary-button receive-submit" type="submit">Save batch and activate phones →</button></div>
             </form>
             <aside class="receiving-side">
-              <section class="side-card workflow-card"><p class="panel-kicker">New intake flow</p><h2>Batch before IMEI</h2><p>One supplier-code batch can now contain many Model, GB, and Color quantity lines. IMEIs are scanned one-by-one on the next page.</p><ol class="workflow-steps"><li class="current"><span>1</span>Stock plan</li><li><span>2</span>IMEI entry</li><li><span>3</span>Initial QC</li></ol></section>
+              <section class="side-card workflow-card"><p class="panel-kicker">New intake flow</p><h2>Batch before activation</h2><p>Create the supplier batch, activate each phone in 3uTools, print its barcode label, then scan those labels in IMEI Entry.</p><ol class="workflow-steps"><li class="current"><span>1</span>Stock plan</li><li><span>2</span>Activate & label</li><li><span>3</span>IMEI entry</li><li><span>4</span>Initial QC</li></ol></section>
               <section class="side-card"><span class="side-icon" aria-hidden="true">▤</span><h2>Fast bulk receiving</h2><p>For 100 phones, plan the combinations once. While scanning, the system keeps each combination's remaining quantity visible.</p></section>
             </aside>
           </div>

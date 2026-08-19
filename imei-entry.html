@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="css/stock-entry.css?v=20260814-auto-read-1">
     <link rel="stylesheet" href="css/batch-workflow.css?v=20260813-2">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script defer src="js/config.js?v=20260818-3"></script>
+    <script defer src="js/config.js?v=20260819-activate-label-1"></script>
     <script defer src="js/part-notifications.js?v=20260813-1"></script>
     <script defer src="js/imei-entry.js?v=20260818-full-supplier-1"></script>
     <script defer src="js/batch-workflow.js?v=20260814-1"></script>
@@ -27,7 +27,7 @@
       </aside>
       <div id="menu-backdrop" class="menu-backdrop" hidden></div>
       <main class="app-main">
-        <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Overview</a><span>/</span><a href="stock-entry.html">Stock Received</a><span>/</span><strong>IMEI Entry</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
+        <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Overview</a><span>/</span><a href="stock-entry.html">Stock Received</a><span>/</span><a href="activate-print.html">Activate & Print Label</a><span>/</span><strong>IMEI Entry</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
         <div class="page-content receiving-content stock-entry-content">
           <section class="page-heading receiving-heading"><div><p class="eyebrow dashboard-eyebrow">IMEI Entry</p><h1>Scan batch IMEIs</h1><p class="heading-subtitle">Select the supplier-code batch first, then scan each device and save its main details.</p></div><a class="quiet-link" href="stock-entry.html">← Create another stock batch</a></section>
           <div id="permission-message" class="access-message" hidden></div>
@@ -51,7 +51,7 @@
               <p id="form-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
               <div id="imei-actions" class="form-actions" hidden><button id="save-imei" class="primary-button receive-submit" type="submit">Save IMEI to Initial QC →</button></div>
             </form>
-            <aside class="receiving-side"><section class="side-card workflow-card"><p class="panel-kicker">Automatic next step</p><h2>Initial QC pending</h2><p>Each IMEI saved here creates its own permanent job and appears in Initial QC immediately.</p><ol class="workflow-steps"><li><span>1</span>Stock batch</li><li class="current"><span>2</span>IMEI entry</li><li><span>3</span>Initial QC</li></ol></section><section class="side-card"><span class="side-icon" aria-hidden="true">⌕</span><h2>Individual history</h2><p>Quantity is used for batch progress only. Every device is still tracked by its own unique IMEI.</p></section></aside>
+            <aside class="receiving-side"><section class="side-card workflow-card"><p class="panel-kicker">Automatic next step</p><h2>Initial QC pending</h2><p>Each IMEI saved here creates its own permanent job and appears in Initial QC immediately.</p><ol class="workflow-steps"><li><span>1</span>Stock batch</li><li><span>2</span>Activate & label</li><li class="current"><span>3</span>IMEI entry</li><li><span>4</span>Initial QC</li></ol></section><section class="side-card"><span class="side-icon" aria-hidden="true">⌕</span><h2>Individual history</h2><p>Quantity is used for batch progress only. Every device is still tracked by its own unique IMEI.</p></section></aside>
           </div>
         </div>
       </main>

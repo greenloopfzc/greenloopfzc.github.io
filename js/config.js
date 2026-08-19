@@ -9,6 +9,7 @@ document.addEventListener("click", (event) => {
 
   const routes = {
     "Stock Received": "stock-entry.html",
+    "Activate & Print Label": "activate-print.html",
     "IMEI Entry": "imei-entry.html",
     "IMEI Search": "imei-search.html",
     "Parts": "parts.html",
@@ -49,6 +50,7 @@ document.addEventListener("click", (event) => {
     '<p class="nav-label">Workspace</p>',
     item("Overview", "dashboard.html", "⌘", page === "dashboard.html"),
     item("Stock Received", "stock-entry.html", "+", page === "stock-entry.html" || page === "receiving.html"),
+    item("Activate & Print Label", "activate-print.html", "▣", page === "activate-print.html"),
     item("IMEI Entry", "imei-entry.html", "⌕", page === "imei-entry.html"),
     '<p class="nav-label">Operations</p>',
     // Permanent production workflow order:
@@ -178,6 +180,7 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     "dashboard.html": "overview",
     "stock-entry.html": "stock_received",
     "receiving.html": "stock_received",
+    "activate-print.html": "imei_entry",
     "imei-entry.html": "imei_entry",
     "initial-qc.html": "initial_qc",
     "laboratory.html": "lab_glass",
