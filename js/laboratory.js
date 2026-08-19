@@ -37,6 +37,7 @@
   let technicianRows = [];
   let activeTechnicianId = "";
   let partOptions = [...standardParts];
+  const lineDrafts = new Map();
   let toastTimer;
 
   function getClient() { return (client ||= window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey)); }
@@ -122,7 +123,18 @@
   function choiceCell(kind, options, selected) {
     return `<div class="lab-choice" data-choice="${kind}"><div class="lab-choice-row"><select>${optionsMarkup(options, kind === "part" ? "Select part" : "Select service")}</select><button type="button" data-add-choice="${kind}" title="Add">+</button></div><div class="lab-choice-tags">${unique(selected).map((value) => `<button type="button" data-remove-choice="${kind}" data-value="${escapeHtml(value)}" title="Remove">${escapeHtml(value)}</button>`).join("")}</div></div>`;
   }
-  function selectedChoices(row, kind) { return unique([...row.querySelectorAll(`[data-choice="${kind}"] [data-remove-choice]`)].map((button) => button.dataset.value)); }
+  function selectedChoices(row, kind) {
+    const tags = [...row.querySelectorAll(`[data-choice="${kind}"] [data-remove-choice]`)].map((button) => button.dataset.value);
+    const currentSelection = row.querySelector(`[data-choice="${kind}"] select`)?.value || "";
+    return unique([...tags, currentSelection]);
+  }
+  function rememberLineDraft(row) {
+    if (!row?.dataset.stepId) return;
+    lineDrafts.set(String(row.dataset.stepId), {
+      parts: selectedChoices(row, "part"),
+      services: selectedChoices(row, "service")
+    });
+  }
   function labelledStatic(label, value, className = "") {
     return `<div class="lab-static-field ${className}"><span class="lab-field-label">${escapeHtml(label)}</span><div class="lab-static-value">${value}</div></div>`;
   }
@@ -215,7 +227,10 @@
         labelledStatic("Initial QC Service", readOnlyList(qcServices))
       ].join("");
       const visual = linePartVisual(row);
-      return `<tr class="lab-phone-row ${visual.className}" data-step-id="${escapeHtml(row.step_id)}"><td colspan="12"><article class="lab-phone-card"><div class="lab-card-status"><span>${escapeHtml(visual.label)}</span></div><div class="lab-static-grid">${staticLine}</div><div class="lab-edit-grid"><div class="lab-edit-field lab-parts-field"><span class="lab-field-label">Final parts required</span>${choiceCell("part", partOptions, labPartNames(row))}</div><div class="lab-edit-field"><span class="lab-field-label">Final services required</span>${choiceCell("service", standardServices, labServiceNames(row))}</div><div class="lab-line-actions">${saveCell}${issuedPartTools(row)}</div></div></article></td></tr>`;
+      const draft = lineDrafts.get(String(row.step_id));
+      const displayedParts = draft?.parts || labPartNames(row);
+      const displayedServices = draft?.services || labServiceNames(row);
+      return `<tr class="lab-phone-row ${visual.className}" data-step-id="${escapeHtml(row.step_id)}"><td colspan="12"><article class="lab-phone-card"><div class="lab-card-status"><span>${escapeHtml(visual.label)}</span></div><div class="lab-static-grid">${staticLine}</div><div class="lab-edit-grid"><div class="lab-edit-field lab-parts-field"><span class="lab-field-label">Final parts required</span>${choiceCell("part", partOptions, displayedParts)}</div><div class="lab-edit-field"><span class="lab-field-label">Final services required</span>${choiceCell("service", standardServices, displayedServices)}</div><div class="lab-line-actions">${saveCell}${issuedPartTools(row)}</div></div></article></td></tr>`;
     }).join("");
   }
 
@@ -335,7 +350,25 @@
     if (!value || selectedChoices(button.closest("tr"), holder.dataset.choice).some((item) => normalise(item) === normalise(value))) return;
     holder.querySelector(".lab-choice-tags").insertAdjacentHTML("beforeend", `<button type="button" data-remove-choice="${holder.dataset.choice}" data-value="${escapeHtml(value)}" title="Remove">${escapeHtml(value)}</button>`);
     select.value = "";
+    rememberLineDraft(button.closest("tr"));
     markLineChanged(button.closest("tr"));
+  }
+  function addSelectedChoice(select) {
+    const holder = select.closest("[data-choice]");
+    const row = select.closest("tr");
+    const value = select.value;
+    if (!holder || !row || !value) return;
+    const existing = [...holder.querySelectorAll("[data-remove-choice]")]
+      .some((button) => normalise(button.dataset.value) === normalise(value));
+    if (!existing) {
+      holder.querySelector(".lab-choice-tags").insertAdjacentHTML(
+        "beforeend",
+        `<button type="button" data-remove-choice="${holder.dataset.choice}" data-value="${escapeHtml(value)}" title="Remove">${escapeHtml(value)}</button>`
+      );
+    }
+    rememberLineDraft(row);
+    row.dataset.editing = "true";
+    markLineChanged(row);
   }
   function markLineChanged(row) {
     const orderButton = row.querySelector("[data-order-parts]");
@@ -379,11 +412,14 @@
       await refreshAll();
       return;
     }
-    setSubmitting(button, true, "Ordering...");
+    const selectedParts = selectedChoices(row, "part");
+    const selectedServices = selectedChoices(row, "service");
+    rememberLineDraft(row);
+    setSubmitting(button, true, "Saving...");
     const { data, error } = await getClient().rpc("save_lab_technician_line_v2", {
       p_work_order_step_id: row.dataset.stepId,
-      p_lab_parts: selectedChoices(row, "part"),
-      p_lab_services: selectedChoices(row, "service"),
+      p_lab_parts: selectedParts,
+      p_lab_services: selectedServices,
       p_extra_parts: [],
       p_extra_services: [],
       p_repeat_part: null,
@@ -391,6 +427,7 @@
     });
     setSubmitting(button, false);
     if (error) { status.textContent = error.message; status.className = "line-status error"; return; }
+    lineDrafts.delete(String(row.dataset.stepId));
     const notifications = Number(data?.parts_notified || 0) + (data?.repeat_part_requested ? 1 : 0);
     status.textContent = data?.repeat_part_requested ? `${notifications} part notification(s); repeat order #${Number(data.repeat_number || 2)}` : `${notifications} part notification(s)`;
     status.className = "line-status success";
@@ -484,12 +521,26 @@
   checkTechnicianImei.addEventListener("click", () => scanTechnicianImei().catch((error) => setBoardMessage(error.message)));
   technicianWorkRows.addEventListener("click", (event) => {
     const add = event.target.closest("[data-add-choice]"); if (add) { addChoice(add); return; }
-    const remove = event.target.closest("[data-remove-choice]"); if (remove) { const row = remove.closest("tr"); remove.remove(); markLineChanged(row); return; }
+    const remove = event.target.closest("[data-remove-choice]"); if (remove) {
+      const row = remove.closest("tr");
+      const holder = remove.closest("[data-choice]");
+      const select = holder?.querySelector("select");
+      if (select && normalise(select.value) === normalise(remove.dataset.value)) select.value = "";
+      remove.remove();
+      rememberLineDraft(row);
+      markLineChanged(row);
+      return;
+    }
     const order = event.target.closest("[data-order-parts]"); if (order && !order.disabled) orderParts(order).catch((error) => setBoardMessage(error.message));
     const completeLabButton = event.target.closest("[data-complete-lab]"); if (completeLabButton) completeLab(completeLabButton).catch((error) => setBoardMessage(error.message));
     const completeFrameButton = event.target.closest("[data-complete-frame]"); if (completeFrameButton) completeFrame(completeFrameButton).catch((error) => setBoardMessage(error.message));
   });
   technicianWorkRows.addEventListener("change", (event) => {
+    const choiceSelect = event.target.closest('[data-choice] select');
+    if (choiceSelect) {
+      addSelectedChoice(choiceSelect);
+      return;
+    }
     const returnControl = event.target.closest("[data-return-part-select], [data-return-reason]");
     if (returnControl) {
       const row = returnControl.closest("tr");
