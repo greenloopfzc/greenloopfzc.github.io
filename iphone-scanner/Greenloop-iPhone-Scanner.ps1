@@ -10,6 +10,8 @@ param(
 $ErrorActionPreference = 'Stop'
 $appleSupportPath = Join-Path ${env:ProgramFiles} 'Common Files\Apple\Mobile Device Support'
 $mobileDeviceDll = Join-Path $appleSupportPath 'MobileDevice.dll'
+$activationToolFolder = Join-Path $PSScriptRoot 'libimobiledevice'
+$activationTool = Join-Path $activationToolFolder 'ideviceactivation.exe'
 
 if (-not (Test-Path -LiteralPath $mobileDeviceDll)) {
   Write-Host 'Apple Mobile Device Support was not found.' -ForegroundColor Red
@@ -449,7 +451,6 @@ function Get-IPhoneColorName([string]$ProductType, [string]$EnclosureColor, [str
   if ($null -eq $script:GreenloopColorTable) {
     $script:GreenloopColorTable = @()
     $tablePaths = @((Join-Path $PSScriptRoot 'devices_table.txt'))
-    if (${env:ProgramFiles(x86)}) { $tablePaths += (Join-Path ${env:ProgramFiles(x86)} '3uToolsV3\cache\devices_table\devices_table.txt') }
     $tablePath = $tablePaths | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
     if ($tablePath) {
       try { $script:GreenloopColorTable = @((Get-Content -LiteralPath $tablePath -Raw | ConvertFrom-Json).Images) } catch { $script:GreenloopColorTable = @() }
@@ -477,23 +478,64 @@ function Send-Json($Client, [int]$StatusCode, $Body) {
   $stream.Flush()
 }
 
-function Start-3uTools {
-  $candidatePaths = @()
-  if (${env:ProgramFiles(x86)}) {
-    $candidatePaths += (Join-Path ${env:ProgramFiles(x86)} '3uToolsV3\3uTools.exe')
-    $candidatePaths += (Join-Path ${env:ProgramFiles(x86)} '3uTools\3uTools.exe')
+function Invoke-GreenloopActivationTool([string]$Command, [int]$TimeoutSeconds = 120) {
+  if (-not (Test-Path -LiteralPath $activationTool)) {
+    throw 'The Greenloop activation engine is not installed. Run Install-Greenloop-Cable-Reader.cmd once.'
   }
-  if ($env:ProgramFiles) {
-    $candidatePaths += (Join-Path $env:ProgramFiles '3uToolsV3\3uTools.exe')
-    $candidatePaths += (Join-Path $env:ProgramFiles '3uTools\3uTools.exe')
+
+  $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+  $startInfo.FileName = $activationTool
+  $startInfo.Arguments = "$Command --batch"
+  $startInfo.WorkingDirectory = $activationToolFolder
+  $startInfo.UseShellExecute = $false
+  $startInfo.CreateNoWindow = $true
+  $startInfo.RedirectStandardOutput = $true
+  $startInfo.RedirectStandardError = $true
+  $startInfo.EnvironmentVariables['PATH'] = "$activationToolFolder;$appleSupportPath;$env:PATH"
+
+  $process = [System.Diagnostics.Process]::new()
+  $process.StartInfo = $startInfo
+  [void]$process.Start()
+  $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+  $stderrTask = $process.StandardError.ReadToEndAsync()
+  if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+    try { $process.Kill() } catch {}
+    throw 'Apple activation did not finish in time. Check the internet connection and reconnect the iPhone.'
   }
-  if ($env:LOCALAPPDATA) {
-    $candidatePaths += (Join-Path $env:LOCALAPPDATA '3uTools\3uTools.exe')
+  $stdout = $stdoutTask.Result.Trim()
+  $stderr = $stderrTask.Result.Trim()
+  $outputLines = @($stdout, $stderr) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }
+  return @{ ExitCode = $process.ExitCode; Output = (($outputLines -join "`n").Trim()) }
+}
+
+function Test-ActivatedState([string]$Value) {
+  return ([string]$Value) -match '(?i)\bactivated\b' -and ([string]$Value) -notmatch '(?i)\bunactivated\b'
+}
+
+function Invoke-GreenloopActivation {
+  $state = Invoke-GreenloopActivationTool 'state' 20
+  if (Test-ActivatedState $state.Output) {
+    return @{ ok = $true; activationState = 'Activated'; alreadyActivated = $true; message = 'This iPhone is already activated. Read the phone and print its label.' }
   }
-  $executable = $candidatePaths | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
-  if (-not $executable) { throw '3uTools is not installed in a standard Windows folder.' }
-  Start-Process -FilePath $executable
-  return @{ ok = $true; opened = $true; application = '3uTools' }
+
+  $activation = Invoke-GreenloopActivationTool 'activate' 120
+  if ($activation.ExitCode -ne 0) {
+    $detail = [string]$activation.Output
+    if ($detail -match '(?i)activation lock|locked to owner|apple id|lost mode') {
+      throw 'Apple Activation Lock is enabled. The legitimate owner or supplier must remove the lock before Greenloop can continue.'
+    }
+    if ($detail -match '(?i)sim|imsi|baseband') {
+      throw 'Apple requires a valid SIM or baseband response for this phone. Insert a supported SIM, reconnect the phone, and try again.'
+    }
+    if ([string]::IsNullOrWhiteSpace($detail)) { $detail = 'Apple did not accept the activation request.' }
+    throw "Activation failed: $detail"
+  }
+
+  $verified = Invoke-GreenloopActivationTool 'state' 25
+  if (-not (Test-ActivatedState $verified.Output)) {
+    throw 'Apple activation finished without a confirmed Activated state. Reconnect the phone and try once more.'
+  }
+  return @{ ok = $true; activationState = 'Activated'; alreadyActivated = $false; message = 'Greenloop activated the iPhone through Apple services. Unlock and tap Trust if asked, then read and print its label.' }
 }
 
 $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, $Port)
@@ -527,9 +569,9 @@ while ($true) {
       continue
     }
     switch ($path) {
-      '/health' { Send-Json $tcpClient 200 @{ ok = $true; service = 'Greenloop iPhone Cable Reader'; version = '2.1'; appleMobileDeviceSupport = $true } }
-      '/v1/open-3utools' {
-        try { Send-Json $tcpClient 200 (Start-3uTools) }
+      '/health' { Send-Json $tcpClient 200 @{ ok = $true; service = 'Greenloop iPhone Cable Reader'; version = '3.0'; appleMobileDeviceSupport = $true; activationEngine = (Test-Path -LiteralPath $activationTool) } }
+      '/v1/activate' {
+        try { Send-Json $tcpClient 200 (Invoke-GreenloopActivation) }
         catch { Send-Json $tcpClient 422 @{ ok = $false; message = $_.Exception.Message } }
       }
       '/v1/device' {

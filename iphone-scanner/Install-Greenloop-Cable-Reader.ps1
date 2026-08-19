@@ -5,6 +5,9 @@ $ErrorActionPreference = 'Stop'
 $installFolder = Join-Path $env:LOCALAPPDATA 'Greenloop\CableReader'
 $installedScript = Join-Path $installFolder 'Greenloop-iPhone-Scanner.ps1'
 $installedColors = Join-Path $installFolder 'devices_table.txt'
+$activationPackage = Join-Path $PSScriptRoot 'Greenloop-Activation-Tools.zip'
+$activationFolder = Join-Path $installFolder 'libimobiledevice'
+$activationExecutable = Join-Path $activationFolder 'ideviceactivation.exe'
 $hiddenRunner = Join-Path $installFolder 'Run-Greenloop-Cable-Reader-Hidden.vbs'
 $startupFolder = [Environment]::GetFolderPath('Startup')
 $shortcutPath = Join-Path $startupFolder 'Greenloop Cable Reader.lnk'
@@ -18,6 +21,20 @@ Get-CimInstance Win32_Process -Filter "Name = 'powershell.exe' OR Name = 'pwsh.e
 New-Item -ItemType Directory -Path $installFolder -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Greenloop-iPhone-Scanner.ps1') -Destination $installedScript -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'devices_table.txt') -Destination $installedColors -Force
+
+if (-not (Test-Path -LiteralPath $activationPackage)) {
+  throw 'Greenloop-Activation-Tools.zip is missing beside the installer.'
+}
+$expectedActivationHash = 'D7CB57A71270848C35C3F01006701535AADF6DFB52325863EA368C94A34A2CAB'
+$actualActivationHash = (Get-FileHash -LiteralPath $activationPackage -Algorithm SHA256).Hash
+if ($actualActivationHash -ne $expectedActivationHash) {
+  throw 'The Greenloop activation engine package failed its security check.'
+}
+New-Item -ItemType Directory -Path $activationFolder -Force | Out-Null
+Expand-Archive -LiteralPath $activationPackage -DestinationPath $activationFolder -Force
+if (-not (Test-Path -LiteralPath $activationExecutable)) {
+  throw 'The Greenloop activation engine could not be installed.'
+}
 
 $escapedScript = $installedScript.Replace('"', '""')
 $runnerText = @"

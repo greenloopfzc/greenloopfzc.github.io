@@ -4,7 +4,7 @@
   const config = window.GREENLOOP_CONFIG || {};
   const batchSelect = document.querySelector("#activate-batch");
   const batchSummary = document.querySelector("#activate-batch-summary");
-  const open3uToolsButton = document.querySelector("#open-3utools");
+  const activateButton = document.querySelector("#activate-phone");
   const readButton = document.querySelector("#read-activate-phone");
   const autoRead = document.querySelector("#activate-auto-read");
   const readerStatus = document.querySelector("#reader-status");
@@ -213,18 +213,26 @@
     }
   }
 
-  async function open3uTools() {
+  async function activatePhone() {
+    if (!batchSelect.value) {
+      setMessage("Select the supplier batch before activating a phone.");
+      return;
+    }
     setMessage();
-    setBusy(open3uToolsButton, true, "Opening...");
+    setBusy(activateButton, true, "Activating...");
     try {
-      await fetchLocal("/v1/open-3utools", 6000);
-      setMessage("3uTools opened. Activate the connected iPhone and wait for its Home Screen.", "success");
+      setReaderStatus("Apple activation in progress");
+      const result = await fetchLocal("/v1/activate", 150000);
+      setMessage(result.message || "The iPhone is activated. Unlock and tap Trust if asked, then read and print its label.", "success");
+      setReaderStatus("iPhone activated", "ready");
+      await readPhone(false);
     } catch (error) {
       setMessage(error?.name === "AbortError" || /failed to fetch|networkerror/i.test(String(error?.message || ""))
         ? "Greenloop Cable Reader is offline. Run its installer once, then try again."
-        : (error.message || "3uTools could not be opened."));
+        : (error.message || "Greenloop could not activate this iPhone."));
+      setReaderStatus("Activation needs attention", "warning");
     } finally {
-      setBusy(open3uToolsButton, false, "Opening...");
+      setBusy(activateButton, false, "Activating...");
     }
   }
 
@@ -252,7 +260,7 @@
       renderDevice(device);
       const missing = [!device.model && "Model", !device.storageGb && "GB", !device.color && "Color", !device.batteryHealth && "Battery Health"].filter(Boolean);
       if (missing.length) {
-        setMessage(`Phone read, but ${missing.join(", ")} could not be detected. Refresh 3uTools and read again.`);
+        setMessage(`Phone read, but ${missing.join(", ")} could not be detected. Reconnect the phone and read again.`);
       } else {
         setMessage(`IMEI ${device.imei} loaded. Confirm the Home Screen, then print its label.`, "success");
       }
@@ -327,7 +335,7 @@
   document.querySelector("#close-menu").addEventListener("click", () => setMenu(false));
   backdrop.addEventListener("click", () => setMenu(false));
   batchSelect.addEventListener("change", updateBatchView);
-  open3uToolsButton.addEventListener("click", open3uTools);
+  activateButton.addEventListener("click", activatePhone);
   readButton.addEventListener("click", () => readPhone(false));
   autoRead.addEventListener("change", startAutoRead);
   homeScreenConfirm.addEventListener("change", updatePrintReady);

@@ -6,6 +6,16 @@
 .activate-panel-heading h2 { margin: 0; color: #17382a; font-family: Manrope, sans-serif; font-size: 1.08rem; }
 .activate-panel-heading p { margin: 4px 0 0; color: #829087; font-size: .78rem; }
 .activation-actions { margin-left: auto; }
+.activation-safety-note {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border: 1px solid #efd69a;
+  border-radius: 12px;
+  background: #fff9ea;
+  color: #664b0f;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
 .activation-actions .secondary-button { white-space: nowrap; }
 .batch-select-row { display: grid; grid-template-columns: minmax(170px, .35fr) minmax(320px, 1.65fr); align-items: center; gap: 15px; margin-top: 20px; }
 .batch-select-row label { color: #314d3e; font-size: .76rem; font-weight: 800; }
