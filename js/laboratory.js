@@ -171,7 +171,7 @@
       const plannedParts = labPartNames(row);
       const plannedServices = labServiceNames(row);
       if (!plannedParts.length && !plannedServices.length) {
-        return `<button class="line-save line-state parts-issued" type="button" disabled>✓ No Parts Required</button><button class="line-save job-completed" type="button" data-complete-lab="${escapeHtml(row.step_id)}">✓ Job Completed</button><small class="line-status success" data-line-status>Ready to send to Final QC</small>`;
+        return `<button class="line-save line-state parts-issued" type="button" data-order-parts="${escapeHtml(row.step_id)}" disabled>✓ No Parts Required</button><button class="line-save job-completed" type="button" data-complete-lab="${escapeHtml(row.step_id)}">✓ Job Completed</button><small class="line-status success" data-line-status>Ready to send to Final QC</small>`;
       }
       const label = plannedParts.length ? "Request Parts" : "Save Services";
       const help = plannedParts.length ? "Send only selected parts to Parts Department" : "Save services; no Parts notification will be sent";
