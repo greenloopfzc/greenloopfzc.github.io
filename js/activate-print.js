@@ -37,6 +37,7 @@
   let activationCompletedDeviceKey = "";
   let activationBlockedDeviceKey = "";
   let nextActivationAttemptAt = 0;
+  const activationAttemptedDeviceKeys = new Set();
   let toastTimer;
 
   function api() { return (client ||= window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey)); }
@@ -190,7 +191,8 @@
 
   async function completeSetupAutomatically(probe) {
     const deviceKey = String(probe?.deviceKey || "");
-    if (!deviceKey || activationInProgress || activationCompletedDeviceKey === deviceKey || activationBlockedDeviceKey === deviceKey || Date.now() < nextActivationAttemptAt) return;
+    if (!deviceKey || activationInProgress || activationCompletedDeviceKey === deviceKey || activationBlockedDeviceKey === deviceKey || activationAttemptedDeviceKeys.has(deviceKey) || Date.now() < nextActivationAttemptAt) return;
+    activationAttemptedDeviceKeys.add(deviceKey);
     activationInProgress = true;
     setMessage("iPhone detected. Greenloop is completing Apple activation and Setup Assistant automatically…", "success");
     setReaderStatus("Automatic Home Screen setup in progress");
@@ -216,7 +218,7 @@
       const offline = error?.name === "AbortError" || /failed to fetch|networkerror/i.test(String(error?.message || ""));
       const text = offline ? "Greenloop Cable Reader is offline. Restart the installed Cable Reader and reconnect the iPhone." : (error.message || "Automatic activation could not be completed.");
       if (details.securityBlocked) activationBlockedDeviceKey = deviceKey;
-      else nextActivationAttemptAt = Date.now() + 8000;
+      else nextActivationAttemptAt = Number.POSITIVE_INFINITY;
       setMessage(text);
       setReaderStatus(details.securityBlocked ? "Apple security block" : "Automatic setup needs attention", "warning");
       if (details.title || details.securityBlocked || details.blockCode) showActivationPopup({ title: details.title || "Activation Needs Attention", popupMessage: details.message || text, type: details.securityBlocked ? "blocked" : "warning" });

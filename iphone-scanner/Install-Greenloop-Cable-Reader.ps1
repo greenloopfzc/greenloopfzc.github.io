@@ -8,10 +8,6 @@ $installedColors = Join-Path $installFolder 'devices_table.txt'
 $activationPackage = Join-Path $PSScriptRoot 'Greenloop-Activation-Tools.zip'
 $activationFolder = Join-Path $installFolder 'libimobiledevice'
 $activationExecutable = Join-Path $activationFolder 'ideviceactivation.exe'
-$setupTemplateSource = Join-Path $PSScriptRoot 'setup-assistant-template'
-$setupTemplateFolder = Join-Path $installFolder 'setup-assistant-template'
-$setupAssistantSource = Join-Path $PSScriptRoot 'Greenloop-Complete-Setup.exe'
-$setupAssistantExecutable = Join-Path $installFolder 'Greenloop-Complete-Setup.exe'
 $hiddenRunner = Join-Path $installFolder 'Run-Greenloop-Cable-Reader-Hidden.vbs'
 $startupFolder = [Environment]::GetFolderPath('Startup')
 $shortcutPath = Join-Path $startupFolder 'Greenloop Cable Reader.lnk'
@@ -35,11 +31,6 @@ Get-CimInstance Win32_Process -Filter "Name = 'powershell.exe' OR Name = 'pwsh.e
 New-Item -ItemType Directory -Path $installFolder -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Greenloop-iPhone-Scanner.ps1') -Destination $installedScript -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'devices_table.txt') -Destination $installedColors -Force
-if (-not (Test-Path -LiteralPath $setupAssistantSource)) {
-  throw 'Greenloop Setup Assistant engine is missing beside the installer.'
-}
-Copy-Item -LiteralPath $setupAssistantSource -Destination $setupAssistantExecutable -Force
-
 if (-not (Test-Path -LiteralPath $activationPackage)) {
   throw 'Greenloop-Activation-Tools.zip is missing beside the installer.'
 }
@@ -53,15 +44,6 @@ Expand-Archive -LiteralPath $activationPackage -DestinationPath $activationFolde
 if (-not (Test-Path -LiteralPath $activationExecutable)) {
   throw 'The Greenloop activation engine could not be installed.'
 }
-if (-not (Test-Path -LiteralPath $setupTemplateSource -PathType Container)) {
-  throw 'The Greenloop Setup Assistant template is missing beside the installer.'
-}
-New-Item -ItemType Directory -Path $setupTemplateFolder -Force | Out-Null
-Get-ChildItem -LiteralPath $setupTemplateSource -File | Copy-Item -Destination $setupTemplateFolder -Force
-if (-not (Test-Path -LiteralPath (Join-Path $setupTemplateFolder 'Manifest.mbdb'))) {
-  throw 'The Greenloop Setup Assistant template could not be installed.'
-}
-
 $escapedScript = $installedScript.Replace('"', '""')
 $runnerText = @"
 Option Explicit
@@ -92,7 +74,7 @@ for ($attempt = 1; $attempt -le 8; $attempt += 1) {
   Start-Sleep -Milliseconds 500
   try {
     $health = Invoke-RestMethod -Uri 'http://127.0.0.1:51892/health' -TimeoutSec 2
-    if ($health.ok -and [string]$health.version -eq '3.9') { $ready = $true; break }
+    if ($health.ok -and [string]$health.version -eq '4.0') { $ready = $true; break }
   } catch {}
 }
 

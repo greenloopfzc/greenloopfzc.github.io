@@ -16,9 +16,6 @@ $pairTool = Join-Path $activationToolFolder 'idevicepair.exe'
 $deviceInfoTool = Join-Path $activationToolFolder 'ideviceinfo.exe'
 $diagnosticsTool = Join-Path $activationToolFolder 'idevicediagnostics.exe'
 $deviceIdTool = Join-Path $activationToolFolder 'idevice_id.exe'
-$backupTool = Join-Path $activationToolFolder 'idevicebackup2.exe'
-$setupTemplateFolder = Join-Path $PSScriptRoot 'setup-assistant-template'
-$setupAssistantTool = Join-Path $PSScriptRoot 'Greenloop-Complete-Setup.exe'
 
 if (-not (Test-Path -LiteralPath $mobileDeviceDll)) {
   Write-Host 'Apple Mobile Device Support was not found.' -ForegroundColor Red
@@ -758,83 +755,33 @@ function Get-GreenloopConnectionProbe {
 }
 
 function Invoke-GreenloopSetupRestore([string]$Udid) {
-  if (-not (Test-Path -LiteralPath $setupTemplateFolder -PathType Container)) {
-    throw 'Greenloop Setup Assistant files are missing. Run Install-Greenloop-Cable-Reader.cmd again.'
-  }
-
-  $restoreBase = Join-Path $env:TEMP 'Greenloop\SetupRestore'
-  $restoreRoot = Join-Path $restoreBase ([guid]::NewGuid().ToString('N'))
-  $deviceBackup = Join-Path $restoreRoot $Udid
-  New-Item -ItemType Directory -Path $deviceBackup -Force | Out-Null
-  Get-ChildItem -LiteralPath $setupTemplateFolder -File | Copy-Item -Destination $deviceBackup -Force
-
-  try {
-    # Apply only Setup Assistant completion preferences. Greenloop performs
-    # one explicit normal restart afterwards; no erase occurs.
-    $arguments = '-u "{0}" -s "{0}" restore --system --no-reboot --skip-apps "{1}"' -f $Udid, $restoreRoot
-    $restore = Invoke-GreenloopCommand $backupTool $arguments 240
-    if ($restore.ExitCode -ne 0 -or $restore.Output -notmatch '(?i)Restore Successful') {
-      $detail = [string]$restore.Output
-      if ($detail -match '(?i)find my') {
-        throw 'Find My or Apple ownership protection is enabled. Greenloop will not complete Setup Assistant. The legitimate owner or supplier must remove it first.'
-      }
-      if ([string]::IsNullOrWhiteSpace($detail)) { $detail = 'Apple did not accept the Setup Assistant restore.' }
-      throw "Greenloop could not complete Setup Assistant: $detail"
-    }
-  } finally {
-    $safeBase = [IO.Path]::GetFullPath($restoreBase).TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
-    $safeTarget = [IO.Path]::GetFullPath($restoreRoot)
-    if ($safeTarget.StartsWith($safeBase, [StringComparison]::OrdinalIgnoreCase) -and (Test-Path -LiteralPath $safeTarget)) {
-      Remove-Item -LiteralPath $safeTarget -Recurse -Force -ErrorAction SilentlyContinue
-    }
-  }
+  throw 'Backup restore is permanently disabled in Greenloop Cable Reader 4.0.'
 }
 
 function Invoke-GreenloopCompleteSetup {
   Confirm-GreenloopPairing
   $security = Get-GreenloopSecurityState
-
-  $udid = Get-GreenloopConnectedUdid
-  Invoke-GreenloopSetupRestore $udid
-
-  $restart = Invoke-GreenloopCommand $diagnosticsTool 'restart' 30
-  if ($restart.ExitCode -ne 0) {
-    throw "Setup Assistant preferences were applied, but the normal iPhone restart could not be started: $($restart.Output)"
+  # IMPORTANT: this route must never erase, restore, reboot, or restart the
+  # connected phone. It writes only Apple's Setup Assistant completion flags.
+  # The browser calls this route once for each physical connection.
+  $nativeResult = [GreenloopAppleDeviceReader]::CompleteSetupAssistant()
+  if (-not $nativeResult -or [string]$nativeResult['ok'] -ne 'true') {
+    $detail = if ($nativeResult -and $nativeResult.ContainsKey('message')) { [string]$nativeResult['message'] } else { 'Apple did not accept the Setup Assistant completion request.' }
+    throw $detail
   }
 
-  $reconnectDeadline = (Get-Date).AddSeconds(120)
-  $reconnected = $false
-  $disconnected = $false
-  while ((Get-Date) -lt $reconnectDeadline) {
-    Start-Sleep -Seconds 2
-    try {
-      if ((Get-GreenloopConnectedUdid) -eq $udid) {
-        if ($disconnected) {
-          $reconnected = $true
-          break
-        }
-      }
-    } catch {
-      $disconnected = $true
-    }
-  }
-  if (-not $reconnected) {
-    throw 'Setup Assistant preferences were applied, but the iPhone did not reconnect after its normal restart.'
-  }
-
-  Start-Sleep -Seconds 6
-  $verifiedSecurity = Get-GreenloopSecurityState
+  Start-Sleep -Milliseconds 1200
   if (-not (Test-GreenloopSetupAssistantFinished)) {
-    throw 'The iPhone reconnected, but Apple did not confirm that Setup Assistant reached the Home Screen. Greenloop will not show a false success.'
+    throw 'Apple did not confirm Setup Assistant completion. Greenloop stopped safely without resetting or restarting the phone.'
   }
 
   return @{
     ok = $true
-    activationState = [string]$verifiedSecurity.ActivationState
+    activationState = [string]$security.ActivationState
     setupAssistantCompleted = $true
     homeScreenReady = $true
     restarting = $false
-    message = 'Activation Successful. Greenloop completed Setup Assistant and the phone is ready on the Home Screen.'
+    message = 'Setup Assistant completion was accepted. No reset, restore, or restart was performed.'
   }
 }
 
@@ -926,7 +873,7 @@ while ($true) {
       continue
     }
     switch ($path) {
-      '/health' { Send-Json $tcpClient 200 @{ ok = $true; service = 'Greenloop iPhone Cable Reader'; version = '3.9'; appleMobileDeviceSupport = $true; activationEngine = ((Test-Path -LiteralPath $activationTool) -and (Test-Path -LiteralPath $pairTool)); setupAssistantEngine = ((Test-Path -LiteralPath $deviceInfoTool) -and (Test-Path -LiteralPath $deviceIdTool) -and (Test-Path -LiteralPath $diagnosticsTool) -and (Test-Path -LiteralPath $backupTool) -and (Test-Path -LiteralPath $setupTemplateFolder)) } }
+      '/health' { Send-Json $tcpClient 200 @{ ok = $true; service = 'Greenloop iPhone Cable Reader'; version = '4.0'; appleMobileDeviceSupport = $true; activationEngine = ((Test-Path -LiteralPath $activationTool) -and (Test-Path -LiteralPath $pairTool)); setupAssistantEngine = ((Test-Path -LiteralPath $deviceInfoTool) -and (Test-Path -LiteralPath $deviceIdTool)) } }
       '/v1/probe' {
         try { Send-Json $tcpClient 200 (Get-GreenloopConnectionProbe) }
         catch { Send-Json $tcpClient 422 @{ ok = $false; connected = $false; message = $_.Exception.Message } }
