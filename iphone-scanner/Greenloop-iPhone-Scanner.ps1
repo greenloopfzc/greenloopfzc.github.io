@@ -16,6 +16,7 @@ $pairTool = Join-Path $activationToolFolder 'idevicepair.exe'
 $deviceInfoTool = Join-Path $activationToolFolder 'ideviceinfo.exe'
 $diagnosticsTool = Join-Path $activationToolFolder 'idevicediagnostics.exe'
 $deviceIdTool = Join-Path $activationToolFolder 'idevice_id.exe'
+$setupAssistantTool = Join-Path $PSScriptRoot 'Greenloop-Complete-Setup.exe'
 
 if (-not (Test-Path -LiteralPath $mobileDeviceDll)) {
   Write-Host 'Apple Mobile Device Support was not found.' -ForegroundColor Red
@@ -469,56 +470,6 @@ public static class GreenloopAppleDeviceReader
         }
     }
 
-    public static Dictionary<string, string> CompleteSetupAssistant()
-    {
-        try
-        {
-            EnsureStarted();
-            IntPtr device = CurrentDevice;
-            if (device == IntPtr.Zero)
-            {
-                DeviceEvent.WaitOne(2500);
-                device = CurrentDevice;
-            }
-            if (device == IntPtr.Zero) return Error("No iPhone detected. Reconnect the cable, unlock the phone, and tap Trust.");
-
-            int connectResult = AMDeviceConnect(device);
-            if (connectResult != 0) return Error("iPhone connection failed (" + connectResult + ").");
-            bool sessionStarted = false;
-            try
-            {
-                if (AMDeviceIsPaired(device) == 0) return Error("Trust Required: unlock the iPhone and tap Trust This Computer.");
-                int pairingResult = AMDeviceValidatePairing(device);
-                if (pairingResult != 0) return Error("Trust validation failed (" + pairingResult + ").");
-                int sessionResult = AMDeviceStartSession(device);
-                if (sessionResult != 0) return Error("Could not start an iPhone session (" + sessionResult + ").");
-                sessionStarted = true;
-
-                string activationState = FirstValue(device, "ActivationState");
-                if (!String.Equals(activationState, "Activated", StringComparison.OrdinalIgnoreCase))
-                    return Error("The iPhone is not activated through Apple services. Setup Assistant was not changed.");
-
-                SetBooleanValue(device, "com.apple.purplebuddy", "SetupDone");
-                SetBooleanValue(device, "com.apple.purplebuddy", "SetupFinishedAllSteps");
-                SetBooleanValue(device, "com.apple.purplebuddy", "UserChoseLanguage");
-
-                return new Dictionary<string, string> {
-                    { "ok", "true" },
-                    { "activationState", activationState },
-                    { "setupAssistantCompleted", "true" }
-                };
-            }
-            finally
-            {
-                if (sessionStarted) AMDeviceStopSession(device);
-                AMDeviceDisconnect(device);
-            }
-        }
-        catch (Exception error)
-        {
-            return Error("Setup Assistant could not be completed: " + error.Message);
-        }
-    }
 }
 '@
 
@@ -761,27 +712,44 @@ function Invoke-GreenloopSetupRestore([string]$Udid) {
 function Invoke-GreenloopCompleteSetup {
   Confirm-GreenloopPairing
   $security = Get-GreenloopSecurityState
-  # IMPORTANT: this route must never erase, restore, reboot, or restart the
-  # connected phone. It writes only Apple's Setup Assistant completion flags.
-  # The browser calls this route once for each physical connection.
-  $nativeResult = [GreenloopAppleDeviceReader]::CompleteSetupAssistant()
-  if (-not $nativeResult -or [string]$nativeResult['ok'] -ne 'true') {
-    $detail = if ($nativeResult -and $nativeResult.ContainsKey('message')) { [string]$nativeResult['message'] } else { 'Apple did not accept the Setup Assistant completion request.' }
+  $udid = Get-GreenloopConnectedUdid
+
+  # The rejected private SetupDone write is intentionally not used here.
+  # This helper talks to Apple's MCInstall service and must never erase,
+  # restore, reboot, restart, supervise, or install MDM on the phone.
+  $skipSetup = Invoke-GreenloopCommand $setupAssistantTool ('"{0}"' -f $udid) 90
+  $jsonLine = @(([string]$skipSetup.Output -split "`r?`n") | Where-Object { $_.Trim() -match '^\{.*\}$' }) | Select-Object -Last 1
+  $result = $null
+  if ($jsonLine) {
+    try { $result = $jsonLine | ConvertFrom-Json } catch { $result = $null }
+  }
+  if ($skipSetup.ExitCode -ne 0 -or -not $result -or -not $result.ok -or -not $result.skipSetupCompleted) {
+    $detail = if ($result -and $result.message) { [string]$result.message } elseif ($skipSetup.Output) { [string]$skipSetup.Output } else { 'Apple did not accept the Skip Setup request.' }
     throw $detail
   }
 
-  Start-Sleep -Milliseconds 1200
-  if (-not (Test-GreenloopSetupAssistantFinished)) {
-    throw 'Apple did not confirm Setup Assistant completion. Greenloop stopped safely without resetting or restarting the phone.'
+  # Do not report success only because Apple stored the skip configuration.
+  # Confirm that Setup Assistant itself has actually finished on the phone.
+  $homeScreenReady = $false
+  for ($attempt = 0; $attempt -lt 12; $attempt += 1) {
+    if (Test-GreenloopSetupAssistantFinished) {
+      $homeScreenReady = $true
+      break
+    }
+    Start-Sleep -Milliseconds 750
+  }
+  if (-not $homeScreenReady) {
+    throw 'Apple accepted the Skip Setup configuration, but this iPhone has not reached the Home Screen. Greenloop stopped without resetting or restarting the phone.'
   }
 
   return @{
     ok = $true
     activationState = [string]$security.ActivationState
+    skipSetupCompleted = $true
     setupAssistantCompleted = $true
-    homeScreenReady = $true
+    homeScreenReady = $homeScreenReady
     restarting = $false
-    message = 'Setup Assistant completion was accepted. No reset, restore, or restart was performed.'
+    message = 'Skip Setup was accepted. No reset, restore, reboot, restart, supervision, or MDM was performed.'
   }
 }
 
@@ -839,7 +807,7 @@ function Get-GreenloopActivationError([string]$Message) {
   if ($detail -match '(?i)valid sim|required sim|imsi|baseband') {
     return @{ ok = $false; securityBlocked = $false; blockCode = 'sim_required'; title = 'SIM Required'; message = 'Apple requires a supported SIM or baseband response for this iPhone. Insert a supported SIM, reconnect it, and try again.' }
   }
-  return @{ ok = $false; securityBlocked = $false; blockCode = 'activation_error'; title = 'Activation Needs Attention'; message = $detail }
+  return @{ ok = $false; securityBlocked = $false; blockCode = 'skip_setup_error'; title = 'Skip Setup Needs Attention'; message = $detail }
 }
 
 $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, $Port)
@@ -873,7 +841,7 @@ while ($true) {
       continue
     }
     switch ($path) {
-      '/health' { Send-Json $tcpClient 200 @{ ok = $true; service = 'Greenloop iPhone Cable Reader'; version = '4.0'; appleMobileDeviceSupport = $true; activationEngine = ((Test-Path -LiteralPath $activationTool) -and (Test-Path -LiteralPath $pairTool)); setupAssistantEngine = ((Test-Path -LiteralPath $deviceInfoTool) -and (Test-Path -LiteralPath $deviceIdTool)) } }
+      '/health' { Send-Json $tcpClient 200 @{ ok = $true; service = 'Greenloop iPhone Cable Reader'; version = '4.2'; appleMobileDeviceSupport = $true; activationEngine = ((Test-Path -LiteralPath $activationTool) -and (Test-Path -LiteralPath $pairTool)); setupAssistantEngine = ((Test-Path -LiteralPath $deviceInfoTool) -and (Test-Path -LiteralPath $deviceIdTool) -and (Test-Path -LiteralPath $setupAssistantTool)); skipSetupEngine = (Test-Path -LiteralPath $setupAssistantTool) } }
       '/v1/probe' {
         try { Send-Json $tcpClient 200 (Get-GreenloopConnectionProbe) }
         catch { Send-Json $tcpClient 422 @{ ok = $false; connected = $false; message = $_.Exception.Message } }

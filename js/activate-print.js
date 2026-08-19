@@ -129,7 +129,7 @@
     fields.color.textContent = device.color || "—";
     fields.battery.textContent = device.batteryHealth ? `${device.batteryHealth}%` : "—";
     if (activationCompletedDeviceKey !== connectedDeviceKey) {
-      fields.activation.textContent = device.activationState ? `${device.activationState} · Setup pending` : "Setup pending";
+      fields.activation.textContent = device.activationState ? `${device.activationState} · Skip Setup pending` : "Skip Setup pending";
       fields.activation.classList.remove("is-activated");
       fields.activation.classList.add("is-pending");
     }
@@ -153,9 +153,9 @@
   function markSetupComplete(deviceKey) {
     activationCompletedDeviceKey = deviceKey;
     homeScreenConfirm.checked = true;
-    homeScreenStatus.textContent = "Activation Successful — Home Screen ready";
+    homeScreenStatus.textContent = "Skip Setup Successful — Home Screen ready";
     homeScreenCard.classList.add("is-complete");
-    fields.activation.textContent = "Activation Successful";
+    fields.activation.textContent = "Skip Setup Successful";
     fields.activation.classList.remove("is-pending");
     fields.activation.classList.add("is-activated");
     updatePrintReady();
@@ -194,11 +194,11 @@
     if (!deviceKey || activationInProgress || activationCompletedDeviceKey === deviceKey || activationBlockedDeviceKey === deviceKey || activationAttemptedDeviceKeys.has(deviceKey) || Date.now() < nextActivationAttemptAt) return;
     activationAttemptedDeviceKeys.add(deviceKey);
     activationInProgress = true;
-    setMessage("iPhone detected. Greenloop is completing Apple activation and Setup Assistant automatically…", "success");
+    setMessage("iPhone detected. Greenloop is completing Skip Setup automatically…", "success");
     setReaderStatus("Automatic Home Screen setup in progress");
     try {
       const result = await fetchLocal("/v1/activate", 360000);
-      if (!result.setupAssistantCompleted || !result.homeScreenReady) throw new Error("Setup Assistant completion was not confirmed.");
+      if (!(result.skipSetupCompleted || result.setupAssistantCompleted) || !result.homeScreenReady) throw new Error("Skip Setup was not confirmed.");
       activationCompletedDeviceKey = deviceKey;
       markSetupWaiting();
       fields.activation.textContent = "Reading phone data";
@@ -206,9 +206,9 @@
       try {
         await readActivatedDevice();
         markSetupComplete(deviceKey);
-        setReaderStatus("Activation Successful", "ready");
-        setMessage("Activation Successful. The Home Screen is ready and Print label is available.", "success");
-        showActivationPopup({ title: "Activation Successful", popupMessage: "Greenloop completed Setup Assistant. The phone is ready on the Home Screen and its label can now be printed.", type: "success" });
+        setReaderStatus("Skip Setup Successful", "ready");
+        setMessage("Skip Setup Successful. The Home Screen is ready and Print label is available.", "success");
+        showActivationPopup({ title: "Skip Setup Successful", popupMessage: "Greenloop completed Skip Setup. The phone is ready on the Home Screen and its label can now be printed.", type: "success" });
       } catch {
         setMessage("Home Screen setup was applied. Unlock the iPhone and tap Trust if asked; Greenloop is waiting for IMEI and label data.", "success");
         setReaderStatus("Waiting for IMEI data", "warning");
@@ -216,12 +216,12 @@
     } catch (error) {
       const details = error?.details || {};
       const offline = error?.name === "AbortError" || /failed to fetch|networkerror/i.test(String(error?.message || ""));
-      const text = offline ? "Greenloop Cable Reader is offline. Restart the installed Cable Reader and reconnect the iPhone." : (error.message || "Automatic activation could not be completed.");
+      const text = offline ? "Greenloop Cable Reader is offline. Restart the installed Cable Reader and reconnect the iPhone." : (error.message || "Skip Setup could not be completed.");
       if (details.securityBlocked) activationBlockedDeviceKey = deviceKey;
       else nextActivationAttemptAt = Number.POSITIVE_INFINITY;
       setMessage(text);
       setReaderStatus(details.securityBlocked ? "Apple security block" : "Automatic setup needs attention", "warning");
-      if (details.title || details.securityBlocked || details.blockCode) showActivationPopup({ title: details.title || "Activation Needs Attention", popupMessage: details.message || text, type: details.securityBlocked ? "blocked" : "warning" });
+      if (details.title || details.securityBlocked || details.blockCode) showActivationPopup({ title: details.title || "Skip Setup Needs Attention", popupMessage: details.message || text, type: details.securityBlocked ? "blocked" : "warning" });
     } finally { activationInProgress = false; }
   }
 
@@ -243,7 +243,7 @@
         markSetupWaiting();
         currentDevice = null;
       }
-      setReaderStatus(activationCompletedDeviceKey === probe.deviceKey ? (currentDevice?.imei ? "Activation Successful" : "Reading phone data") : "iPhone detected", "ready");
+      setReaderStatus(activationCompletedDeviceKey === probe.deviceKey ? (currentDevice?.imei ? "Skip Setup Successful" : "Reading phone data") : "iPhone detected", "ready");
       if (activationCompletedDeviceKey === probe.deviceKey) {
         if (!currentDevice?.imei) {
           try { await readActivatedDevice(); markSetupComplete(probe.deviceKey); } catch {}
@@ -273,7 +273,7 @@
   function printLabel() {
     if (!batchSelect.value) { setMessage("Select the supplier batch before printing."); return; }
     if (!deviceComplete()) { setMessage("Complete phone data is required before printing its label."); return; }
-    if (!homeScreenConfirm.checked) { setMessage("Wait for the automatic Activation Successful confirmation."); return; }
+    if (!homeScreenConfirm.checked) { setMessage("Wait for the automatic Skip Setup Successful confirmation."); return; }
     window.print(); showToast("Label sent to the print dialog.");
   }
   function startAutomaticReader() {
@@ -301,5 +301,5 @@
   document.querySelector("#activation-popup")?.addEventListener("click", (event) => { if (event.target?.id === "activation-popup") closeActivationPopup(); });
   window.addEventListener("keydown", (event) => { if (event.key === "Escape") closeActivationPopup(); });
   window.addEventListener("beforeunload", () => window.clearInterval(autoReadTimer));
-  initialize().catch((error) => setMessage(error.message || "Activate & Print Label could not start."));
+  initialize().catch((error) => setMessage(error.message || "Skip Setup & Print Label could not start."));
 })();

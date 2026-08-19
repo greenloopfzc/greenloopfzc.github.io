@@ -5,6 +5,8 @@ $ErrorActionPreference = 'Stop'
 $installFolder = Join-Path $env:LOCALAPPDATA 'Greenloop\CableReader'
 $installedScript = Join-Path $installFolder 'Greenloop-iPhone-Scanner.ps1'
 $installedColors = Join-Path $installFolder 'devices_table.txt'
+$sourceSetupAssistantTool = Join-Path $PSScriptRoot 'Greenloop-Complete-Setup.exe'
+$installedSetupAssistantTool = Join-Path $installFolder 'Greenloop-Complete-Setup.exe'
 $activationPackage = Join-Path $PSScriptRoot 'Greenloop-Activation-Tools.zip'
 $activationFolder = Join-Path $installFolder 'libimobiledevice'
 $activationExecutable = Join-Path $activationFolder 'ideviceactivation.exe'
@@ -31,6 +33,10 @@ Get-CimInstance Win32_Process -Filter "Name = 'powershell.exe' OR Name = 'pwsh.e
 New-Item -ItemType Directory -Path $installFolder -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Greenloop-iPhone-Scanner.ps1') -Destination $installedScript -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'devices_table.txt') -Destination $installedColors -Force
+if (-not (Test-Path -LiteralPath $sourceSetupAssistantTool)) {
+  throw 'Greenloop-Complete-Setup.exe is missing beside the installer.'
+}
+Copy-Item -LiteralPath $sourceSetupAssistantTool -Destination $installedSetupAssistantTool -Force
 if (-not (Test-Path -LiteralPath $activationPackage)) {
   throw 'Greenloop-Activation-Tools.zip is missing beside the installer.'
 }
@@ -74,7 +80,7 @@ for ($attempt = 1; $attempt -le 8; $attempt += 1) {
   Start-Sleep -Milliseconds 500
   try {
     $health = Invoke-RestMethod -Uri 'http://127.0.0.1:51892/health' -TimeoutSec 2
-    if ($health.ok -and [string]$health.version -eq '4.0') { $ready = $true; break }
+    if ($health.ok -and [version]$health.version -ge [version]'4.2' -and $health.skipSetupEngine) { $ready = $true; break }
   } catch {}
 }
 

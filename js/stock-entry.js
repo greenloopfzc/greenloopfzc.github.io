@@ -200,7 +200,7 @@
     setBusy(submit, false, "Saving stock plan...");
     if (error) { setMessage(error.message || "The stock plan could not be saved."); return; }
     const batch = data?.[0];
-    setMessage(`${batch?.batch_number || "Stock batch"} saved with ${batch?.planned_quantity || 0} devices. Opening Activate & Print Label.`, "success");
+    setMessage(`${batch?.batch_number || "Stock batch"} saved with ${batch?.planned_quantity || 0} devices. Opening Skip Setup & Print Label.`, "success");
     window.setTimeout(() => window.location.assign(`activate-print.html?batch=${encodeURIComponent(batch.batch_id)}`), 450);
   }
 
