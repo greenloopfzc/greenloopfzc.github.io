@@ -4,18 +4,18 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#0d5c43">
-    <meta name="description" content="Skip iPhone Setup Assistant and print Greenloop IMEI barcode labels.">
-    <title>Skip Setup &amp; Print Label | Greenloop</title>
+    <meta name="description" content="Use 3uTools with Greenloop to prepare iPhones and print IMEI barcode labels.">
+    <title>3uTools Setup &amp; Print Label | Greenloop</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/activate-print.css?v=20260819-auto-setup-2">
+    <link rel="stylesheet" href="css/activate-print.css?v=20260820-3utools-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
     <script defer src="js/config.js?v=20260819-skip-setup-2"></script>
     <script defer src="js/part-notifications.js?v=20260813-1"></script>
-    <script defer src="js/activate-print.js?v=20260819-skip-setup-2"></script>
+    <script defer src="js/activate-print.js?v=20260820-3utools-1"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -26,10 +26,10 @@
       </aside>
       <div id="menu-backdrop" class="menu-backdrop" hidden></div>
       <main class="app-main">
-        <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Overview</a><span>/</span><a href="stock-entry.html">Stock Received</a><span>/</span><strong>Skip Setup &amp; Print Label</strong></div><div class="topbar-actions"><span class="live-chip">Local cable station</span></div></header>
+        <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Overview</a><span>/</span><a href="stock-entry.html">Stock Received</a><span>/</span><strong>3uTools Setup &amp; Print Label</strong></div><div class="topbar-actions"><span class="live-chip">Local 3uTools station</span></div></header>
         <div class="page-content activate-content">
           <section class="page-heading activate-heading">
-            <div><p class="eyebrow dashboard-eyebrow">Skip Setup station</p><h1>Skip Setup &amp; print phone label</h1><p class="heading-subtitle">After you manually erase the iPhone, connect its cable. Greenloop skips the eligible Setup Assistant screens and enables label printing.</p></div>
+            <div><p class="eyebrow dashboard-eyebrow">3uTools station</p><h1>Prepare iPhone &amp; print label</h1><p class="heading-subtitle">Greenloop opens 3uTools, reads the connected iPhone, and prepares its label after 3uTools finishes the normal setup.</p></div>
             <a id="continue-imei-top" class="quiet-link" href="imei-entry.html">Continue to IMEI Entry →</a>
           </section>
 
@@ -42,16 +42,18 @@
           </section>
 
           <section class="activate-panel activation-panel">
-            <div class="activate-panel-heading"><span class="section-number">02</span><div><h2>Connect iPhone — Skip Setup runs automatically</h2><p>No button is required. Keep one manually erased iPhone connected by data cable.</p></div></div>
+            <div class="activate-panel-heading"><span class="section-number">02</span><div><h2>Connect iPhone — Greenloop opens 3uTools</h2><p>Keep one manually erased iPhone connected. Use 3uTools to complete its supported setup; Greenloop monitors the result automatically.</p></div></div>
             <ol class="activation-steps">
               <li><span>1</span><strong>Connect</strong><small>Manually erase the phone first, then connect one iPhone by data cable.</small></li>
-              <li><span>2</span><strong>Automatic setup</strong><small>Greenloop verifies Apple security and completes the normal Setup Assistant flow.</small></li>
-              <li><span>3</span><strong>Print</strong><small>Skip Setup Successful appears and Print label becomes available.</small></li>
+              <li><span>2</span><strong>Complete in 3uTools</strong><small>Greenloop opens 3uTools. Use its normal iDevice activation or Skip Setup function.</small></li>
+              <li><span>3</span><strong>Print</strong><small>When the Home Screen is detected, Greenloop enables Print label automatically.</small></li>
             </ol>
-            <p class="setup-assistant-note"><strong>Greenloop never erases or restarts the phone.</strong> Erasing is performed manually by you. Greenloop only completes the eligible Setup Assistant session after the cable is connected.</p>
+            <p class="setup-assistant-note"><strong>Greenloop never erases or restarts the phone.</strong> Phone preparation is performed by 3uTools; Greenloop only opens it, reads the result, and creates the label.</p>
             <p class="activation-safety-note"><strong>Apple security remains enforced.</strong> Activation Lock, Lost Mode, carrier restrictions, and Apple ID ownership are never bypassed. A locked phone requires the legitimate owner or supplier.</p>
             <div class="reader-toolbar">
-              <span class="automatic-reader-label"><span class="automatic-reader-dot" aria-hidden="true"></span><strong>Automatic cable detection is always on</strong></span>
+              <span class="automatic-reader-label"><span class="automatic-reader-dot" aria-hidden="true"></span><strong>Automatic 3uTools monitoring is on</strong></span>
+              <button id="open-3utools" class="primary-button compact-button" type="button">Open 3uTools</button>
+              <button id="refresh-3utools" class="secondary-button compact-button" type="button">Refresh phone data</button>
               <span id="reader-status" class="reader-status">Reader checking...</span>
             </div>
           </section>
@@ -66,9 +68,9 @@
                   <div><span>GB</span><strong id="device-storage">—</strong></div>
                   <div><span>Color</span><strong id="device-color">—</strong></div>
                   <div><span>Battery Health</span><strong id="device-bh">—</strong></div>
-                  <div><span>Skip Setup</span><strong id="device-activation" class="activation-value">Waiting</strong></div>
+                  <div><span>3uTools / Home Screen</span><strong id="device-activation" class="activation-value">Waiting</strong></div>
                 </div>
-                <label class="home-screen-confirm" for="home-screen-confirm"><input id="home-screen-confirm" type="checkbox" disabled><span><strong id="home-screen-status">Waiting for automatic Home Screen setup</strong><small>Greenloop confirms this automatically. No button or manual tick is required.</small></span></label>
+                <label class="home-screen-confirm" for="home-screen-confirm"><input id="home-screen-confirm" type="checkbox" disabled><span><strong id="home-screen-status">Waiting for 3uTools and Home Screen</strong><small>Greenloop confirms the Home Screen automatically before printing.</small></span></label>
                 <div class="label-actions">
                   <button id="print-phone-label" class="primary-button" type="button" disabled>Print label</button>
                   <button id="next-activate-phone" class="secondary-button" type="button">Next phone</button>
@@ -91,7 +93,7 @@
     <div id="activation-popup" class="activation-popup" role="dialog" aria-modal="true" aria-labelledby="activation-popup-title" hidden>
       <div class="activation-popup-card">
         <span class="activation-popup-icon" aria-hidden="true">!</span>
-        <h2 id="activation-popup-title">Skip Setup Status</h2>
+        <h2 id="activation-popup-title">3uTools Status</h2>
         <p id="activation-popup-message"></p>
         <button id="close-activation-popup" class="primary-button" type="button">Close</button>
       </div>
