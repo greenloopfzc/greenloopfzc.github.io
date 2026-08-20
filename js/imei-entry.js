@@ -14,9 +14,6 @@
   const battery = document.querySelector("#battery-health");
   const message = document.querySelector("#form-message");
   const submit = document.querySelector("#save-imei");
-  const readConnectedIphone = document.querySelector("#read-connected-iphone");
-  const autoReadIphone = document.querySelector("#auto-read-iphone");
-  const autoReadStatus = document.querySelector("#iphone-auto-status");
   const permissionMessage = document.querySelector("#permission-message");
   const sidebar = document.querySelector("#sidebar");
   const backdrop = document.querySelector("#menu-backdrop");
@@ -27,10 +24,6 @@
   let batches = [];
   let autoSaveTimer;
   let saving = false;
-  let autoReadTimer;
-  let readerRequestBusy = false;
-  const autoReadSessionImeis = new Set();
-  const autoReadStorageKey = "greenloop-auto-read-iphone";
 
   function api() { return (client ||= window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey)); }
   function setMenu(open) { sidebar.classList.toggle("is-open", open); backdrop.hidden = !open; document.body.classList.toggle("menu-open", open); }
@@ -134,176 +127,6 @@
     );
   }
 
-  function normaliseValue(value) {
-    return String(value || "").trim().replace(/\s+/g, " ").toLocaleLowerCase();
-  }
-
-  function setScannerSelectValue(select, value) {
-    const cleaned = String(value || "").trim();
-    if (!cleaned) return false;
-    const matchingOption = [...select.options].find((option) => normaliseValue(option.value) === normaliseValue(cleaned));
-    if (matchingOption) {
-      select.value = matchingOption.value;
-      return true;
-    }
-    select.add(new Option(cleaned, cleaned));
-    select.value = cleaned;
-    return true;
-  }
-
-  function recognisedColor(value) {
-    const raw = String(value || "").trim();
-    if (!raw || raw.startsWith("#") || /^\d+$/.test(raw)) return "";
-    return raw.replace(/[-_]/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
-  }
-
-  function setAutoReadStatus(value, state = "") {
-    if (!autoReadStatus) return;
-    autoReadStatus.textContent = value;
-    autoReadStatus.classList.toggle("is-active", state === "active");
-    autoReadStatus.classList.toggle("is-warning", state === "warning");
-  }
-
-  function updateAutoReadAppearance() {
-    autoReadIphone.closest(".iphone-auto-read")?.classList.toggle("is-active", autoReadIphone.checked);
-    if (!autoReadIphone.checked) setAutoReadStatus("Auto read off");
-  }
-
-  async function requestCableDevice(timeoutMs = 15000) {
-    const abort = new AbortController();
-    const timer = window.setTimeout(() => abort.abort(), timeoutMs);
-    try {
-      const response = await fetch(`http://127.0.0.1:51892/v1/device?t=${Date.now()}`, { cache: "no-store", signal: abort.signal });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok || !result.ok) throw new Error(result.message || "The connected iPhone could not be read.");
-      return result.device || {};
-    } finally {
-      window.clearTimeout(timer);
-    }
-  }
-
-  function applyCableDevice(device, automatic = false) {
-    const scannedImei = String(device.imei || "").replace(/\D/g, "");
-    const bulkPanel = document.querySelector("#batch-entry-panel:not([hidden])");
-    if (bulkPanel) {
-      window.dispatchEvent(new CustomEvent("greenloop:cable-device", { detail: device }));
-      setMessage(`${automatic ? "Auto Read" : "Connected iPhone"} data loaded into the active batch line.`, "success");
-      return scannedImei;
-    }
-    const loaded = [];
-    if (/^\d{15}$/.test(scannedImei)) { imei.value = scannedImei; loaded.push("IMEI"); }
-    if (setScannerSelectValue(model, device.model)) loaded.push("model");
-    if (device.storageGb && Number(device.storageGb) > 0) { setScannerSelectValue(storage, String(Number(device.storageGb))); loaded.push("GB"); }
-    if (setScannerSelectValue(color, recognisedColor(device.color))) loaded.push("color");
-    const batteryHealth = Number.parseInt(String(device.batteryHealth || "").replace(/\D/g, ""), 10);
-    if (Number.isInteger(batteryHealth) && batteryHealth >= 1 && batteryHealth <= 100) {
-      battery.value = String(batteryHealth);
-      loaded.push("Battery Health");
-    }
-    if (!loaded.length) throw new Error("The iPhone was connected, but it did not provide usable device details. Unlock it, tap Trust, then try again.");
-    const stillNeeded = [
-      device.storageGb ? "" : "GB",
-      recognisedColor(device.color) ? "" : "Color",
-      (Number.isInteger(batteryHealth) && batteryHealth >= 1 && batteryHealth <= 100) ? "" : "Battery Health"
-    ].filter(Boolean);
-    const followUp = stillNeeded.length ? ` The iPhone did not expose ${stillNeeded.join(", ")} to Apple Mobile Device Support.` : " The IMEI will save automatically.";
-    setMessage(`${loaded.join(", ")} loaded from the connected iPhone.${followUp}`, "success");
-    if (stillNeeded.length) battery.focus();
-    else scheduleAutoSave();
-    return scannedImei;
-  }
-
-  async function readFrom3uTools() {
-    setMessage();
-    setBusy(readConnectedIphone, true, "Reading 3uTools...");
-    const abort = new AbortController();
-    const timer = window.setTimeout(() => abort.abort(), 12000);
-    try {
-      const response = await fetch(`http://127.0.0.1:51894/v1/device?t=${Date.now()}`, { cache: "no-store", signal: abort.signal });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok || !result.ok) throw new Error(result.message || "3uTools could not be read.");
-      const device = result.device || {};
-      const scannedImei = String(device.imei || "").replace(/\D/g, "");
-      const loaded = [];
-      if (/^\d{15}$/.test(scannedImei)) { imei.value = scannedImei; loaded.push("IMEI"); }
-      if (setScannerSelectValue(model, device.model)) loaded.push("model");
-      if (device.storageGb && Number(device.storageGb) > 0) { setScannerSelectValue(storage, String(Number(device.storageGb))); loaded.push("GB"); }
-      if (setScannerSelectValue(color, recognisedColor(device.color))) loaded.push("color");
-      const batteryHealth = Number.parseInt(String(device.batteryHealth || "").replace(/\D/g, ""), 10);
-      if (Number.isInteger(batteryHealth) && batteryHealth >= 1 && batteryHealth <= 100) { battery.value = String(batteryHealth); loaded.push("Battery Health"); }
-      if (!loaded.length) throw new Error("3uTools was read, but no usable device details were found. Keep its iDevice page visible and press Refresh in 3uTools.");
-      const missing = [!device.storageGb && "GB", !recognisedColor(device.color) && "Color", !(Number.isInteger(batteryHealth) && batteryHealth >= 1 && batteryHealth <= 100) && "Battery Health"].filter(Boolean);
-      setMessage(`${loaded.join(", ")} loaded from 3uTools.${missing.length ? ` 3uTools could not read ${missing.join(", ")} from the visible screen.` : " The IMEI will save automatically."}`, missing.length ? "error" : "success");
-      if (missing.length) battery.focus(); else scheduleAutoSave();
-    } catch (error) {
-      const offline = error?.name === "AbortError" || /failed to fetch|networkerror/i.test(String(error?.message || ""));
-      setMessage(offline
-        ? "Start the Greenloop 3uTools Bridge first. Keep 3uTools open, maximized, and on the iDevice screen."
-        : (error.message || "3uTools could not be read."));
-    } finally {
-      window.clearTimeout(timer);
-      setBusy(readConnectedIphone, false, "Reading 3uTools...");
-    }
-  }
-
-  async function readIphoneFromCable(automatic = false) {
-    if (readerRequestBusy) return;
-    readerRequestBusy = true;
-    if (!automatic) setMessage();
-    if (!automatic) setBusy(readConnectedIphone, true, "Reading iPhone...");
-    try {
-      const device = await requestCableDevice(automatic ? 5500 : 15000);
-      const scannedImei = String(device.imei || "").replace(/\D/g, "");
-      if (automatic && !/^\d{15}$/.test(scannedImei)) {
-        setAutoReadStatus("Connected phone has no readable IMEI", "warning");
-        return;
-      }
-      if (automatic && autoReadSessionImeis.has(scannedImei)) {
-        setAutoReadStatus("Phone already loaded - connect the next iPhone", "active");
-        return;
-      }
-      const appliedImei = applyCableDevice(device, automatic);
-      if (/^\d{15}$/.test(appliedImei)) autoReadSessionImeis.add(appliedImei);
-      setAutoReadStatus(automatic ? "iPhone loaded - connect the next iPhone" : "iPhone loaded", "active");
-    } catch (error) {
-      const offline = error?.name === "AbortError" || /failed to fetch|networkerror/i.test(String(error?.message || ""));
-      if (automatic) {
-        const noPhone = /no iphone detected|not trusted|unlock|connect/i.test(String(error?.message || ""));
-        setAutoReadStatus(offline ? "Cable Reader is offline" : (noPhone ? "Waiting for iPhone" : "Reader waiting"), offline ? "warning" : "");
-      } else {
-        setMessage(offline
-          ? "Start Greenloop iPhone Scanner first, then connect and trust the unlocked iPhone."
-          : (error.message || "The connected iPhone could not be read."));
-      }
-    } finally {
-      readerRequestBusy = false;
-      if (!automatic) setBusy(readConnectedIphone, false, "Reading iPhone...");
-    }
-  }
-
-  async function autoReadTick() {
-    if (!autoReadIphone.checked || document.hidden || readerRequestBusy) return;
-    if (!batchSelect.value) { setAutoReadStatus("Select supplier batch first", "warning"); return; }
-    const activeBatchPanel = document.querySelector("#batch-entry-panel:not([hidden])");
-    if (!activeBatchPanel) { setAutoReadStatus("Preparing batch lines"); return; }
-    if (!activeBatchPanel.querySelector("tbody tr:not(.batch-saved-row)")) { setAutoReadStatus("No empty batch line", "warning"); return; }
-    await readIphoneFromCable(true);
-  }
-
-  function startAutoRead() {
-    window.clearInterval(autoReadTimer);
-    updateAutoReadAppearance();
-    if (!autoReadIphone.checked) return;
-    setAutoReadStatus(batchSelect.value ? "Waiting for iPhone" : "Select supplier batch first", batchSelect.value ? "" : "warning");
-    autoReadTimer = window.setInterval(autoReadTick, 1200);
-    autoReadTick();
-  }
-
-  function configureAutoRead() {
-    autoReadIphone.checked = window.localStorage.getItem(autoReadStorageKey) === "on";
-    startAutoRead();
-  }
-
   function scheduleAutoSave() {
     window.clearTimeout(autoSaveTimer);
     if (!canAutoSave() || battery.value.length < 2) return;
@@ -353,20 +176,12 @@
     if (!allowed) throw new Error("Your account does not have IMEI Entry permission.");
     await loadAllMaster();
     await loadBatches(requestedBatchId);
-    configureAutoRead();
   }
 
   document.querySelector("#open-menu").addEventListener("click", () => setMenu(true));
   document.querySelector("#close-menu").addEventListener("click", () => setMenu(false));
   backdrop.addEventListener("click", () => setMenu(false));
-  batchSelect.addEventListener("change", () => { updateBatchView(); if (autoReadIphone.checked) window.setTimeout(autoReadTick, 150); });
-  readConnectedIphone.addEventListener("click", () => readIphoneFromCable(false));
-  autoReadIphone.addEventListener("change", () => {
-    window.localStorage.setItem(autoReadStorageKey, autoReadIphone.checked ? "on" : "off");
-    startAutoRead();
-  });
-  document.addEventListener("visibilitychange", () => { if (!document.hidden && autoReadIphone.checked) autoReadTick(); });
-  window.addEventListener("beforeunload", () => window.clearInterval(autoReadTimer));
+  batchSelect.addEventListener("change", updateBatchView);
   imei.addEventListener("input", () => { imei.value = imei.value.replace(/\D/g, ""); });
   battery.addEventListener("input", scheduleAutoSave);
   battery.addEventListener("change", () => saveImei(null, true));

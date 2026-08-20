@@ -3,20 +3,6 @@
 .five-columns .master-option-control { grid-template-columns: minmax(118px, 1fr) 28px 28px; gap: 4px; }
 .imei-scan-heading { align-items: center; }
 .imei-scan-heading > div { min-width: 0; }
-.iphone-reader-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-left: auto; flex-wrap: wrap; }
-.iphone-read-button { min-height: 38px; white-space: nowrap; color: #0f714d; border-color: #b9dcca; background: #f3fbf6; }
-.iphone-read-button:hover { background: #e8f7ee; }
-.iphone-auto-read { display: inline-flex; align-items: center; gap: 7px; min-height: 38px; border: 1px solid #b9dcca; border-radius: 8px; padding: 0 10px; color: #476257; background: #fff; font-size: .73rem; cursor: pointer; user-select: none; }
-.iphone-auto-read input { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
-.iphone-auto-switch { position: relative; display: inline-block; width: 32px; height: 18px; border-radius: 99px; background: #cbd8d0; transition: background .18s ease; }
-.iphone-auto-switch span { position: absolute; top: 3px; left: 3px; width: 12px; height: 12px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(20, 54, 37, .28); transition: transform .18s ease; }
-.iphone-auto-read.is-active { border-color: #79b99a; color: #0b704d; background: #edf9f1; }
-.iphone-auto-read.is-active .iphone-auto-switch { background: #11805b; }
-.iphone-auto-read.is-active .iphone-auto-switch span { transform: translateX(14px); }
-.iphone-auto-read:focus-within { outline: 3px solid rgba(20, 128, 93, .12); border-color: #14805d; }
-.iphone-auto-status { flex-basis: 100%; color: #84938a; font-size: .62rem; font-weight: 700; text-align: right; }
-.iphone-auto-status.is-active { color: #0b7652; }
-.iphone-auto-status.is-warning { color: #a96b16; }
 .stock-plan-wrap { overflow-x: auto; border: 1px solid #dbe7df; border-radius: 9px; }
 .stock-plan-table { width: 100%; min-width: 860px; border-collapse: collapse; }
 .stock-plan-table th, .stock-plan-table td { border-right: 1px solid #e2ebe4; border-bottom: 1px solid #e2ebe4; padding: 8px; vertical-align: middle; }
@@ -38,4 +24,4 @@
 .batch-summary .batch-plan-lines { grid-column: 1 / -1; padding: 11px 12px; background: #fffdf7; }
 .batch-summary .batch-plan-lines strong { white-space: normal; line-height: 1.45; }
 @media (max-width: 1120px) { .five-columns { grid-template-columns: repeat(3, minmax(0, 1fr)); } .batch-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (max-width: 680px) { .five-columns { grid-template-columns: 1fr; } .stock-plan-actions { display: grid; } .stock-plan-actions .secondary-button { width: 100%; } .batch-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } .imei-scan-heading { flex-wrap: wrap; } .iphone-reader-actions { width: 100%; margin-left: 41px; justify-content: stretch; } .iphone-auto-read, .iphone-read-button { flex: 1; justify-content: center; } .iphone-auto-status { text-align: left; } }
+@media (max-width: 680px) { .five-columns { grid-template-columns: 1fr; } .stock-plan-actions { display: grid; } .stock-plan-actions .secondary-button { width: 100%; } .batch-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } .imei-scan-heading { flex-wrap: wrap; } }

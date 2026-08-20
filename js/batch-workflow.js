@@ -59,50 +59,6 @@
     let currentBatch;
     let slots = [];
 
-    function setSelectValue(select, value) {
-      const cleaned = String(value ?? "").trim();
-      if (!cleaned) return false;
-      let option = [...select.options].find((item) => String(item.value).trim().toLocaleLowerCase() === cleaned.toLocaleLowerCase());
-      if (!option) {
-        option = new Option(cleaned, cleaned);
-        select.add(option);
-      }
-      select.value = option.value;
-      return true;
-    }
-
-    function loadCableDeviceIntoRow(device) {
-      if (panel.hidden || !currentBatch) return;
-      const focusedRow = document.activeElement?.closest?.("#batch-entry-panel tbody tr");
-      const row = (focusedRow?.dataset.saved !== "yes" ? focusedRow : null)
-        || [...panel.querySelectorAll("tbody tr")].find((item) => item.dataset.saved !== "yes" && !item.querySelector(".batch-row-imei").value.trim());
-      if (!row) return;
-
-      const scannedImei = String(device?.imei || "").replace(/\D/g, "");
-      const batteryHealth = Number.parseInt(String(device?.batteryHealth || "").replace(/\D/g, ""), 10);
-      if (/^\d{15}$/.test(scannedImei)) row.querySelector(".batch-row-imei").value = scannedImei;
-      setSelectValue(row.querySelector(".batch-row-model"), device?.model);
-      if (Number(device?.storageGb) > 0) setSelectValue(row.querySelector(".batch-row-storage"), String(Number(device.storageGb)));
-      setSelectValue(row.querySelector(".batch-row-color"), device?.color);
-      if (Number.isInteger(batteryHealth) && batteryHealth >= 1 && batteryHealth <= 100) row.querySelector(".batch-row-battery").value = String(batteryHealth);
-
-      const missing = [];
-      if (!/^\d{15}$/.test(scannedImei)) missing.push("IMEI");
-      if (!row.querySelector(".batch-row-model").value) missing.push("Model");
-      if (!row.querySelector(".batch-row-storage").value) missing.push("GB");
-      if (!row.querySelector(".batch-row-color").value) missing.push("Color");
-      if (!row.querySelector(".batch-row-battery").value) missing.push("Battery Health");
-      if (missing.length) {
-        setRowStatus(row, `Cable read incomplete: ${missing.join(", ")}`, "is-error");
-        row.querySelector(".batch-row-battery").focus();
-        return;
-      }
-      setRowStatus(row, "Cable data loaded", "is-saving");
-      saveRow(row);
-    }
-
-    window.addEventListener("greenloop:cable-device", (event) => loadCableDeviceIntoRow(event.detail || {}));
-
     function setRowStatus(row, text, state = "") {
       const status = row.querySelector(".batch-row-status");
       status.textContent = text;

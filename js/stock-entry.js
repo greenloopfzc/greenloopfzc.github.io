@@ -203,8 +203,8 @@
     setBusy(submit, false, "Saving stock plan...");
     if (error) { setMessage(error.message || "The stock plan could not be saved."); return; }
     const batch = data?.[0];
-    setMessage(`${batch?.batch_number || "Stock batch"} saved with ${batch?.planned_quantity || 0} devices. Opening Skip Setup & Print Label.`, "success");
-    window.setTimeout(() => window.location.assign(`activate-print.html?batch=${encodeURIComponent(batch.batch_id)}`), 450);
+    setMessage(`${batch?.batch_number || "Stock batch"} saved with ${batch?.planned_quantity || 0} devices. Opening IMEI Entry.`, "success");
+    window.setTimeout(() => window.location.assign(`imei-entry.html?batch=${encodeURIComponent(batch.batch_id)}`), 450);
   }
 
   async function initialize() {

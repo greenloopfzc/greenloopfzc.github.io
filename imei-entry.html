@@ -27,7 +27,7 @@
       </aside>
       <div id="menu-backdrop" class="menu-backdrop" hidden></div>
       <main class="app-main">
-        <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Overview</a><span>/</span><a href="stock-entry.html">Stock Received</a><span>/</span><a href="activate-print.html">Skip Setup & Print Label</a><span>/</span><strong>IMEI Entry</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
+        <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Overview</a><span>/</span><a href="stock-entry.html">Stock Received</a><span>/</span><strong>IMEI Entry</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
         <div class="page-content receiving-content stock-entry-content">
           <section class="page-heading receiving-heading"><div><p class="eyebrow dashboard-eyebrow">IMEI Entry</p><h1>Scan batch IMEIs</h1><p class="heading-subtitle">Select the supplier-code batch first, then scan each device and save its main details.</p></div><a class="quiet-link" href="stock-entry.html">← Create another stock batch</a></section>
           <div id="permission-message" class="access-message" hidden></div>
@@ -39,7 +39,7 @@
                 <div id="batch-summary" class="batch-summary" hidden></div>
               </section>
               <section id="imei-detail-panel" class="form-panel" hidden>
-                <div class="form-panel-heading imei-scan-heading"><span class="section-number">02</span><div><h2>Scan IMEI and enter device details</h2><p>Every saved IMEI automatically enters the Initial QC queue.</p></div><div class="iphone-reader-actions"><label class="iphone-auto-read" for="auto-read-iphone"><input id="auto-read-iphone" type="checkbox"><span class="iphone-auto-switch" aria-hidden="true"><span></span></span><strong>Auto Read</strong></label><button id="read-connected-iphone" class="secondary-button iphone-read-button" type="button">Read connected iPhone</button><small id="iphone-auto-status" class="iphone-auto-status" role="status" aria-live="polite">Auto read off</small></div></div>
+                <div class="form-panel-heading imei-scan-heading"><span class="section-number">02</span><div><h2>Scan IMEI and enter device details</h2><p>Every saved IMEI automatically enters the Initial QC queue.</p></div></div>
                 <div class="form-grid five-columns">
                   <div class="form-field imei-field"><label for="imei-1">IMEI <span class="required-mark">Required</span></label><input id="imei-1" type="text" inputmode="numeric" autocomplete="off" maxlength="15" placeholder="Scan 15-digit IMEI" required></div>
                   <div class="form-field"><label for="model">Model <span class="required-mark">Required</span></label><div class="master-option-control"><select id="model" required><option value="">Loading models...</option></select><button class="master-add" type="button" data-option-group="model" data-option-target="model" title="Add model">+</button><button class="master-remove" type="button" data-option-group="model" data-option-target="model" title="Remove selected model">−</button></div></div>
@@ -51,7 +51,7 @@
               <p id="form-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
               <div id="imei-actions" class="form-actions" hidden><button id="save-imei" class="primary-button receive-submit" type="submit">Save IMEI to Initial QC →</button></div>
             </form>
-            <aside class="receiving-side"><section class="side-card workflow-card"><p class="panel-kicker">Automatic next step</p><h2>Initial QC pending</h2><p>Each IMEI saved here creates its own permanent job and appears in Initial QC immediately.</p><ol class="workflow-steps"><li><span>1</span>Stock batch</li><li><span>2</span>Skip Setup & label</li><li class="current"><span>3</span>IMEI entry</li><li><span>4</span>Initial QC</li></ol></section><section class="side-card"><span class="side-icon" aria-hidden="true">⌕</span><h2>Individual history</h2><p>Quantity is used for batch progress only. Every device is still tracked by its own unique IMEI.</p></section></aside>
+            <aside class="receiving-side"><section class="side-card workflow-card"><p class="panel-kicker">Automatic next step</p><h2>Initial QC pending</h2><p>Each IMEI saved here creates its own permanent job and appears in Initial QC immediately.</p><ol class="workflow-steps"><li><span>1</span>Stock batch</li><li class="current"><span>2</span>IMEI entry</li><li><span>3</span>Initial QC</li></ol></section><section class="side-card"><span class="side-icon" aria-hidden="true">⌕</span><h2>Individual history</h2><p>Quantity is used for batch progress only. Every device is still tracked by its own unique IMEI.</p></section></aside>
           </div>
         </div>
       </main>
