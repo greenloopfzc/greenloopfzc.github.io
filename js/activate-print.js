@@ -143,7 +143,7 @@
     updatePrintReady();
   }
   function deviceComplete() { return Boolean(currentDevice?.imei && currentDevice?.model && currentDevice?.storageGb && currentDevice?.color && currentDevice?.batteryHealth); }
-  function updatePrintReady() { printButton.disabled = !(batchSelect.value && deviceComplete() && homeScreenConfirm.checked); }
+  function updatePrintReady() { printButton.disabled = !(batchSelect.value && deviceComplete()); }
   function markSetupWaiting() {
     homeScreenConfirm.checked = false;
     homeScreenStatus.textContent = "Waiting for automatic Home Screen setup";
@@ -219,9 +219,23 @@
       const text = offline ? "Greenloop Cable Reader is offline. Restart the installed Cable Reader and reconnect the iPhone." : (error.message || "Skip Setup could not be completed.");
       if (details.securityBlocked) activationBlockedDeviceKey = deviceKey;
       else nextActivationAttemptAt = Number.POSITIVE_INFINITY;
-      setMessage(text);
-      setReaderStatus(details.securityBlocked ? "Apple security block" : "Automatic setup needs attention", "warning");
-      if (details.title || details.securityBlocked || details.blockCode) showActivationPopup({ title: details.title || "Skip Setup Needs Attention", popupMessage: details.message || text, type: details.securityBlocked ? "blocked" : "warning" });
+      let phoneDataLoaded = false;
+      if (!offline && !details.securityBlocked) {
+        try {
+          await readActivatedDevice();
+          phoneDataLoaded = Boolean(currentDevice?.imei);
+        } catch {}
+      }
+      setMessage(phoneDataLoaded
+        ? "Phone data loaded and the label is ready. iOS Setup Assistant is still open; complete the remaining Apple screen(s) manually."
+        : text);
+      setReaderStatus(details.securityBlocked ? "Apple security block" : (phoneDataLoaded ? "Phone data ready · Home Screen pending" : "Automatic setup needs attention"), "warning");
+      if (phoneDataLoaded) {
+        homeScreenStatus.textContent = "Phone data ready · Apple Setup Assistant remains open";
+        closeActivationPopup();
+      } else if (details.title || details.securityBlocked || details.blockCode) {
+        showActivationPopup({ title: details.title || "Skip Setup Needs Attention", popupMessage: details.message || text, type: details.securityBlocked ? "blocked" : "warning" });
+      }
     } finally { activationInProgress = false; }
   }
 
@@ -249,7 +263,19 @@
           try { await readActivatedDevice(); markSetupComplete(probe.deviceKey); } catch {}
         }
       } else {
-        await completeSetupAutomatically(probe);
+        if (activationAttemptedDeviceKeys.has(probe.deviceKey)) {
+          try {
+            if (!currentDevice?.imei) await readActivatedDevice();
+            const setup = await fetchLocal("/v1/setup-status", 6000);
+            if (setup.homeScreenReady) {
+              markSetupComplete(probe.deviceKey);
+              setReaderStatus("Home Screen ready · phone data loaded", "ready");
+              setMessage("Home Screen confirmed. Print label is available.", "success");
+            }
+          } catch {}
+        } else {
+          await completeSetupAutomatically(probe);
+        }
       }
     } catch (error) {
       const offline = error?.name === "AbortError" || /failed to fetch|networkerror/i.test(String(error?.message || ""));
@@ -273,7 +299,6 @@
   function printLabel() {
     if (!batchSelect.value) { setMessage("Select the supplier batch before printing."); return; }
     if (!deviceComplete()) { setMessage("Complete phone data is required before printing its label."); return; }
-    if (!homeScreenConfirm.checked) { setMessage("Wait for the automatic Skip Setup Successful confirmation."); return; }
     window.print(); showToast("Label sent to the print dialog.");
   }
   function startAutomaticReader() {
