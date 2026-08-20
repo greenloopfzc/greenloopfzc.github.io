@@ -25,6 +25,14 @@
   let autoSaveTimer;
   let saving = false;
 
+  function withTimeout(promise, label, milliseconds = 15000) {
+    let timeoutId;
+    const timeout = new Promise((_, reject) => {
+      timeoutId = window.setTimeout(() => reject(new Error(`${label} timed out. Please refresh the page.`)), milliseconds);
+    });
+    return Promise.race([promise, timeout]).finally(() => window.clearTimeout(timeoutId));
+  }
+
   function api() { return (client ||= window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey)); }
   function setMenu(open) { sidebar.classList.toggle("is-open", open); backdrop.hidden = !open; document.body.classList.toggle("menu-open", open); }
   function showToast(value) { window.clearTimeout(toastTimer); toast.textContent = value; toast.hidden = false; toast.classList.add("is-visible"); toastTimer = window.setTimeout(() => { toast.hidden = true; toast.classList.remove("is-visible"); }, 3400); }
@@ -76,13 +84,43 @@
   }
 
   async function loadBatches(selected = batchSelect.value || requestedBatchId) {
-    const { data, error } = await api().rpc("get_open_stock_entry_batches_with_lines");
-    if (error) throw error;
-    batches = data || [];
+    batchSelect.disabled = true;
+    batchSelect.replaceChildren(new Option("Loading stock batches...", ""));
+
+    let response;
+    try {
+      response = await withTimeout(
+        api().rpc("get_open_stock_entry_batches_with_lines"),
+        "Stock batch loading"
+      );
+    } catch (error) {
+      batchSelect.replaceChildren(new Option("Stock batches could not be loaded", ""));
+      throw error;
+    }
+
+    if (response.error) {
+      const fallback = await withTimeout(
+        api().rpc("get_open_stock_entry_batches"),
+        "Stock batch fallback loading"
+      );
+      if (fallback.error) {
+        batchSelect.replaceChildren(new Option("Stock batches could not be loaded", ""));
+        throw response.error;
+      }
+      batches = (fallback.data || []).map((batch) => ({
+        ...batch,
+        planned_label: batch.planned_model || "Stock batch",
+        planned_lines: []
+      }));
+    } else {
+      batches = response.data || [];
+    }
+
     batchSelect.replaceChildren(new Option(batches.length ? "Select supplier code / batch" : "No incomplete stock batches", ""));
     batches.forEach((batch) => batchSelect.add(new Option(`${supplierLabel(batch)} - ${batch.planned_label} - ${batch.remaining_quantity} remaining`, batch.batch_id)));
     if (batches.some((batch) => batch.batch_id === selected)) batchSelect.value = selected;
     else batchSelect.value = "";
+    batchSelect.disabled = false;
     updateBatchView();
   }
 
@@ -169,13 +207,22 @@
 
   async function initialize() {
     if (!config.supabaseUrl || !config.supabaseAnonKey || !window.supabase) throw new Error("Supabase authentication is not configured.");
-    const { data: session } = await api().auth.getSession();
+    const { data: session } = await withTimeout(api().auth.getSession(), "Login check");
     if (!session.session) { window.location.replace("index.html"); return; }
-    const { data: allowed, error } = await api().rpc("has_role", { required_roles: ["super_admin", "owner", "manager", "receiving", "rma"] });
+    const { data: allowed, error } = await withTimeout(
+      api().rpc("has_role", { required_roles: ["super_admin", "owner", "manager", "receiving", "rma"] }),
+      "Permission check"
+    );
     if (error) throw error;
     if (!allowed) throw new Error("Your account does not have IMEI Entry permission.");
-    await loadAllMaster();
-    await loadBatches(requestedBatchId);
+    const [masterResult, batchResult] = await Promise.allSettled([
+      loadAllMaster(),
+      loadBatches(requestedBatchId)
+    ]);
+    if (batchResult.status === "rejected") throw batchResult.reason;
+    if (masterResult.status === "rejected") {
+      setMessage(`Stock batches loaded, but dropdown options could not load: ${masterResult.reason?.message || "Unknown error"}`);
+    }
   }
 
   document.querySelector("#open-menu").addEventListener("click", () => setMenu(true));
@@ -195,5 +242,12 @@
   document.querySelectorAll(".master-add").forEach((button) => button.addEventListener("click", () => addOption(button)));
   document.querySelectorAll(".master-remove").forEach((button) => button.addEventListener("click", () => removeOption(button)));
   form.addEventListener("submit", saveImei);
-  initialize().catch((error) => { permissionMessage.textContent = error.message || "IMEI Entry could not be loaded."; permissionMessage.hidden = false; form.hidden = true; });
+  initialize().catch((error) => {
+    batchSelect.disabled = false;
+    if (batchSelect.options[0]?.textContent === "Loading stock batches...") {
+      batchSelect.replaceChildren(new Option("Stock batches could not be loaded", ""));
+    }
+    permissionMessage.textContent = error.message || "IMEI Entry could not be loaded.";
+    permissionMessage.hidden = false;
+  });
 })();
