@@ -14,7 +14,7 @@
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script defer src="js/config.js?v=20260819-skip-setup-2"></script>
     <script defer src="js/part-notifications.js"></script>
-    <script defer src="js/stock-entry.js?v=20260819-skip-setup-2"></script>
+    <script defer src="js/stock-entry.js?v=20260820-quantity-only-plan"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -27,7 +27,7 @@
       <main class="app-main">
         <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Overview</a><span>/</span><strong>Stock Received</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
         <div class="page-content receiving-content stock-entry-content">
-          <section class="page-heading receiving-heading"><div><p class="eyebrow dashboard-eyebrow">Stock Received</p><h1>Create stock entry</h1><p class="heading-subtitle">Use one supplier code for a complete delivery, then add every Model, GB, Color, and Quantity combination in the plan.</p></div></section>
+          <section class="page-heading receiving-heading"><div><p class="eyebrow dashboard-eyebrow">Stock Received</p><h1>Create stock entry</h1><p class="heading-subtitle">Select the supplier and enter Total Stock. Model, GB and Color may be left blank and completed later during IMEI Entry.</p></div></section>
           <div id="permission-message" class="access-message" hidden></div>
           <div class="receiving-layout">
             <form id="stock-entry-form" class="receiving-form" novalidate>
@@ -40,8 +40,8 @@
                 <div class="form-field detail-grid"><label for="receiving-notes">Receiving notes</label><textarea id="receiving-notes" rows="3" placeholder="Optional notes for this supplier batch"></textarea></div>
               </section>
               <section class="form-panel stock-plan-panel">
-                <div class="form-panel-heading"><span class="section-number">02</span><div><h2>Stock plan</h2><p>Model and Quantity are required. GB and Color are optional. Example: 50 × Model 15 / 128 GB and 50 × Model 15 / 256 GB.</p></div></div>
-                <div class="stock-plan-wrap"><table class="stock-plan-table"><thead><tr><th>Model</th><th>GB <small>Optional</small></th><th>Color <small>Optional</small></th><th>Quantity</th><th>Remove</th></tr></thead><tbody id="stock-plan-lines"></tbody></table></div>
+                <div class="form-panel-heading"><span class="section-number">02</span><div><h2>Stock plan</h2><p>Only Total Stock is required. Model, GB and Color are optional and can be entered later for every IMEI.</p></div></div>
+                <div class="stock-plan-wrap"><table class="stock-plan-table"><thead><tr><th>Model <small>Optional</small></th><th>GB <small>Optional</small></th><th>Color <small>Optional</small></th><th>Total Stock <small>Required</small></th><th>Remove</th></tr></thead><tbody id="stock-plan-lines"></tbody></table></div>
                 <div class="stock-plan-actions"><button id="add-stock-plan-line" class="secondary-button" type="button">+ Add model line</button><strong id="stock-plan-total">Total: 0 pcs</strong></div>
               </section>
               <p id="form-message" class="form-message receiving-message" role="status" aria-live="polite"></p>

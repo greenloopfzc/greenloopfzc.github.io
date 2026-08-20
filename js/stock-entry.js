@@ -85,7 +85,7 @@
   }
 
   function planRow(line = {}) {
-    return `<tr data-plan-line><td>${optionControl("model", line.model || "", "data-plan-model")}</td><td>${optionControl("storage_gb", line.storage_gb || "", "data-plan-storage", false)}</td><td>${optionControl("color", line.color || "", "data-plan-color", false)}</td><td><input data-plan-quantity type="number" min="1" step="1" inputmode="numeric" value="${escapeHtml(line.quantity || "")}" placeholder="Qty" required aria-label="Quantity"></td><td><button class="stock-plan-delete" data-action="delete-line" type="button" title="Remove this line">−</button></td></tr>`;
+    return `<tr data-plan-line><td>${optionControl("model", line.model || "", "data-plan-model", false)}</td><td>${optionControl("storage_gb", line.storage_gb || "", "data-plan-storage", false)}</td><td>${optionControl("color", line.color || "", "data-plan-color", false)}</td><td><input data-plan-quantity type="number" min="1" step="1" inputmode="numeric" value="${escapeHtml(line.quantity || "")}" placeholder="Total stock" required aria-label="Total stock"></td><td><button class="stock-plan-delete" data-action="delete-line" type="button" title="Remove this line">−</button></td></tr>`;
   }
 
   function renderPlanLines(lines = [{ quantity: 1 }]) {
@@ -106,8 +106,11 @@
       color: text(line.color),
       quantity: Number(line.quantity)
     }));
-    if (!lines.length || lines.some((line) => !line.model || (line.storage_gb !== null && (!Number.isInteger(line.storage_gb) || line.storage_gb <= 0)) || !Number.isInteger(line.quantity) || line.quantity <= 0)) {
-      throw new Error("Every stock plan line needs Model and Quantity. GB and Color are optional.");
+    if (!lines.length || lines.some((line) => (line.storage_gb !== null && (!Number.isInteger(line.storage_gb) || line.storage_gb <= 0)) || !Number.isInteger(line.quantity) || line.quantity <= 0)) {
+      throw new Error("Enter Total Stock of at least 1. Model, GB and Color are optional.");
+    }
+    if (lines.length > 1 && lines.some((line) => !line.model)) {
+      throw new Error("For a quantity-only batch, keep one line and leave Model, GB and Color blank. Multiple plan lines require a Model on every line.");
     }
     const combinations = new Set();
     for (const line of lines) {
