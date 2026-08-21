@@ -74,8 +74,19 @@
     setSupplierMessage();
     if (!supplierForm.checkValidity()) { supplierForm.reportValidity(); return; }
     setBusy(saveSupplier, true, "Saving...");
-    const { data, error } = await api().rpc("create_supplier_from_company", { p_company_name: supplierCompanyName.value });
+    let result = await api().rpc("create_supplier_from_company", { p_company_name: supplierCompanyName.value });
+    if (result.error && /create_supplier_from_company|function.*does not exist|PGRST202/i.test(result.error.message || "")) {
+      result = await api().rpc("create_supplier", {
+        p_company_name: supplierCompanyName.value,
+        p_contact_name: "",
+        p_phone: "",
+        p_email: "",
+        p_country: "",
+        p_notes: ""
+      });
+    }
     setBusy(saveSupplier, false, "Saving...");
+    const { data, error } = result;
     if (error) { setSupplierMessage(error.message || "Supplier company could not be saved."); return; }
     await loadSuppliers(data?.[0]?.id);
     supplierDialog.close();
