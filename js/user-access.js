@@ -108,7 +108,7 @@
 
   function displayPermissionsForUser(user) {
     const permissions = { ...permissionsForUser(user) };
-    if (user?.partner_names_allowed === true) permissions.partner_names = "view";
+    if (["view", "edit"].includes(user?.partner_names_access)) permissions.partner_names = user.partner_names_access;
     else delete permissions.partner_names;
     return permissions;
   }
@@ -180,9 +180,16 @@
     users = data || [];
     const { data: partnerAccess, error: partnerError } = await getClient().rpc("get_user_partner_name_access_matrix");
     if (partnerError) throw partnerError;
-    const allowed = new Set((partnerAccess || []).filter((row) => databaseBoolean(row.can_view)).map((row) => String(row.user_id)));
+    const accessByUser = new Map((partnerAccess || []).map((row) => {
+      const savedLevel = String(row.access_level || "").trim().toLowerCase();
+      const accessLevel = ["view", "edit"].includes(savedLevel)
+        ? savedLevel
+        : (databaseBoolean(row.can_view) ? "view" : "none");
+      return [String(row.user_id), accessLevel];
+    }));
     users.forEach((user) => {
-      user.partner_names_allowed = allowed.has(String(user.user_id));
+      user.partner_names_access = accessByUser.get(String(user.user_id)) || "none";
+      user.partner_names_allowed = user.partner_names_access !== "none";
     });
     const preferred = String(preferredUserId || "");
     selectedUserId = users.some((user) => String(user.user_id) === preferred)
@@ -221,7 +228,7 @@
     }
 
     const selectedPermissions = collectPagePermissions(newRoleOptions);
-    const partnerNames = Object.hasOwn(selectedPermissions, "partner_names");
+    const partnerNamesAccess = selectedPermissions.partner_names || "none";
     const normalPermissions = Object.fromEntries(Object.entries(selectedPermissions).filter(([key]) => key !== "partner_names"));
     const selectedPages = Object.keys(normalPermissions);
     if (!selectedPages.length) {
@@ -253,7 +260,7 @@
         p_page_permissions: normalPermissions
       });
       if (accessError) throw accessError;
-      const { error: partnerError } = await getClient().rpc("save_user_partner_name_access", { p_user_id: data.user_id, p_can_view: partnerNames });
+      const { error: partnerError } = await getClient().rpc("save_user_partner_name_access", { p_user_id: data.user_id, p_access_level: partnerNamesAccess });
       if (partnerError) throw partnerError;
 
       createUserForm.reset();
@@ -271,7 +278,7 @@
   async function saveAccess(event) {
     event.preventDefault();
     const selectedPermissions = collectPagePermissions(roleOptions);
-    const partnerNames = Object.hasOwn(selectedPermissions, "partner_names");
+    const partnerNamesAccess = selectedPermissions.partner_names || "none";
     const normalPermissions = Object.fromEntries(Object.entries(selectedPermissions).filter(([key]) => key !== "partner_names"));
     if (!selectedUserId) return;
 
@@ -293,14 +300,17 @@
       setMessage(message, error.message || "User access could not be saved.");
       return;
     }
-    const { error: partnerError } = await getClient().rpc("save_user_partner_name_access", { p_user_id: selectedUserId, p_can_view: partnerNames });
+    const { error: partnerError } = await getClient().rpc("save_user_partner_name_access", { p_user_id: selectedUserId, p_access_level: partnerNamesAccess });
     if (partnerError) {
       setMessage(message, partnerError.message || "Supplier and customer name access could not be saved.");
       return;
     }
 
     const savedUser = users.find((user) => String(user.user_id) === String(selectedUserId));
-    if (savedUser) savedUser.partner_names_allowed = partnerNames;
+    if (savedUser) {
+      savedUser.partner_names_access = partnerNamesAccess;
+      savedUser.partner_names_allowed = partnerNamesAccess !== "none";
+    }
     await loadUsers(selectedUserId);
     setMessage(message, "User access was saved.", "success");
   }
