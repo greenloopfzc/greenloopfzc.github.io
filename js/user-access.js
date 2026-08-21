@@ -163,7 +163,11 @@
     if (error) throw error;
     users = data || [];
     const { data: partnerAccess, error: partnerError } = await getClient().rpc("get_user_partner_name_access_matrix");
-    if (partnerError) throw partnerError;
+    // Supplier/customer-name visibility is an optional permission. If its RPC
+    // is temporarily unavailable, the main user list must still remain usable.
+    if (partnerError) {
+      console.warn("Partner-name permission matrix could not be loaded.", partnerError);
+    }
     const allowed = new Set((partnerAccess || []).filter((row) => row.can_view).map((row) => String(row.user_id)));
     users.forEach((user) => {
       user.page_permissions = permissionsForUser(user);
