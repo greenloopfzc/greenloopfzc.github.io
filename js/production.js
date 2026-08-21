@@ -35,7 +35,8 @@
 
   function getDevice(job) { return Array.isArray(job.device) ? job.device[0] : job.device; }
   function getSupplier(job) { return Array.isArray(job.supplier) ? job.supplier[0] : job.supplier; }
-  function supplierLabel(supplier) { return String(supplier?.supplier_code || supplier?.company_name || "").trim() || "Not recorded"; }
+  function getBatch(job) { return Array.isArray(job.receiving_batch) ? job.receiving_batch[0] : job.receiving_batch; }
+  function supplierLabel(supplier, batch) { return typeof window.GREENLOOP_SUPPLIER_RECEIPT_LABEL === "function" ? window.GREENLOOP_SUPPLIER_RECEIPT_LABEL(supplier?.supplier_code, batch?.planned_quantity, supplier?.company_name, "Not recorded") : (String(supplier?.supplier_code || "").trim() || "Not recorded"); }
   function setMenu(isOpen) { sidebar.classList.toggle("is-open", isOpen); backdrop.hidden = !isOpen; document.body.classList.toggle("menu-open", isOpen); }
   function showToast(text) { clearTimeout(toastTimer); toast.textContent = text; toast.hidden = false; toast.classList.add("is-visible"); toastTimer = setTimeout(() => { toast.hidden = true; toast.classList.remove("is-visible"); }, 3400); }
   function setMessage(text = "", type = "error") { message.textContent = text; message.classList.toggle("is-visible", Boolean(text)); message.classList.toggle("is-success", type === "success"); }
@@ -63,7 +64,7 @@
     const supplier = getSupplier(selectedJob) || {};
     const row = [
       device.imei_1 || "—",
-      supplierLabel(supplier),
+      supplierLabel(supplier, getBatch(selectedJob)),
       [device.brand, device.model].filter(Boolean).join(" ") || "—",
       device.storage_gb ? `${device.storage_gb} GB` : "—",
       device.original_grade || "—"
@@ -79,7 +80,7 @@
     const selectedId = jobSelect.value;
     const { data, error } = await getClient()
       .from("jobs")
-      .select("id, job_number, supplier:suppliers(supplier_code, company_name), device:devices(imei_1, brand, model, storage_gb, original_grade)")
+      .select("id, job_number, supplier:suppliers(supplier_code, company_name), receiving_batch:receiving_batches(planned_quantity), device:devices(imei_1, brand, model, storage_gb, original_grade)")
       .eq("current_status", "production_pending")
       .is("deleted_at", null)
       .order("received_at", { ascending: true });
@@ -91,7 +92,7 @@
     queueJobs.forEach((job) => {
       const device = getDevice(job) || {};
       const supplier = getSupplier(job) || {};
-      jobSelect.add(new Option(`${supplierLabel(supplier)} · ${device.imei_1 || "No IMEI"} · ${device.model || "Unknown model"}`, job.id));
+      jobSelect.add(new Option(`${supplierLabel(supplier, getBatch(job))} · ${device.imei_1 || "No IMEI"} · ${device.model || "Unknown model"}`, job.id));
     });
     emptyState.hidden = queueJobs.length !== 0;
     if (selectedId && queueJobs.some((job) => job.id === selectedId)) {

@@ -364,6 +364,17 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
       if (window.GREENLOOP_CAN_VIEW_PARTNER_NAMES && safeName) return [safeCode, safeName].filter(Boolean).join(" - ");
       return safeCode || fallback;
     };
+    window.GREENLOOP_SUPPLIER_RECEIPT_LABEL = (code, quantity, name, fallback = "-") => {
+      const safeCode = String(code || "").trim();
+      const safeName = String(name || "").trim();
+      const parsedQuantity = Number.parseInt(quantity, 10);
+      const receiptCode = safeCode && !/-\(\d+\)$/.test(safeCode) && Number.isInteger(parsedQuantity) && parsedQuantity > 0
+        ? `${safeCode}-(${parsedQuantity})`
+        : safeCode;
+      return window.GREENLOOP_CAN_VIEW_PARTNER_NAMES && safeName
+        ? [receiptCode, safeName].filter(Boolean).join(" ")
+        : (receiptCode || fallback);
+    };
     const allowedPages = new Set(accessByPage.keys());
     if (navigation) {
       navigation.querySelectorAll("a.nav-item").forEach((link) => {
@@ -398,6 +409,17 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     const safeName = String(name || "").trim();
     if (window.GREENLOOP_CAN_VIEW_PARTNER_NAMES && safeName) return [safeCode, safeName].filter(Boolean).join(" - ");
     return safeCode || fallback;
+  };
+  window.GREENLOOP_SUPPLIER_RECEIPT_LABEL = (code, quantity, name, fallback = "-") => {
+    const safeCode = String(code || "").trim();
+    const safeName = String(name || "").trim();
+    const parsedQuantity = Number.parseInt(quantity, 10);
+    const receiptCode = safeCode && !/-\(\d+\)$/.test(safeCode) && Number.isInteger(parsedQuantity) && parsedQuantity > 0
+      ? `${safeCode}-(${parsedQuantity})`
+      : safeCode;
+    return window.GREENLOOP_CAN_VIEW_PARTNER_NAMES && safeName
+      ? [receiptCode, safeName].filter(Boolean).join(" ")
+      : (receiptCode || fallback);
   };
 
   window.GREENLOOP_ACCESS_READY = applyPageAccess()

@@ -36,8 +36,9 @@
   const jobOf = (request) => Array.isArray(request.job) ? request.job[0] : request.job;
   const deviceOf = (request) => { const job = jobOf(request) || {}; return Array.isArray(job.device) ? job.device[0] : job.device; };
   const supplierOf = (request) => { const job = jobOf(request) || {}; return Array.isArray(job.supplier) ? job.supplier[0] : job.supplier; };
-  const supplierLabel = (supplier) => typeof window.GREENLOOP_PARTNER_LABEL === "function"
-    ? window.GREENLOOP_PARTNER_LABEL(supplier?.supplier_code, supplier?.company_name, "—")
+  const batchOf = (request) => { const job = jobOf(request) || {}; return Array.isArray(job.receiving_batch) ? job.receiving_batch[0] : job.receiving_batch; };
+  const supplierLabel = (supplier, batch) => typeof window.GREENLOOP_SUPPLIER_RECEIPT_LABEL === "function"
+    ? window.GREENLOOP_SUPPLIER_RECEIPT_LABEL(supplier?.supplier_code, batch?.planned_quantity, supplier?.company_name, "—")
     : (String(supplier?.supplier_code || "").trim() || "—");
   const normalisePartName = (value) => String(value || "").trim().replace(/\s+/g, " ").toLocaleLowerCase();
   const invoiceDetails = (part) => {
@@ -109,7 +110,7 @@
       const actionControl = issued
         ? `<span class="part-status-chip issued">✓ Complete</span>`
         : `<div class="request-actions"><button class="issue-row-button" type="button" data-issue-request="${request.id}">Issue</button><button class="cancel-request-button" type="button" data-cancel-request="${request.id}">Cancel</button></div>`;
-      return `<tr class="part-request-row ${issued ? "is-issued" : "is-pending"}"><td>${escapeHtml(device.imei_1 || "—")}</td><td>${escapeHtml(device.device_number || "—")}<small>${escapeHtml(device.model || "")}</small></td><td>${escapeHtml(job.job_number || "—")}</td><td>${escapeHtml(supplierLabel(supplier))}</td><td><strong>${escapeHtml(request.requested_for_technician || "Unassigned")}</strong><small>Lab request</small></td><td><strong>${escapeHtml(request.part_name)}</strong><small>${sourceLabel}</small></td><td>${request.quantity_requested}</td><td><span class="part-status-chip ${issued ? "issued" : "pending"}">${issued ? "Issued" : `${remaining} pending`}</span></td><td>${stockControl}</td><td>${quantityControl}</td><td>${actionControl}</td></tr>`;
+      return `<tr class="part-request-row ${issued ? "is-issued" : "is-pending"}"><td>${escapeHtml(device.imei_1 || "—")}</td><td>${escapeHtml(device.device_number || "—")}<small>${escapeHtml(device.model || "")}</small></td><td>${escapeHtml(job.job_number || "—")}</td><td>${escapeHtml(supplierLabel(supplier, batchOf(request)))}</td><td><strong>${escapeHtml(request.requested_for_technician || "Unassigned")}</strong><small>Lab request</small></td><td><strong>${escapeHtml(request.part_name)}</strong><small>${sourceLabel}</small></td><td>${request.quantity_requested}</td><td><span class="part-status-chip ${issued ? "issued" : "pending"}">${issued ? "Issued" : `${remaining} pending`}</span></td><td>${stockControl}</td><td>${quantityControl}</td><td>${actionControl}</td></tr>`;
     }).join("") : '<tr><td colspan="11">No part requests are waiting.</td></tr>';
     queueList.querySelectorAll("[data-inventory-request]").forEach((select) => {
       const request = requests.find((item) => item.id === select.dataset.inventoryRequest);
@@ -180,7 +181,7 @@
 
   async function loadData() {
     const [requestResponse, inventoryResponse] = await Promise.all([
-      getClient().from("job_part_requests").select("id, part_name, quantity_requested, quantity_issued, request_source, requested_for_technician, notes, status, requested_at, job:jobs!inner(job_number, supplier:suppliers(supplier_code, company_name), device:devices(device_number, imei_1, model))").in("status", ["requested", "partially_issued", "issued"]).order("requested_at", { ascending: false }).limit(500),
+      getClient().from("job_part_requests").select("id, part_name, quantity_requested, quantity_issued, request_source, requested_for_technician, notes, status, requested_at, job:jobs!inner(job_number, supplier:suppliers(supplier_code, company_name), receiving_batch:receiving_batches(planned_quantity), device:devices(device_number, imei_1, model))").in("status", ["requested", "partially_issued", "issued"]).order("requested_at", { ascending: false }).limit(500),
       getClient().from("part_inventory").select("id, sku, part_name, stock_quantity, unit_cost, is_active, notes").order("part_name")
     ]);
     if (requestResponse.error) throw requestResponse.error;

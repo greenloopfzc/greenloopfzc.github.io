@@ -56,8 +56,9 @@
     })[character]);
   }
 
-  function supplierLabel(code, name) {
-    return String(code || name || "").trim() || "-";
+  function supplierLabel(code, name, quantity) {
+    if (typeof window.GREENLOOP_SUPPLIER_RECEIPT_LABEL === "function") return window.GREENLOOP_SUPPLIER_RECEIPT_LABEL(code, quantity, name, "-");
+    return code && Number(quantity) > 0 ? `${code}-(${quantity})` : (String(code || "").trim() || "-");
   }
 
   function setMenu(isOpen) {
@@ -316,9 +317,15 @@
 
     const job = result.job || {};
     const device = result.device || {};
+    const { data: batchJob } = await getClient()
+      .from("jobs")
+      .select("receiving_batch:receiving_batches(planned_quantity)")
+      .eq("id", job.id)
+      .maybeSingle();
+    const receivingBatch = Array.isArray(batchJob?.receiving_batch) ? batchJob.receiving_batch[0] : batchJob?.receiving_batch;
     const selectedJob = {
       ...job,
-      supplierDisplay: supplierLabel(job.supplier_code, result.supplier),
+      supplierDisplay: supplierLabel(job.supplier_code, result.supplier, receivingBatch?.planned_quantity),
       device
     };
     rowJobs.set(row.dataset.rowId, selectedJob);
@@ -384,7 +391,7 @@
     const supplier = Array.isArray(job.supplier) ? job.supplier[0] : job.supplier;
     return {
       imei: device?.imei_1 || "-",
-      supplier: supplierLabel(supplier?.supplier_code, supplier?.company_name),
+      supplier: supplierLabel(supplier?.supplier_code, supplier?.company_name, job?.receiving_batch?.planned_quantity),
       model: device?.model || "-",
       storage: device?.storage_gb ? `${device.storage_gb} GB` : "-",
       color: device?.color || "-"
@@ -416,7 +423,7 @@
   async function loadPendingCount() {
     const { data, error } = await getClient()
       .from("jobs")
-      .select("job_number, received_at, supplier:suppliers(supplier_code, company_name), device:devices!inner(imei_1, model, storage_gb, color)")
+      .select("job_number, received_at, supplier:suppliers(supplier_code, company_name), receiving_batch:receiving_batches(planned_quantity), device:devices!inner(imei_1, model, storage_gb, color)")
       .eq("current_status", "initial_qc_pending")
       .is("deleted_at", null)
       .order("received_at", { ascending: true });

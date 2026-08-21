@@ -84,9 +84,9 @@
     return Array.isArray(job?.supplier) ? job.supplier[0] : job?.supplier;
   }
 
-  function supplierLabel(supplier) {
-    if (typeof window.GREENLOOP_PARTNER_LABEL === "function") {
-      return window.GREENLOOP_PARTNER_LABEL(supplier?.supplier_code, supplier?.company_name, "-");
+  function supplierLabel(supplier, batch) {
+    if (typeof window.GREENLOOP_SUPPLIER_RECEIPT_LABEL === "function") {
+      return window.GREENLOOP_SUPPLIER_RECEIPT_LABEL(supplier?.supplier_code, batch?.planned_quantity, supplier?.company_name, "-");
     }
     return String(supplier?.supplier_code || "").trim() || "-";
   }
@@ -302,7 +302,7 @@
     row.querySelector('[data-auto="color"]').textContent = device.color || "-";
     row.querySelector('[data-auto="battery"]').textContent = device.battery_health !== null && device.battery_health !== undefined ? `${device.battery_health}%` : "-";
     row.querySelector("[data-final-battery]").value = device.battery_health !== null && device.battery_health !== undefined ? String(device.battery_health) : "";
-    row.querySelector('[data-auto="supplier"]').textContent = supplierLabel(supplier);
+    row.querySelector('[data-auto="supplier"]').textContent = supplierLabel(supplier, job.receiving_batch);
     row.querySelector('[data-auto="supplier-grade"]').textContent = job.supplier_grade || "-";
     row.querySelector('[data-auto="initial-grade"]').textContent = device.gc_grade || "-";
     row.classList.remove("is-error");
@@ -313,7 +313,7 @@
   async function loadQueue() {
     const { data, error } = await getClient()
       .from("job_work_order_steps")
-      .select("id, work_order:job_work_orders!inner(work_order_number, job:jobs!inner(id, job_number, supplier_grade, supplier:suppliers(supplier_code, company_name), device:devices(device_number, imei_1, brand, model, storage_gb, color, battery_health, gc_grade)))")
+      .select("id, work_order:job_work_orders!inner(work_order_number, job:jobs!inner(id, job_number, supplier_grade, supplier:suppliers(supplier_code, company_name), receiving_batch:receiving_batches(planned_quantity), device:devices(device_number, imei_1, brand, model, storage_gb, color, battery_health, gc_grade)))")
       .eq("department", "final_qc")
       .eq("step_status", "in_progress")
       .order("created_at", { ascending: true });
@@ -378,7 +378,7 @@
     const device = getDevice(step) || {};
     return {
       imei: device.imei_1 || "-",
-      supplier: supplierLabel(getSupplier(job) || {}),
+      supplier: supplierLabel(getSupplier(job) || {}, job.receiving_batch),
       model: device.model || "-",
       storage: device.storage_gb ? `${device.storage_gb} GB` : "-",
       color: device.color || "-",

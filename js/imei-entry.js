@@ -45,7 +45,8 @@
   function supplierLabel(batch) {
     const code = String(batch?.supplier_code || "").trim();
     const name = String(batch?.supplier_name || "").trim();
-    return (window.GREENLOOP_CAN_VIEW_PARTNER_NAMES && name ? [code, name].filter(Boolean).join(" - ") : code) || "No supplier";
+    if (typeof window.GREENLOOP_SUPPLIER_RECEIPT_LABEL === "function") return window.GREENLOOP_SUPPLIER_RECEIPT_LABEL(code, batch?.planned_quantity, name, "No supplier");
+    return code && Number(batch?.planned_quantity) > 0 ? `${code}-(${batch.planned_quantity})` : (code || "No supplier");
   }
 
   function autoSaveEnabled() { return localStorage.getItem("greenloop-imei-auto-save") === "on"; }

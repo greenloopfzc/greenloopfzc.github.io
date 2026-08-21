@@ -14,7 +14,8 @@
   const toast = document.querySelector("#toast");
   let client;
   let toastTimer;
-  let supplierLabels = new Map();
+  let supplierNames = new Map();
+  let batchQuantities = new Map();
 
   function getClient() { if (!client) client = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey); return client; }
   function escapeHtml(value) { return String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]); }
@@ -37,7 +38,14 @@
   }
   function setMenu(isOpen) { sidebar.classList.toggle("is-open", isOpen); backdrop.hidden = !isOpen; document.body.classList.toggle("menu-open", isOpen); }
   function showToast(text) { clearTimeout(toastTimer); toast.textContent = text; toast.hidden = false; toast.classList.add("is-visible"); toastTimer = setTimeout(() => { toast.hidden = true; toast.classList.remove("is-visible"); }, 3200); }
-  function supplierLabel(code) { return supplierLabels.get(code) || code || "—"; }
+  function supplierLabel(code, batchNumber) {
+    const safeCode = String(code || "").trim();
+    const baseCode = safeCode.replace(/-\(\d+\)$/, "");
+    const name = supplierNames.get(baseCode);
+    const quantity = batchQuantities.get(String(batchNumber || ""));
+    if (typeof window.GREENLOOP_SUPPLIER_RECEIPT_LABEL === "function") return window.GREENLOOP_SUPPLIER_RECEIPT_LABEL(safeCode, quantity, name, "—");
+    return safeCode && Number(quantity) > 0 ? `${safeCode}-(${quantity})` : (safeCode || "—");
+  }
 
   function render(rows) {
     total.textContent = String(rows.length);
@@ -45,7 +53,7 @@
       ? `Final QC passed from ${rangeFrom.value} to ${rangeTo.value}. Latest pass appears first.`
       : "All current Ready Stock devices. Latest Final QC pass appears first.";
     body.innerHTML = rows.length
-      ? rows.map((row) => `<tr><td>${escapeHtml(formatDateTime(row.stock_received_at))}</td><td>${escapeHtml(supplierLabel(row.supplier_code))}</td><td>${escapeHtml(row.stock_channel)}</td><td>${escapeHtml(row.stock_batch)}</td><td class="journey-imei">${escapeHtml(row.imei)}</td><td>${escapeHtml(row.model)}</td><td>${row.storage_gb ? `${escapeHtml(row.storage_gb)} GB` : "—"}</td><td>${escapeHtml(row.color)}</td><td>${escapeHtml(row.supplier_grade)}</td><td>${escapeHtml(row.company_initial_grade)}</td><td>${escapeHtml(row.company_final_qc_grade)}</td><td class="journey-parts">${escapeHtml(row.parts_used)}</td><td class="journey-money">${escapeHtml(formatMoney(row.parts_cost))}</td><td>${escapeHtml(row.work_done)}</td><td>${escapeHtml(row.worked_by)}</td><td>${escapeHtml(row.step_by_step)}</td><td>${escapeHtml(formatDateTime(row.final_qc_passed_at))}</td></tr>`).join("")
+      ? rows.map((row) => `<tr><td>${escapeHtml(formatDateTime(row.stock_received_at))}</td><td>${escapeHtml(supplierLabel(row.supplier_code, row.stock_batch))}</td><td>${escapeHtml(row.stock_channel)}</td><td>${escapeHtml(row.stock_batch)}</td><td class="journey-imei">${escapeHtml(row.imei)}</td><td>${escapeHtml(row.model)}</td><td>${row.storage_gb ? `${escapeHtml(row.storage_gb)} GB` : "—"}</td><td>${escapeHtml(row.color)}</td><td>${escapeHtml(row.supplier_grade)}</td><td>${escapeHtml(row.company_initial_grade)}</td><td>${escapeHtml(row.company_final_qc_grade)}</td><td class="journey-parts">${escapeHtml(row.parts_used)}</td><td class="journey-money">${escapeHtml(formatMoney(row.parts_cost))}</td><td>${escapeHtml(row.work_done)}</td><td>${escapeHtml(row.worked_by)}</td><td>${escapeHtml(row.step_by_step)}</td><td>${escapeHtml(formatDateTime(row.final_qc_passed_at))}</td></tr>`).join("")
       : '<tr><td class="journey-empty" colspan="17">No Final-QC-passed device is waiting in Ready Stock for this date range.</td></tr>';
   }
 
@@ -60,20 +68,18 @@
       refresh.textContent = "Refresh table";
       throw new Error("Select a valid From date and To date, or clear both dates.");
     }
-    const [journeyResponse, supplierResponse] = await Promise.all([
+    const [journeyResponse, supplierResponse, batchResponse] = await Promise.all([
       getClient().rpc("get_ready_stock_journey", { p_date_from: from, p_date_to: to }),
-      getClient().from("suppliers").select("supplier_code, company_name").eq("is_active", true).is("deleted_at", null)
+      getClient().from("suppliers").select("supplier_code, company_name"),
+      getClient().from("receiving_batches").select("batch_number, planned_quantity")
     ]);
     refresh.disabled = false;
     refresh.textContent = "Refresh table";
     if (journeyResponse.error) throw journeyResponse.error;
     if (supplierResponse.error) throw supplierResponse.error;
-    supplierLabels = new Map((supplierResponse.data || []).map((supplier) => [
-      supplier.supplier_code,
-      typeof window.GREENLOOP_PARTNER_LABEL === "function"
-        ? window.GREENLOOP_PARTNER_LABEL(supplier.supplier_code, supplier.company_name, "—")
-        : (supplier.supplier_code || "—")
-    ]));
+    if (batchResponse.error) throw batchResponse.error;
+    supplierNames = new Map((supplierResponse.data || []).map((supplier) => [supplier.supplier_code, supplier.company_name]));
+    batchQuantities = new Map((batchResponse.data || []).map((batch) => [String(batch.batch_number || ""), batch.planned_quantity]));
     render(Array.isArray(journeyResponse.data) ? journeyResponse.data : []);
   }
 

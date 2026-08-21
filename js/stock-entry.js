@@ -41,7 +41,8 @@
   }
 
   function supplierCompanyLabel(record) {
-    return text(record.company_name) || record.supplier_code || "Unnamed supplier";
+    if (typeof window.GREENLOOP_SUPPLIER_RECEIPT_LABEL === "function") return window.GREENLOOP_SUPPLIER_RECEIPT_LABEL(record.supplier_code, null, record.company_name, "Unnamed supplier");
+    return record.supplier_code || "Unnamed supplier";
   }
 
   async function loadSuppliers(selectedId = supplier.value) {
@@ -58,7 +59,9 @@
     const selected = supplierRecords.find((record) => String(record.id) === String(supplier.value));
     const receivedQuantity = Number.parseInt(quantity.value, 10);
     supplierCodeDisplay.value = selected?.supplier_code && Number.isInteger(receivedQuantity) && receivedQuantity > 0
-      ? `${selected.supplier_code}-(${receivedQuantity})`
+      ? (typeof window.GREENLOOP_SUPPLIER_RECEIPT_LABEL === "function"
+        ? window.GREENLOOP_SUPPLIER_RECEIPT_LABEL(selected.supplier_code, receivedQuantity, selected.company_name, "")
+        : `${selected.supplier_code}-(${receivedQuantity})`)
       : "";
   }
 

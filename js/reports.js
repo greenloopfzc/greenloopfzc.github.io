@@ -113,6 +113,11 @@
     if (typeof window.GREENLOOP_PARTNER_LABEL === "function") return window.GREENLOOP_PARTNER_LABEL(code, name, fallback);
     return String(code || "").trim() || fallback;
   }
+  function supplierReceiptLabel(code, quantity, name, fallback = "—") {
+    if (typeof window.GREENLOOP_SUPPLIER_RECEIPT_LABEL === "function") return window.GREENLOOP_SUPPLIER_RECEIPT_LABEL(code, quantity, name, fallback);
+    const safeCode = String(code || "").trim();
+    return safeCode && Number(quantity) > 0 ? `${safeCode}-(${quantity})` : (safeCode || fallback);
+  }
   function confidentialPartnerText(value, fallback = "Confidential supplier") {
     if (window.GREENLOOP_CAN_VIEW_PARTNER_NAMES) return String(value || "—");
     const match = String(value || "").match(/\bSUP-\d+(?:-[A-Z0-9()]+)?/i);
@@ -193,7 +198,7 @@
     const allRows = reportData.supplier_progress || [];
     const suppliers = [...new Map(allRows.map((row) => [String(row.supplier_id), {
       id: String(row.supplier_id),
-      label: partnerLabel(row.supplier_code, row.supplier_name)
+      label: supplierReceiptLabel(row.supplier_code, row.planned_quantity, row.supplier_name)
     }])).values()].sort((left, right) => left.label.localeCompare(right.label));
 
     if (selectedSupplier !== "all" && !suppliers.some((supplier) => supplier.id === selectedSupplier)) selectedSupplier = "all";
@@ -211,7 +216,7 @@
 
     const supplierOptions = suppliers.map((supplier) => `<option value="${escapeHtml(supplier.id)}"${supplier.id === selectedSupplier ? " selected" : ""}>${escapeHtml(supplier.label)}</option>`).join("");
     const tableBody = rows.length ? rows.map((row) => `<tr>
-      <td><strong>${escapeHtml(partnerLabel(row.supplier_code, row.supplier_name))}</strong></td>
+      <td><strong>${escapeHtml(supplierReceiptLabel(row.supplier_code, row.planned_quantity, row.supplier_name))}</strong></td>
       <td>${escapeHtml(row.model)}</td>
       <td>${escapeHtml(row.storage_label || "—")}</td>
       <td>${escapeHtml(row.batch_numbers)}</td>
