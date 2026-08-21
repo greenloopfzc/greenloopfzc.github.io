@@ -65,10 +65,21 @@
     const allowed = window.GREENLOOP_CAN_VIEW_PARTNER_NAMES === true;
     if (!supplierNameField || !supplierNameValue) return;
     supplierNameField.hidden = !allowed;
+    supplierNameField.style.display = allowed ? "" : "none";
     if (!allowed) return;
     const selected = supplierRecords.find((item) => String(item.id) === String(supplier.value));
     supplierNameValue.textContent = selected?.company_name?.trim()
       || (supplier.value ? "No supplier name recorded" : "Select a supplier code");
+  }
+
+  async function refreshPartnerNamePermission() {
+    const { data, error } = await api().rpc("get_my_partner_name_access");
+    if (error) throw error;
+    let allowed = Array.isArray(data) ? data[0] : data;
+    if (allowed && typeof allowed === "object") {
+      allowed = allowed.can_view ?? allowed.allowed ?? Object.values(allowed)[0];
+    }
+    window.GREENLOOP_CAN_VIEW_PARTNER_NAMES = allowed === true || String(allowed).toLowerCase() === "true";
   }
 
   async function loadMasterOptions() {
@@ -235,6 +246,7 @@
     if (error) throw error;
     if (!allowed) throw new Error("Your account does not have Stock Received permission.");
     if (window.GREENLOOP_ACCESS_READY) await window.GREENLOOP_ACCESS_READY;
+    await refreshPartnerNamePermission();
     await Promise.all([loadChannels(), loadSuppliers(), loadMasterOptions()]);
     renderPlanLines();
   }
