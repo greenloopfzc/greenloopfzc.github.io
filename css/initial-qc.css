@@ -16,8 +16,8 @@
 .qc-bulk-panel { overflow: hidden; }
 .qc-top-scroll { display: none; }
 .qc-top-scroll > div { height: 1px; }
-.qc-bulk-scroll { width: 100%; overflow-x: visible; }
-.qc-bulk-table { width: 100%; min-width: 0; table-layout: fixed; border-collapse: separate; border-spacing: 0; color: #203b2e; font-size: .67rem; }
+.qc-bulk-scroll { width: 100%; overflow-x: auto; }
+.qc-bulk-table { width: 1760px; min-width: 1760px; table-layout: fixed; border-collapse: separate; border-spacing: 0; color: #203b2e; font-size: .67rem; }
 .qc-bulk-table th, .qc-bulk-table td { border-right: 1px solid #d7e2db; border-bottom: 1px solid #d7e2db; vertical-align: middle; }
 .qc-bulk-table th:last-child, .qc-bulk-table td:last-child { border-right: 0; }
 .qc-bulk-table tbody tr:last-child td { border-bottom: 0; }
@@ -37,25 +37,27 @@
 .qc-bulk-imei-cell small.is-error { color: #be3026; }
 .qc-bulk-auto { min-width: 0; color: #2d513e; font-weight: 800; white-space: normal; overflow-wrap: anywhere; }
 .qc-bulk-supplier { min-width: 0; max-width: none; color: #24513a; font-weight: 750; line-height: 1.15; overflow-wrap: anywhere; }
-.qc-bulk-table th:nth-child(1), .qc-bulk-table td:nth-child(1) { width: 10.5%; }
-.qc-bulk-table th:nth-child(2), .qc-bulk-table td:nth-child(2) { width: 5.5%; }
-.qc-bulk-table th:nth-child(3), .qc-bulk-table td:nth-child(3) { width: 4.5%; }
-.qc-bulk-table th:nth-child(4), .qc-bulk-table td:nth-child(4) { width: 5.5%; }
-.qc-bulk-table th:nth-child(5), .qc-bulk-table td:nth-child(5) { width: 4%; }
-.qc-bulk-table th:nth-child(6), .qc-bulk-table td:nth-child(6) { width: 12.5%; }
-.qc-bulk-table th:nth-child(7), .qc-bulk-table td:nth-child(7) { width: 8%; }
-.qc-bulk-table th:nth-child(8), .qc-bulk-table td:nth-child(8) { width: 8%; }
-.qc-bulk-table th:nth-child(9), .qc-bulk-table td:nth-child(9) { width: 12%; }
-.qc-bulk-table th:nth-child(10), .qc-bulk-table td:nth-child(10) { width: 12%; }
-.qc-bulk-table th:nth-child(11), .qc-bulk-table td:nth-child(11) { position: static; width: 12%; box-shadow: none; }
+.qc-bulk-table th:nth-child(1), .qc-bulk-table td:nth-child(1) { width: 160px; }
+.qc-bulk-table th:nth-child(2), .qc-bulk-table td:nth-child(2) { width: 105px; }
+.qc-bulk-table th:nth-child(3), .qc-bulk-table td:nth-child(3) { width: 80px; }
+.qc-bulk-table th:nth-child(4), .qc-bulk-table td:nth-child(4) { width: 85px; }
+.qc-bulk-table th:nth-child(5), .qc-bulk-table td:nth-child(5) { width: 55px; }
+.qc-bulk-table th:nth-child(6), .qc-bulk-table td:nth-child(6) { width: 85px; }
+.qc-bulk-table th:nth-child(7), .qc-bulk-table td:nth-child(7) { width: 60px; }
+.qc-bulk-table th:nth-child(8), .qc-bulk-table td:nth-child(8) { width: 105px; }
+.qc-bulk-table th:nth-child(9), .qc-bulk-table td:nth-child(9) { width: 135px; }
+.qc-bulk-table th:nth-child(10), .qc-bulk-table td:nth-child(10) { width: 135px; }
+.qc-bulk-table th:nth-child(11), .qc-bulk-table td:nth-child(11) { position: static; width: 160px; box-shadow: none; }
 .qc-bulk-table th:nth-child(11) { background: #e5f0f8; }
 .qc-bulk-table td:nth-child(11) { background: #f7fbfe; }
-.qc-bulk-table th:nth-child(12), .qc-bulk-table td:nth-child(12) { position: static; width: 5.5%; min-width: 0; text-align: center; }
+.qc-bulk-table th:nth-child(12), .qc-bulk-table td:nth-child(12) { position: static; width: 160px; min-width: 0; text-align: center; }
 .qc-bulk-table th:nth-child(12) { background: #e5f0f8; }
 .qc-bulk-table td:nth-child(12) { background: #f7fbfe; }
 .qc-bulk-table tr.is-loaded td:nth-child(11), .qc-bulk-table tr.is-loaded td:nth-child(12) { background: #f7fbfe; }
 .qc-bulk-table tr.is-error td:nth-child(11), .qc-bulk-table tr.is-error td:nth-child(12) { background: #fff4f2; }
 .qc-bulk-table tr.is-completed td:nth-child(11), .qc-bulk-table tr.is-completed td:nth-child(12) { background: #e9f5ed; }
+.qc-bulk-table th:nth-child(13), .qc-bulk-table td:nth-child(13) { width: 180px; }
+.qc-bulk-table th:nth-child(14), .qc-bulk-table td:nth-child(14) { width: 70px; }
 .qc-bulk-requirement-group, .qc-bulk-technician { display: flex; min-width: 0; align-items: flex-start; gap: 2px; }
 .qc-bulk-requirement-list { display: grid; min-width: 0; flex: 1; gap: 2px; }
 .qc-bulk-requirement-group button, .qc-bulk-technician button { flex: 0 0 23px; width: 23px; min-height: 31px; border: 1px solid #bdd8c8; border-radius: 6px; padding: 0; color: #087451; background: #f3faf6; font: inherit; font-size: .78rem; font-weight: 900; cursor: pointer; }
@@ -102,5 +104,5 @@ body.qc-modal-open { overflow: hidden; }
   .qc-bulk-toolbar-actions { justify-content: flex-start; }
   .qc-bulk-actions .primary-button { width: 100%; }
   .qc-bulk-scroll { overflow-x: auto; }
-  .qc-bulk-table { min-width: 1120px; }
+  .qc-bulk-table { min-width: 1760px; }
 }
