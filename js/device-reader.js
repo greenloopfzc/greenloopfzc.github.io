@@ -2,7 +2,9 @@
   "use strict";
 
   const endpoint = "http://127.0.0.1:51892/v1/device";
+  const threeUToolsEndpoint = "http://127.0.0.1:51894/v1/device";
   let lastFingerprint = "";
+  let lastThreeUToolsAttemptImei = "";
   let stopped = false;
 
   function normalise(payload) {
@@ -21,6 +23,25 @@
     };
   }
 
+  async function fillMissingColorFrom3uTools(device) {
+    if (device.color || !device.imei || device.imei === lastThreeUToolsAttemptImei) return device;
+    lastThreeUToolsAttemptImei = device.imei;
+    try {
+      const response = await fetch(threeUToolsEndpoint, { cache: "no-store", signal: AbortSignal.timeout(3500) });
+      if (!response.ok) return device;
+      const fallback = normalise(await response.json());
+      if (fallback.imei !== device.imei) return device;
+      return {
+        ...device,
+        color: fallback.color || device.color,
+        serialNumber: device.serialNumber || fallback.serialNumber,
+        phoneRegion: device.phoneRegion || fallback.phoneRegion
+      };
+    } catch (_) {
+      return device;
+    }
+  }
+
   async function poll() {
     if (stopped || document.hidden) return;
     try {
@@ -28,8 +49,9 @@
       if (!response.ok) return;
       const payload = await response.json();
       if (payload?.ok === false) return;
-      const device = normalise(payload);
+      let device = normalise(payload);
       if (!/^\d{15}$/.test(device.imei)) return;
+      device = await fillMissingColorFrom3uTools(device);
       window.GREENLOOP_LAST_DEVICE = device;
       const fingerprint = JSON.stringify(device);
       if (fingerprint === lastFingerprint) return;
