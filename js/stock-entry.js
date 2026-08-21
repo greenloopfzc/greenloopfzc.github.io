@@ -18,7 +18,9 @@
   const toast = document.querySelector("#toast");
   const supplierDialog = document.querySelector("#supplier-dialog");
   const supplierForm = document.querySelector("#supplier-form");
+  const supplierCode = document.querySelector("#supplier-code");
   const supplierName = document.querySelector("#supplier-name");
+  const supplierNameHelp = document.querySelector("#supplier-name-help");
   const supplierMessage = document.querySelector("#supplier-message");
   const saveSupplier = document.querySelector("#save-supplier");
   const masterOptions = { model: [], storage_gb: [], color: [] };
@@ -51,35 +53,44 @@
     if (error) throw error;
     supplierRecords = data || [];
     supplier.replaceChildren(new Option("Select supplier code", ""));
-    supplierRecords.forEach((item) => {
-      const label = typeof window.GREENLOOP_PARTNER_LABEL === "function"
-        ? window.GREENLOOP_PARTNER_LABEL(item.supplier_code, item.company_name)
-        : (item.supplier_code || "Supplier");
-      supplier.add(new Option(label, item.id));
-    });
+    supplierRecords.forEach((item) => supplier.add(new Option(item.supplier_code || "Supplier code", item.id)));
     if ([...supplier.options].some((option) => option.value === selectedId)) supplier.value = selectedId;
     renderSupplierName();
   }
 
   function renderSupplierName() {
-    const allowed = window.GREENLOOP_CAN_VIEW_PARTNER_NAMES === true;
+    const level = window.GREENLOOP_PARTNER_NAME_ACCESS_LEVEL || "none";
+    const allowed = level === "view" || level === "edit";
     if (!supplierNameField || !supplierNameValue) return;
     supplierNameField.hidden = !allowed;
     supplierNameField.style.display = allowed ? "" : "none";
     if (!allowed) return;
     const selected = supplierRecords.find((item) => String(item.id) === String(supplier.value));
-    supplierNameValue.textContent = selected?.company_name?.trim()
-      || (supplier.value ? "No supplier name recorded" : "Select a supplier code");
+    supplierNameValue.value = selected?.company_name?.trim() || "";
+    supplierNameValue.disabled = !supplier.value;
+    supplierNameValue.readOnly = level !== "edit";
+    supplierNameValue.placeholder = supplier.value ? "No supplier name recorded" : "Select a supplier code";
+    if (supplierNameHelp) supplierNameHelp.textContent = level === "edit"
+      ? "You may update this confidential supplier name before saving the batch."
+      : "You have view-only access to this confidential supplier name.";
   }
 
   async function refreshPartnerNamePermission() {
-    const { data, error } = await api().rpc("get_my_partner_name_access");
-    if (error) throw error;
-    let allowed = Array.isArray(data) ? data[0] : data;
-    if (allowed && typeof allowed === "object") {
-      allowed = allowed.can_view ?? allowed.allowed ?? Object.values(allowed)[0];
+    let level = "none";
+    const result = await api().rpc("get_my_partner_name_access_level");
+    if (!result.error) {
+      let value = Array.isArray(result.data) ? result.data[0] : result.data;
+      if (value && typeof value === "object") value = value.access_level ?? Object.values(value)[0];
+      if (["none", "view", "edit"].includes(String(value || "").toLowerCase())) level = String(value).toLowerCase();
+    } else {
+      const fallback = await api().rpc("get_my_partner_name_access");
+      if (fallback.error) throw result.error;
+      let allowed = Array.isArray(fallback.data) ? fallback.data[0] : fallback.data;
+      if (allowed && typeof allowed === "object") allowed = allowed.can_view ?? allowed.allowed ?? Object.values(allowed)[0];
+      level = allowed === true || String(allowed).toLowerCase() === "true" ? "view" : "none";
     }
-    window.GREENLOOP_CAN_VIEW_PARTNER_NAMES = allowed === true || String(allowed).toLowerCase() === "true";
+    window.GREENLOOP_PARTNER_NAME_ACCESS_LEVEL = level;
+    window.GREENLOOP_CAN_VIEW_PARTNER_NAMES = level !== "none";
   }
 
   async function loadMasterOptions() {
@@ -203,13 +214,24 @@
     showToast("Stock channel removed.");
   }
 
-  function openSupplierDialog() { supplierForm.reset(); setSupplierMessage(); supplierDialog.showModal(); supplierName.focus(); }
+  function openSupplierDialog() {
+    supplierForm.reset();
+    setSupplierMessage();
+    const canEditNames = window.GREENLOOP_PARTNER_NAME_ACCESS_LEVEL === "edit";
+    supplierName.disabled = !canEditNames;
+    supplierName.placeholder = canEditNames ? "Example: Samsung Gulf" : "Supplier name permission required";
+    supplierDialog.showModal();
+    supplierCode.focus();
+  }
 
   async function saveNewSupplier(event) {
     event.preventDefault();
     if (!supplierForm.checkValidity()) { supplierForm.reportValidity(); return; }
     setBusy(saveSupplier, true, "Saving...");
-    const { data, error } = await api().rpc("create_supplier", { p_company_name: supplierName.value, p_contact_name: "", p_phone: "", p_email: "", p_country: "", p_notes: "" });
+    const { data, error } = await api().rpc("create_supplier_with_code", {
+      p_supplier_code: supplierCode.value,
+      p_company_name: supplierName.disabled ? null : text(supplierName.value)
+    });
     setBusy(saveSupplier, false, "Saving...");
     if (error) { setSupplierMessage(error.message || "Supplier could not be saved."); return; }
     const saved = data?.[0];
@@ -225,6 +247,18 @@
     let lines;
     try { lines = validatePlan(); } catch (error) { setMessage(error.message); return; }
     setBusy(submit, true, "Saving stock plan...");
+    if (window.GREENLOOP_PARTNER_NAME_ACCESS_LEVEL === "edit" && supplier.value) {
+      const selected = supplierRecords.find((item) => String(item.id) === String(supplier.value));
+      const nextName = text(supplierNameValue.value);
+      if (nextName !== text(selected?.company_name)) {
+        const updated = await api().rpc("update_supplier_company_name", { p_supplier_id: supplier.value, p_company_name: nextName });
+        if (updated.error) {
+          setBusy(submit, false, "Saving stock plan...");
+          setMessage(updated.error.message || "Supplier company name could not be saved.");
+          return;
+        }
+      }
+    }
     const { data, error } = await api().rpc("create_stock_entry_batch_with_lines", {
       p_stock_channel_id: channel.value,
       p_supplier_id: supplier.value,
