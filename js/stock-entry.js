@@ -14,6 +14,11 @@
   const sidebar = document.querySelector("#sidebar");
   const backdrop = document.querySelector("#menu-backdrop");
   const toast = document.querySelector("#toast");
+  const supplierDialog = document.querySelector("#supplier-dialog");
+  const supplierForm = document.querySelector("#supplier-form");
+  const supplierCompanyName = document.querySelector("#supplier-company-name");
+  const supplierMessage = document.querySelector("#supplier-message");
+  const saveSupplier = document.querySelector("#save-supplier");
   let supplierRecords = [];
   let client;
   let toastTimer;
@@ -21,6 +26,7 @@
   function api() { return (client ||= window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey)); }
   function text(value) { return String(value || "").trim() || null; }
   function setMessage(value = "", type = "error") { message.textContent = value; message.classList.toggle("is-visible", Boolean(value)); message.classList.toggle("is-success", type === "success"); }
+  function setSupplierMessage(value = "") { supplierMessage.textContent = value; supplierMessage.classList.toggle("is-visible", Boolean(value)); }
   function setBusy(button, busy, label) { if (busy) button.dataset.label = button.textContent; button.disabled = busy; button.textContent = busy ? label : (button.dataset.label || button.textContent); }
   function setMenu(open) { sidebar.classList.toggle("is-open", open); backdrop.hidden = !open; document.body.classList.toggle("menu-open", open); }
   function showToast(value) { window.clearTimeout(toastTimer); toast.textContent = value; toast.hidden = false; toast.classList.add("is-visible"); toastTimer = window.setTimeout(() => { toast.hidden = true; toast.classList.remove("is-visible"); }, 3200); }
@@ -54,6 +60,37 @@
     supplierCodeDisplay.value = selected?.supplier_code && Number.isInteger(receivedQuantity) && receivedQuantity > 0
       ? `${selected.supplier_code}-(${receivedQuantity})`
       : "";
+  }
+
+  function openSupplierDialog() {
+    supplierForm.reset();
+    setSupplierMessage();
+    supplierDialog.showModal();
+    supplierCompanyName.focus();
+  }
+
+  async function saveNewSupplier(event) {
+    event.preventDefault();
+    setSupplierMessage();
+    if (!supplierForm.checkValidity()) { supplierForm.reportValidity(); return; }
+    setBusy(saveSupplier, true, "Saving...");
+    const { data, error } = await api().rpc("create_supplier_from_company", { p_company_name: supplierCompanyName.value });
+    setBusy(saveSupplier, false, "Saving...");
+    if (error) { setSupplierMessage(error.message || "Supplier company could not be saved."); return; }
+    await loadSuppliers(data?.[0]?.id);
+    supplierDialog.close();
+    showToast("Supplier company saved.");
+  }
+
+  async function removeSupplier() {
+    if (!supplier.value) { setMessage("Select a supplier company before removing it."); return; }
+    const selected = supplierRecords.find((record) => String(record.id) === String(supplier.value));
+    const code = window.prompt(`Enter deletion code to remove ${supplierCompanyLabel(selected)}:`);
+    if (code !== "1213") { showToast("Supplier company was not removed. Deletion code is incorrect."); return; }
+    const { error } = await api().rpc("remove_supplier_from_receipts", { p_supplier_id: supplier.value, p_deletion_code: code });
+    if (error) { setMessage(error.message || "Supplier company could not be removed."); return; }
+    await loadSuppliers();
+    showToast("Supplier company removed.");
   }
 
   async function createBatch(event) {
@@ -97,6 +134,11 @@
   document.querySelector("#open-menu").addEventListener("click", () => setMenu(true));
   document.querySelector("#close-menu").addEventListener("click", () => setMenu(false));
   backdrop.addEventListener("click", () => setMenu(false));
+  document.querySelector("#add-supplier").addEventListener("click", openSupplierDialog);
+  document.querySelector("#remove-supplier").addEventListener("click", () => removeSupplier().catch((error) => setMessage(error.message || "Supplier company could not be removed.")));
+  document.querySelector("#close-supplier-dialog").addEventListener("click", () => supplierDialog.close());
+  document.querySelector("#cancel-supplier").addEventListener("click", () => supplierDialog.close());
+  supplierForm.addEventListener("submit", saveNewSupplier);
   supplier.addEventListener("change", updateSupplierCode);
   quantity.addEventListener("input", updateSupplierCode);
   form.addEventListener("submit", createBatch);
