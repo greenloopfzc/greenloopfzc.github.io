@@ -138,6 +138,16 @@
       batches = response.data || [];
     }
 
+    if (batches.length) {
+      const { data: invoiceRows, error: invoiceError } = await api().rpc("get_stock_receipt_invoice_numbers", {
+        p_batch_ids: batches.map((batch) => batch.batch_id)
+      });
+      if (!invoiceError) {
+        const invoiceByBatch = new Map((invoiceRows || []).map((row) => [String(row.batch_id), row.invoice_number]));
+        batches = batches.map((batch) => ({ ...batch, invoice_number: invoiceByBatch.get(String(batch.batch_id)) || null }));
+      }
+    }
+
     batchSelect.replaceChildren(new Option(batches.length ? "Select supplier code / batch" : "No incomplete stock batches", ""));
     batches.forEach((batch) => batchSelect.add(new Option(`${supplierLabel(batch)} - ${batch.planned_quantity} received - ${batch.remaining_quantity} remaining`, batch.batch_id)));
     if (batches.some((batch) => batch.batch_id === selected)) batchSelect.value = selected;
@@ -159,7 +169,7 @@
     const summary = [
       ["Supplier code", supplierLabel(batch)], ["Stock channel", batch.stock_channel],
       ["Quantity received", `${batch.planned_quantity} devices`], ["Progress", `${batch.entered_quantity} / ${batch.planned_quantity}`],
-      ["Remaining", batch.remaining_quantity]
+      ["Remaining", batch.remaining_quantity], ["Invoice number", batch.invoice_number || "Not generated for legacy receipt"]
     ].map(([label, value]) => `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("");
     batchSummary.innerHTML = summary + (planText ? `<div class="batch-plan-lines" title="${escapeHtml(planText)}"><span>Model / GB / Color plan</span><strong>${escapeHtml(planText)}</strong></div>` : "");
     if (nextLine) {
