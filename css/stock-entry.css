@@ -17,7 +17,7 @@
 .stock-plan-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 13px; }
 .stock-plan-actions .secondary-button { min-height: 39px; padding: 0 13px; font-size: .72rem; }
 .stock-plan-actions strong { color: #176c48; font-family: Manrope, sans-serif; font-size: .84rem; }
-.batch-summary { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1px; margin-top: 17px; overflow: hidden; border: 1px solid #d8e6dc; border-radius: 9px; background: #d8e6dc; }
+.batch-summary { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1px; margin-top: 17px; overflow: hidden; border: 1px solid #d8e6dc; border-radius: 9px; background: #d8e6dc; }
 .batch-summary > div { min-width: 0; padding: 12px; background: #f7fbf8; }
 .batch-summary span { display: block; color: #849189; font-size: .58rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .batch-summary strong { display: block; margin-top: 5px; overflow: hidden; color: #254234; font-size: .76rem; text-overflow: ellipsis; white-space: nowrap; }
