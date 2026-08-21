@@ -14,7 +14,7 @@
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script defer src="js/config.js?v=20260821-simple-receipt-1"></script>
     <script defer src="js/part-notifications.js"></script>
-    <script defer src="js/stock-entry.js?v=20260821-supplier-controls-4"></script>
+    <script defer src="js/stock-entry.js?v=20260821-supplier-controls-5"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -35,7 +35,7 @@
                 <div class="form-panel-heading"><span class="section-number">01</span><div><h2>Receipt details</h2><p>Only the receipt quantity is required. Device details are captured when each IMEI is entered.</p></div></div>
                 <div class="form-grid two-columns">
                   <div class="form-field"><label for="stock-channel">Stock channel <span class="required-mark">Required</span></label><select id="stock-channel" required><option value="">Loading channels...</option></select></div>
-                  <div class="form-field"><label for="supplier-id">Supplier company <span class="required-mark">Required</span></label><div class="master-option-control supplier-company-control"><select id="supplier-id" required><option value="">Loading supplier companies...</option></select><button id="add-supplier" class="master-add" type="button" title="Add supplier company" aria-label="Add supplier company">+</button><button id="remove-supplier" class="master-remove" type="button" title="Remove selected supplier company" aria-label="Remove selected supplier company">−</button></div><small>Add a new company with +. Remove an unused company with −.</small></div>
+                  <div class="form-field"><label for="supplier-id">Supplier company <span class="required-mark">Required</span></label><div class="master-option-control supplier-company-control"><select id="supplier-id" required><option value="">Loading supplier companies...</option></select><button id="add-supplier" class="master-add" type="button" title="Add supplier company" aria-label="Add supplier company">+</button><button id="remove-supplier" class="master-remove" type="button" title="Remove selected supplier company" aria-label="Remove selected supplier company">−</button></div><small>Add a new company with +. Hide a company with −; its existing receipt history stays safe.</small></div>
                   <div class="form-field"><label for="quantity-received">Quantity received <span class="required-mark">Required</span></label><input id="quantity-received" type="number" min="1" step="1" inputmode="numeric" placeholder="300" required><small>Enter the total number of devices in this receipt.</small></div>
                   <div class="form-field"><label for="supplier-code-display">Supplier code</label><input id="supplier-code-display" class="supplier-code-display" type="text" readonly aria-describedby="supplier-code-help" placeholder="Select a company and enter quantity"><small id="supplier-code-help">Generated automatically, for example SUP-01-(300).</small></div>
                   <div class="form-field full-width"><label for="receiving-notes">Notes</label><textarea id="receiving-notes" rows="3" placeholder="Optional notes for this receipt"></textarea></div>
