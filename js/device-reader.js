@@ -5,6 +5,23 @@
   const threeUToolsEndpoint = "http://127.0.0.1:51894/v1/device";
   let lastFingerprint = "";
   let lastThreeUToolsAttemptImei = "";
+  const appleSalesRegions = new Map([
+    ["VC/A", "Canada"], ["C/A", "Canada"], ["CL/A", "Canada"],
+    ["LL/A", "United States"], ["CH/A", "Mainland China"], ["ZP/A", "Hong Kong / Macau"],
+    ["J/A", "Japan"], ["KH/A", "South Korea"], ["VN/A", "Vietnam"], ["TA/A", "Taiwan"],
+    ["ZA/A", "Singapore / Malaysia"], ["AB/A", "United Arab Emirates"], ["X/A", "Australia / New Zealand"],
+    ["B/A", "United Kingdom / Ireland"], ["ZD/A", "Central Europe"]
+  ]);
+
+  function formatPhoneRegion(value) {
+    const source = String(value || "").trim();
+    if (!source) return "";
+    const match = source.toUpperCase().match(/\b([A-Z]{1,3}\/A)\b/);
+    const code = match?.[1] || "";
+    const country = appleSalesRegions.get(code);
+    if (!country) return source;
+    return source.toLocaleLowerCase().includes(country.toLocaleLowerCase()) ? source : `${code} — ${country}`;
+  }
   let stopped = false;
 
   function normalise(payload) {
@@ -19,7 +36,7 @@
         ? ""
         : (Number(batteryRaw) || ""),
       serialNumber: String(source.serialNumber || source.serial_number || "").trim(),
-      phoneRegion: String(source.phoneRegion || source.phone_region || source.specificationRegion || source.specification_region || source.region || "").trim()
+      phoneRegion: formatPhoneRegion(source.phoneRegion || source.phone_region || source.specificationRegion || source.specification_region || source.region)
     };
   }
 
