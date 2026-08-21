@@ -12,6 +12,8 @@
   const storage = document.querySelector("#storage-gb");
   const color = document.querySelector("#color");
   const battery = document.querySelector("#battery-health");
+  const serialNumber = document.querySelector("#serial-number");
+  const phoneRegion = document.querySelector("#phone-region");
   const message = document.querySelector("#form-message");
   const submit = document.querySelector("#save-imei");
   const permissionMessage = document.querySelector("#permission-message");
@@ -61,6 +63,10 @@
     if (![...select.options].some((option) => option.value.toLocaleLowerCase() === text.toLocaleLowerCase())) select.add(new Option(text, text));
     const match = [...select.options].find((option) => option.value.toLocaleLowerCase() === text.toLocaleLowerCase());
     if (match) select.value = match.value;
+  }
+  function setOptionalInput(input, value) {
+    const text = String(value ?? "").trim();
+    if (input && text) input.value = text;
   }
 
   const masterFields = [
@@ -197,6 +203,8 @@
     if (device.batteryHealth !== "" && Number.isFinite(Number(device.batteryHealth))) {
       battery.value = Number(device.batteryHealth);
     }
+    setOptionalInput(serialNumber, device.serialNumber);
+    setOptionalInput(phoneRegion, device.phoneRegion);
     const missing = [
       [/^\d{15}$/.test(imei.value.trim()), "IMEI"],
       [Boolean(model.value), "Model"],
@@ -209,7 +217,8 @@
       setMessage(`Connected phone detected, but ${missing.join(", ")} could not be read.`, "error");
       return;
     }
-    if (readerStatus) readerStatus.textContent = "Connected phone loaded";
+    const extraDetails = [serialNumber?.value ? "serial number" : "", phoneRegion?.value ? "phone region" : ""].filter(Boolean);
+    if (readerStatus) readerStatus.textContent = extraDetails.length ? `Connected phone loaded with ${extraDetails.join(" and ")}` : "Connected phone loaded";
     setMessage("Connected phone data loaded. Review it, then save.", "success");
     if (autoSaveEnabled()) scheduleAutoSave();
   }
@@ -255,10 +264,18 @@
     saving = false;
     if (error) { setMessage(error.message || "The IMEI could not be saved."); return; }
     const result = data?.[0];
+    const { error: cableDetailsError } = await api().rpc("save_stock_device_cable_details", {
+      p_imei_1: scannedImei,
+      p_serial_number: serialNumber?.value.trim() || null,
+      p_specification_region: phoneRegion?.value.trim() || null
+    });
     setMessage(`IMEI saved. ${result?.entered_quantity || 0} of ${result?.planned_quantity || batch.planned_quantity} devices entered and sent to Initial QC.`, "success");
+    if (cableDetailsError) showToast(`IMEI saved, but serial/region was not saved: ${cableDetailsError.message || "Please verify it."}`);
     sessionStorage.setItem("greenloop-next-initial-qc-imei", scannedImei);
     imei.value = "";
     battery.value = "";
+    if (serialNumber) serialNumber.value = "";
+    if (phoneRegion) phoneRegion.value = "";
     imei.focus();
     if (Number(result?.remaining_quantity) === 0) showToast("This stock batch is complete. All IMEIs are in Initial QC.");
     await loadBatches(Number(result?.remaining_quantity) === 0 ? "" : batch.batch_id);

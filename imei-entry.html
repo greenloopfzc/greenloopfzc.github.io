@@ -10,13 +10,13 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/stock-entry.css?v=20260821-invoice-top-row-1">
+    <link rel="stylesheet" href="css/stock-entry.css?v=20260821-cable-details-1">
     <link rel="stylesheet" href="css/batch-workflow.css?v=20260813-2">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script defer src="js/config.js?v=20260821-supplier-reader-1"></script>
     <script defer src="js/part-notifications.js?v=20260813-1"></script>
-    <script defer src="js/device-reader.js?v=20260821-supplier-reader-1"></script>
-    <script defer src="js/imei-entry.js?v=20260821-invoice-first-short-1"></script>
+    <script defer src="js/device-reader.js?v=20260821-cable-details-1"></script>
+    <script defer src="js/imei-entry.js?v=20260821-cable-details-1"></script>
     <script defer src="js/batch-workflow.js?v=20260821-privacy-autosave-2"></script>
   </head>
   <body class="app-page">
@@ -47,6 +47,10 @@
                   <div class="form-field"><label for="storage-gb">GB <span class="required-mark">Required</span></label><div class="master-option-control"><select id="storage-gb" required><option value="">Loading GB...</option></select><button class="master-add" type="button" data-option-group="storage_gb" data-option-target="storage-gb" title="Add GB">+</button><button class="master-remove" type="button" data-option-group="storage_gb" data-option-target="storage-gb" title="Remove selected GB">−</button></div></div>
                   <div class="form-field"><label for="color">Color <span class="required-mark">Required</span></label><div class="master-option-control"><select id="color" required><option value="">Loading colors...</option></select><button class="master-add" type="button" data-option-group="color" data-option-target="color" title="Add color">+</button><button class="master-remove" type="button" data-option-group="color" data-option-target="color" title="Remove selected color">−</button></div></div>
                   <div class="form-field"><label for="battery-health">Battery health <span class="required-mark">Required</span></label><div class="suffix-input"><input id="battery-health" type="number" min="0" max="100" inputmode="numeric" placeholder="85" required><span>%</span></div></div>
+                </div>
+                <div class="form-grid two-columns cable-extra-details">
+                  <div class="form-field"><label for="serial-number">Serial number <span class="optional-mark">Optional</span></label><input id="serial-number" type="text" autocomplete="off" placeholder="Auto-read from connected phone"></div>
+                  <div class="form-field"><label for="phone-region">Phone region <span class="optional-mark">Optional</span></label><input id="phone-region" type="text" autocomplete="off" placeholder="Auto-read when the phone provides it"></div>
                 </div>
               </section>
               <p id="form-message" class="form-message receiving-message" role="status" aria-live="polite"></p>

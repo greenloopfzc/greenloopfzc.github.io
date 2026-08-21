@@ -15,7 +15,9 @@
       color: String(source.color || source.deviceColor || "").trim(),
       batteryHealth: batteryRaw === "" || batteryRaw === null || batteryRaw === undefined
         ? ""
-        : (Number(batteryRaw) || "")
+        : (Number(batteryRaw) || ""),
+      serialNumber: String(source.serialNumber || source.serial_number || "").trim(),
+      phoneRegion: String(source.phoneRegion || source.phone_region || source.specificationRegion || source.specification_region || source.region || "").trim()
     };
   }
 
