@@ -167,9 +167,9 @@
     const nextLine = plannedLines.find((line) => Number(line.remaining_quantity) > 0) || plannedLines[0];
     const planText = plannedLines.map((line) => `${line.model || "Any model"} · ${line.storage_gb ? `${line.storage_gb} GB` : "Any GB"} · ${line.color || "Any color"} (${line.remaining_quantity}/${line.planned_quantity} remaining)`).join(" | ");
     const summary = [
-      ["Supplier code", supplierLabel(batch)], ["Stock channel", batch.stock_channel],
+      ["Invoice number", batch.invoice_number || "Not generated for legacy receipt"], ["Supplier code", supplierLabel(batch)], ["Stock channel", batch.stock_channel],
       ["Quantity received", `${batch.planned_quantity} devices`], ["Progress", `${batch.entered_quantity} / ${batch.planned_quantity}`],
-      ["Remaining", batch.remaining_quantity], ["Invoice number", batch.invoice_number || "Not generated for legacy receipt"]
+      ["Remaining", batch.remaining_quantity]
     ].map(([label, value]) => `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("");
     batchSummary.innerHTML = summary + (planText ? `<div class="batch-plan-lines" title="${escapeHtml(planText)}"><span>Model / GB / Color plan</span><strong>${escapeHtml(planText)}</strong></div>` : "");
     if (nextLine) {
