@@ -41,7 +41,8 @@
     ["export_boxes", "Export Boxes", "Create boxes and scan phones for export."],
     ["ready_stock_journey", "Ready Stock Journey", "View complete IMEI workflow history."],
     ["reports", "Reports", "View operational and management reports."],
-    ["user_access", "User Access", "Create users and control their page permissions."]
+    ["user_access", "User Access", "Create users and control their page permissions."],
+    ["partner_names", "Supplier & Customer Names", "Show confidential supplier and customer names. Codes remain visible to everyone with page access."]
   ];
 
   function getClient() {
@@ -161,6 +162,14 @@
     }
     if (error) throw error;
     users = data || [];
+    const { data: partnerAccess, error: partnerError } = await getClient().rpc("get_user_partner_name_access_matrix");
+    if (!partnerError) {
+      const allowed = new Set((partnerAccess || []).filter((row) => row.can_view).map((row) => row.user_id));
+      users.forEach((user) => {
+        user.page_permissions = permissionsForUser(user);
+        if (allowed.has(user.user_id)) user.page_permissions.partner_names = "view";
+      });
+    }
     selectedUserId = users.some((user) => user.user_id === preferredUserId)
       ? preferredUserId
       : (users[0]?.user_id || "");
@@ -197,7 +206,9 @@
     }
 
     const selectedPermissions = collectPagePermissions(newRoleOptions);
-    const selectedPages = Object.keys(selectedPermissions);
+    const partnerNames = Object.hasOwn(selectedPermissions, "partner_names");
+    const normalPermissions = Object.fromEntries(Object.entries(selectedPermissions).filter(([key]) => key !== "partner_names"));
+    const selectedPages = Object.keys(normalPermissions);
     if (!selectedPages.length) {
       setMessage(createUserMessage, "Select at least one page for this user.");
       return;
@@ -224,9 +235,11 @@
         p_full_name: newFullName.value.trim(),
         p_login_username: data.username,
         p_is_active: true,
-        p_page_permissions: selectedPermissions
+        p_page_permissions: normalPermissions
       });
       if (accessError) throw accessError;
+      const { error: partnerError } = await getClient().rpc("save_user_partner_name_access", { p_user_id: data.user_id, p_can_view: partnerNames });
+      if (partnerError) throw partnerError;
 
       createUserForm.reset();
       renderNewUserPages();
@@ -243,6 +256,8 @@
   async function saveAccess(event) {
     event.preventDefault();
     const selectedPermissions = collectPagePermissions(roleOptions);
+    const partnerNames = Object.hasOwn(selectedPermissions, "partner_names");
+    const normalPermissions = Object.fromEntries(Object.entries(selectedPermissions).filter(([key]) => key !== "partner_names"));
     if (!selectedUserId) return;
 
     const button = document.querySelector("#save-access");
@@ -254,13 +269,18 @@
       p_full_name: fullName.value.trim(),
       p_login_username: username.value.trim(),
       p_is_active: active.checked,
-      p_page_permissions: selectedPermissions
+      p_page_permissions: normalPermissions
     });
 
     button.disabled = false;
     button.textContent = "Save access";
     if (error) {
       setMessage(message, error.message || "User access could not be saved.");
+      return;
+    }
+    const { error: partnerError } = await getClient().rpc("save_user_partner_name_access", { p_user_id: selectedUserId, p_can_view: partnerNames });
+    if (partnerError) {
+      setMessage(message, partnerError.message || "Supplier and customer name access could not be saved.");
       return;
     }
 

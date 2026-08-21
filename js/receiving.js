@@ -259,8 +259,18 @@
     const error = customersResponse.error || suppliersResponse.error || locationsResponse.error;
     if (error) throw error;
 
-    fillSelect(customerInput, customersResponse.data || [], "Select customer", (item) => `${item.company_name} · ${item.customer_code}`);
-    fillSelect(supplierInput, suppliersResponse.data || [], "Select supplier", (item) => item.supplier_code || item.company_name);
+    fillSelect(customerInput, customersResponse.data || [], "Select customer", (item) => {
+      if (typeof window.GREENLOOP_PARTNER_LABEL === "function") {
+        return window.GREENLOOP_PARTNER_LABEL(item.customer_code, item.company_name, "Customer");
+      }
+      return item.customer_code || "Customer";
+    });
+    fillSelect(supplierInput, suppliersResponse.data || [], "Select supplier", (item) => {
+      if (typeof window.GREENLOOP_PARTNER_LABEL === "function") {
+        return window.GREENLOOP_PARTNER_LABEL(item.supplier_code, item.company_name, "Supplier");
+      }
+      return item.supplier_code || "Supplier";
+    });
     fillSelect(locationInput, locationsResponse.data || [], "Select location", (item) => item.location_name);
 
     const receivingLocation = (locationsResponse.data || []).find((location) => location.location_code === "RECEIVING");

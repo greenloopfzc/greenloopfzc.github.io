@@ -109,6 +109,20 @@
   function dateTime(value) { return value ? new Date(value).toLocaleString([], { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"; }
   function money(value) { return `AED ${Number(value || 0).toFixed(2)}`; }
   function title(value) { return String(value || "—").replaceAll("_", " "); }
+  function partnerLabel(code, name, fallback = "—") {
+    if (typeof window.GREENLOOP_PARTNER_LABEL === "function") return window.GREENLOOP_PARTNER_LABEL(code, name, fallback);
+    return String(code || "").trim() || fallback;
+  }
+  function confidentialPartnerText(value, fallback = "Confidential supplier") {
+    if (window.GREENLOOP_CAN_VIEW_PARTNER_NAMES) return String(value || "—");
+    const match = String(value || "").match(/\bSUP-\d+(?:-[A-Z0-9()]+)?/i);
+    return match?.[0] || fallback;
+  }
+  function formatReportValue(row, key, type) {
+    if (!window.GREENLOOP_CAN_VIEW_PARTNER_NAMES && key === "customer") return "Confidential customer";
+    if (!window.GREENLOOP_CAN_VIEW_PARTNER_NAMES && key === "supplier_name") return escapeHtml(row.supplier_code || "Confidential supplier");
+    return formatCell(row[key], type);
+  }
 
   function renderSummary() {
     const data = reportData.summary || {};
@@ -166,7 +180,7 @@
     rowCount.textContent = `${rows.length} record${rows.length === 1 ? "" : "s"}`;
     const headers = report.columns.map(([label]) => `<th>${escapeHtml(label)}</th>`).join("");
     const body = rows.length
-      ? rows.map((row) => `<tr>${report.columns.map(([, key, type]) => `<td>${formatCell(row[key], type)}</td>`).join("")}</tr>`).join("")
+      ? rows.map((row) => `<tr>${report.columns.map(([, key, type]) => `<td>${formatReportValue(row, key, type)}</td>`).join("")}</tr>`).join("")
       : `<tr><td class="report-empty" colspan="${report.columns.length}">No records were found for this report.</td></tr>`;
     reportContent.innerHTML = `<div class="report-table-wrap"><table class="report-table"><thead><tr>${headers}</tr></thead><tbody>${body}</tbody></table></div>`;
   }
@@ -179,7 +193,7 @@
     const allRows = reportData.supplier_progress || [];
     const suppliers = [...new Map(allRows.map((row) => [String(row.supplier_id), {
       id: String(row.supplier_id),
-      label: row.supplier_code || row.supplier_name || "—"
+      label: partnerLabel(row.supplier_code, row.supplier_name)
     }])).values()].sort((left, right) => left.label.localeCompare(right.label));
 
     if (selectedSupplier !== "all" && !suppliers.some((supplier) => supplier.id === selectedSupplier)) selectedSupplier = "all";
@@ -197,7 +211,7 @@
 
     const supplierOptions = suppliers.map((supplier) => `<option value="${escapeHtml(supplier.id)}"${supplier.id === selectedSupplier ? " selected" : ""}>${escapeHtml(supplier.label)}</option>`).join("");
     const tableBody = rows.length ? rows.map((row) => `<tr>
-      <td><strong>${escapeHtml(row.supplier_code || row.supplier_name || "—")}</strong></td>
+      <td><strong>${escapeHtml(partnerLabel(row.supplier_code, row.supplier_name))}</strong></td>
       <td>${escapeHtml(row.model)}</td>
       <td>${escapeHtml(row.storage_label || "—")}</td>
       <td>${escapeHtml(row.batch_numbers)}</td>
@@ -283,7 +297,7 @@
     const selected = String(selectedId ?? "");
     const values = Array.isArray(options) ? [...options] : [];
     if (selected && !values.some((option) => String(option.id) === selected)) values.unshift({ id: selected, label: selectedLabel || "Current supplier" });
-    return `<option value="">No supplier</option>${values.map((option) => `<option value="${escapeHtml(option.id)}"${String(option.id) === selected ? " selected" : ""}>${escapeHtml(option.label)}</option>`).join("")}`;
+    return `<option value="">No supplier</option>${values.map((option) => `<option value="${escapeHtml(option.id)}"${String(option.id) === selected ? " selected" : ""}>${escapeHtml(confidentialPartnerText(option.label))}</option>`).join("")}`;
   }
 
   function renderCorrectionHistory(record) {
@@ -302,12 +316,23 @@
       <section class="test-cleanup-card">
         <div class="test-cleanup-copy">
           <span class="test-cleanup-icon" aria-hidden="true">!</span>
-          <div><h3>Reset all operational data to zero</h3><p>Permanently clears every supplier code, customer, stock batch, phone, QC record, Laboratory job, Parts inventory/receipt/issue/return, Ready Stock record, Export Box, correction, and deletion-history entry. Users, permissions, roles, technicians, locations, stock channels, and dropdown options are preserved.</p></div>
+          <div><h3>Delete selected test data</h3><p>Delete one IMEI for retesting, or delete test phones received in a date range. Select the affected workflow pages. Dropdown options, users, permissions and technicians are always preserved.</p></div>
         </div>
         <form id="test-data-cleanup-form" class="test-cleanup-form" novalidate>
+          <label class="test-cleanup-wide">Specific IMEI or device number (optional)<input name="identifier" type="search" autocomplete="off" placeholder="Scan IMEI or enter DEV-000001"></label>
+          <label>From received date<input name="date_from" type="date" value="${escapeHtml(dateFrom.value || "")}"></label>
+          <label>To received date<input name="date_to" type="date" value="${escapeHtml(dateTo.value || "")}"></label>
+          <fieldset class="test-cleanup-pages test-cleanup-wide"><legend>Select data pages</legend>
+            ${[
+              ["stock_received", "Stock Received"], ["imei_entry", "IMEI Entry"], ["initial_qc", "Initial QC"],
+              ["lab_glass", "Lab & Glass"], ["parts", "Parts"], ["inventory", "Inventory"],
+              ["final_qc", "Final QC"], ["frame", "Frame"], ["ready_stock", "Ready Stock"],
+              ["export_boxes", "Export Boxes"], ["supplier_records", "Supplier records"]
+            ].map(([key, label]) => `<label><input name="page_keys" type="checkbox" value="${key}"${key === "inventory" || key === "supplier_records" ? "" : " checked"}>${label}</label>`).join("")}
+          </fieldset>
           <label>Deletion code<input name="deletion_code" type="password" inputmode="numeric" autocomplete="off" placeholder="Enter code" required></label>
-          <label>Type RESET GREENLOOP TO ZERO<input name="confirmation" type="text" autocomplete="off" placeholder="RESET GREENLOOP TO ZERO" required></label>
-          <button class="danger-button" type="submit">Reset everything to zero</button>
+          <label>Type DELETE SELECTED TEST DATA<input name="confirmation" type="text" autocomplete="off" placeholder="DELETE SELECTED TEST DATA" required></label>
+          <button class="danger-button" type="submit">Delete selected test data</button>
         </form>
       </section>`;
   }
@@ -340,7 +365,7 @@
           <div><span>Device</span><strong>${escapeHtml(record.device_number)}</strong></div>
           <div><span>Job</span><strong>${escapeHtml(record.job_number || "-")}</strong></div>
           <div><span>Status</span><strong>${escapeHtml(title(record.current_status))}</strong></div>
-          <div><span>Supplier</span><strong>${escapeHtml(record.supplier_label || "-")}</strong></div>
+          <div><span>Supplier</span><strong>${escapeHtml(confidentialPartnerText(record.supplier_label))}</strong></div>
           <div><span>Batch</span><strong>${escapeHtml(record.batch_number || "-")}</strong></div>
         </section>
         <form id="correction-save-form" class="correction-form" novalidate>
@@ -494,26 +519,34 @@
   async function deleteAllTestData(form) {
     const formData = new FormData(form);
     const confirmation = String(formData.get("confirmation") || "").trim();
-    if (confirmation !== "RESET GREENLOOP TO ZERO") { setMessage("Type RESET GREENLOOP TO ZERO exactly to confirm."); return; }
-    const approved = window.confirm("This will permanently delete ALL operational data, including suppliers, phones, parts stock, workflow, export boxes, and audit histories. Dropdowns, users, permissions, and technicians will stay. Continue?");
+    const identifier = String(formData.get("identifier") || "").trim();
+    const pages = formData.getAll("page_keys");
+    if (confirmation !== "DELETE SELECTED TEST DATA") { setMessage("Type DELETE SELECTED TEST DATA exactly to confirm."); return; }
+    if (!identifier && (!formData.get("date_from") || !formData.get("date_to"))) { setMessage("Enter one IMEI/device number or select both received dates."); return; }
+    if (!pages.length) { setMessage("Select at least one data page."); return; }
+    const approved = window.confirm(identifier ? `Delete the complete test history for ${identifier}?` : "Delete selected test data inside this received-date range?");
     if (!approved) return;
 
     const submit = form.querySelector('button[type="submit"]');
     submit.disabled = true;
     submit.textContent = "Deleting...";
     setMessage();
-    const { data, error } = await getClient().rpc("reset_greenloop_to_zero", {
+    const { data, error } = await getClient().rpc("delete_greenloop_test_data_selectively", {
       p_deletion_code: formData.get("deletion_code"),
-      p_confirmation: confirmation
+      p_confirmation: confirmation,
+      p_identifier: identifier || null,
+      p_date_from: formData.get("date_from") || null,
+      p_date_to: formData.get("date_to") || null,
+      p_page_keys: pages
     });
     submit.disabled = false;
-    submit.textContent = "Reset everything to zero";
-    if (error) { setMessage(error.message || "Greenloop data could not be reset."); return; }
+    submit.textContent = "Delete selected test data";
+    if (error) { setMessage(error.message || "Selected test data could not be deleted."); return; }
 
     correctionRecord = null;
     await loadReports();
     form.reset();
-    setMessage(`Greenloop is now at zero. Deleted: ${Number(data?.deleted_devices || 0)} phone(s), ${Number(data?.deleted_jobs || 0)} job(s), ${Number(data?.deleted_suppliers || 0)} supplier(s), ${Number(data?.deleted_batches || 0)} stock batch(es), ${Number(data?.deleted_inventory_items || 0)} Parts inventory item(s), and ${Number(data?.deleted_export_boxes || 0)} export box(es). Dropdowns, users, permissions, and technicians were preserved.`, "success");
+    setMessage(`Deleted ${Number(data?.deleted_devices || 0)} phone(s) and ${Number(data?.deleted_jobs || 0)} job(s). The IMEI can now be entered again. Dropdowns, users, permissions and technicians were preserved.`, "success");
   }
 
   function renderActiveReport() {

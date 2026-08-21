@@ -36,7 +36,12 @@
   function updateDashboardGreeting() {
     const heading = [...document.querySelectorAll("h1")].find((item) => /good\s+(morning|afternoon|evening|night)/i.test(item.textContent));
     if (!heading) return;
-    const hour = new Date().getHours();
+    const hourPart = new Intl.DateTimeFormat("en-US", {
+      hour: "2-digit",
+      hourCycle: "h23",
+      timeZone: "Asia/Dubai"
+    }).formatToParts(new Date()).find((part) => part.type === "hour");
+    const hour = Number(hourPart?.value || 0);
     const greeting = hour >= 5 && hour < 12 ? "Good morning" : hour < 17 && hour >= 12 ? "Good afternoon" : hour < 22 && hour >= 17 ? "Good evening" : "Good night";
     const name = heading.textContent.replace(/good\s+(morning|afternoon|evening|night)\s*,?\s*/i, "").replace(/\.$/, "").trim() || "Admin";
     heading.textContent = `${greeting}, ${name}.`;

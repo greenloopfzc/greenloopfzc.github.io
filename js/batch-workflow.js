@@ -21,6 +21,8 @@
     return `<option value="">Select</option>${values.map((option) => `<option value="${escapeHtml(option.value)}"${String(option.value) === chosen ? " selected" : ""}>${escapeHtml(option.text)}</option>`).join("")}`;
   }
 
+  function autoSaveEnabled() { return localStorage.getItem("greenloop-imei-auto-save") === "on"; }
+
   function makeSlots(batch) {
     const slots = [];
     const lines = Array.isArray(batch.planned_lines) ? batch.planned_lines : [];
@@ -153,6 +155,7 @@
         <div class="form-panel-heading batch-entry-heading">
           <span class="section-number">02</span>
           <div><h2>Bulk IMEI entry</h2><p>One editable line is shown for every phone remaining in this supplier batch.</p></div>
+          <label class="auto-save-control"><input class="batch-auto-save-toggle" type="checkbox"${autoSaveEnabled() ? " checked" : ""}><span>Auto Save</span><strong>${autoSaveEnabled() ? "ON" : "OFF"}</strong></label>
           <span class="batch-entry-count">${slots.length} lines</span>
         </div>
         <div class="batch-table-scroll">
@@ -196,8 +199,14 @@
         input.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); saveRow(input.closest("tr")); } });
         input.addEventListener("change", () => {
           const row = input.closest("tr");
-          if (/^\d{15}$/.test(row.querySelector(".batch-row-imei").value.trim())) saveRow(row);
+          if (autoSaveEnabled() && /^\d{15}$/.test(row.querySelector(".batch-row-imei").value.trim())) saveRow(row);
         });
+      });
+      panel.querySelector(".batch-auto-save-toggle")?.addEventListener("change", (event) => {
+        localStorage.setItem("greenloop-imei-auto-save", event.target.checked ? "on" : "off");
+        event.target.closest("label").querySelector("strong").textContent = event.target.checked ? "ON" : "OFF";
+        const primaryToggle = document.querySelector("#auto-save-toggle");
+        if (primaryToggle) primaryToggle.checked = event.target.checked;
       });
       panel.querySelector(".batch-row-imei")?.focus();
     }
@@ -251,6 +260,31 @@
       if (batchSelect.value && !currentBatch) window.setTimeout(loadSelectedBatch, 80);
     }).observe(batchSelect, { childList: true });
     if (batchSelect.value) window.setTimeout(loadSelectedBatch, 250);
+
+    window.addEventListener("greenloop:device", (event) => {
+      if (!currentBatch || !panel || panel.hidden) return;
+      const device = event.detail || {};
+      const rows = [...panel.querySelectorAll("tbody tr")];
+      const row = rows.find((item) => item.dataset.saved !== "yes" && !item.querySelector(".batch-row-imei").value.trim());
+      if (!row || !/^\d{15}$/.test(String(device.imei || ""))) return;
+      const setSelect = (selector, value) => {
+        const select = row.querySelector(selector);
+        const text = String(value ?? "").trim();
+        if (!text) return;
+        if (![...select.options].some((option) => option.value.toLocaleLowerCase() === text.toLocaleLowerCase())) select.add(new Option(text, text));
+        const match = [...select.options].find((option) => option.value.toLocaleLowerCase() === text.toLocaleLowerCase());
+        if (match) select.value = match.value;
+        select.dataset.manuallyChanged = "yes";
+      };
+      row.querySelector(".batch-row-imei").value = device.imei;
+      setSelect(".batch-row-model", device.model);
+      setSelect(".batch-row-storage", device.storageGb);
+      setSelect(".batch-row-color", device.color);
+      if (Number.isFinite(Number(device.batteryHealth))) row.querySelector(".batch-row-battery").value = Number(device.batteryHealth);
+      setRowStatus(row, autoSaveEnabled() ? "Phone loaded — saving" : "Phone loaded — review and save", "is-saving");
+      if (autoSaveEnabled()) saveRow(row);
+      else row.querySelector(".batch-save-button")?.focus();
+    });
   }
 
   function initialisePendingTable({ selectSelector, title, columns, workspaceSelector }) {

@@ -68,7 +68,12 @@
     refresh.textContent = "Refresh table";
     if (journeyResponse.error) throw journeyResponse.error;
     if (supplierResponse.error) throw supplierResponse.error;
-    supplierLabels = new Map((supplierResponse.data || []).map((supplier) => [supplier.supplier_code, supplier.supplier_code || supplier.company_name]));
+    supplierLabels = new Map((supplierResponse.data || []).map((supplier) => [
+      supplier.supplier_code,
+      typeof window.GREENLOOP_PARTNER_LABEL === "function"
+        ? window.GREENLOOP_PARTNER_LABEL(supplier.supplier_code, supplier.company_name, "—")
+        : (supplier.supplier_code || "—")
+    ]));
     render(Array.isArray(journeyResponse.data) ? journeyResponse.data : []);
   }
 

@@ -12,9 +12,9 @@
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/stock-entry.css">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script defer src="js/config.js?v=20260820-clean-sidebar-2"></script>
+    <script defer src="js/config.js?v=20260821-privacy-delete-1"></script>
     <script defer src="js/part-notifications.js"></script>
-    <script defer src="js/stock-entry.js?v=20260820-quantity-only-plan"></script>
+    <script defer src="js/stock-entry.js?v=20260821-optional-supplier-1"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -55,7 +55,7 @@
         </div>
       </main>
     </div>
-    <dialog id="supplier-dialog" class="contact-dialog"><form id="supplier-form" method="dialog" novalidate><header><div><p class="panel-kicker">Supplier</p><h2>Add supplier</h2></div><button id="close-supplier-dialog" class="icon-button" type="button" aria-label="Close dialog">×</button></header><p class="dialog-description">A supplier code will be generated automatically.</p><div class="form-field full-width"><label for="supplier-name">Supplier company name <span class="required-mark">Required</span></label><input id="supplier-name" required></div><p id="supplier-message" class="form-message receiving-message" role="status" aria-live="polite"></p><footer><button id="cancel-supplier" class="secondary-button" type="button">Cancel</button><button id="save-supplier" class="primary-button" type="submit">Save supplier</button></footer></form></dialog>
+    <dialog id="supplier-dialog" class="contact-dialog"><form id="supplier-form" method="dialog" novalidate><header><div><p class="panel-kicker">Supplier</p><h2>Add supplier</h2></div><button id="close-supplier-dialog" class="icon-button" type="button" aria-label="Close dialog">×</button></header><p class="dialog-description">A supplier code will be generated automatically. The company name is optional and confidential.</p><div class="form-field full-width"><label for="supplier-name">Supplier company name <span class="field-note">Optional</span></label><input id="supplier-name" autocomplete="off" placeholder="Leave blank to keep supplier anonymous"></div><p id="supplier-message" class="form-message receiving-message" role="status" aria-live="polite"></p><footer><button id="cancel-supplier" class="secondary-button" type="button">Cancel</button><button id="save-supplier" class="primary-button" type="submit">Save supplier</button></footer></form></dialog>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   </body>
 </html>

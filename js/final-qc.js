@@ -85,7 +85,10 @@
   }
 
   function supplierLabel(supplier) {
-    return String(supplier?.supplier_code || supplier?.company_name || "").trim() || "-";
+    if (typeof window.GREENLOOP_PARTNER_LABEL === "function") {
+      return window.GREENLOOP_PARTNER_LABEL(supplier?.supplier_code, supplier?.company_name, "-");
+    }
+    return String(supplier?.supplier_code || "").trim() || "-";
   }
 
   function gradeOptions(selectedValue = "") {

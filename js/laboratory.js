@@ -209,7 +209,9 @@
     technicianWorkRows.innerHTML = filtered.map((row) => {
       const qcParts = initialNames(row.initial_parts);
       const qcServices = initialServiceNames(row);
-      const supplier = row.supplier_code || row.supplier_name || "—";
+      const supplier = typeof window.GREENLOOP_PARTNER_LABEL === "function"
+        ? window.GREENLOOP_PARTNER_LABEL(row.supplier_code, row.supplier_name, "—")
+        : (row.supplier_code || "—");
       const saveCell = isFrameMode
         ? `<button class="line-save frame" type="button" data-complete-frame="${escapeHtml(row.step_id)}">Complete Frame</button><small class="line-status">Returns to Final QC</small>`
         : actionCell(row);
@@ -241,7 +243,9 @@
       return;
     }
     technicianWorkRows.innerHTML = technicianRows.map((row) => {
-      const supplier = row.supplier_code || row.supplier_name || "—";
+      const supplier = typeof window.GREENLOOP_PARTNER_LABEL === "function"
+        ? window.GREENLOOP_PARTNER_LABEL(row.supplier_code, row.supplier_name, "—")
+        : (row.supplier_code || "—");
       return `<tr data-step-id="${escapeHtml(row.step_id)}">
         <td><strong class="line-imei">${escapeHtml(row.imei || "—")}</strong></td>
         <td>${escapeHtml(row.model || "—")}</td>

@@ -25,3 +25,4 @@
 .batch-summary .batch-plan-lines strong { white-space: normal; line-height: 1.45; }
 @media (max-width: 1120px) { .five-columns { grid-template-columns: repeat(3, minmax(0, 1fr)); } .batch-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 680px) { .five-columns { grid-template-columns: 1fr; } .stock-plan-actions { display: grid; } .stock-plan-actions .secondary-button { width: 100%; } .batch-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } .imei-scan-heading { flex-wrap: wrap; } }
+.auto-save-control{display:inline-flex;align-items:center;gap:8px;margin-left:auto;padding:8px 12px;border:1px solid #b9dbc9;border-radius:12px;background:#f2fbf6;color:#075b43;font-weight:700;white-space:nowrap}.auto-save-control input{width:18px;height:18px;accent-color:#087b59}.auto-save-control strong{min-width:28px;font-size:12px}.device-reader-status{margin-right:auto;color:#60756d;font-size:13px}.imei-scan-heading{align-items:center}

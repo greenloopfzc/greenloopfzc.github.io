@@ -350,6 +350,14 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     }
 
     const accessByPage = new Map(accessRows.map((row) => [row.page_key, row.access_level || "view"]));
+    const { data: partnerNameAccess, error: partnerNameError } = await client.rpc("get_my_partner_name_access");
+    window.GREENLOOP_CAN_VIEW_PARTNER_NAMES = !partnerNameError && Boolean(partnerNameAccess);
+    window.GREENLOOP_PARTNER_LABEL = (code, name, fallback = "-") => {
+      const safeCode = String(code || "").trim();
+      const safeName = String(name || "").trim();
+      if (window.GREENLOOP_CAN_VIEW_PARTNER_NAMES && safeName) return [safeCode, safeName].filter(Boolean).join(" - ");
+      return safeCode || fallback;
+    };
     const allowedPages = new Set(accessByPage.keys());
     if (navigation) {
       navigation.querySelectorAll("a.nav-item").forEach((link) => {

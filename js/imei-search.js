@@ -42,7 +42,14 @@
   }
 
   function supplierLabel(code, name) {
-    return String(code || "").trim() || String(name || "").trim() || "Not recorded";
+    if (typeof window.GREENLOOP_PARTNER_LABEL === "function") {
+      return window.GREENLOOP_PARTNER_LABEL(code, name, "Not recorded");
+    }
+    return String(code || "").trim() || "Not recorded";
+  }
+
+  function customerLabel(name) {
+    return window.GREENLOOP_CAN_VIEW_PARTNER_NAMES ? String(name || "").trim() || "Customer" : "Confidential customer";
   }
 
   function dateTime(value) {
@@ -89,7 +96,7 @@
         <div class="job-topline"><span>${escapeHtml(job.job_number)}</span><span class="job-cost">${money(job.total_cost)}</span></div>
         <div class="job-meta">${escapeHtml(job.job_type)} · ${escapeHtml(job.status)} · Received ${escapeHtml(dateTime(job.received_at))}</div>
         <div class="job-meta">Purchase: ${money(job.purchase_cost)} · Parts installed: ${money(job.parts_cost)} · Laboratory materials: ${money(job.laboratory_material_cost)} · Glass materials: ${money(job.glass_material_cost)}</div>
-        <div class="job-meta">${escapeHtml(job.customer ? `Customer: ${job.customer}` : `Supplier: ${supplierLabel(job.supplier_code, job.supplier)}`)}</div>
+        <div class="job-meta">${escapeHtml(job.customer ? `Customer: ${customerLabel(job.customer)}` : `Supplier: ${supplierLabel(job.supplier_code, job.supplier)}`)}</div>
       </article>`).join("");
   }
 

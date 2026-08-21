@@ -47,7 +47,12 @@
     const { data, error } = await api().from("suppliers").select("id, supplier_code, company_name").eq("is_active", true).is("deleted_at", null).order("supplier_code");
     if (error) throw error;
     supplier.replaceChildren(new Option("Select supplier code", ""));
-    (data || []).forEach((item) => supplier.add(new Option(item.supplier_code || item.company_name, item.id)));
+    (data || []).forEach((item) => {
+      const label = typeof window.GREENLOOP_PARTNER_LABEL === "function"
+        ? window.GREENLOOP_PARTNER_LABEL(item.supplier_code, item.company_name)
+        : (item.supplier_code || "Supplier");
+      supplier.add(new Option(label, item.id));
+    });
     if ([...supplier.options].some((option) => option.value === selectedId)) supplier.value = selectedId;
   }
 

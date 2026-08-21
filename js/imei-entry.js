@@ -18,6 +18,9 @@
   const sidebar = document.querySelector("#sidebar");
   const backdrop = document.querySelector("#menu-backdrop");
   const toast = document.querySelector("#toast");
+  const autoSaveToggle = document.querySelector("#auto-save-toggle");
+  const autoSaveState = document.querySelector("#auto-save-state");
+  const readerStatus = document.querySelector("#device-reader-status");
   const requestedBatchId = new URLSearchParams(window.location.search).get("batch");
   let client;
   let toastTimer;
@@ -39,7 +42,25 @@
   function setMessage(value = "", type = "error") { message.textContent = value; message.classList.toggle("is-visible", Boolean(value)); message.classList.toggle("is-success", type === "success"); }
   function setBusy(button, busy, label) { if (busy) button.dataset.label = button.textContent; button.disabled = busy; button.textContent = busy ? label : (button.dataset.label || button.textContent); }
   function escapeHtml(value) { return String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]); }
-  function supplierLabel(batch) { return String(batch?.supplier_code || batch?.supplier_name || "").trim() || "No supplier"; }
+  function supplierLabel(batch) {
+    const code = String(batch?.supplier_code || "").trim();
+    const name = String(batch?.supplier_name || "").trim();
+    return (window.GREENLOOP_CAN_VIEW_PARTNER_NAMES && name ? [code, name].filter(Boolean).join(" - ") : code) || "No supplier";
+  }
+
+  function autoSaveEnabled() { return localStorage.getItem("greenloop-imei-auto-save") === "on"; }
+  function syncAutoSaveControl() {
+    const enabled = autoSaveEnabled();
+    if (autoSaveToggle) autoSaveToggle.checked = enabled;
+    if (autoSaveState) autoSaveState.textContent = enabled ? "ON" : "OFF";
+  }
+  function ensureSelectValue(select, value) {
+    const text = String(value ?? "").trim();
+    if (!text) return;
+    if (![...select.options].some((option) => option.value.toLocaleLowerCase() === text.toLocaleLowerCase())) select.add(new Option(text, text));
+    const match = [...select.options].find((option) => option.value.toLocaleLowerCase() === text.toLocaleLowerCase());
+    if (match) select.value = match.value;
+  }
 
   const masterFields = [
     ["model", model, "Select model"],
@@ -154,6 +175,24 @@
       model.value = batch.planned_label;
     }
     imei.focus();
+    if (window.GREENLOOP_LAST_DEVICE) applyConnectedDevice(window.GREENLOOP_LAST_DEVICE);
+  }
+
+  function applyConnectedDevice(device = {}) {
+    if (!batchSelect.value) {
+      if (readerStatus) readerStatus.textContent = "Phone detected — select a stock batch";
+      return;
+    }
+    imei.value = String(device.imei || "").replace(/\D/g, "").slice(0, 15);
+    ensureSelectValue(model, device.model);
+    ensureSelectValue(storage, device.storageGb);
+    ensureSelectValue(color, device.color);
+    if (device.batteryHealth !== "" && Number.isFinite(Number(device.batteryHealth))) {
+      battery.value = Number(device.batteryHealth);
+    }
+    if (readerStatus) readerStatus.textContent = "Connected phone loaded";
+    setMessage("Connected phone data loaded. Review it, then save.", "success");
+    if (autoSaveEnabled()) scheduleAutoSave();
   }
 
   function canAutoSave() {
@@ -167,6 +206,7 @@
 
   function scheduleAutoSave() {
     window.clearTimeout(autoSaveTimer);
+    if (!autoSaveEnabled()) return;
     if (!canAutoSave() || battery.value.length < 2) return;
     autoSaveTimer = window.setTimeout(() => saveImei(null, true), 650);
   }
@@ -223,6 +263,7 @@
     if (masterResult.status === "rejected") {
       setMessage(`Stock batches loaded, but dropdown options could not load: ${masterResult.reason?.message || "Unknown error"}`);
     }
+    syncAutoSaveControl();
   }
 
   document.querySelector("#open-menu").addEventListener("click", () => setMenu(true));
@@ -231,17 +272,25 @@
   batchSelect.addEventListener("change", updateBatchView);
   imei.addEventListener("input", () => { imei.value = imei.value.replace(/\D/g, ""); });
   battery.addEventListener("input", scheduleAutoSave);
-  battery.addEventListener("change", () => saveImei(null, true));
-  battery.addEventListener("blur", () => saveImei(null, true));
+  battery.addEventListener("change", scheduleAutoSave);
+  battery.addEventListener("blur", scheduleAutoSave);
   battery.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
       event.preventDefault();
-      saveImei(null, true);
+      saveImei(null, false);
     }
   });
   document.querySelectorAll(".master-add").forEach((button) => button.addEventListener("click", () => addOption(button)));
   document.querySelectorAll(".master-remove").forEach((button) => button.addEventListener("click", () => removeOption(button)));
   form.addEventListener("submit", saveImei);
+  autoSaveToggle?.addEventListener("change", () => {
+    localStorage.setItem("greenloop-imei-auto-save", autoSaveToggle.checked ? "on" : "off");
+    syncAutoSaveControl();
+    if (autoSaveToggle.checked) scheduleAutoSave();
+  });
+  window.addEventListener("greenloop:device", (event) => {
+    applyConnectedDevice(event.detail || {});
+  });
   initialize().catch((error) => {
     batchSelect.disabled = false;
     if (batchSelect.options[0]?.textContent === "Loading stock batches...") {

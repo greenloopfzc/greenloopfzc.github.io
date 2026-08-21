@@ -19,6 +19,23 @@
     weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "Asia/Dubai"
   }).format(new Date());
 
+  function getDubaiHour() {
+    const hourPart = new Intl.DateTimeFormat("en-US", {
+      hour: "2-digit",
+      hourCycle: "h23",
+      timeZone: "Asia/Dubai"
+    }).formatToParts(new Date()).find((part) => part.type === "hour");
+    return Number(hourPart?.value || 0);
+  }
+
+  function updateDashboardGreeting(name = "Admin") {
+    const hour = getDubaiHour();
+    const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : hour < 22 ? "Good evening" : "Good night";
+    dashboardTitle.textContent = `${greeting}, ${name || "Admin"}.`;
+  }
+
+  updateDashboardGreeting();
+
   function getClient() {
     return (client ||= window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey));
   }
@@ -225,10 +242,20 @@
     const { data: profile } = await getClient().from("user_profiles").select("full_name").eq("id", sessionData.session.user.id).maybeSingle();
     if (profile?.full_name) {
       const firstName = profile.full_name.trim().split(/\s+/)[0];
-      if (firstName) dashboardTitle.textContent = `Good morning, ${firstName}.`;
+      updateDashboardGreeting(firstName || "Admin");
+    } else {
+      updateDashboardGreeting();
     }
     await loadLiveDashboard();
   }
+
+  window.setInterval(() => {
+    const currentName = dashboardTitle.textContent
+      .replace(/good\s+(morning|afternoon|evening|night)\s*,?\s*/i, "")
+      .replace(/\.$/, "")
+      .trim() || "Admin";
+    updateDashboardGreeting(currentName);
+  }, 60000);
 
   protectDashboard().catch((error) => showToast(error.message || "Live dashboard data could not be loaded."));
 })();
