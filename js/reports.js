@@ -31,7 +31,7 @@
     stock_received: {
       title: "Stock received",
       description: "Every incoming IMEI received during the selected date range.",
-      columns: [["Received", "received_at", "date"], ["IMEI", "imei"], ["Model", "model"], ["Memory", "memory"], ["Color", "color"], ["Battery", "battery", "percent"], ["Source", "source"], ["Job", "job_number"]]
+      columns: [["Received", "received_at", "date"], ["IMEI", "imei"], ["Serial number", "serial_number"], ["Region", "specification_region"], ["Model", "model"], ["Memory", "memory"], ["Color", "color"], ["Battery", "battery", "percent"], ["Source", "source"], ["Job", "job_number"]]
     },
     supplier_progress: {
       title: "Supplier stock progress",
@@ -41,12 +41,12 @@
     work_in_progress: {
       title: "Work in progress",
       description: "All active devices currently moving through the Greenloop workflow.",
-      columns: [["IMEI", "imei"], ["Model", "model"], ["Job", "job_number"], ["Current status", "status", "status"], ["Location", "location"], ["Received", "received_at", "date"], ["Days open", "days_open"]]
+      columns: [["IMEI", "imei"], ["Serial number", "serial_number"], ["Region", "specification_region"], ["Model", "model"], ["Job", "job_number"], ["Current status", "status", "status"], ["Location", "location"], ["Received", "received_at", "date"], ["Days open", "days_open"]]
     },
     parts_requests: {
       title: "Parts required and usage",
       description: "Requested, issued, installed, and returned parts during the selected date range.",
-      columns: [["Requested", "requested_at", "date"], ["IMEI", "imei"], ["Job", "job_number"], ["Part", "part_name"], ["Required", "requested"], ["Issued", "issued"], ["Installed", "installed"], ["Returned", "returned"], ["Status", "status", "status"], ["Request source", "source"]]
+      columns: [["Requested", "requested_at", "date"], ["IMEI", "imei"], ["Serial number", "serial_number"], ["Region", "specification_region"], ["Job", "job_number"], ["Part", "part_name"], ["Required", "requested"], ["Issued", "issued"], ["Installed", "installed"], ["Returned", "returned"], ["Status", "status", "status"], ["Request source", "source"]]
     },
     parts_inventory: {
       title: "Parts inventory",
@@ -61,12 +61,12 @@
     final_qc: {
       title: "Final QC results",
       description: "Pass and fail results, QC attempts, and failure reasons for the selected date range.",
-      columns: [["Inspected", "inspected_at", "date"], ["IMEI", "imei"], ["Model", "model"], ["Job", "job_number"], ["Attempt", "attempt"], ["Result", "result", "status"], ["Return department", "failure_department"], ["Failure reason", "failure_reason"]]
+      columns: [["Inspected", "inspected_at", "date"], ["IMEI", "imei"], ["Serial number", "serial_number"], ["Region", "specification_region"], ["Model", "model"], ["Job", "job_number"], ["Attempt", "attempt"], ["Result", "result", "status"], ["Return department", "failure_department"], ["Failure reason", "failure_reason"]]
     },
     costs: {
       title: "Device cost",
       description: "Purchase, installed parts, laboratory, glass, and total recorded cost by IMEI.",
-      columns: [["IMEI", "imei"], ["Model", "model"], ["Job", "job_number"], ["Purchase", "purchase_cost", "money"], ["Parts", "parts_cost", "money"], ["Laboratory", "laboratory_cost", "money"], ["Glass", "glass_cost", "money"], ["Total cost", "total_cost", "money"]]
+      columns: [["IMEI", "imei"], ["Serial number", "serial_number"], ["Region", "specification_region"], ["Model", "model"], ["Job", "job_number"], ["Purchase", "purchase_cost", "money"], ["Parts", "parts_cost", "money"], ["Laboratory", "laboratory_cost", "money"], ["Glass", "glass_cost", "money"], ["Total cost", "total_cost", "money"]]
     },
     export_boxes: {
       title: "Export boxes",
@@ -86,22 +86,46 @@
     rma: {
       title: "RMA report",
       description: "RMA devices received during the selected date range and their current workflow position.",
-      columns: [["Received", "received_at", "date"], ["IMEI", "imei"], ["Model", "model"], ["Customer", "customer"], ["Job", "job_number"], ["Status", "status", "status"]]
+      columns: [["Received", "received_at", "date"], ["IMEI", "imei"], ["Serial number", "serial_number"], ["Region", "specification_region"], ["Model", "model"], ["Customer", "customer"], ["Job", "job_number"], ["Status", "status", "status"]]
     },
     retail_shop: {
       title: "Retail Shop report",
       description: "Devices received from, or currently held in, Retail Shop stock.",
-      columns: [["IMEI", "imei"], ["Model", "model"], ["Memory", "memory"], ["Grade", "grade"], ["Job", "job_number"], ["Source", "source"], ["Status", "status", "status"], ["Location", "location"]]
+      columns: [["IMEI", "imei"], ["Serial number", "serial_number"], ["Region", "specification_region"], ["Model", "model"], ["Memory", "memory"], ["Grade", "grade"], ["Job", "job_number"], ["Source", "source"], ["Status", "status", "status"], ["Location", "location"]]
     },
     production: {
       title: "Production report",
       description: "Today's Production is shown above. This table contains every production record in the selected date range.",
-      columns: [["IMEI", "imei"], ["Model", "model"], ["Memory", "memory"], ["Grade", "grade"], ["Job", "job_number"], ["Status", "status", "status"], ["Started", "started_at", "date"], ["Completed", "completed_at", "date"]]
+      columns: [["IMEI", "imei"], ["Serial number", "serial_number"], ["Region", "specification_region"], ["Model", "model"], ["Memory", "memory"], ["Grade", "grade"], ["Job", "job_number"], ["Status", "status", "status"], ["Started", "started_at", "date"], ["Completed", "completed_at", "date"]]
     }
   };
 
   function getClient() { if (!client) client = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey); return client; }
   function escapeHtml(value) { return String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]); }
+  async function addDeviceIdentityToReports() {
+    const imeis = [...new Set(Object.values(reportData)
+      .flatMap((section) => Array.isArray(section) ? section : [])
+      .map((row) => String(row?.imei || "").trim())
+      .filter(Boolean))];
+    if (!imeis.length) return;
+    const identityByImei = new Map();
+    for (let start = 0; start < imeis.length; start += 200) {
+      const { data, error } = await getClient().from("devices")
+        .select("imei_1, serial_number, specification_region")
+        .in("imei_1", imeis.slice(start, start + 200));
+      if (error) return;
+      (data || []).forEach((device) => identityByImei.set(String(device.imei_1 || ""), device));
+    }
+    Object.values(reportData).forEach((section) => {
+      if (!Array.isArray(section)) return;
+      section.forEach((row) => {
+        const identity = identityByImei.get(String(row?.imei || ""));
+        if (!identity) return;
+        row.serial_number = identity.serial_number || row.serial_number || "";
+        row.specification_region = identity.specification_region || row.specification_region || "";
+      });
+    });
+  }
   function setMenu(isOpen) { sidebar.classList.toggle("is-open", isOpen); backdrop.hidden = !isOpen; document.body.classList.toggle("menu-open", isOpen); }
   function setMessage(text = "", type = "error") { message.textContent = text; message.classList.toggle("is-visible", Boolean(text)); message.classList.toggle("is-success", type === "success"); }
   function localDate(value) { const date = new Date(value); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
@@ -278,13 +302,13 @@
       const filter = exportBoxImeiFilter.trim().toLowerCase();
       const rows = selected.rows.filter((row) => !filter || String(row.imei || "").toLowerCase().includes(filter));
       const body = rows.length
-        ? rows.map((row) => `<tr><td>${escapeHtml(row.serial_no)}</td><td>${escapeHtml(row.imei)}</td><td>${formatCell(row.model)}</td><td>${formatCell(row.memory)}</td><td>${formatCell(row.final_grade)}</td><td>${formatCell(row.color)}</td><td>${formatCell(row.scanned_at, "date")}</td></tr>`).join("")
-        : '<tr><td class="report-empty" colspan="7">No IMEI in this box matches your search.</td></tr>';
+        ? rows.map((row) => `<tr><td>${escapeHtml(row.serial_no)}</td><td>${escapeHtml(row.imei)}</td><td>${formatCell(row.serial_number)}</td><td>${formatCell(row.specification_region)}</td><td>${formatCell(row.model)}</td><td>${formatCell(row.memory)}</td><td>${formatCell(row.final_grade)}</td><td>${formatCell(row.color)}</td><td>${formatCell(row.scanned_at, "date")}</td></tr>`).join("")
+        : '<tr><td class="report-empty" colspan="9">No IMEI in this box matches your search.</td></tr>';
       detail = `
         <section class="export-box-detail">
           <div class="export-box-detail-heading"><div><p class="panel-kicker">Selected export box</p><h3>${escapeHtml(selected.boxNumber)}</h3></div><div class="export-box-detail-actions"><span>${selected.rows.length} phone${selected.rows.length === 1 ? "" : "s"}</span><button class="report-delete-box" type="button" data-delete-export-box="${escapeHtml(selected.boxNumber)}">Delete box</button></div></div>
           <label class="export-box-imei-search" for="export-box-imei-filter">Search IMEI in this box<input id="export-box-imei-filter" type="search" autocomplete="off" value="${escapeHtml(exportBoxImeiFilter)}" placeholder="Type or scan an IMEI"></label>
-          <div class="report-table-wrap"><table class="report-table export-box-lines"><thead><tr><th>S.No</th><th>IMEI</th><th>Model</th><th>GB</th><th>Grade</th><th>Color</th><th>Scanned</th></tr></thead><tbody>${body}</tbody></table></div>
+          <div class="report-table-wrap"><table class="report-table export-box-lines"><thead><tr><th>S.No</th><th>IMEI</th><th>Serial number</th><th>Region</th><th>Model</th><th>GB</th><th>Grade</th><th>Color</th><th>Scanned</th></tr></thead><tbody>${body}</tbody></table></div>
         </section>`;
     }
 
@@ -589,6 +613,7 @@
     } else {
       reportData.data_changes = [];
     }
+    await addDeviceIdentityToReports();
     selectedExportBox = "";
     exportBoxImeiFilter = "";
     selectedSupplier = "all";

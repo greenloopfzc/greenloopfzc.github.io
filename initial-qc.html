@@ -14,7 +14,7 @@
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script defer src="js/config.js?v=20260821-privacy-delete-1"></script>
     <script defer src="js/part-notifications.js?v=20260813-1"></script>
-    <script defer src="js/initial-qc.js?v=20260821-supplier-receipt-label-1"></script>
+    <script defer src="js/initial-qc.js?v=20260821-device-identity-1"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -56,7 +56,7 @@
                 <div id="qc-top-scroll" class="qc-top-scroll" aria-label="Horizontal table scroll"><div id="qc-top-scroll-track"></div></div>
                 <div id="qc-bulk-scroll" class="qc-bulk-scroll">
                   <table class="qc-bulk-table">
-                    <thead><tr><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>BH</th><th>Supplier code</th><th>Supplier grade</th><th>GC grade</th><th>Parts needed</th><th>Service needed</th><th>Assign technician</th><th>Save</th></tr></thead>
+                    <thead><tr><th>IMEI</th><th>Serial number</th><th>Region</th><th>Model</th><th>GB</th><th>Color</th><th>BH</th><th>Supplier code</th><th>Supplier grade</th><th>GC grade</th><th>Parts needed</th><th>Service needed</th><th>Assign technician</th><th>Save</th></tr></thead>
                     <tbody id="qc-bulk-body"></tbody>
                   </table>
                 </div>
@@ -72,7 +72,7 @@
       <section class="qc-pending-dialog" role="dialog" aria-modal="true" aria-labelledby="pending-title">
         <header><div><p class="panel-kicker">Initial QC queue</p><h2 id="pending-title">Phones waiting for Initial QC</h2></div><button type="button" class="icon-button" data-close-pending aria-label="Close pending phones">&times;</button></header>
         <label class="qc-pending-search">Search pending IMEI or supplier<input id="pending-search" type="search" autocomplete="off" placeholder="Type IMEI, supplier code, or model"></label>
-        <div class="qc-pending-table-wrap"><table class="qc-pending-table"><thead><tr><th>#</th><th>IMEI</th><th>Supplier code</th><th>Model</th><th>GB</th><th>Color</th></tr></thead><tbody id="pending-list-body"></tbody></table></div>
+        <div class="qc-pending-table-wrap"><table class="qc-pending-table"><thead><tr><th>#</th><th>IMEI</th><th>Serial number</th><th>Region</th><th>Supplier code</th><th>Model</th><th>GB</th><th>Color</th></tr></thead><tbody id="pending-list-body"></tbody></table></div>
       </section>
     </div>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>

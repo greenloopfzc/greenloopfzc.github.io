@@ -64,6 +64,8 @@
     const supplier = getSupplier(selectedJob) || {};
     const row = [
       device.imei_1 || "—",
+      device.serial_number || "—",
+      device.specification_region || "—",
       supplierLabel(supplier, getBatch(selectedJob)),
       [device.brand, device.model].filter(Boolean).join(" ") || "—",
       device.storage_gb ? `${device.storage_gb} GB` : "—",
@@ -80,7 +82,7 @@
     const selectedId = jobSelect.value;
     const { data, error } = await getClient()
       .from("jobs")
-      .select("id, job_number, supplier:suppliers(supplier_code, company_name), receiving_batch:receiving_batches(planned_quantity), device:devices(imei_1, brand, model, storage_gb, original_grade)")
+      .select("id, job_number, supplier:suppliers(supplier_code, company_name), receiving_batch:receiving_batches(planned_quantity), device:devices(imei_1, serial_number, specification_region, brand, model, storage_gb, original_grade)")
       .eq("current_status", "production_pending")
       .is("deleted_at", null)
       .order("received_at", { ascending: true });

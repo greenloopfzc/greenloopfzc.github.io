@@ -68,7 +68,7 @@
     technicianLinesTitle.textContent = "Phones waiting for Frame completion";
     technicianLinesHelp.textContent = "Select Pass or Fail. A Frame Pass requires Final Grade and sends the phone directly to Production.";
     refreshFrameButton.hidden = false;
-    linesHead.innerHTML = "<th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>BH</th><th>Supplier code</th><th>Supplier grade</th><th>Initial grade</th><th>Final grade</th><th>Pass</th><th>Fail</th><th>Save</th>";
+    linesHead.innerHTML = "<th>IMEI</th><th>Serial number</th><th>Region</th><th>Model</th><th>GB</th><th>Color</th><th>BH</th><th>Supplier code</th><th>Supplier grade</th><th>Initial grade</th><th>Final grade</th><th>Pass</th><th>Fail</th><th>Save</th>";
     document.querySelector("#workflow-rule-text").textContent = "Frame Department decides the Final Grade. Frame Pass sends the phone directly to Production. Frame Fail keeps it pending in Frame and adds to the permanent failure report.";
   }
 
@@ -222,6 +222,8 @@
       }
       const staticLine = [
         labelledStatic("IMEI", `<strong class="line-imei">${escapeHtml(row.imei || "—")}</strong>`, "imei"),
+        labelledStatic("Serial number", escapeHtml(row.serial_number || "—")),
+        labelledStatic("Region", escapeHtml(row.specification_region || "—")),
         labelledStatic("Model", escapeHtml(row.model || "—")),
         labelledStatic("GB", escapeHtml(row.storage_gb == null ? "—" : `${row.storage_gb} GB`)),
         labelledStatic("Color", escapeHtml(row.color || "—")),
@@ -250,6 +252,8 @@
         : (row.supplier_code || "—");
       return `<tr data-step-id="${escapeHtml(row.step_id)}">
         <td><strong class="line-imei">${escapeHtml(row.imei || "—")}</strong></td>
+        <td>${escapeHtml(row.serial_number || "—")}</td>
+        <td>${escapeHtml(row.specification_region || "—")}</td>
         <td>${escapeHtml(row.model || "—")}</td>
         <td>${escapeHtml(row.storage_gb == null ? "—" : `${row.storage_gb} GB`)}</td>
         <td>${escapeHtml(row.color || "—")}</td>
@@ -304,13 +308,17 @@
     const rows = rowResponse.data || [];
     const jobIds = [...new Set(rows.map((row) => row.job_id).filter(Boolean))];
     const { data: batchJobs } = jobIds.length
-      ? await getClient().from("jobs").select("id, receiving_batch:receiving_batches(planned_quantity)").in("id", jobIds)
+      ? await getClient().from("jobs").select("id, receiving_batch:receiving_batches(planned_quantity), device:devices(serial_number, specification_region)").in("id", jobIds)
       : { data: [] };
     const quantityByJob = new Map((batchJobs || []).map((job) => {
       const batch = Array.isArray(job.receiving_batch) ? job.receiving_batch[0] : job.receiving_batch;
       return [String(job.id), batch?.planned_quantity];
     }));
-    technicianRows = rows.map((row) => ({ ...row, planned_quantity: quantityByJob.get(String(row.job_id)), pending_part_returns: pendingByStep.get(String(row.step_id)) || [] }));
+    const identityByJob = new Map((batchJobs || []).map((job) => {
+      const device = Array.isArray(job.device) ? job.device[0] : job.device;
+      return [String(job.id), device || {}];
+    }));
+    technicianRows = rows.map((row) => ({ ...row, planned_quantity: quantityByJob.get(String(row.job_id)), ...identityByJob.get(String(row.job_id)), pending_part_returns: pendingByStep.get(String(row.step_id)) || [] }));
     renderTechnicianLines();
   }
   async function loadFrameRows() {
@@ -320,13 +328,17 @@
     const rows = data || [];
     const jobIds = [...new Set(rows.map((row) => row.job_id).filter(Boolean))];
     const { data: batchJobs } = jobIds.length
-      ? await getClient().from("jobs").select("id, receiving_batch:receiving_batches(planned_quantity)").in("id", jobIds)
+      ? await getClient().from("jobs").select("id, receiving_batch:receiving_batches(planned_quantity), device:devices(serial_number, specification_region)").in("id", jobIds)
       : { data: [] };
     const quantityByJob = new Map((batchJobs || []).map((job) => {
       const batch = Array.isArray(job.receiving_batch) ? job.receiving_batch[0] : job.receiving_batch;
       return [String(job.id), batch?.planned_quantity];
     }));
-    technicianRows = rows.map((row) => ({ ...row, planned_quantity: quantityByJob.get(String(row.job_id)) }));
+    const identityByJob = new Map((batchJobs || []).map((job) => {
+      const device = Array.isArray(job.device) ? job.device[0] : job.device;
+      return [String(job.id), device || {}];
+    }));
+    technicianRows = rows.map((row) => ({ ...row, planned_quantity: quantityByJob.get(String(row.job_id)), ...identityByJob.get(String(row.job_id)) }));
     renderFrameLines();
     await loadFrameReport();
   }

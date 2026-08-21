@@ -91,15 +91,22 @@
     sheetTotal.textContent = `${count} phone${count === 1 ? "" : "s"}`;
 
     tableBody.innerHTML = lines.length
-      ? lines.map((line) => `<tr><td>${escapeHtml(line.serial_no)}</td><td>${escapeHtml(line.imei)}</td><td>${escapeHtml(line.model || "-")}</td><td>${escapeHtml(line.storage_gb ? `${line.storage_gb} GB` : "-")}</td><td>${escapeHtml(line.final_grade || "-")}</td><td>${escapeHtml(line.color || "-")}</td><td>${escapeHtml(line.box_number || currentBox.box_number)}</td></tr>`).join("")
-      : '<tr><td class="export-sheet-empty" colspan="7">Scan the first Ready Stock IMEI to add it to this box.</td></tr>';
+      ? lines.map((line) => `<tr><td>${escapeHtml(line.serial_no)}</td><td>${escapeHtml(line.imei)}</td><td>${escapeHtml(line.serial_number || "-")}</td><td>${escapeHtml(line.specification_region || "-")}</td><td>${escapeHtml(line.model || "-")}</td><td>${escapeHtml(line.storage_gb ? `${line.storage_gb} GB` : "-")}</td><td>${escapeHtml(line.final_grade || "-")}</td><td>${escapeHtml(line.color || "-")}</td><td>${escapeHtml(line.box_number || currentBox.box_number)}</td></tr>`).join("")
+      : '<tr><td class="export-sheet-empty" colspan="9">Scan the first Ready Stock IMEI to add it to this box.</td></tr>';
   }
 
   async function loadLines() {
     if (!currentBox?.box_id) return;
     const { data, error } = await getClient().rpc("get_export_box_lines", { p_box_id: currentBox.box_id });
     if (error) throw error;
-    lines = Array.isArray(data) ? data : [];
+    const reportLines = Array.isArray(data) ? data : [];
+    const imeis = [...new Set(reportLines.map((line) => String(line?.imei || "").trim()).filter(Boolean))];
+    if (!imeis.length) { lines = reportLines; render(); return; }
+    const { data: devices } = await getClient().from("devices")
+      .select("imei_1, serial_number, specification_region")
+      .in("imei_1", imeis);
+    const identityByImei = new Map((devices || []).map((device) => [String(device.imei_1 || ""), device]));
+    lines = reportLines.map((line) => ({ ...line, ...(identityByImei.get(String(line.imei || "")) || {}) }));
     render();
   }
 

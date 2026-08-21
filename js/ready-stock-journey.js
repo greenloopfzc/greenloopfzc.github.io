@@ -47,14 +47,25 @@
     return safeCode && Number(quantity) > 0 ? `${safeCode}-(${quantity})` : (safeCode || "—");
   }
 
+  async function addDeviceIdentity(rows) {
+    const imeis = [...new Set(rows.map((row) => String(row?.imei || "").trim()).filter(Boolean))];
+    if (!imeis.length) return rows;
+    const { data, error } = await getClient().from("devices")
+      .select("imei_1, serial_number, specification_region")
+      .in("imei_1", imeis);
+    if (error) return rows;
+    const identityByImei = new Map((data || []).map((device) => [String(device.imei_1 || ""), device]));
+    return rows.map((row) => ({ ...row, ...(identityByImei.get(String(row.imei || "")) || {}) }));
+  }
+
   function render(rows) {
     total.textContent = String(rows.length);
     rangeLabel.textContent = rangeFrom.value && rangeTo.value
       ? `Final QC passed from ${rangeFrom.value} to ${rangeTo.value}. Latest pass appears first.`
       : "All current Ready Stock devices. Latest Final QC pass appears first.";
     body.innerHTML = rows.length
-      ? rows.map((row) => `<tr><td>${escapeHtml(formatDateTime(row.stock_received_at))}</td><td>${escapeHtml(supplierLabel(row.supplier_code, row.stock_batch))}</td><td>${escapeHtml(row.stock_channel)}</td><td>${escapeHtml(row.stock_batch)}</td><td class="journey-imei">${escapeHtml(row.imei)}</td><td>${escapeHtml(row.model)}</td><td>${row.storage_gb ? `${escapeHtml(row.storage_gb)} GB` : "—"}</td><td>${escapeHtml(row.color)}</td><td>${escapeHtml(row.supplier_grade)}</td><td>${escapeHtml(row.company_initial_grade)}</td><td>${escapeHtml(row.company_final_qc_grade)}</td><td class="journey-parts">${escapeHtml(row.parts_used)}</td><td class="journey-money">${escapeHtml(formatMoney(row.parts_cost))}</td><td>${escapeHtml(row.work_done)}</td><td>${escapeHtml(row.worked_by)}</td><td>${escapeHtml(row.step_by_step)}</td><td>${escapeHtml(formatDateTime(row.final_qc_passed_at))}</td></tr>`).join("")
-      : '<tr><td class="journey-empty" colspan="17">No Final-QC-passed device is waiting in Ready Stock for this date range.</td></tr>';
+      ? rows.map((row) => `<tr><td>${escapeHtml(formatDateTime(row.stock_received_at))}</td><td>${escapeHtml(supplierLabel(row.supplier_code, row.stock_batch))}</td><td>${escapeHtml(row.stock_channel)}</td><td>${escapeHtml(row.stock_batch)}</td><td class="journey-imei">${escapeHtml(row.imei)}</td><td>${escapeHtml(row.serial_number || "—")}</td><td>${escapeHtml(row.specification_region || "—")}</td><td>${escapeHtml(row.model)}</td><td>${row.storage_gb ? `${escapeHtml(row.storage_gb)} GB` : "—"}</td><td>${escapeHtml(row.color)}</td><td>${escapeHtml(row.supplier_grade)}</td><td>${escapeHtml(row.company_initial_grade)}</td><td>${escapeHtml(row.company_final_qc_grade)}</td><td class="journey-parts">${escapeHtml(row.parts_used)}</td><td class="journey-money">${escapeHtml(formatMoney(row.parts_cost))}</td><td>${escapeHtml(row.work_done)}</td><td>${escapeHtml(row.worked_by)}</td><td>${escapeHtml(row.step_by_step)}</td><td>${escapeHtml(formatDateTime(row.final_qc_passed_at))}</td></tr>`).join("")
+      : '<tr><td class="journey-empty" colspan="19">No Final-QC-passed device is waiting in Ready Stock for this date range.</td></tr>';
   }
 
   async function loadJourney() {
@@ -80,7 +91,7 @@
     if (batchResponse.error) throw batchResponse.error;
     supplierNames = new Map((supplierResponse.data || []).map((supplier) => [supplier.supplier_code, supplier.company_name]));
     batchQuantities = new Map((batchResponse.data || []).map((batch) => [String(batch.batch_number || ""), batch.planned_quantity]));
-    render(Array.isArray(journeyResponse.data) ? journeyResponse.data : []);
+    render(await addDeviceIdentity(Array.isArray(journeyResponse.data) ? journeyResponse.data : []));
   }
 
   async function initialize() {
