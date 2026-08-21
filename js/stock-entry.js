@@ -41,8 +41,7 @@
   }
 
   function supplierCompanyLabel(record) {
-    if (typeof window.GREENLOOP_SUPPLIER_RECEIPT_LABEL === "function") return window.GREENLOOP_SUPPLIER_RECEIPT_LABEL(record.supplier_code, null, record.company_name, "Unnamed supplier");
-    return record.supplier_code || "Unnamed supplier";
+    return text(record.company_name) || record.supplier_code || "Unnamed supplier";
   }
 
   async function loadSuppliers(selectedId = supplier.value) {
@@ -130,7 +129,7 @@
 
     const batch = data?.[0];
     const receiptCode = supplierCodeDisplay.value || batch?.supplier_code || "Supplier receipt";
-    setMessage(`${receiptCode} saved with ${batch?.planned_quantity || receivedQuantity} devices. Opening IMEI Entry.`, "success");
+    setMessage(`${receiptCode} saved with ${batch?.planned_quantity || receivedQuantity} devices. Invoice ${batch?.invoice_number || "generated"}. Opening IMEI Entry.`, "success");
     window.setTimeout(() => window.location.assign(`imei-entry.html?batch=${encodeURIComponent(batch.batch_id)}`), 450);
   }
 
