@@ -102,6 +102,7 @@ body:not(.frame-mode) .technician-lines-table > tbody > tr > td { border-right: 
 .frame-mode .technician-lines-table th:nth-child(10){width:7%}
 .frame-mode .technician-lines-table th:nth-child(11){width:9%}
 .frame-supplier { color: #176b4d; font-weight: 750; line-height: 1.15; }
+.frame-final-grade { width: 100%; min-height: 31px; border: 1px solid #bdd8c8; border-radius: 6px; padding: 0 5px; color: #173d2c; background: #fff; font: inherit; font-size: .62rem; font-weight: 800; }
 .frame-pass-check { display: flex; align-items: center; justify-content: center; gap: 4px; min-height: 31px; border: 1px solid #bcd9c8; border-radius: 6px; color: #087451; background: #eff9f2; font-weight: 850; cursor: pointer; }
 .frame-pass-check input { width: 15px; height: 15px; accent-color: #087451; }
 .frame-fail-check { display: flex; align-items: center; justify-content: center; gap: 4px; min-height: 31px; border: 1px solid #edc3bd; border-radius: 6px; color: #b13026; background: #fff3f1; font-weight: 850; cursor: pointer; }

@@ -14,7 +14,7 @@
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script defer src="js/config.js?v=20260821-privacy-delete-1"></script>
     <script defer src="js/part-notifications.js?v=20260813-1"></script>
-    <script defer src="js/final-qc.js?v=20260821-supplier-receipt-label-1"></script>
+    <script defer src="js/final-qc.js?v=20260821-frame-final-grade-1"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -41,11 +41,11 @@
       <main class="app-main">
         <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Overview</a><span aria-hidden="true">/</span><strong>Final QC</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span><a class="topbar-profile" href="dashboard.html"><span class="user-avatar small">SA</span><span class="profile-name">System Admin</span></a></div></header>
         <div class="page-content final-bulk-content">
-          <section class="page-heading final-bulk-heading"><div><p class="eyebrow dashboard-eyebrow">Final QC</p><h1>Bulk final inspection</h1><p class="heading-subtitle">Scan all completed phones first, select their final grade and result, then save each row or complete the full tray.</p></div><a class="quiet-link" href="laboratory.html">&larr; Laboratory</a></section>
+          <section class="page-heading final-bulk-heading"><div><p class="eyebrow dashboard-eyebrow">Final QC</p><h1>Bulk final inspection</h1><p class="heading-subtitle">Direct Pass receives its final grade here. Frame phones receive their final grade in Frame Department.</p></div><a class="quiet-link" href="laboratory.html">&larr; Laboratory</a></section>
           <div id="permission-message" class="access-message" hidden></div>
           <section id="final-qc-app" class="final-bulk-app" hidden>
             <section class="final-bulk-toolbar">
-              <div><p class="panel-kicker">Final QC work tray</p><h2>Scan IMEIs, then tick the correct result</h2><p>Pass sends to Ready Stock. Frame can be selected by itself. Fail is exclusive and returns to Laboratory.</p></div>
+              <div><p class="panel-kicker">Final QC work tray</p><h2>Scan IMEIs, then tick the correct result</h2><p>Direct Pass requires Final Grade. Frame sends the phone without a grade; Frame Department decides its Final Grade. Fail returns to Laboratory.</p></div>
               <div class="final-bulk-toolbar-actions"><button id="queue-count" class="final-queue-count" type="button">0 waiting</button><button id="auto-pick-pending" class="secondary-button auto-pick-button" type="button">Auto pick all</button><span id="tray-count" class="final-tray-count">10 lines</span><button id="add-ten-rows" class="secondary-button" type="button">+ Add 10 lines</button><button id="clear-tray" class="secondary-button" type="button">Clear tray</button><button id="refresh-queue" class="secondary-button" type="button">Refresh</button></div>
             </section>
             <p id="final-qc-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
@@ -54,12 +54,12 @@
                 <div id="final-top-scroll" class="final-top-scroll" aria-label="Horizontal table scroll"><div id="final-top-scroll-track"></div></div>
                 <div id="final-table-scroll" class="final-table-scroll">
                   <table class="final-bulk-table">
-                    <thead><tr><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>Initial BH</th><th>Final BH</th><th>Supplier code</th><th>Supplier grade</th><th>Initial grade</th><th>Final grade</th><th>Pass</th><th>Frame</th><th>Fail</th><th>Save</th></tr></thead>
+                    <thead><tr><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>Initial BH</th><th>Final BH</th><th>Supplier code</th><th>Supplier grade</th><th>Initial grade</th><th>Final grade (direct pass)</th><th>Pass</th><th>Frame</th><th>Fail</th><th>Save</th></tr></thead>
                     <tbody id="final-bulk-body"></tbody>
                   </table>
                 </div>
               </section>
-              <div class="final-bulk-actions"><span>Tick Pass for Ready Stock, Frame for Frame work, or Fail to return the phone to Laboratory.</span><button id="complete-final-qc" class="primary-button receive-submit" type="submit">Complete scanned Final QC &rarr;</button></div>
+              <div class="final-bulk-actions"><span>Tick Pass for Production with Final Grade, Frame for Frame work without Final Grade, or Fail to return the phone to Laboratory.</span><button id="complete-final-qc" class="primary-button receive-submit" type="submit">Complete scanned Final QC &rarr;</button></div>
             </form>
           </section>
         </div>

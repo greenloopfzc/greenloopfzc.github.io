@@ -37,6 +37,7 @@
   let technicianRows = [];
   let activeTechnicianId = "";
   let partOptions = [...standardParts];
+  let frameGradeItems = [];
   const lineDrafts = new Map();
   let toastTimer;
 
@@ -57,7 +58,7 @@
     document.title = "Frame Department | Greenloop";
     document.querySelector("#breadcrumb-stage").textContent = "Frame Department";
     document.querySelector("#page-title").textContent = "Frame Department";
-    document.querySelector("#page-subtitle").textContent = "Phones selected as Pass + Frame in Final QC appear here as compact lines.";
+    document.querySelector("#page-subtitle").textContent = "Phones selected as Frame in Final QC appear here. Frame Department decides Final Grade before sending a Pass to Production.";
     document.querySelector(".lab-heading .quiet-link").href = "final-qc.html";
     document.querySelector(".lab-heading .quiet-link").textContent = "← Back to Final QC";
     technicianBoard.hidden = true;
@@ -65,10 +66,10 @@
     frameReportPanel.hidden = false;
     linesKicker.textContent = "Frame queue";
     technicianLinesTitle.textContent = "Phones waiting for Frame completion";
-    technicianLinesHelp.textContent = "Select exactly one result. Pass sends to Ready Stock; Fail stays in Frame and is recorded.";
+    technicianLinesHelp.textContent = "Select Pass or Fail. A Frame Pass requires Final Grade and sends the phone directly to Production.";
     refreshFrameButton.hidden = false;
     linesHead.innerHTML = "<th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>BH</th><th>Supplier code</th><th>Supplier grade</th><th>Initial grade</th><th>Final grade</th><th>Pass</th><th>Fail</th><th>Save</th>";
-    document.querySelector("#workflow-rule-text").textContent = "Frame Pass sends the phone directly to Ready Stock. Frame Fail keeps it pending in Frame and adds to the permanent failure report.";
+    document.querySelector("#workflow-rule-text").textContent = "Frame Department decides the Final Grade. Frame Pass sends the phone directly to Production. Frame Fail keeps it pending in Frame and adds to the permanent failure report.";
   }
 
   function renderTechnicianCards() {
@@ -87,6 +88,7 @@
   }
 
   function optionsMarkup(options, placeholder) { return `<option value="">${escapeHtml(placeholder)}</option>${options.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("")}`; }
+  function frameGradeMarkup() { return optionsMarkup(frameGradeItems.map((item) => item.option_value), "Select final grade"); }
   function initialNames(items, requiredOnly = false) { return unique(asList(items).filter((item) => !requiredOnly || item.lab_decision !== "not_required").map((item) => item.name)); }
   function isInitialQcService(name) { return initialQcServices.has(normalise(name)); }
   function isReturnedPartRequest(item, row) {
@@ -255,7 +257,7 @@
         <td class="frame-supplier">${escapeHtml(supplier)}</td>
         <td>${escapeHtml(row.supplier_grade || "—")}</td>
         <td>${escapeHtml(row.initial_grade || "—")}</td>
-        <td>${escapeHtml(row.final_grade || "—")}</td>
+        <td><select class="frame-final-grade" data-frame-final-grade aria-label="Final Grade">${frameGradeMarkup()}</select></td>
         <td><label class="frame-pass-check"><input type="checkbox" data-frame-result="pass"><span>Pass</span></label></td>
         <td><label class="frame-fail-check"><input type="checkbox" data-frame-result="fail"><span>Fail</span></label></td>
         <td><button class="line-save frame-ready" type="button" data-complete-frame="${escapeHtml(row.step_id)}" disabled>Save</button><small class="line-status">Select Pass or Fail</small></td>
@@ -279,6 +281,11 @@
   async function loadPartOptions() {
     const { data, error } = await getClient().rpc("get_entry_options", { p_option_group: "part_name" });
     if (!error && data?.length) partOptions = unique([...standardParts, ...data.map((item) => item.option_value)]);
+  }
+  async function loadFrameGrades() {
+    const { data, error } = await getClient().rpc("get_entry_options", { p_option_group: "grade" });
+    if (error) throw error;
+    frameGradeItems = data || [];
   }
   async function loadTechnicianRows() {
     setBoardMessage();
@@ -490,15 +497,22 @@
     const row = button.closest("tr");
     const result = row.querySelector("[data-frame-result]:checked")?.dataset.frameResult || "";
     if (!result) return;
+    const finalGrade = row.querySelector("[data-frame-final-grade]")?.value || "";
+    if (result === "pass" && !finalGrade) {
+      setBoardMessage("Select the Final Grade before passing this Frame phone to Production.");
+      row.querySelector("[data-frame-final-grade]")?.focus();
+      return;
+    }
     setSubmitting(button, true, "Saving...");
-    const { error } = await getClient().rpc("record_frame_department_result", {
+    const { error } = await getClient().rpc("record_frame_department_result_v2", {
       p_work_order_step_id: button.dataset.completeFrame,
       p_result: result,
+      p_final_grade: result === "pass" ? finalGrade : null,
       p_notes: result === "pass" ? "Frame work passed" : "Frame work failed; remains pending"
     });
     setSubmitting(button, false);
     if (error) { setBoardMessage(error.message); return; }
-    showToast(result === "pass" ? "Frame passed. Phone sent directly to Ready Stock." : "Frame failed. Phone remains in Frame and the failure was recorded.");
+    showToast(result === "pass" ? `Frame passed with grade ${finalGrade}. Phone sent directly to Production.` : "Frame failed. Phone remains in Frame and the failure was recorded.");
     document.dispatchEvent(new CustomEvent("greenloop:notifications-changed"));
     await refreshAll();
   }
@@ -513,6 +527,7 @@
     if (!allowed) { permissionMessage.textContent = "Your account does not have Laboratory permission."; permissionMessage.hidden = false; return; }
     app.hidden = false;
     if (!isFrameMode) await loadPartOptions();
+    else await loadFrameGrades();
     await refreshAll();
     if (!isFrameMode) {
       window.setInterval(() => {
@@ -581,7 +596,7 @@
     const status = row.querySelector(".line-status");
     const result = row.querySelector("[data-frame-result]:checked")?.dataset.frameResult || "";
     button.disabled = !result;
-    status.textContent = result === "pass" ? "Will move to Ready Stock" : result === "fail" ? "Will stay in Frame" : "Select Pass or Fail";
+    status.textContent = result === "pass" ? "Select Final Grade, then move to Production" : result === "fail" ? "Will stay in Frame" : "Select Pass or Fail";
   });
   initialize().catch((error) => { permissionMessage.textContent = error.message || "Laboratory could not be loaded."; permissionMessage.hidden = false; });
 })();

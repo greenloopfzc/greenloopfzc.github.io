@@ -109,20 +109,27 @@
     row.querySelector('[data-result="pass"]').checked = value === "pass";
     row.querySelector('[data-result="frame"]').checked = value === "frame";
     row.querySelector('[data-result="fail"]').checked = value === "fail";
+    syncFinalGradeRule(row);
+  }
+
+  function syncFinalGradeRule(row) {
+    const isFrame = resultValue(row) === "frame";
+    const gradeSelect = row.querySelector("[data-final-grade]");
+    if (isFrame && gradeSelect) gradeSelect.value = "";
+    row.querySelectorAll("[data-final-grade], [data-add-grade], [data-remove-grade]").forEach((control) => {
+      control.disabled = isFrame;
+      control.title = isFrame ? "Frame Department will decide the Final Grade" : control.dataset.originalTitle || control.title;
+    });
   }
 
   function applyResultRules(row, changedInput) {
     const pass = row.querySelector('[data-result="pass"]');
     const frame = row.querySelector('[data-result="frame"]');
     const fail = row.querySelector('[data-result="fail"]');
-    if (changedInput === fail && fail.checked) {
-      pass.checked = false;
-      frame.checked = false;
-    } else if (changedInput === frame && frame.checked) {
-      fail.checked = false;
-    } else if (changedInput === pass && pass.checked) {
-      fail.checked = false;
+    if (changedInput.checked) {
+      [pass, frame, fail].filter((input) => input !== changedInput).forEach((input) => { input.checked = false; });
     }
+    syncFinalGradeRule(row);
   }
 
   function rowMarkup() {
@@ -430,7 +437,7 @@
       setRowState(row, errorText, "is-error");
       return { ok: false, error: errorText };
     }
-    if ((result === "pass" || result === "frame") && !finalGrade) {
+    if (result === "pass" && !finalGrade) {
       const errorText = "Select the Final Grade before passing this phone.";
       row.classList.add("is-error");
       setRowState(row, errorText, "is-error");
@@ -459,7 +466,7 @@
     const rpcResponse = result === "frame"
       ? await getClient().rpc("route_final_qc_pass_to_frame_v2", {
         p_job_id: getJob(step).id,
-        p_final_grade: finalGrade,
+        p_final_grade: null,
         p_final_battery_health: finalBattery,
         p_notes: "Final QC routed to Frame for required work"
       })
@@ -490,7 +497,7 @@
     rowButton.textContent = "Saved";
     setRowState(row, result === "pass"
       ? `Passed · Attempt ${response?.attempt_number || "-"}`
-      : result === "frame" ? "Sent to Frame" : "Failed · Laboratory rework", "is-completed");
+      : result === "frame" ? "Sent to Frame · Grade pending" : "Failed · Laboratory rework", "is-completed");
     queueSteps = queueSteps.filter((candidate) => candidate.id !== step.id);
     queueCount.textContent = `${queueSteps.length} waiting`;
     return { ok: true, result };
