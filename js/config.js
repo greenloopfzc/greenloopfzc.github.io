@@ -351,7 +351,13 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
 
     const accessByPage = new Map(accessRows.map((row) => [row.page_key, row.access_level || "view"]));
     const { data: partnerNameAccess, error: partnerNameError } = await client.rpc("get_my_partner_name_access");
-    window.GREENLOOP_CAN_VIEW_PARTNER_NAMES = !partnerNameError && Boolean(partnerNameAccess);
+    let partnerNameValue = partnerNameAccess;
+    if (Array.isArray(partnerNameValue)) partnerNameValue = partnerNameValue[0];
+    if (partnerNameValue && typeof partnerNameValue === "object") {
+      partnerNameValue = partnerNameValue.can_view ?? partnerNameValue.allowed ?? Object.values(partnerNameValue)[0];
+    }
+    window.GREENLOOP_CAN_VIEW_PARTNER_NAMES = !partnerNameError
+      && (partnerNameValue === true || String(partnerNameValue ?? "").trim().toLowerCase() === "true");
     window.GREENLOOP_PARTNER_LABEL = (code, name, fallback = "-") => {
       const safeCode = String(code || "").trim();
       const safeName = String(name || "").trim();

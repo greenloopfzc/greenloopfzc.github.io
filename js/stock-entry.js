@@ -5,6 +5,8 @@
   const form = document.querySelector("#stock-entry-form");
   const channel = document.querySelector("#stock-channel");
   const supplier = document.querySelector("#supplier-id");
+  const supplierNameField = document.querySelector("#supplier-name-display-field");
+  const supplierNameValue = document.querySelector("#selected-supplier-name");
   const notes = document.querySelector("#receiving-notes");
   const planLines = document.querySelector("#stock-plan-lines");
   const planTotal = document.querySelector("#stock-plan-total");
@@ -21,6 +23,7 @@
   const saveSupplier = document.querySelector("#save-supplier");
   const masterOptions = { model: [], storage_gb: [], color: [] };
   const optionLabels = { model: "model", storage_gb: "GB", color: "color" };
+  let supplierRecords = [];
   let client;
   let toastTimer;
 
@@ -46,14 +49,26 @@
   async function loadSuppliers(selectedId = supplier.value) {
     const { data, error } = await api().from("suppliers").select("id, supplier_code, company_name").eq("is_active", true).is("deleted_at", null).order("supplier_code");
     if (error) throw error;
+    supplierRecords = data || [];
     supplier.replaceChildren(new Option("Select supplier code", ""));
-    (data || []).forEach((item) => {
+    supplierRecords.forEach((item) => {
       const label = typeof window.GREENLOOP_PARTNER_LABEL === "function"
         ? window.GREENLOOP_PARTNER_LABEL(item.supplier_code, item.company_name)
         : (item.supplier_code || "Supplier");
       supplier.add(new Option(label, item.id));
     });
     if ([...supplier.options].some((option) => option.value === selectedId)) supplier.value = selectedId;
+    renderSupplierName();
+  }
+
+  function renderSupplierName() {
+    const allowed = window.GREENLOOP_CAN_VIEW_PARTNER_NAMES === true;
+    if (!supplierNameField || !supplierNameValue) return;
+    supplierNameField.hidden = !allowed;
+    if (!allowed) return;
+    const selected = supplierRecords.find((item) => String(item.id) === String(supplier.value));
+    supplierNameValue.textContent = selected?.company_name?.trim()
+      || (supplier.value ? "No supplier name recorded" : "Select a supplier code");
   }
 
   async function loadMasterOptions() {
@@ -230,6 +245,7 @@
   document.querySelector("#add-stock-channel").addEventListener("click", addChannel);
   document.querySelector("#remove-stock-channel").addEventListener("click", removeChannel);
   document.querySelector("#add-supplier").addEventListener("click", openSupplierDialog);
+  supplier.addEventListener("change", renderSupplierName);
   document.querySelector("#close-supplier-dialog").addEventListener("click", () => supplierDialog.close());
   document.querySelector("#cancel-supplier").addEventListener("click", () => supplierDialog.close());
   supplierForm.addEventListener("submit", saveNewSupplier);

@@ -10,11 +10,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/stock-entry.css">
+    <link rel="stylesheet" href="css/stock-entry.css?v=20260821-partner-names-3">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script defer src="js/config.js?v=20260821-supplier-reader-1"></script>
+    <script defer src="js/config.js?v=20260821-partner-names-3"></script>
     <script defer src="js/part-notifications.js"></script>
-    <script defer src="js/stock-entry.js?v=20260821-supplier-reader-1"></script>
+    <script defer src="js/stock-entry.js?v=20260821-partner-names-3"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -36,6 +36,11 @@
                 <div class="form-grid two-columns">
                   <div class="form-field"><label for="stock-channel">Stock channel <span class="required-mark">Required</span></label><div class="master-option-control"><select id="stock-channel" required><option value="">Loading channels...</option></select><button id="add-stock-channel" class="master-add" type="button" title="Add channel">+</button><button id="remove-stock-channel" class="master-remove" type="button" title="Remove selected channel">−</button></div><small>Company Stock, Customer Stock, RMA, or your own channel.</small></div>
                   <div class="form-field"><label for="supplier-id">Supplier code <span class="required-mark">Required</span></label><div class="master-option-control"><select id="supplier-id" required><option value="">Loading supplier codes...</option></select><button id="add-supplier" class="master-add" type="button" title="Add supplier">+</button></div><small>Select the supplier code before creating the batch.</small></div>
+                </div>
+                <div id="supplier-name-display-field" class="form-field confidential-supplier-field" hidden>
+                  <label>Supplier company name <span class="confidential-mark">Confidential</span></label>
+                  <div id="selected-supplier-name" class="confidential-value">Select a supplier code</div>
+                  <small>Visible only to users with Supplier &amp; Customer Names permission.</small>
                 </div>
                 <div class="form-field detail-grid"><label for="receiving-notes">Receiving notes</label><textarea id="receiving-notes" rows="3" placeholder="Optional notes for this supplier batch"></textarea></div>
               </section>

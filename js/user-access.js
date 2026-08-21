@@ -97,6 +97,22 @@
     return Object.fromEntries((user?.page_keys || []).map((key) => [key, "edit"]));
   }
 
+  function databaseBoolean(value) {
+    let candidate = value;
+    if (Array.isArray(candidate)) candidate = candidate[0];
+    if (candidate && typeof candidate === "object") {
+      candidate = candidate.can_view ?? candidate.allowed ?? Object.values(candidate)[0];
+    }
+    return candidate === true || String(candidate ?? "").trim().toLowerCase() === "true";
+  }
+
+  function displayPermissionsForUser(user) {
+    const permissions = { ...permissionsForUser(user) };
+    if (user?.partner_names_allowed === true) permissions.partner_names = "view";
+    else delete permissions.partner_names;
+    return permissions;
+  }
+
   function collectPagePermissions(container) {
     const result = {};
     container.querySelectorAll("[data-page-permission]").forEach((card) => {
@@ -130,7 +146,7 @@
 
   function renderUsers() {
     userList.innerHTML = users.length ? users.map((user) => {
-      const permissions = permissionsForUser(user);
+      const permissions = displayPermissionsForUser(user);
       const pages = Object.keys(permissions);
       return `
         <button class="user-list-item${String(user.user_id) === String(selectedUserId) ? " active" : ""}${user.is_active ? "" : " inactive"}" type="button" data-user-id="${escapeHtml(user.user_id)}">
@@ -152,7 +168,7 @@
     fullName.value = user.full_name || "";
     username.value = user.login_username || "";
     active.checked = Boolean(user.is_active);
-    roleOptions.innerHTML = pageCheckboxes(pageGuideData, permissionsForUser(user));
+    roleOptions.innerHTML = pageCheckboxes(pageGuideData, displayPermissionsForUser(user));
   }
 
   async function loadUsers(preferredUserId = selectedUserId) {
@@ -168,10 +184,9 @@
     if (partnerError) {
       console.warn("Partner-name permission matrix could not be loaded.", partnerError);
     }
-    const allowed = new Set((partnerAccess || []).filter((row) => row.can_view).map((row) => String(row.user_id)));
+    const allowed = new Set((partnerAccess || []).filter((row) => databaseBoolean(row.can_view)).map((row) => String(row.user_id)));
     users.forEach((user) => {
-      user.page_permissions = permissionsForUser(user);
-      if (allowed.has(String(user.user_id))) user.page_permissions.partner_names = "view";
+      user.partner_names_allowed = allowed.has(String(user.user_id));
     });
     const preferred = String(preferredUserId || "");
     selectedUserId = users.some((user) => String(user.user_id) === preferred)
