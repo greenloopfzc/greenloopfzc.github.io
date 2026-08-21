@@ -10,11 +10,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/stock-entry.css?v=20260821-supplier-fields">
+    <link rel="stylesheet" href="css/stock-entry.css?v=20260821-simple-receipt-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script defer src="js/config.js?v=20260821-partner-names-final"></script>
+    <script defer src="js/config.js?v=20260821-simple-receipt-1"></script>
     <script defer src="js/part-notifications.js"></script>
-    <script defer src="js/stock-entry.js?v=20260821-supplier-fields"></script>
+    <script defer src="js/stock-entry.js?v=20260821-simple-receipt-1"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -27,40 +27,31 @@
       <main class="app-main">
         <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Overview</a><span>/</span><strong>Stock Received</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
         <div class="page-content receiving-content stock-entry-content">
-          <section class="page-heading receiving-heading"><div><p class="eyebrow dashboard-eyebrow">Stock Received</p><h1>Create stock entry</h1><p class="heading-subtitle">Select the supplier and enter Total Stock. Model, GB and Color may be left blank and completed later during IMEI Entry.</p></div></section>
+          <section class="page-heading receiving-heading"><div><p class="eyebrow dashboard-eyebrow">Stock Received</p><h1>Create stock entry</h1><p class="heading-subtitle">Select the channel and supplier, enter the quantity received, then continue directly to IMEI Entry.</p></div></section>
           <div id="permission-message" class="access-message" hidden></div>
           <div class="receiving-layout">
             <form id="stock-entry-form" class="receiving-form" novalidate>
               <section class="form-panel">
-                <div class="form-panel-heading"><span class="section-number">01</span><div><h2>Batch details</h2><p>These details apply to every IMEI under this supplier-code batch.</p></div></div>
+                <div class="form-panel-heading"><span class="section-number">01</span><div><h2>Receipt details</h2><p>Only the receipt quantity is required. Device details are captured when each IMEI is entered.</p></div></div>
                 <div class="form-grid two-columns">
-                  <div class="form-field"><label for="stock-channel">Stock channel <span class="required-mark">Required</span></label><div class="master-option-control"><select id="stock-channel" required><option value="">Loading channels...</option></select><button id="add-stock-channel" class="master-add" type="button" title="Add channel">+</button><button id="remove-stock-channel" class="master-remove" type="button" title="Remove selected channel">−</button></div><small>Company Stock, Customer Stock, RMA, or your own channel.</small></div>
-                  <div class="form-field"><label for="supplier-id">Supplier code <span class="required-mark">Required</span></label><div class="master-option-control"><select id="supplier-id" required><option value="">Loading supplier codes...</option></select><button id="add-supplier" class="master-add" type="button" title="Add supplier">+</button></div><small>Select the supplier code before creating the batch.</small></div>
+                  <div class="form-field"><label for="stock-channel">Stock channel <span class="required-mark">Required</span></label><select id="stock-channel" required><option value="">Loading channels...</option></select></div>
+                  <div class="form-field"><label for="supplier-id">Supplier company <span class="required-mark">Required</span></label><select id="supplier-id" required><option value="">Loading supplier companies...</option></select></div>
+                  <div class="form-field"><label for="quantity-received">Quantity received <span class="required-mark">Required</span></label><input id="quantity-received" type="number" min="1" step="1" inputmode="numeric" placeholder="300" required><small>Enter the total number of devices in this receipt.</small></div>
+                  <div class="form-field"><label for="supplier-code-display">Supplier code</label><input id="supplier-code-display" class="supplier-code-display" type="text" readonly aria-describedby="supplier-code-help" placeholder="Select a company and enter quantity"><small id="supplier-code-help">Generated automatically, for example SUP-01-(300).</small></div>
+                  <div class="form-field full-width"><label for="receiving-notes">Notes</label><textarea id="receiving-notes" rows="3" placeholder="Optional notes for this receipt"></textarea></div>
                 </div>
-                <div id="supplier-name-display-field" class="form-field confidential-supplier-field" hidden>
-                  <label for="selected-supplier-name">Supplier company name <span class="confidential-mark">Confidential</span></label>
-                  <input id="selected-supplier-name" class="confidential-value-input" autocomplete="off" placeholder="Enter supplier company name">
-                  <small id="supplier-name-help">Visible only to users with Supplier &amp; Customer Names permission.</small>
-                </div>
-                <div class="form-field detail-grid"><label for="receiving-notes">Receiving notes</label><textarea id="receiving-notes" rows="3" placeholder="Optional notes for this supplier batch"></textarea></div>
-              </section>
-              <section class="form-panel stock-plan-panel">
-                <div class="form-panel-heading"><span class="section-number">02</span><div><h2>Stock plan</h2><p>Only Total Stock is required. Model, GB and Color are optional and can be entered later for every IMEI.</p></div></div>
-                <div class="stock-plan-wrap"><table class="stock-plan-table"><thead><tr><th>Model <small>Optional</small></th><th>GB <small>Optional</small></th><th>Color <small>Optional</small></th><th>Total Stock <small>Required</small></th><th>Remove</th></tr></thead><tbody id="stock-plan-lines"></tbody></table></div>
-                <div class="stock-plan-actions"><button id="add-stock-plan-line" class="secondary-button" type="button">+ Add model line</button><strong id="stock-plan-total">Total: 0 pcs</strong></div>
               </section>
               <p id="form-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
-              <div class="form-actions"><button id="create-batch" class="primary-button receive-submit" type="submit">Save batch and enter IMEIs →</button></div>
+              <div class="form-actions"><button id="create-batch" class="primary-button receive-submit" type="submit">Save receipt and enter IMEIs →</button></div>
             </form>
             <aside class="receiving-side">
-              <section class="side-card workflow-card"><p class="panel-kicker">New intake flow</p><h2>Batch before IMEI entry</h2><p>Create the supplier batch, then scan or type each phone IMEI and its details in IMEI Entry.</p><ol class="workflow-steps"><li class="current"><span>1</span>Stock plan</li><li><span>2</span>IMEI entry</li><li><span>3</span>Initial QC</li></ol></section>
-              <section class="side-card"><span class="side-icon" aria-hidden="true">▤</span><h2>Fast bulk receiving</h2><p>For 100 phones, plan the combinations once. While scanning, the system keeps each combination's remaining quantity visible.</p></section>
+              <section class="side-card workflow-card"><p class="panel-kicker">New intake flow</p><h2>Receipt before IMEI entry</h2><p>Save the supplier receipt and quantity first, then scan or type each device IMEI and its details in IMEI Entry.</p><ol class="workflow-steps"><li class="current"><span>1</span>Stock received</li><li><span>2</span>IMEI entry</li><li><span>3</span>Initial QC</li></ol></section>
+              <section class="side-card"><span class="side-icon" aria-hidden="true">▤</span><h2>Simple quantity control</h2><p>The receipt quantity controls how many IMEIs can be entered. There is no model, GB, or color plan to maintain.</p></section>
             </aside>
           </div>
         </div>
       </main>
     </div>
-    <dialog id="supplier-dialog" class="contact-dialog"><form id="supplier-form" method="dialog" novalidate><header><div><p class="panel-kicker">Supplier</p><h2>Add supplier</h2></div><button id="close-supplier-dialog" class="icon-button" type="button" aria-label="Close dialog">×</button></header><p class="dialog-description">Enter the supplier code and company name separately. The company name remains confidential.</p><div class="form-grid two-columns"><div class="form-field"><label for="supplier-code">Supplier code <span class="required-mark">Required</span></label><input id="supplier-code" autocomplete="off" placeholder="Example: SUP-03-SG(10)" required></div><div class="form-field"><label for="supplier-name">Supplier company name <span class="field-note">Optional</span></label><input id="supplier-name" autocomplete="off" placeholder="Example: Samsung Gulf"></div></div><p id="supplier-message" class="form-message receiving-message" role="status" aria-live="polite"></p><footer><button id="cancel-supplier" class="secondary-button" type="button">Cancel</button><button id="save-supplier" class="primary-button" type="submit">Save supplier</button></footer></form></dialog>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   </body>
 </html>

@@ -138,7 +138,7 @@
     }
 
     batchSelect.replaceChildren(new Option(batches.length ? "Select supplier code / batch" : "No incomplete stock batches", ""));
-    batches.forEach((batch) => batchSelect.add(new Option(`${supplierLabel(batch)} - ${batch.planned_label} - ${batch.remaining_quantity} remaining`, batch.batch_id)));
+    batches.forEach((batch) => batchSelect.add(new Option(`${supplierLabel(batch)} - ${batch.planned_quantity} received - ${batch.remaining_quantity} remaining`, batch.batch_id)));
     if (batches.some((batch) => batch.batch_id === selected)) batchSelect.value = selected;
     else batchSelect.value = "";
     batchSelect.disabled = false;
@@ -154,14 +154,13 @@
     if (!batch) return;
     const plannedLines = Array.isArray(batch.planned_lines) ? batch.planned_lines : [];
     const nextLine = plannedLines.find((line) => Number(line.remaining_quantity) > 0) || plannedLines[0];
-    const planText = plannedLines.length
-      ? plannedLines.map((line) => `${line.model || "Any model"} · ${line.storage_gb ? `${line.storage_gb} GB` : "Any GB"} · ${line.color || "Any color"} (${line.remaining_quantity}/${line.planned_quantity} remaining)`).join(" | ")
-      : batch.planned_label;
-    batchSummary.innerHTML = [
+    const planText = plannedLines.map((line) => `${line.model || "Any model"} · ${line.storage_gb ? `${line.storage_gb} GB` : "Any GB"} · ${line.color || "Any color"} (${line.remaining_quantity}/${line.planned_quantity} remaining)`).join(" | ");
+    const summary = [
       ["Supplier code", supplierLabel(batch)], ["Stock channel", batch.stock_channel],
-      ["Stock plan", batch.planned_label], ["Progress", `${batch.entered_quantity} / ${batch.planned_quantity}`],
+      ["Quantity received", `${batch.planned_quantity} devices`], ["Progress", `${batch.entered_quantity} / ${batch.planned_quantity}`],
       ["Remaining", batch.remaining_quantity]
-    ].map(([label, value]) => `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("") + `<div class="batch-plan-lines" title="${escapeHtml(planText)}"><span>Model / GB / Color plan</span><strong>${escapeHtml(planText)}</strong></div>`;
+    ].map(([label, value]) => `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("");
+    batchSummary.innerHTML = summary + (planText ? `<div class="batch-plan-lines" title="${escapeHtml(planText)}"><span>Model / GB / Color plan</span><strong>${escapeHtml(planText)}</strong></div>` : "");
     if (nextLine) {
       const setValue = (select, value) => {
         if (![...select.options].some((option) => option.value === String(value))) select.add(new Option(value, value));
@@ -170,9 +169,6 @@
       if (nextLine.model) setValue(model, nextLine.model);
       if (nextLine.storage_gb) setValue(storage, nextLine.storage_gb);
       if (nextLine.color) setValue(color, nextLine.color);
-    } else if (batch.planned_label) {
-      if (![...model.options].some((option) => option.value === batch.planned_label)) model.add(new Option(batch.planned_label, batch.planned_label));
-      model.value = batch.planned_label;
     }
     imei.focus();
     if (window.GREENLOOP_LAST_DEVICE) applyConnectedDevice(window.GREENLOOP_LAST_DEVICE);

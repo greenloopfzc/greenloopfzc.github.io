@@ -30,12 +30,12 @@
       <main class="app-main">
         <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Overview</a><span>/</span><a href="stock-entry.html">Stock Received</a><span>/</span><strong>IMEI Entry</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
         <div class="page-content receiving-content stock-entry-content">
-          <section class="page-heading receiving-heading"><div><p class="eyebrow dashboard-eyebrow">IMEI Entry</p><h1>Scan batch IMEIs</h1><p class="heading-subtitle">Select the supplier-code batch first, then scan each device and save its main details.</p></div><a class="quiet-link" href="stock-entry.html">← Create another stock batch</a></section>
+          <section class="page-heading receiving-heading"><div><p class="eyebrow dashboard-eyebrow">IMEI Entry</p><h1>Scan receipt IMEIs</h1><p class="heading-subtitle">Select the supplier receipt first, then scan each device and save its main details.</p></div><a class="quiet-link" href="stock-entry.html">← Create another stock receipt</a></section>
           <div id="permission-message" class="access-message" hidden></div>
           <div class="receiving-layout">
             <form id="imei-entry-form" class="receiving-form" novalidate>
               <section class="form-panel">
-                <div class="form-panel-heading"><span class="section-number">01</span><div><h2>Select supplier code</h2><p>Only batches that still have IMEIs remaining are shown.</p></div></div>
+                <div class="form-panel-heading"><span class="section-number">01</span><div><h2>Select supplier receipt</h2><p>Only receipts that still have IMEIs remaining are shown.</p></div></div>
                 <div class="form-field"><label for="stock-batch">Supplier code / batch <span class="required-mark">Required</span></label><select id="stock-batch" required><option value="">Loading stock batches...</option></select></div>
                 <div id="batch-summary" class="batch-summary" hidden></div>
               </section>
@@ -52,7 +52,7 @@
               <p id="form-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
               <div id="imei-actions" class="form-actions" hidden><span id="device-reader-status" class="device-reader-status">Manual entry ready</span><button id="save-imei" class="primary-button receive-submit" type="submit">Save IMEI to Initial QC →</button></div>
             </form>
-            <aside class="receiving-side"><section class="side-card workflow-card"><p class="panel-kicker">Automatic next step</p><h2>Initial QC pending</h2><p>Each IMEI saved here creates its own permanent job and appears in Initial QC immediately.</p><ol class="workflow-steps"><li><span>1</span>Stock batch</li><li class="current"><span>2</span>IMEI entry</li><li><span>3</span>Initial QC</li></ol></section><section class="side-card"><span class="side-icon" aria-hidden="true">⌕</span><h2>Individual history</h2><p>Quantity is used for batch progress only. Every device is still tracked by its own unique IMEI.</p></section></aside>
+            <aside class="receiving-side"><section class="side-card workflow-card"><p class="panel-kicker">Automatic next step</p><h2>Initial QC pending</h2><p>Each IMEI saved here creates its own permanent job and appears in Initial QC immediately.</p><ol class="workflow-steps"><li><span>1</span>Stock received</li><li class="current"><span>2</span>IMEI entry</li><li><span>3</span>Initial QC</li></ol></section><section class="side-card"><span class="side-icon" aria-hidden="true">⌕</span><h2>Individual history</h2><p>Quantity is used for receipt progress only. Every device is still tracked by its own unique IMEI.</p></section></aside>
           </div>
         </div>
       </main>
