@@ -190,6 +190,18 @@
     if (device.batteryHealth !== "" && Number.isFinite(Number(device.batteryHealth))) {
       battery.value = Number(device.batteryHealth);
     }
+    const missing = [
+      [/^\d{15}$/.test(imei.value.trim()), "IMEI"],
+      [Boolean(model.value), "Model"],
+      [Boolean(storage.value), "GB"],
+      [Boolean(color.value), "Color"],
+      [battery.value !== "" && Number.isFinite(Number(battery.value)), "Battery Health"]
+    ].filter(([available]) => !available).map(([, label]) => label);
+    if (missing.length) {
+      if (readerStatus) readerStatus.textContent = `Cable read incomplete: ${missing.join(", ")}`;
+      setMessage(`Connected phone detected, but ${missing.join(", ")} could not be read.`, "error");
+      return;
+    }
     if (readerStatus) readerStatus.textContent = "Connected phone loaded";
     setMessage("Connected phone data loaded. Review it, then save.", "success");
     if (autoSaveEnabled()) scheduleAutoSave();

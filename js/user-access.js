@@ -133,7 +133,7 @@
       const permissions = permissionsForUser(user);
       const pages = Object.keys(permissions);
       return `
-        <button class="user-list-item${user.user_id === selectedUserId ? " active" : ""}${user.is_active ? "" : " inactive"}" type="button" data-user-id="${escapeHtml(user.user_id)}">
+        <button class="user-list-item${String(user.user_id) === String(selectedUserId) ? " active" : ""}${user.is_active ? "" : " inactive"}" type="button" data-user-id="${escapeHtml(user.user_id)}">
           <strong>${escapeHtml(user.full_name || user.login_username || "Unnamed user")}</strong>
           <small>@${escapeHtml(user.login_username || "No username")}</small>
           <span class="user-role-summary">${escapeHtml(pages.length ? pages.map((key) => `${pageName(key)} (${permissions[key] === "view" ? "View" : "Entry"})`).join(", ") : "No page assigned")}</span>
@@ -143,7 +143,7 @@
   }
 
   function renderEditor() {
-    const user = users.find((item) => item.user_id === selectedUserId);
+    const user = users.find((item) => String(item.user_id) === String(selectedUserId));
     editor.hidden = !user;
     selectUserMessage.hidden = Boolean(user);
     setMessage(message);
@@ -163,16 +163,16 @@
     if (error) throw error;
     users = data || [];
     const { data: partnerAccess, error: partnerError } = await getClient().rpc("get_user_partner_name_access_matrix");
-    if (!partnerError) {
-      const allowed = new Set((partnerAccess || []).filter((row) => row.can_view).map((row) => row.user_id));
-      users.forEach((user) => {
-        user.page_permissions = permissionsForUser(user);
-        if (allowed.has(user.user_id)) user.page_permissions.partner_names = "view";
-      });
-    }
-    selectedUserId = users.some((user) => user.user_id === preferredUserId)
-      ? preferredUserId
-      : (users[0]?.user_id || "");
+    if (partnerError) throw partnerError;
+    const allowed = new Set((partnerAccess || []).filter((row) => row.can_view).map((row) => String(row.user_id)));
+    users.forEach((user) => {
+      user.page_permissions = permissionsForUser(user);
+      if (allowed.has(String(user.user_id))) user.page_permissions.partner_names = "view";
+    });
+    const preferred = String(preferredUserId || "");
+    selectedUserId = users.some((user) => String(user.user_id) === preferred)
+      ? preferred
+      : String(users[0]?.user_id || "");
     renderUsers();
     renderEditor();
   }

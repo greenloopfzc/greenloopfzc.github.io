@@ -386,5 +386,26 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     if (navigation) navigation.innerHTML = '<p class="nav-label">No pages assigned</p>';
   }
 
-  applyPageAccess().catch((error) => console.error("Page access error:", error));
+  window.GREENLOOP_CAN_VIEW_PARTNER_NAMES = false;
+  window.GREENLOOP_PARTNER_LABEL = (code, name, fallback = "-") => {
+    const safeCode = String(code || "").trim();
+    const safeName = String(name || "").trim();
+    if (window.GREENLOOP_CAN_VIEW_PARTNER_NAMES && safeName) return [safeCode, safeName].filter(Boolean).join(" - ");
+    return safeCode || fallback;
+  };
+
+  window.GREENLOOP_ACCESS_READY = applyPageAccess()
+    .then(() => {
+      window.dispatchEvent(new CustomEvent("greenloop:access-ready", {
+        detail: {
+          pageAccess: window.GREENLOOP_PAGE_ACCESS || null,
+          canViewPartnerNames: Boolean(window.GREENLOOP_CAN_VIEW_PARTNER_NAMES)
+        }
+      }));
+      return window.GREENLOOP_PAGE_ACCESS || null;
+    })
+    .catch((error) => {
+      console.error("Page access error:", error);
+      return null;
+    });
 })();
