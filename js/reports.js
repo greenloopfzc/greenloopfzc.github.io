@@ -92,11 +92,6 @@
       title: "Retail Shop report",
       description: "Devices received from, or currently held in, Retail Shop stock.",
       columns: [["IMEI", "imei"], ["Serial number", "serial_number"], ["Region", "specification_region"], ["Model", "model"], ["Memory", "memory"], ["Grade", "grade"], ["Job", "job_number"], ["Source", "source"], ["Status", "status", "status"], ["Location", "location"]]
-    },
-    production: {
-      title: "Production report",
-      description: "Today's Production is shown above. This table contains every production record in the selected date range.",
-      columns: [["IMEI", "imei"], ["Serial number", "serial_number"], ["Region", "specification_region"], ["Model", "model"], ["Memory", "memory"], ["Grade", "grade"], ["Job", "job_number"], ["Status", "status", "status"], ["Started", "started_at", "date"], ["Completed", "completed_at", "date"]]
     }
   };
 
@@ -161,8 +156,6 @@
       ["Parts pending", data.parts_pending, "Open part requests", ""],
       ["Laboratory pending", data.laboratory_pending, "Laboratory queue", ""],
       ["Final QC pending", data.final_qc_pending, "Waiting for final inspection", ""],
-      ["Today's Production", data.today_production, "Completed today", "production"],
-      ["Total Production", data.total_production, `${dateLabel(reportData.date_from)} to ${dateLabel(reportData.date_to)}`, "production"],
       ["Retail Shop stock", data.retail_shop_stock, "Devices currently in shop", ""]
     ];
     summary.innerHTML = cards.map(([label, value, note, style]) => `<article class="report-metric ${style}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value ?? 0)}</strong><small>${escapeHtml(note)}</small></article>`).join("");
@@ -190,8 +183,7 @@
     const items = [
       ["Stock received", data.stock_received], ["Initial QC pending", data.initial_qc_pending],
       ["Parts pending", data.parts_pending], ["Laboratory pending", data.laboratory_pending],
-      ["Final QC pending", data.final_qc_pending], ["Today's Production", data.today_production],
-      ["Total Production", data.total_production], ["Retail Shop stock", data.retail_shop_stock]
+      ["Final QC pending", data.final_qc_pending], ["Retail Shop stock", data.retail_shop_stock]
     ];
     panelKicker.textContent = "Overview";
     panelTitle.textContent = "Live workflow overview";

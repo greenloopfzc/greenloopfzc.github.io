@@ -12,9 +12,9 @@
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/reports.css?v=20260822-single-imei-delete-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script defer src="js/config.js?v=20260821-privacy-delete-1"></script>
+    <script defer src="js/config.js?v=20260822-production-removed-1"></script>
     <script defer src="js/part-notifications.js"></script>
-    <script defer src="js/reports.js?v=20260822-single-imei-delete-1"></script>
+    <script defer src="js/reports.js?v=20260822-production-removed-1"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -30,7 +30,6 @@
           <a class="nav-item" href="parts.html"><span class="nav-icon" aria-hidden="true">▦</span>Parts</a>
           <a class="nav-item" href="laboratory.html"><span class="nav-icon" aria-hidden="true">⌁</span>Laboratory &amp; Glass</a>
           <a class="nav-item" href="final-qc.html"><span class="nav-icon" aria-hidden="true">◉</span>Final QC</a>
-          <a class="nav-item" href="production.html"><span class="nav-icon" aria-hidden="true">↗</span>Production</a>
           <p class="nav-label">Control</p>
           <a class="nav-item active" href="reports.html"><span class="nav-icon" aria-hidden="true">▤</span>Reports</a>
         </nav>
@@ -40,7 +39,7 @@
       <main class="app-main">
         <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Overview</a><span aria-hidden="true">/</span><strong>Reports</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
         <div class="page-content reports-content">
-          <section class="page-heading reports-heading"><div><p class="eyebrow dashboard-eyebrow">Reports</p><h1>Operations and performance</h1><p class="heading-subtitle">Use one date range for stock, repairs, quality control, cost, RMA, Retail Shop, and production reporting.</p></div></section>
+          <section class="page-heading reports-heading"><div><p class="eyebrow dashboard-eyebrow">Reports</p><h1>Operations and performance</h1><p class="heading-subtitle">Use one date range for stock, repairs, quality control, cost, RMA, and Retail Shop reporting.</p></div></section>
           <div id="permission-message" class="access-message" hidden></div>
           <section id="reports-app" hidden>
             <form id="report-filter" class="report-filter" novalidate>
@@ -65,7 +64,6 @@
               <button class="report-tab" type="button" data-report="deleted_history">Deleted History</button>
               <button class="report-tab" type="button" data-report="rma">RMA</button>
               <button class="report-tab" type="button" data-report="retail_shop">Retail Shop</button>
-              <button class="report-tab" type="button" data-report="production">Production</button>
             </nav>
             <section class="report-panel">
               <div class="report-panel-heading"><div><p id="report-panel-kicker" class="panel-kicker">Overview</p><h2 id="report-panel-title">Live workflow overview</h2><p id="report-panel-description" class="report-panel-description"></p></div><span id="report-row-count" class="queue-count">0 records</span></div>

@@ -14,9 +14,9 @@
     >
     <link rel="stylesheet" href="css/styles.css?v=20260822-workflow-overview-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script defer src="js/config.js?v=20260821-privacy-delete-1"></script>
+    <script defer src="js/config.js?v=20260822-production-removed-1"></script>
     <script defer src="js/part-notifications.js?v=20260820-1"></script>
-    <script defer src="js/dashboard.js?v=20260822-workflow-overview-1"></script>
+    <script defer src="js/dashboard.js?v=20260822-production-removed-1"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -63,9 +63,6 @@
           <button class="nav-item module-link" type="button" data-module="Final QC">
             <span class="nav-icon" aria-hidden="true">◉</span>Final QC
             <span class="nav-count">31</span>
-          </button>
-          <button class="nav-item module-link" type="button" data-module="Production">
-            <span class="nav-icon" aria-hidden="true">↗</span>Production
           </button>
           <button class="nav-item module-link" type="button" data-module="Shipping">
             <span class="nav-icon" aria-hidden="true">↝</span>Shipping
@@ -145,7 +142,6 @@
                 <div class="queue-row"><span class="queue-name"><i class="queue-dot glass"></i>Glass</span><span class="queue-bar"><b style="width: 36%"></b></span><strong>23</strong></div>
                 <div class="queue-row"><span class="queue-name"><i class="queue-dot frame"></i>Frame</span><span class="queue-bar"><b style="width: 30%"></b></span><strong>19</strong></div>
                 <div class="queue-row"><span class="queue-name"><i class="queue-dot final-qc"></i>Final QC</span><span class="queue-bar"><b style="width: 48%"></b></span><strong>31</strong></div>
-                <div class="queue-row"><span class="queue-name"><i class="queue-dot production"></i>Production</span><span class="queue-bar"><b style="width: 28%"></b></span><strong>17</strong></div>
               </div>
               <div class="queue-insight"><span aria-hidden="true">!</span><p><strong>Laboratory is the main bottleneck.</strong> It holds 30% of all active department tasks.</p></div>
             </article>
@@ -228,7 +224,7 @@
             <article class="panel activity-panel">
               <div class="panel-heading"><div><p class="panel-kicker">Today</p><h2>Recent activity</h2></div></div>
               <ol class="activity-list">
-                <li><i class="activity-dot green"></i><span><strong>Final QC passed</strong><small>JOB-2026-00440 moved to Production</small></span><time>10 min</time></li>
+                <li><i class="activity-dot green"></i><span><strong>Final QC passed</strong><small>JOB-2026-00440 moved to Ready Stock</small></span><time>10 min</time></li>
                 <li><i class="activity-dot amber"></i><span><strong>Part issued</strong><small>Battery issued to JOB-2026-00451</small></span><time>26 min</time></li>
                 <li><i class="activity-dot red"></i><span><strong>RMA received</strong><small>RMA-2026-00125 requires diagnosis</small></span><time>41 min</time></li>
               </ol>

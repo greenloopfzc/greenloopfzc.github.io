@@ -107,7 +107,7 @@
       ["Parts", Number(summary.parts_pending) || 0, "parts"],
       ["Laboratory & Glass", Number(summary.laboratory_pending) || 0, "lab"],
       ["Final QC", Number(summary.final_qc_pending) || 0, "final-qc"],
-      ["Production", Number(readyTotal) || 0, "production"]
+      ["Ready Stock", Number(readyTotal) || 0, "production"]
     ];
     const maximum = Math.max(...queues.map(([, count]) => count), 1);
     currentQueueTotal = queues.reduce((total, [, count]) => total + count, 0);
@@ -121,8 +121,8 @@
       : "<strong>All live queues are clear.</strong> No device is waiting in the current workflow queues.";
   }
 
-  function renderThroughput(production, days) {
-    const completed = production.filter((row) => row.completed_at);
+  function renderThroughput(finalQc, days) {
+    const completed = finalQc.filter((row) => row.result === "pass" && row.inspected_at).map((row) => ({ completed_at: row.inspected_at }));
     const counts = new Map(days.map((day) => [day, 0]));
     completed.forEach((row) => {
       const day = dateInDubai(row.completed_at);
@@ -135,7 +135,10 @@
       const value = counts.get(day) || 0;
       return `<div class="bar-column${day === today ? " current" : ""}"><span class="bar-value">${value}</span><i style="height: ${value ? Math.max(8, Math.round((value / maximum) * 86)) : 2}%"></i><small>${escapeHtml(dateLabel(day))}</small></div>`;
     }).join("");
-    document.querySelector(".throughput-summary").innerHTML = `<strong>${completed.length}</strong><span>devices completed in the last 7 days</span><em>${counts.get(today) || 0} completed today</em>`;
+    document.querySelector(".throughput-panel .panel-kicker").textContent = "Last 7 days";
+    document.querySelector(".throughput-panel h2").textContent = "Final QC passes";
+    document.querySelector(".throughput-panel .chart-legend").lastChild.textContent = "Passed";
+    document.querySelector(".throughput-summary").innerHTML = `<strong>${completed.length}</strong><span>phones passed Final QC in the last 7 days</span><em>${counts.get(today) || 0} passed today</em>`;
   }
 
   function renderPriority(rowsToRender) {
@@ -151,6 +154,11 @@
     }).join("") : '<tr><td colspan="4">No active devices need attention.</td></tr>';
     rows = [...body.querySelectorAll("tr[data-search]")];
     filterRows();
+  }
+
+  function isReadyStockStatus(status) {
+    return ["qc_passed", "production_pending", "production_completed", "ready_for_packing", "ready_for_shipment"]
+      .includes(String(status || "").trim().toLowerCase().replaceAll(" ", "_"));
   }
 
   function renderParts(inventory) {
@@ -220,8 +228,8 @@
     const workflow = Array.isArray(workflowResult.data) ? workflowResult.data[0] : (workflowResult.data || {});
     renderMetrics(workflow);
     renderQueues(summary, readyTotal);
-    renderThroughput(reportData.production || [], days);
-    renderPriority(reportData.work_in_progress || []);
+    renderThroughput(reportData.final_qc || [], days);
+    renderPriority((reportData.work_in_progress || []).filter((row) => !isReadyStockStatus(row.status)));
     renderParts(reportData.parts_inventory || []);
     renderLiveStatus(summary, readyTotal, reportData);
     renderActivity(reportData);

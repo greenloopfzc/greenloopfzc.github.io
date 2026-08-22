@@ -37,7 +37,6 @@ document.addEventListener("click", (event) => {
     "Ready Stock": "ready-stock.html",
     "Export Boxes": "export-box.html",
     "Ready Stock Journey": "ready-stock-journey.html",
-    "Production": "production.html",
     "RMA": "module.html?module=RMA",
     "Retail Shop": "module.html?module=Retail%20Shop",
     "Reports": "reports.html",
@@ -422,7 +421,7 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     const file = (window.location.pathname.split("/").pop() || "").toLowerCase();
     const operationalPages = new Set([
       "stock-entry.html", "imei-entry.html", "initial-qc.html", "parts.html", "inventory.html",
-      "laboratory.html", "final-qc.html", "ready-stock.html", "production.html", "export-box.html", "stock-out.html"
+      "laboratory.html", "final-qc.html", "ready-stock.html", "export-box.html", "stock-out.html"
     ]);
     if (!operationalPages.has(file) || document.querySelector("#greenloop-quick-imei-scanner")) return;
     const main = document.querySelector(".app-main");
