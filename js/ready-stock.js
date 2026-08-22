@@ -161,17 +161,23 @@
     const imei = reworkImei.value.replace(/\D/g, "").slice(0, 15);
     const reason = reworkReason.value.trim();
     if (!/^\d{15}$/.test(imei)) { showToast("Enter a 15-digit Ready Stock IMEI."); reworkImei.focus(); return; }
-    if (!reason) { showToast("Enter the customer demand or work required."); reworkReason.focus(); return; }
     const departmentName = reworkDepartment.value === "frame" ? "Frame Department" : "Laboratory";
     if (!window.confirm(`Send ${imei} from Ready Stock to ${departmentName}?`)) return;
     reworkSubmit.disabled = true;
     reworkSubmit.textContent = "Sending...";
-    const { error } = await getClient().rpc("send_ready_stock_for_rework", {
-      p_imei: imei, p_department: reworkDepartment.value, p_customer_reason: reason
-    });
-    reworkSubmit.disabled = false;
-    reworkSubmit.textContent = "Send for rework";
-    if (error) throw error;
+    let error;
+    try {
+      ({ error } = await getClient().rpc("send_ready_stock_for_rework", {
+        p_imei: imei, p_department: reworkDepartment.value, p_customer_reason: reason || null
+      }));
+    } finally {
+      reworkSubmit.disabled = false;
+      reworkSubmit.textContent = "Send for rework";
+    }
+    if (error) {
+      if (String(error.message || "").includes("not currently available in Ready Stock")) throw new Error("This mobile is not in Ready Stock.");
+      throw error;
+    }
     reworkForm.reset();
     showToast(`Phone sent to ${departmentName}. Journey updated.`);
     await loadReadyStock();
