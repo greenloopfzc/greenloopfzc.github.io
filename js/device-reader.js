@@ -4,7 +4,7 @@
   const endpoint = "http://127.0.0.1:51892/v1/device";
   const threeUToolsEndpoint = "http://127.0.0.1:51894/v1/device";
   let lastFingerprint = "";
-  let lastThreeUToolsAttemptImei = "";
+  const nextThreeUToolsAttemptAt = new Map();
   let polling = false;
   const appleSalesRegions = new Map([
     ["VC/A", "Canada"], ["C/A", "Canada"], ["CL/A", "Canada"],
@@ -42,8 +42,12 @@
   }
 
   async function fillMissingColorFrom3uTools(device) {
-    if (device.color || !device.imei || device.imei === lastThreeUToolsAttemptImei) return device;
-    lastThreeUToolsAttemptImei = device.imei;
+    if (device.color || !device.imei) return device;
+    const now = Date.now();
+    if (now < (nextThreeUToolsAttemptAt.get(device.imei) || 0)) return device;
+    // 3uTools can finish reading a newly connected iPhone a moment after its IMEI.
+    // Retry automatically instead of requiring a cable reconnect.
+    nextThreeUToolsAttemptAt.set(device.imei, now + 1500);
     try {
       const response = await fetch(threeUToolsEndpoint, { cache: "no-store", signal: AbortSignal.timeout(2000) });
       if (!response.ok) return device;
