@@ -123,9 +123,7 @@
       return;
     }
     const itemMarkup = headlines.map((item) => {
-      const supplier = window.GREENLOOP_CAN_VIEW_PARTNER_NAMES && item.supplier_company
-        ? [item.supplier_code, item.supplier_company].filter(Boolean).join(" ")
-        : (item.supplier_code || "Supplier");
+      const supplier = item.supplier_code || "Supplier";
       const device = [item.model || "Model", item.storage_gb ? `${item.storage_gb} GB` : "GB -", item.color || "Color -"].join(" · ");
       return `<span class="live-headline-item"><time>${escapeHtml(headlineTime(item.event_at))}</time><strong>${escapeHtml(item.imei || "IMEI")}</strong><span>${escapeHtml(supplier)} · ${escapeHtml(device)}</span><b>${escapeHtml(item.from_stage || "Workflow")} &rarr; ${escapeHtml(item.to_stage || "Updated")}</b><em>${escapeHtml(item.activity_title || "Activity recorded")}</em></span>`;
     }).join("");
