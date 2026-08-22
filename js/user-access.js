@@ -34,6 +34,7 @@
     ["imei_entry", "IMEI Entry", "Enter IMEIs and the first device details."],
     ["initial_qc", "Initial QC", "Inspect, grade, identify work, and assign technicians."],
     ["lab_glass", "Lab & Glass", "Laboratory and glass repair work."],
+    ["lab_live_board", "Lab Live Board", "TV display of live technician workload and performance."],
     ["parts", "Parts", "View requests and issue required parts."],
     ["inventory", "Inventory", "Receive and control parts inventory."],
     ["final_qc", "Final QC", "Final inspection, grade, Battery Health, Pass or Fail."],
