@@ -170,6 +170,9 @@
       ({ error } = await getClient().rpc("send_ready_stock_for_rework", {
         p_imei: imei, p_department: reworkDepartment.value, p_customer_reason: reason || null
       }));
+      if (!error && reworkDepartment.value === "frame") {
+        ({ error } = await getClient().rpc("ensure_ready_stock_frame_rework_cycle", { p_imei: imei }));
+      }
     } finally {
       reworkSubmit.disabled = false;
       reworkSubmit.textContent = "Send for rework";
