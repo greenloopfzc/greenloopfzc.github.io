@@ -68,7 +68,12 @@
 .qc-frame-route input { width: 15px; min-width: 15px; min-height: 15px; margin: 0; accent-color: #c98b1e; }
 .qc-frame-route:has(input:checked) { color: #8b5b0c; }
 .qc-bulk-actions { display: flex; align-items: center; justify-content: flex-end; gap: 18px; }
-.qc-bulk-actions span { color: #6f8076; font-size: .78rem; }
+.qc-skip-lab-toggle { display: flex; align-items: center; gap: 9px; padding: 8px 11px; border: 1px solid #e5c982; border-radius: 9px; background: #fff9ea; color: #6c5015; cursor: pointer; }
+.qc-skip-lab-toggle input { width: 18px; height: 18px; accent-color: #bb7b08; }
+.qc-skip-lab-toggle span { display: grid; gap: 2px; }
+.qc-skip-lab-toggle strong { font-size: .74rem; }
+.qc-skip-lab-toggle small { font-size: .63rem; }
+.qc-bulk-actions > span { color: #6f8076; font-size: .78rem; }
 .qc-bulk-actions .primary-button { min-width: 235px; }
 
 body.qc-modal-open { overflow: hidden; }

@@ -38,6 +38,7 @@
   const sidebar = document.querySelector("#sidebar");
   const backdrop = document.querySelector("#menu-backdrop");
   const toast = document.querySelector("#toast");
+  const skipLabParts = document.querySelector("#skip-lab-parts");
   const rowJobs = new Map();
   const rowTimers = new WeakMap();
   let pendingJobs = [];
@@ -560,7 +561,8 @@
     const hasWork = submission.findings.length > 0
       || submission.parts.length > 0
       || Boolean(submission.technicianId);
-    if (submission.routeToFrame && hasWork) {
+    const skipRouting = Boolean(skipLabParts?.checked);
+    if (!skipRouting && submission.routeToFrame && hasWork) {
       const errorText = "Frame direct route needs Parts, Service, and Technician to be blank.";
       setRowState(row, errorText, "is-error");
       return { ok: false, error: errorText };
@@ -569,20 +571,19 @@
     row.dataset.saving = "yes";
     setSubmitting(rowButton, true, "Saving...");
     setRowState(row, progressText, "is-loading");
-    const rpcName = submission.routeToFrame
+    const rpcName = skipRouting ? "complete_initial_qc_skip_lab_parts" : (submission.routeToFrame
       ? "complete_initial_qc_direct_to_frame"
-      : (hasWork ? "complete_initial_qc_lab_first" : "complete_scanned_initial_qc_with_roster_and_grades");
-    const { error } = await getClient().rpc(rpcName, {
-      p_job_id: selectedJob.id,
-      p_overall_condition: "",
-      p_cosmetic_condition: "",
-      p_notes: submission.notes,
-      p_findings: submission.findings,
-      p_part_requests: submission.parts,
-      p_assigned_technician_roster_id: submission.technicianId,
-      p_supplier_grade: submission.supplierGrade,
+      : (hasWork ? "complete_initial_qc_lab_first" : "complete_scanned_initial_qc_with_roster_and_grades"));
+    const payload = skipRouting ? {
+      p_job_id: selectedJob.id, p_notes: submission.notes, p_supplier_grade: submission.supplierGrade,
+      p_gc_grade: submission.gcGrade, p_skipped_items: [...submission.findings, ...submission.parts]
+    } : {
+      p_job_id: selectedJob.id, p_overall_condition: "", p_cosmetic_condition: "", p_notes: submission.notes,
+      p_findings: submission.findings, p_part_requests: submission.parts,
+      p_assigned_technician_roster_id: submission.technicianId, p_supplier_grade: submission.supplierGrade,
       p_gc_grade: submission.gcGrade
-    });
+    };
+    const { error } = await getClient().rpc(rpcName, payload);
     row.dataset.saving = "";
 
     if (error) {
@@ -597,9 +598,9 @@
     row.classList.add("is-completed");
     row.querySelectorAll("input, select, button").forEach((control) => { control.disabled = true; });
     rowButton.textContent = "Saved";
-    const route = submission.routeToFrame ? "frame" : (hasWork ? "laboratory" : "final_qc");
-    setRowState(row, route === "frame" ? "Completed · Frame" : (hasWork ? "Completed · Laboratory" : "Completed · Final QC"), "is-completed");
-    return { ok: true, hasWork, route };
+    const route = skipRouting ? "final_qc" : (submission.routeToFrame ? "frame" : (hasWork ? "laboratory" : "final_qc"));
+    setRowState(row, skipRouting ? "Completed · Final QC (Lab & Parts skipped)" : (route === "frame" ? "Completed · Frame" : (hasWork ? "Completed · Laboratory" : "Completed · Final QC")), "is-completed");
+    return { ok: true, hasWork: skipRouting ? false : hasWork, route, skipped: skipRouting };
   }
 
   async function saveRowFromButton(row) {
