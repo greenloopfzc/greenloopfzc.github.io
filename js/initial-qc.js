@@ -39,6 +39,7 @@
   const backdrop = document.querySelector("#menu-backdrop");
   const toast = document.querySelector("#toast");
   const skipLabParts = document.querySelector("#skip-lab-parts");
+  const skipLabPartsStorageKey = "greenloop.initial-qc.skip-lab-parts";
   const rowJobs = new Map();
   const rowTimers = new WeakMap();
   let pendingJobs = [];
@@ -83,6 +84,25 @@
       toast.hidden = true;
       toast.classList.remove("is-visible");
     }, 3800);
+  }
+
+  function skipLabPartsEnabled() {
+    return skipLabParts?.dataset.state === "on";
+  }
+
+  function renderSkipLabParts() {
+    if (!skipLabParts) return;
+    const enabled = window.localStorage.getItem(skipLabPartsStorageKey) === "on";
+    skipLabParts.dataset.state = enabled ? "on" : "off";
+    skipLabParts.setAttribute("aria-pressed", String(enabled));
+    skipLabParts.textContent = `Skip Lab & Parts: ${enabled ? "ON" : "OFF"}`;
+  }
+
+  function toggleSkipLabParts() {
+    const enabled = !skipLabPartsEnabled();
+    window.localStorage.setItem(skipLabPartsStorageKey, enabled ? "on" : "off");
+    renderSkipLabParts();
+    showToast(enabled ? "Skip Lab & Parts is ON. Scanned phones will go directly to Final QC." : "Skip Lab & Parts is OFF. Normal routing is active.");
   }
 
   function setSubmitting(button, isSubmitting, label) {
@@ -561,7 +581,7 @@
     const hasWork = submission.findings.length > 0
       || submission.parts.length > 0
       || Boolean(submission.technicianId);
-    const skipRouting = Boolean(skipLabParts?.checked);
+    const skipRouting = skipLabPartsEnabled();
     if (!skipRouting && submission.routeToFrame && hasWork) {
       const errorText = "Frame direct route needs Parts, Service, and Technician to be blank.";
       setRowState(row, errorText, "is-error");
@@ -784,6 +804,7 @@
   document.querySelector("#add-ten-rows").addEventListener("click", () => createRows(10));
   document.querySelector("#clear-tray").addEventListener("click", resetTray);
   autoPickButton.addEventListener("click", autoPickAllPending);
+  skipLabParts?.addEventListener("click", toggleSkipLabParts);
   queueCount.addEventListener("click", openPendingModal);
   pendingSearch.addEventListener("input", () => renderPendingJobs(pendingSearch.value));
   pendingModal.addEventListener("click", (event) => { if (event.target.closest("[data-close-pending]")) closePendingModal(); });
@@ -792,6 +813,7 @@
   document.querySelector("#open-menu").addEventListener("click", () => setMenu(true));
   document.querySelector("#close-menu").addEventListener("click", () => setMenu(false));
   backdrop.addEventListener("click", () => setMenu(false));
+  renderSkipLabParts();
   initialize().catch((error) => {
     permissionMessage.textContent = error.message || "Initial QC could not be loaded.";
     permissionMessage.hidden = false;

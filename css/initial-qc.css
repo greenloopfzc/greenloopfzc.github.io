@@ -68,11 +68,10 @@
 .qc-frame-route input { width: 15px; min-width: 15px; min-height: 15px; margin: 0; accent-color: #c98b1e; }
 .qc-frame-route:has(input:checked) { color: #8b5b0c; }
 .qc-bulk-actions { display: flex; align-items: center; justify-content: flex-end; gap: 18px; }
-.qc-skip-lab-toggle { display: flex; align-items: center; gap: 9px; padding: 8px 11px; border: 1px solid #e5c982; border-radius: 9px; background: #fff9ea; color: #6c5015; cursor: pointer; }
-.qc-skip-lab-toggle input { width: 18px; height: 18px; accent-color: #bb7b08; }
-.qc-skip-lab-toggle span { display: grid; gap: 2px; }
-.qc-skip-lab-toggle strong { font-size: .74rem; }
-.qc-skip-lab-toggle small { font-size: .63rem; }
+.qc-skip-lab-button { min-height: 38px; border: 1px solid #cbd9d0; border-radius: 8px; padding: 0 12px; color: #627369; background: #fff; font: inherit; font-size: .76rem; font-weight: 800; white-space: nowrap; cursor: pointer; }
+.qc-skip-lab-button:hover, .qc-skip-lab-button:focus { outline: none; border-color: #14805d; box-shadow: 0 0 0 3px rgba(20, 128, 93, .1); }
+.qc-skip-lab-button[data-state="on"] { border-color: #0f7654; color: #fff; background: #117a56; box-shadow: 0 8px 18px rgba(17, 122, 86, .16); }
+.qc-skip-lab-button[data-state="on"]:hover { background: #0d6848; }
 .qc-bulk-actions > span { color: #6f8076; font-size: .78rem; }
 .qc-bulk-actions .primary-button { min-width: 235px; }
 
