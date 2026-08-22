@@ -64,6 +64,9 @@
 .qc-row-save { width: 100%; min-height: 31px; border: 1px solid #087451; border-radius: 6px; padding: 0 4px; color: #fff; background: #087451; font: inherit; font-size: .65rem; font-weight: 800; cursor: pointer; }
 .qc-row-save:hover { background: #075e43; }
 .qc-row-save:disabled { cursor: default; opacity: .65; }
+.qc-frame-route { display: flex; align-items: center; justify-content: center; gap: 4px; margin: 0 0 4px; color: #a06712; font-size: .58rem; font-weight: 800; white-space: nowrap; cursor: pointer; }
+.qc-frame-route input { width: 15px; min-width: 15px; min-height: 15px; margin: 0; accent-color: #c98b1e; }
+.qc-frame-route:has(input:checked) { color: #8b5b0c; }
 .qc-bulk-actions { display: flex; align-items: center; justify-content: flex-end; gap: 18px; }
 .qc-bulk-actions span { color: #6f8076; font-size: .78rem; }
 .qc-bulk-actions .primary-button { min-width: 235px; }

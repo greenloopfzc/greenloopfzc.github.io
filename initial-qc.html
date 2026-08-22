@@ -10,11 +10,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/initial-qc.css?v=20260822-restore-layout-1">
+    <link rel="stylesheet" href="css/initial-qc.css?v=20260822-direct-frame-route-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script defer src="js/config.js?v=20260821-privacy-delete-1"></script>
     <script defer src="js/part-notifications.js?v=20260813-1"></script>
-    <script defer src="js/initial-qc.js?v=20260822-restore-layout-1"></script>
+    <script defer src="js/initial-qc.js?v=20260822-direct-frame-route-1"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -56,12 +56,12 @@
                 <div id="qc-top-scroll" class="qc-top-scroll" aria-label="Horizontal table scroll"><div id="qc-top-scroll-track"></div></div>
                 <div id="qc-bulk-scroll" class="qc-bulk-scroll">
                   <table class="qc-bulk-table">
-                    <thead><tr><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>BH</th><th>Supplier code</th><th>Supplier grade</th><th>GC grade</th><th>Parts needed</th><th>Service needed</th><th>Assign technician</th><th>Save</th></tr></thead>
+                    <thead><tr><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>BH</th><th>Supplier code</th><th>Supplier grade</th><th>GC grade</th><th>Parts needed</th><th>Service needed</th><th>Assign technician</th><th>Save / route</th></tr></thead>
                     <tbody id="qc-bulk-body"></tbody>
                   </table>
                 </div>
               </section>
-              <div class="qc-bulk-actions"><span>Rows without parts or services go directly to Final QC.</span><button id="complete-qc" class="primary-button receive-submit" type="submit">Complete scanned Initial QC &rarr;</button></div>
+              <div class="qc-bulk-actions"><span>Tick Frame to send a no-work phone directly to Frame; otherwise no-work phones go to Final QC.</span><button id="complete-qc" class="primary-button receive-submit" type="submit">Complete scanned Initial QC &rarr;</button></div>
             </form>
           </section>
         </div>

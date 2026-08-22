@@ -183,7 +183,7 @@
       <td>${requirementGroup("part")}</td>
       <td>${requirementGroup("service")}</td>
       <td><div class="qc-bulk-technician"><select data-carry-field="technician">${technicianOptions()}</select><button type="button" data-add-technician title="Add technician">+</button><button type="button" class="remove" data-remove-technician title="Remove technician">−</button></div></td>
-      <td class="qc-row-save-cell"><button type="button" class="qc-row-save" data-save-row>Save</button></td>
+      <td class="qc-row-save-cell"><label class="qc-frame-route" title="No-work phone: send directly to Frame Department"><input type="checkbox" data-route-frame><span>Frame</span></label><button type="button" class="qc-row-save" data-save-row>Save</button></td>
     </tr>`;
   }
 
@@ -516,6 +516,7 @@
       findings,
       parts,
       technicianId,
+      routeToFrame: Boolean(row.querySelector("[data-route-frame]")?.checked),
       supplierGrade: row.querySelector('[data-carry-field="supplierGrade"]').value || null,
       gcGrade: row.querySelector('[data-carry-field="gcGrade"]').value || null,
       notes: `Initial QC 1: ${summary}.`
@@ -559,11 +560,18 @@
     const hasWork = submission.findings.length > 0
       || submission.parts.length > 0
       || Boolean(submission.technicianId);
+    if (submission.routeToFrame && hasWork) {
+      const errorText = "Frame direct route needs Parts, Service, and Technician to be blank.";
+      setRowState(row, errorText, "is-error");
+      return { ok: false, error: errorText };
+    }
     const rowButton = row.querySelector("[data-save-row]");
     row.dataset.saving = "yes";
     setSubmitting(rowButton, true, "Saving...");
     setRowState(row, progressText, "is-loading");
-    const rpcName = hasWork ? "complete_initial_qc_lab_first" : "complete_scanned_initial_qc_with_roster_and_grades";
+    const rpcName = submission.routeToFrame
+      ? "complete_initial_qc_direct_to_frame"
+      : (hasWork ? "complete_initial_qc_lab_first" : "complete_scanned_initial_qc_with_roster_and_grades");
     const { error } = await getClient().rpc(rpcName, {
       p_job_id: selectedJob.id,
       p_overall_condition: "",
@@ -589,8 +597,9 @@
     row.classList.add("is-completed");
     row.querySelectorAll("input, select, button").forEach((control) => { control.disabled = true; });
     rowButton.textContent = "Saved";
-    setRowState(row, hasWork ? "Completed · Laboratory" : "Completed · Final QC", "is-completed");
-    return { ok: true, hasWork };
+    const route = submission.routeToFrame ? "frame" : (hasWork ? "laboratory" : "final_qc");
+    setRowState(row, route === "frame" ? "Completed · Frame" : (hasWork ? "Completed · Laboratory" : "Completed · Final QC"), "is-completed");
+    return { ok: true, hasWork, route };
   }
 
   async function saveRowFromButton(row) {
@@ -601,7 +610,7 @@
       return;
     }
     await loadPendingCount();
-    showToast(result.hasWork ? "Initial QC saved. Phone sent to Laboratory." : "Initial QC saved. Phone sent directly to Final QC.");
+    showToast(result.route === "frame" ? "Initial QC saved. Phone sent directly to Frame." : (result.hasWork ? "Initial QC saved. Phone sent to Laboratory." : "Initial QC saved. Phone sent directly to Final QC."));
     focusNextInspectionRow(row);
   }
 
@@ -620,6 +629,7 @@
     let completed = 0;
     let directFinalQc = 0;
     let sentToLab = 0;
+    let sentToFrame = 0;
     const errors = [];
 
     for (let index = 0; index < rows.length; index += 1) {
@@ -630,12 +640,14 @@
         continue;
       }
       completed += 1;
-      if (result.hasWork) sentToLab += 1; else directFinalQc += 1;
+      if (result.route === "frame") sentToFrame += 1;
+      else if (result.hasWork) sentToLab += 1;
+      else directFinalQc += 1;
     }
 
     setSubmitting(button, false);
     await loadPendingCount();
-    if (completed) showToast(`${completed} Initial QC completed: ${sentToLab} to Laboratory, ${directFinalQc} direct to Final QC.`);
+    if (completed) showToast(`${completed} Initial QC completed: ${sentToLab} to Laboratory, ${sentToFrame} direct to Frame, ${directFinalQc} direct to Final QC.`);
     if (errors.length) {
       setMessage(`${completed} completed. ${errors.length} row(s) need correction. ${errors[0]}`);
     } else {
