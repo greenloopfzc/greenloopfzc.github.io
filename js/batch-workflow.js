@@ -265,8 +265,14 @@
       if (!currentBatch || !panel || panel.hidden) return;
       const device = event.detail || {};
       const rows = [...panel.querySelectorAll("tbody tr")];
-      const row = rows.find((item) => item.dataset.saved !== "yes" && !item.querySelector(".batch-row-imei").value.trim());
-      if (!row || !/^\d{15}$/.test(String(device.imei || ""))) return;
+      const connectedImei = String(device.imei || "").replace(/\D/g, "").slice(0, 15);
+      if (!/^\d{15}$/.test(connectedImei)) return;
+      // The cable reader can publish once with basic data and again when color arrives.
+      // Update that phone's existing unsaved row; never use a second blank row for it.
+      const matchingRow = rows.find((item) => item.querySelector(".batch-row-imei")?.value.trim() === connectedImei);
+      if (matchingRow?.dataset.saved === "yes") return;
+      const row = matchingRow || rows.find((item) => item.dataset.saved !== "yes" && !item.querySelector(".batch-row-imei").value.trim());
+      if (!row) return;
       const setSelect = (selector, value) => {
         const select = row.querySelector(selector);
         const text = String(value ?? "").trim();
@@ -276,7 +282,7 @@
         if (match) select.value = match.value;
         select.dataset.manuallyChanged = "yes";
       };
-      row.querySelector(".batch-row-imei").value = device.imei;
+      row.querySelector(".batch-row-imei").value = connectedImei;
       setSelect(".batch-row-model", device.model);
       setSelect(".batch-row-storage", device.storageGb);
       setSelect(".batch-row-color", device.color);
