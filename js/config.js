@@ -70,6 +70,7 @@ document.addEventListener("click", (event) => {
     // Parts and Inventory support the repair workflow and stay beside Lab & Glass.
     item("Initial QC", "initial-qc.html", "✓", page === "initial-qc.html"),
     item("Lab & Glass", "laboratory.html", "⌁", (page === "laboratory.html" || page === "glass.html") && window.location.hash !== "#frame"),
+    item("Lab Live Board", "lab-live-board.html", "▦", page === "lab-live-board.html"),
     item("Parts", "parts.html", "▦", page === "parts.html"),
     item("Inventory", "inventory.html", "▧", page === "inventory.html"),
     item("Final QC", "final-qc.html", "◉", page === "final-qc.html"),
@@ -195,6 +196,7 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     "imei-entry.html": "imei_entry",
     "initial-qc.html": "initial_qc",
     "laboratory.html": "lab_glass",
+    "lab-live-board.html": "lab_glass",
     "glass.html": "lab_glass",
     "parts.html": "parts",
     "inventory.html": "inventory",
