@@ -666,6 +666,24 @@
     tableBody.querySelector(".qc-bulk-imei")?.focus();
   }
 
+  window.addEventListener("greenloop:imei-scan", (event) => {
+    const imei = String(event.detail?.imei || "").replace(/\D/g, "").slice(0, 15);
+    if (!/^\d{15}$/.test(imei)) return;
+    const existing = [...tableBody.rows].find((row) => String(rowJobs.get(row.dataset.rowId)?.device?.imei_1 || "") === imei);
+    if (existing) {
+      event.preventDefault();
+      existing.scrollIntoView({ behavior: "smooth", block: "center" });
+      existing.querySelector('[data-carry-field="supplierGrade"]')?.focus();
+      setRowState(existing, "Scanned phone selected", "is-loaded");
+      return;
+    }
+    const blank = [...tableBody.querySelectorAll(".qc-bulk-imei")].find((input) => !input.value.trim() && !input.disabled);
+    if (!blank) return;
+    event.preventDefault();
+    blank.value = imei;
+    loadScannedRow(blank.closest("tr")).catch((error) => setRowState(blank.closest("tr"), error.message || "Could not load IMEI", "is-error"));
+  });
+
   async function initialize() {
     if (!config.supabaseUrl || !config.supabaseAnonKey || !window.supabase) throw new Error("Supabase authentication is not configured.");
     const { data: sessionData } = await getClient().auth.getSession();

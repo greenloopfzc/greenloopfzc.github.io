@@ -418,6 +418,41 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     if (navigation) navigation.innerHTML = '<p class="nav-label">No pages assigned</p>';
   }
 
+  function installQuickImeiScanner() {
+    const file = (window.location.pathname.split("/").pop() || "").toLowerCase();
+    const operationalPages = new Set([
+      "stock-entry.html", "imei-entry.html", "initial-qc.html", "parts.html", "inventory.html",
+      "laboratory.html", "final-qc.html", "ready-stock.html", "production.html", "export-box.html", "stock-out.html"
+    ]);
+    if (!operationalPages.has(file) || document.querySelector("#greenloop-quick-imei-scanner")) return;
+    const main = document.querySelector(".app-main");
+    const anchor = main?.querySelector(".page-content");
+    if (!main || !anchor) return;
+    const style = document.createElement("style");
+    style.textContent = ".greenloop-quick-scan{display:flex;align-items:center;gap:10px;margin:0 0 14px;border:1px solid #cfe4d6;border-radius:11px;padding:9px 13px;background:#f7fcf8}.greenloop-quick-scan strong{color:#176c4d;font-size:.76rem;white-space:nowrap}.greenloop-quick-scan input{width:min(340px,100%);min-height:35px;border:1px solid #bcd8c7;border-radius:7px;padding:0 10px;font:inherit;font-size:.78rem}.greenloop-quick-scan small{color:#718178;font-size:.68rem}@media(max-width:650px){.greenloop-quick-scan{align-items:stretch;flex-direction:column}.greenloop-quick-scan input{width:100%}}";
+    document.head.append(style);
+    const scanner = document.createElement("form");
+    scanner.id = "greenloop-quick-imei-scanner";
+    scanner.className = "greenloop-quick-scan";
+    scanner.innerHTML = '<strong>⌁ Scan IMEI</strong><input inputmode="numeric" autocomplete="off" maxlength="15" placeholder="Scan phone barcode / IMEI"><small>Scans the current phone without loading the full queue.</small>';
+    anchor.prepend(scanner);
+    const input = scanner.querySelector("input");
+    input.addEventListener("input", () => {
+      input.value = input.value.replace(/\D/g, "").slice(0, 15);
+      if (input.value.length === 15) scanner.requestSubmit();
+    });
+    scanner.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const imei = input.value.trim();
+      if (!/^\d{15}$/.test(imei)) return;
+      const handled = window.dispatchEvent(new CustomEvent("greenloop:imei-scan", { cancelable: true, detail: { imei } }));
+      if (handled) window.location.href = `imei-search.html?imei=${encodeURIComponent(imei)}`;
+      input.value = "";
+    });
+  }
+
+  installQuickImeiScanner();
+
   window.GREENLOOP_CAN_VIEW_PARTNER_NAMES = false;
   window.GREENLOOP_PARTNER_LABEL = (code, name, fallback = "-") => {
     const safeCode = String(code || "").trim();
