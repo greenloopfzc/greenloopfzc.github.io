@@ -1107,6 +1107,19 @@ input:focus {
 .frame-stock .metric-icon { color: #a06318; background: #fff2e0; }
 .export-stock .metric-icon { color: #1d7a7a; background: #e6f7f5; }
 
+/* Overview live news ticker: actual device journey activity, newest items loop right-to-left. */
+.live-headlines { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; min-height: 42px; margin: -6px 0 16px; overflow: hidden; border: 1px solid #d4e5da; border-radius: 10px; background: #fbfefc; }
+.live-headlines-label { display: inline-flex; align-items: center; align-self: stretch; gap: 7px; padding: 0 12px; color: #176c4d; background: #edf8f0; font-size: .63rem; font-weight: 800; letter-spacing: .065em; text-transform: uppercase; white-space: nowrap; }
+.live-headlines-label i { width: 7px; height: 7px; border-radius: 50%; background: #0d9565; box-shadow: 0 0 0 3px rgba(13, 149, 101, .13); }
+.live-headlines-track { min-width: 0; overflow: hidden; }
+.live-headlines-items { display: flex; width: max-content; min-width: 100%; align-items: center; animation: greenloop-headline-scroll 62s linear infinite; }
+.live-headlines:hover .live-headlines-items { animation-play-state: paused; }
+.live-headline-item { display: inline-flex; align-items: center; gap: 7px; flex: 0 0 auto; padding: 0 22px; color: #61756a; font-size: .68rem; white-space: nowrap; }
+.live-headline-item + .live-headline-item { border-left: 1px solid #dce9df; }
+.live-headline-item time { color: #8c9b92; font-size: .61rem; font-weight: 700; }
+.live-headline-item strong { color: #126f4e; font-size: .68rem; }
+@keyframes greenloop-headline-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
 @keyframes dashboard-card-float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-5px); }

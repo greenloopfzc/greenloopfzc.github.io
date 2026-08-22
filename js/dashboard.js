@@ -9,6 +9,7 @@
   const searchEmpty = document.querySelector("#search-empty");
   const toast = document.querySelector("#toast");
   const dashboardTitle = document.querySelector("#dashboard-title");
+  const liveHeadlinesItems = document.querySelector("#live-headlines-items");
   const config = window.GREENLOOP_CONFIG || {};
   let client;
   let toastTimer;
@@ -99,6 +100,22 @@
         <p>${escapeHtml(label)}</p><strong>${escapeHtml(value || 0)}</strong><small>${escapeHtml(note)} <span aria-hidden="true">&rarr;</span></small>
       </a>
     `).join("");
+  }
+
+  function headlineTime(value) {
+    return new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Dubai", hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short"
+    }).format(new Date(value));
+  }
+
+  function renderLiveHeadlines(headlines) {
+    if (!liveHeadlinesItems) return;
+    if (!headlines.length) {
+      liveHeadlinesItems.innerHTML = '<span class="live-headline-item">No device activity yet. New Stock Received, QC, Ready Stock, and Export actions will appear here.</span>';
+      return;
+    }
+    const itemMarkup = headlines.map((item) => `<span class="live-headline-item"><time>${escapeHtml(headlineTime(item.event_at))}</time><strong>${escapeHtml(item.imei || "IMEI")}</strong><span>${escapeHtml(item.headline || "Device activity recorded")}</span></span>`).join("");
+    liveHeadlinesItems.innerHTML = itemMarkup + itemMarkup;
   }
 
   function renderQueues(summary, readyTotal) {
@@ -211,11 +228,12 @@
       day.setDate(start.getDate() + index);
       return localDate(day);
     });
-    const [reportsResult, readyResult, partsResult, workflowResult] = await Promise.all([
+    const [reportsResult, readyResult, partsResult, workflowResult, headlinesResult] = await Promise.all([
       getClient().rpc("get_greenloop_reports", { p_date_from: days[0], p_date_to: days[6] }),
       getClient().rpc("get_ready_stock_summary"),
       getClient().rpc("get_open_parts_pending_count"),
-      getClient().rpc("get_overview_workflow_counts")
+      getClient().rpc("get_overview_workflow_counts"),
+      getClient().rpc("get_overview_activity_headlines", { p_limit: 24 })
     ]);
     if (reportsResult.error) throw reportsResult.error;
     if (workflowResult.error) throw workflowResult.error;
@@ -227,6 +245,7 @@
 
     const workflow = Array.isArray(workflowResult.data) ? workflowResult.data[0] : (workflowResult.data || {});
     renderMetrics(workflow);
+    renderLiveHeadlines(headlinesResult.error ? [] : (headlinesResult.data || []));
     renderQueues(summary, readyTotal);
     renderThroughput(reportData.final_qc || [], days);
     renderPriority((reportData.work_in_progress || []).filter((row) => !isReadyStockStatus(row.status)));
