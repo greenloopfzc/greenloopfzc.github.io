@@ -1090,6 +1090,23 @@ input:focus {
 
 .metric-card-link:hover small span { transform: translateX(4px); }
 
+/* Compact, live operation links on the Overview page. */
+.workflow-metric-grid { grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 10px; }
+.workflow-metric-grid .metric-card { min-height: 112px; padding: 12px 13px; }
+.workflow-metric-grid .metric-card-link { box-shadow: 0 7px 16px rgba(36, 58, 45, .07); animation: none; }
+.workflow-metric-grid .metric-card-link:hover { transform: translateY(-4px); }
+.workflow-metric-grid .metric-card-link::after { top: -80px; right: -85px; width: 125px; height: 125px; }
+.workflow-metric-grid .metric-icon { width: 27px; height: 27px; border-radius: 7px; font-size: .9rem; animation: none; }
+.workflow-metric-grid .metric-card p { min-height: 0; margin: 9px 0 2px; font-size: .68rem; line-height: 1.15; }
+.workflow-metric-grid .metric-card > strong { font-size: 1.35rem; }
+.workflow-metric-grid .metric-card small { min-height: 26px; margin-top: 4px; font-size: .58rem; line-height: 1.15; }
+.workflow-metric-grid .trend { padding: 2px 5px; font-size: .55rem; }
+.imei-entry-stock .metric-icon { color: #446f9c; background: #eaf2fb; }
+.lab-stock .metric-icon { color: #8b6513; background: #fff5df; }
+.final-qc-stock .metric-icon { color: #86509b; background: #f6eefe; }
+.frame-stock .metric-icon { color: #a06318; background: #fff2e0; }
+.export-stock .metric-icon { color: #1d7a7a; background: #e6f7f5; }
+
 @keyframes dashboard-card-float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-5px); }

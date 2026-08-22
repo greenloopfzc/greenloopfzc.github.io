@@ -80,17 +80,22 @@
     }, 3600);
   }
 
-  function renderMetrics(summary, readyTotal) {
+  function renderMetrics(workflow) {
     const cards = [
-      ["Stock received", summary.stock_received, "Open received-stock data", "company-stock", "reports.html?report=stock_received"],
-      ["Initial QC waiting", summary.initial_qc_pending, "Open Initial QC queue", "customer-stock", "initial-qc.html"],
-      ["Parts requests open", summary.parts_pending, "Open parts-request data", "rma-stock", "reports.html?report=parts_requests"],
-      ["Ready Stock", readyTotal, "Open current Ready Stock", "ready-stock", "ready-stock.html"]
+      ["Stock Received", workflow.stock_received, "Total received quantity", "company-stock", "stock-entry.html", "◫"],
+      ["IMEI Entry", workflow.imei_entry, "Waiting for IMEI entry", "imei-entry-stock", "imei-entry.html", "⌕"],
+      ["Initial QC", workflow.initial_qc, "Waiting for inspection", "customer-stock", "initial-qc.html", "✓"],
+      ["Lab & Glass", workflow.lab_glass, "Waiting for repair", "lab-stock", "laboratory.html", "⌁"],
+      ["Parts", workflow.parts, "Open part requests", "rma-stock", "parts.html", "▦"],
+      ["Final QC", workflow.final_qc, "Waiting for final check", "final-qc-stock", "final-qc.html", "◉"],
+      ["Frame Department", workflow.frame, "Waiting for frame work", "frame-stock", "laboratory.html#frame", "□"],
+      ["Ready Stock", workflow.ready_stock, "Available now", "ready-stock", "ready-stock.html", "▤"],
+      ["Export Data", workflow.export_data, "IMEIs in export boxes", "export-stock", "export-box.html", "↝"]
     ];
 
-    document.querySelector(".metric-grid").innerHTML = cards.map(([label, value, note, style, href]) => `
+    document.querySelector(".workflow-metric-grid").innerHTML = cards.map(([label, value, note, style, href, icon]) => `
       <a class="metric-card metric-card-link ${style}" href="${href}">
-        <div class="metric-topline"><span class="metric-icon">&#9673;</span><span class="trend up">Live</span></div>
+        <div class="metric-topline"><span class="metric-icon">${icon}</span><span class="trend up">Live</span></div>
         <p>${escapeHtml(label)}</p><strong>${escapeHtml(value || 0)}</strong><small>${escapeHtml(note)} <span aria-hidden="true">&rarr;</span></small>
       </a>
     `).join("");
@@ -198,19 +203,22 @@
       day.setDate(start.getDate() + index);
       return localDate(day);
     });
-    const [reportsResult, readyResult, partsResult] = await Promise.all([
+    const [reportsResult, readyResult, partsResult, workflowResult] = await Promise.all([
       getClient().rpc("get_greenloop_reports", { p_date_from: days[0], p_date_to: days[6] }),
       getClient().rpc("get_ready_stock_summary"),
-      getClient().rpc("get_open_parts_pending_count")
+      getClient().rpc("get_open_parts_pending_count"),
+      getClient().rpc("get_overview_workflow_counts")
     ]);
     if (reportsResult.error) throw reportsResult.error;
+    if (workflowResult.error) throw workflowResult.error;
     const reportData = Array.isArray(reportsResult.data) ? reportsResult.data[0] : (reportsResult.data || {});
     const summary = reportData.summary || {};
     if (!partsResult.error && Number.isFinite(Number(partsResult.data))) summary.parts_pending = Number(partsResult.data);
     const readyData = readyResult.error ? {} : (Array.isArray(readyResult.data) ? readyResult.data[0] : readyResult.data || {});
     const readyTotal = Number(readyData.total_qty) || 0;
 
-    renderMetrics(summary, readyTotal);
+    const workflow = Array.isArray(workflowResult.data) ? workflowResult.data[0] : (workflowResult.data || {});
+    renderMetrics(workflow);
     renderQueues(summary, readyTotal);
     renderThroughput(reportData.production || [], days);
     renderPriority(reportData.work_in_progress || []);

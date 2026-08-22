@@ -12,11 +12,11 @@
       href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap"
       rel="stylesheet"
     >
-    <link rel="stylesheet" href="css/styles.css?v=20260811-5">
+    <link rel="stylesheet" href="css/styles.css?v=20260822-workflow-overview-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script defer src="js/config.js?v=20260821-privacy-delete-1"></script>
     <script defer src="js/part-notifications.js?v=20260820-1"></script>
-    <script defer src="js/dashboard.js?v=20260820-1"></script>
+    <script defer src="js/dashboard.js?v=20260822-workflow-overview-1"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -127,32 +127,7 @@
             </a>
           </section>
 
-          <section class="metric-grid" aria-label="Stock and operations summary">
-            <a class="metric-card metric-card-link company-stock" href="reports.html?report=stock_received">
-              <div class="metric-topline"><span class="metric-icon">◫</span><span class="trend up">↑ 8.4%</span></div>
-              <p>Company-owned stock</p>
-              <strong>1,284</strong>
-              <small>Open received-stock data &rarr;</small>
-            </a>
-            <a class="metric-card metric-card-link customer-stock" href="initial-qc.html">
-              <div class="metric-topline"><span class="metric-icon">◌</span><span class="trend up">↑ 4.1%</span></div>
-              <p>Customer-owned stock</p>
-              <strong>316</strong>
-              <small>Open Initial QC queue &rarr;</small>
-            </a>
-            <a class="metric-card metric-card-link rma-stock" href="reports.html?report=parts_requests">
-              <div class="metric-topline"><span class="metric-icon">↶</span><span class="trend attention">12 need QC</span></div>
-              <p>RMA in progress</p>
-              <strong>47</strong>
-              <small>Open parts-request data &rarr;</small>
-            </a>
-            <a class="metric-card metric-card-link ready-stock" href="ready-stock.html">
-              <div class="metric-topline"><span class="metric-icon">↝</span><span class="trend up">↑ 15.6%</span></div>
-              <p>Ready for shipment</p>
-              <strong>126</strong>
-              <small>Open current Ready Stock &rarr;</small>
-            </a>
-          </section>
+          <section class="metric-grid workflow-metric-grid" aria-label="Live workflow summary"></section>
 
           <section class="dashboard-grid primary-grid">
             <article class="panel queue-panel">
