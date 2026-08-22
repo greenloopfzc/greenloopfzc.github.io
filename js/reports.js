@@ -345,13 +345,13 @@
       <section class="test-cleanup-card">
         <div class="test-cleanup-copy">
           <span class="test-cleanup-icon" aria-hidden="true">!</span>
-          <div><h3>Delete selected test data</h3><p>Delete one IMEI for retesting, or delete test phones received in a date range. Select the affected workflow pages. Dropdown options, users, permissions and technicians are always preserved.</p></div>
+          <div><h3>Delete one IMEI completely</h3><p>Scan or enter one IMEI to remove its full device workflow from the system. An audit record stays permanently in Deleted History. Dropdown options, users, permissions and technicians are always preserved.</p></div>
         </div>
         <form id="test-data-cleanup-form" class="test-cleanup-form" novalidate>
-          <label class="test-cleanup-wide">Specific IMEI or device number (optional)<input name="identifier" type="search" autocomplete="off" placeholder="Scan IMEI or enter DEV-000001"></label>
+          <label class="test-cleanup-wide">IMEI to delete completely <em>Preferred</em><input name="identifier" type="search" autocomplete="off" placeholder="Scan exact 15-digit IMEI or enter DEV-000001"></label>
           <label>From received date<input name="date_from" type="date" value="${escapeHtml(dateFrom.value || "")}"></label>
           <label>To received date<input name="date_to" type="date" value="${escapeHtml(dateTo.value || "")}"></label>
-          <fieldset class="test-cleanup-pages test-cleanup-wide"><legend>Select data pages</legend>
+          <fieldset class="test-cleanup-pages test-cleanup-wide"><legend>Full device history to delete</legend>
             ${[
               ["stock_received", "Stock Received"], ["imei_entry", "IMEI Entry"], ["initial_qc", "Initial QC"],
               ["lab_glass", "Lab & Glass"], ["parts", "Parts"], ["inventory", "Inventory"],
@@ -361,7 +361,7 @@
           </fieldset>
           <label>Deletion code<input name="deletion_code" type="password" inputmode="numeric" autocomplete="off" placeholder="Enter code" required></label>
           <label>Type DELETE SELECTED TEST DATA<input name="confirmation" type="text" autocomplete="off" placeholder="DELETE SELECTED TEST DATA" required></label>
-          <button class="danger-button" type="submit">Delete selected test data</button>
+          <button class="danger-button" type="submit">Delete IMEI and save audit history</button>
         </form>
       </section>`;
   }
@@ -569,13 +569,13 @@
       p_page_keys: pages
     });
     submit.disabled = false;
-    submit.textContent = "Delete selected test data";
+    submit.textContent = "Delete IMEI and save audit history";
     if (error) { setMessage(error.message || "Selected test data could not be deleted."); return; }
 
     correctionRecord = null;
     await loadReports();
     form.reset();
-    setMessage(`Deleted ${Number(data?.deleted_devices || 0)} phone(s) and ${Number(data?.deleted_jobs || 0)} job(s). The IMEI can now be entered again. Dropdowns, users, permissions and technicians were preserved.`, "success");
+    setMessage(`Deleted ${Number(data?.deleted_devices || 0)} phone(s) and ${Number(data?.deleted_jobs || 0)} job(s). The IMEI can now be entered again; its audit record is in Deleted History. Dropdowns, users, permissions and technicians were preserved.`, "success");
   }
 
   function renderActiveReport() {

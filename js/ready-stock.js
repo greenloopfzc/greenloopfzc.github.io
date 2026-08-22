@@ -205,9 +205,15 @@
   function syncReworkTechnician() { reworkTechnicianWrap.hidden = reworkDepartment.value !== "laboratory"; }
   async function loadReworkTechnicians() {
     const { data, error } = await getClient().rpc("get_ready_stock_rework_technicians");
-    if (error) throw error;
+    if (error) {
+      reworkTechnician.replaceChildren(new Option("Technicians unavailable — run the update", ""));
+      reworkTechnician.disabled = true;
+      showToast(error.message || "Laboratory technicians could not be loaded.");
+      return;
+    }
     reworkTechnician.replaceChildren(new Option("Select technician", ""));
     (data || []).forEach((item) => reworkTechnician.add(new Option(item.full_name || item.email || "Technician", item.id)));
+    reworkTechnician.disabled = false;
   }
 
   async function initialize() {
