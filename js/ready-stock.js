@@ -14,6 +14,11 @@
   const sidebar = document.querySelector("#sidebar");
   const backdrop = document.querySelector("#menu-backdrop");
   const toast = document.querySelector("#toast");
+  const reworkForm = document.querySelector("#ready-stock-rework-form");
+  const reworkImei = document.querySelector("#ready-stock-rework-imei");
+  const reworkDepartment = document.querySelector("#ready-stock-rework-department");
+  const reworkReason = document.querySelector("#ready-stock-rework-reason");
+  const reworkSubmit = document.querySelector("#ready-stock-rework-submit");
   let client;
   let toastTimer;
 
@@ -151,6 +156,27 @@
     render(Array.isArray(data) ? data[0] : data);
   }
 
+  async function sendForRework(event) {
+    event.preventDefault();
+    const imei = reworkImei.value.replace(/\D/g, "").slice(0, 15);
+    const reason = reworkReason.value.trim();
+    if (!/^\d{15}$/.test(imei)) { showToast("Enter a 15-digit Ready Stock IMEI."); reworkImei.focus(); return; }
+    if (!reason) { showToast("Enter the customer demand or work required."); reworkReason.focus(); return; }
+    const departmentName = reworkDepartment.value === "frame" ? "Frame Department" : "Laboratory";
+    if (!window.confirm(`Send ${imei} from Ready Stock to ${departmentName}?`)) return;
+    reworkSubmit.disabled = true;
+    reworkSubmit.textContent = "Sending...";
+    const { error } = await getClient().rpc("send_ready_stock_for_rework", {
+      p_imei: imei, p_department: reworkDepartment.value, p_customer_reason: reason
+    });
+    reworkSubmit.disabled = false;
+    reworkSubmit.textContent = "Send for rework";
+    if (error) throw error;
+    reworkForm.reset();
+    showToast(`Phone sent to ${departmentName}. Journey updated.`);
+    await loadReadyStock();
+  }
+
   async function initialize() {
     if (!config.supabaseUrl || !config.supabaseAnonKey || !window.supabase) {
       permissionMessage.textContent = "Supabase authentication is not configured.";
@@ -188,6 +214,8 @@
     rangeTo.value = "";
     loadReadyStock().catch((error) => showToast(error.message || "Ready Stock could not be loaded."));
   });
+  reworkImei.addEventListener("input", () => { reworkImei.value = reworkImei.value.replace(/\D/g, "").slice(0, 15); });
+  reworkForm.addEventListener("submit", (event) => sendForRework(event).catch((error) => showToast(error.message || "Phone could not be sent for rework.")));
   initialize().catch((error) => {
     permissionMessage.textContent = error.message || "Ready Stock could not be loaded.";
     permissionMessage.hidden = false;

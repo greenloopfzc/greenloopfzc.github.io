@@ -10,11 +10,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/ready-stock.css?v=20260813-1">
+    <link rel="stylesheet" href="css/ready-stock.css?v=20260822-ready-stock-rework-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script defer src="js/config.js?v=20260821-privacy-delete-1"></script>
     <script defer src="js/part-notifications.js"></script>
-    <script defer src="js/ready-stock.js?v=20260813-1"></script>
+    <script defer src="js/ready-stock.js?v=20260822-ready-stock-rework-1"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -45,6 +45,7 @@
           <div id="permission-message" class="access-message" hidden></div>
           <section id="ready-stock-app" hidden>
             <section class="ready-stock-filters" aria-label="Ready Stock date range"><div class="ready-stock-filter-heading"><strong>Final QC pass date range</strong><span>By default, this table shows stock passed today. Clear both dates to view all current Ready Stock.</span></div><label>From<input id="ready-stock-from" type="date"></label><label>To<input id="ready-stock-to" type="date"></label><button id="apply-ready-stock-range" class="primary-button" type="button">Apply range</button><button id="clear-ready-stock-range" class="secondary-button" type="button">View all</button></section>
+            <section class="ready-stock-rework"><div><p class="panel-kicker">Customer change</p><h2>Send Ready Stock for rework</h2><p>Use the IMEI, select Laboratory or Frame, and record the customer requirement. The full rework cycle stays in the device journey.</p></div><form id="ready-stock-rework-form"><label>IMEI<input id="ready-stock-rework-imei" inputmode="numeric" maxlength="15" placeholder="Scan 15-digit IMEI" required></label><label>Department<select id="ready-stock-rework-department" required><option value="laboratory">Laboratory</option><option value="frame">Frame Department</option></select></label><label class="ready-stock-rework-reason">Customer demand / work required<textarea id="ready-stock-rework-reason" rows="2" placeholder="Example: Change housing to Blue" required></textarea></label><button id="ready-stock-rework-submit" class="primary-button" type="submit">Send for rework</button></form></section>
             <section class="ready-stock-total"><span>Ready Stock Total</span><strong id="ready-stock-total">0 pcs</strong><small id="ready-stock-range-label">Final-QC-passed devices still held by Greenloop</small></section>
             <section class="ready-stock-panel"><div class="ready-stock-table-wrap"><table class="ready-stock-table"><thead id="ready-stock-head"><tr><th>Model</th><th>RMA</th><th>Latest Final QC pass</th><th>Total Qty</th></tr></thead><tbody id="ready-stock-body"><tr><td class="ready-stock-empty" colspan="4">Loading Ready Stock...</td></tr></tbody><tfoot id="ready-stock-foot"><tr><th>Total</th><th>0</th><th>-</th><th>0 pcs</th></tr></tfoot></table></div></section>
           </section>

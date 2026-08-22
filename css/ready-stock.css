@@ -23,5 +23,16 @@
 .ready-stock-table tfoot th { border-bottom: 0; background: #fff5df; color: #624600; font-family: Manrope, sans-serif; font-size: .88rem; }
 .ready-stock-table th:last-child, .ready-stock-table td:last-child { border-right: 0; }
 .ready-stock-empty { color: #78877e !important; font-weight: 600 !important; text-align: center !important; }
+.ready-stock-rework { display: grid; grid-template-columns: minmax(230px, .8fr) minmax(0, 1.5fr); gap: 20px; margin: 0 0 18px; border: 1px solid #ecd8ad; border-radius: 13px; padding: 16px 18px; background: #fffaf0; }
+.ready-stock-rework h2 { margin: 3px 0 4px; color: #4f421e; font: 800 1rem Manrope, sans-serif; }
+.ready-stock-rework p { margin: 0; color: #7d7153; font-size: .73rem; line-height: 1.45; }
+#ready-stock-rework-form { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; align-items: end; }
+#ready-stock-rework-form label { display: grid; gap: 5px; color: #5c563f; font-size: .68rem; font-weight: 800; }
+#ready-stock-rework-form input, #ready-stock-rework-form select, #ready-stock-rework-form textarea { box-sizing: border-box; width: 100%; border: 1px solid #decfae; border-radius: 7px; padding: 8px 9px; color: #2d382f; background: #fff; font: inherit; font-size: .76rem; }
+#ready-stock-rework-form input, #ready-stock-rework-form select { min-height: 39px; }
+#ready-stock-rework-form textarea { resize: vertical; min-height: 54px; }
+#ready-stock-rework-form .ready-stock-rework-reason { grid-column: 1 / -1; }
+#ready-stock-rework-submit { min-height: 39px; padding: 0 14px; font-size: .73rem; }
+@media (max-width: 850px) { .ready-stock-rework { grid-template-columns: 1fr; } }
 @media (max-width: 850px) { .ready-stock-filters { display: grid; grid-template-columns: 1fr 1fr; align-items: end; } .ready-stock-filter-heading { grid-column: 1 / -1; } }
 @media (max-width: 650px) { .ready-stock-heading { align-items: flex-start; } .ready-stock-heading-actions { width: 100%; display: grid; } .ready-stock-heading-actions .secondary-button { width: 100%; } .ready-stock-filters { grid-template-columns: 1fr; } .ready-stock-filter-heading { grid-column: auto; } .ready-stock-filters .primary-button, .ready-stock-filters .secondary-button { width: 100%; } }
