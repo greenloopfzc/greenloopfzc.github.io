@@ -12,10 +12,16 @@
   const sidebar = document.querySelector("#sidebar");
   const backdrop = document.querySelector("#menu-backdrop");
   const toast = document.querySelector("#toast");
+  const cableStatus = document.querySelector("#journey-cable-status");
+  const cableImei = document.querySelector("#journey-cable-imei");
+  const cableSerial = document.querySelector("#journey-cable-serial");
+  const cableRegion = document.querySelector("#journey-cable-region");
+  const saveCableDetails = document.querySelector("#save-journey-cable-details");
   let client;
   let toastTimer;
   let supplierNames = new Map();
   let batchQuantities = new Map();
+  let connectedDevice = null;
 
   function getClient() { if (!client) client = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey); return client; }
   function escapeHtml(value) { return String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]); }
@@ -57,6 +63,33 @@
       : '<tr><td class="journey-empty" colspan="21">No Final-QC-passed device is waiting in Ready Stock for this date range.</td></tr>';
   }
 
+  function applyConnectedDevice(device = {}) {
+    const imei = String(device.imei || "").replace(/\D/g, "").slice(0, 15);
+    if (!/^\d{15}$/.test(imei)) return;
+    connectedDevice = { imei, serialNumber: String(device.serialNumber || "").trim(), phoneRegion: String(device.phoneRegion || "").trim() };
+    cableImei.textContent = imei;
+    cableSerial.textContent = connectedDevice.serialNumber || "Not read";
+    cableRegion.textContent = connectedDevice.phoneRegion || "Not read";
+    saveCableDetails.disabled = !connectedDevice.serialNumber && !connectedDevice.phoneRegion;
+    cableStatus.textContent = saveCableDetails.disabled ? "Phone connected, but Serial Number and Region were not provided by the phone." : "Connected phone ready. Save only this phone's Serial Number and Region.";
+  }
+
+  async function saveConnectedDeviceDetails() {
+    if (!connectedDevice?.imei) { showToast("Connect the phone first."); return; }
+    saveCableDetails.disabled = true;
+    saveCableDetails.textContent = "Saving...";
+    const { error } = await getClient().rpc("save_stock_device_cable_details", {
+      p_imei_1: connectedDevice.imei,
+      p_serial_number: connectedDevice.serialNumber || null,
+      p_specification_region: connectedDevice.phoneRegion || null
+    });
+    saveCableDetails.textContent = "Save to this IMEI";
+    if (error) { saveCableDetails.disabled = false; throw error; }
+    cableStatus.textContent = `Saved Serial Number and Region for IMEI ${connectedDevice.imei}.`;
+    showToast("Connected phone details saved.");
+    await loadJourney();
+  }
+
   async function loadJourney() {
     const refresh = document.querySelector("#refresh-journey");
     refresh.disabled = true;
@@ -95,6 +128,7 @@
     rangeFrom.value = today;
     rangeTo.value = today;
     await loadJourney();
+    if (window.GREENLOOP_LAST_DEVICE) applyConnectedDevice(window.GREENLOOP_LAST_DEVICE);
   }
 
   document.querySelector("#open-menu").addEventListener("click", () => setMenu(true));
@@ -103,5 +137,7 @@
   document.querySelector("#refresh-journey").addEventListener("click", () => loadJourney().catch((error) => showToast(error.message || "Device journey could not be loaded.")));
   document.querySelector("#apply-journey-range").addEventListener("click", () => loadJourney().catch((error) => showToast(error.message || "Device journey could not be loaded.")));
   document.querySelector("#clear-journey-range").addEventListener("click", () => { rangeFrom.value = ""; rangeTo.value = ""; loadJourney().catch((error) => showToast(error.message || "Device journey could not be loaded.")); });
+  window.addEventListener("greenloop:device", (event) => applyConnectedDevice(event.detail));
+  saveCableDetails.addEventListener("click", () => saveConnectedDeviceDetails().catch((error) => showToast(error.message || "Connected phone details could not be saved.")));
   initialize().catch((error) => { permissionMessage.textContent = error.message || "Device journey could not be loaded."; permissionMessage.hidden = false; });
 })();

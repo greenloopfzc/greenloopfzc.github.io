@@ -3,6 +3,14 @@
 .journey-summary span { color: #5a7868; font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .journey-summary strong { color: #0f5f42; font-family: Manrope, sans-serif; font-size: 2rem; }
 .journey-summary small { color: #718378; font-size: .72rem; }
+.journey-cable-card { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin: 0 0 18px; padding: 16px 18px; border: 1px solid #bfe0ca; border-radius: 13px; background: #f7fcf8; }
+.journey-cable-card h2 { margin: 3px 0 5px; color: #173b2a; font: 800 1rem/1.2 Manrope, sans-serif; }
+.journey-cable-card p { margin: 0; color: #687d70; font-size: .72rem; }
+.journey-cable-values { display: grid; grid-template-columns: repeat(3, minmax(120px, 1fr)) minmax(155px, auto); align-items: end; gap: 12px; }
+.journey-cable-values span { display: grid; gap: 3px; color: #6a8073; font-size: .62rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.journey-cable-values strong { color: #173b2a; font-size: .75rem; letter-spacing: normal; text-transform: none; white-space: nowrap; }
+@media (max-width: 1050px) { .journey-cable-card { align-items: stretch; flex-direction: column; } .journey-cable-values { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 620px) { .journey-cable-values { grid-template-columns: 1fr; } }
 .journey-panel { overflow: hidden; border: 1px solid #d6e2d9; border-radius: 13px; background: #fff; }
 .journey-table-wrap { overflow-x: auto; }
 .journey-table { width: 100%; min-width: 3060px; border-collapse: collapse; }
