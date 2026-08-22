@@ -11,11 +11,11 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/ready-stock.css">
-    <link rel="stylesheet" href="css/ready-stock-journey.css?v=20260817-parts-cost-1">
+    <link rel="stylesheet" href="css/ready-stock-journey.css?v=20260822-device-details-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script defer src="js/config.js?v=20260821-privacy-delete-1"></script>
     <script defer src="js/part-notifications.js"></script>
-    <script defer src="js/ready-stock-journey.js?v=20260822-restore-layout-1"></script>
+    <script defer src="js/ready-stock-journey.js?v=20260822-device-details-1"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -33,7 +33,7 @@
           <section id="journey-app" hidden>
             <section class="ready-stock-filters" aria-label="Ready Stock Journey date range"><div class="ready-stock-filter-heading"><strong>Final QC pass date range</strong><span>By default, this table shows devices passed today. Clear both dates to view all current Ready Stock.</span></div><label>From<input id="journey-from" type="date"></label><label>To<input id="journey-to" type="date"></label><button id="apply-journey-range" class="primary-button" type="button">Apply range</button><button id="clear-journey-range" class="secondary-button" type="button">View all</button></section>
             <section class="journey-summary"><span>Devices shown</span><strong id="journey-total">0</strong><small id="journey-range-label">Latest Final QC pass appears first.</small></section>
-            <section class="journey-panel"><div class="journey-table-wrap"><table class="journey-table"><thead><tr><th>Stock Received</th><th>Supplier Code</th><th>Stock Channel</th><th>Batch</th><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>Supplier Grade</th><th>Company Initial Grade</th><th>Company Final QC Grade</th><th>Parts Used</th><th>Parts Cost (AED)</th><th>Work Done</th><th>Worked By</th><th>Step by Step</th><th>Final QC Passed</th></tr></thead><tbody id="journey-body"></tbody></table></div></section>
+            <section class="journey-panel"><div class="journey-table-wrap"><table class="journey-table"><thead><tr><th>Stock Received</th><th>Supplier Code</th><th>Stock Channel</th><th>Batch</th><th>IMEI</th><th>Serial Number</th><th>Region</th><th>Model</th><th>GB</th><th>Color</th><th>Initial BH</th><th>Final BH</th><th>Supplier Grade</th><th>Company Initial Grade</th><th>Company Final QC Grade</th><th>Parts Used</th><th>Parts Cost (AED)</th><th>Work Done</th><th>Worked By</th><th>Step by Step</th><th>Final QC Passed</th></tr></thead><tbody id="journey-body"></tbody></table></div></section>
           </section>
         </div>
       </main>
