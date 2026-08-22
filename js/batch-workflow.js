@@ -60,6 +60,8 @@
 
     let currentBatch;
     let slots = [];
+    // Shared on the page so a late cable-reader update can never claim another row.
+    const cableRows = window.GREENLOOP_CABLE_BATCH_ROWS || (window.GREENLOOP_CABLE_BATCH_ROWS = new Map());
 
     function setRowStatus(row, text, state = "") {
       const status = row.querySelector(".batch-row-status");
@@ -267,12 +269,17 @@
       const rows = [...panel.querySelectorAll("tbody tr")];
       const connectedImei = String(device.imei || "").replace(/\D/g, "").slice(0, 15);
       if (!/^\d{15}$/.test(connectedImei)) return;
+      const rowKey = `${currentBatch.batch_id}:${connectedImei}`;
+      const rememberedRow = cableRows.get(rowKey);
       // The cable reader can publish once with basic data and again when color arrives.
       // Update that phone's existing unsaved row; never use a second blank row for it.
-      const matchingRow = rows.find((item) => item.querySelector(".batch-row-imei")?.value.trim() === connectedImei);
+      const matchingRow = rememberedRow && panel.contains(rememberedRow)
+        ? rememberedRow
+        : rows.find((item) => item.querySelector(".batch-row-imei")?.value.trim() === connectedImei);
       if (matchingRow?.dataset.saved === "yes") return;
       const row = matchingRow || rows.find((item) => item.dataset.saved !== "yes" && !item.querySelector(".batch-row-imei").value.trim());
       if (!row) return;
+      cableRows.set(rowKey, row);
       const setSelect = (selector, value) => {
         const select = row.querySelector(selector);
         const text = String(value ?? "").trim();
@@ -286,7 +293,11 @@
       setSelect(".batch-row-model", device.model);
       setSelect(".batch-row-storage", device.storageGb);
       setSelect(".batch-row-color", device.color);
-      if (Number.isFinite(Number(device.batteryHealth))) row.querySelector(".batch-row-battery").value = Number(device.batteryHealth);
+      const batteryHealth = Number(device.batteryHealth);
+      // Empty reader data converts to 0 in JavaScript; do not display that as a real reading.
+      if (device.batteryHealth !== "" && Number.isFinite(batteryHealth) && batteryHealth > 0 && batteryHealth <= 100) {
+        row.querySelector(".batch-row-battery").value = batteryHealth;
+      }
       setRowStatus(row, autoSaveEnabled() ? "Phone loaded — saving" : "Phone loaded — review and save", "is-saving");
       if (autoSaveEnabled()) saveRow(row);
       else row.querySelector(".batch-save-button")?.focus();
