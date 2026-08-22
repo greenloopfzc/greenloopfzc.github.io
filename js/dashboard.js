@@ -221,8 +221,6 @@
     locationPanel.querySelector("h2").textContent = "Live stock status";
     locationPanel.querySelector(".location-grid").innerHTML = [
       ["Ready Stock", readyTotal],
-      ["Retail Shop", summary.retail_shop_stock || 0],
-      ["RMA received", (reportData.rma || []).length],
       ["Work in progress", (reportData.work_in_progress || []).length]
     ].map(([label, value]) => `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("");
   }

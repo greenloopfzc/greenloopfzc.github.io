@@ -81,7 +81,6 @@
       if (label) labels.set(normalize(label), label);
     });
     rows.forEach((row) => {
-      if (row.is_rma) return;
       const label = String(row.final_grade || "Unspecified").trim() || "Unspecified";
       if (!labels.has(normalize(label))) labels.set(normalize(label), label);
     });
@@ -90,16 +89,8 @@
 
   function pivotRows(rows, grades) {
     const models = new Map();
-    let rmaQty = 0;
-    let rmaLatest = null;
-
     rows.forEach((row) => {
       const quantity = Number(row.quantity || 0);
-      if (row.is_rma) {
-        rmaQty += quantity;
-        if (!rmaLatest || String(row.latest_passed_at || "") > String(rmaLatest || "")) rmaLatest = row.latest_passed_at;
-        return;
-      }
       const model = String(row.model || "Unknown model").trim() || "Unknown model";
       if (!models.has(model)) models.set(model, { model, grades: new Map(), total: 0, latest: null });
       const target = models.get(model);
@@ -109,9 +100,7 @@
       if (!target.latest || String(row.latest_passed_at || "") > String(target.latest || "")) target.latest = row.latest_passed_at;
     });
 
-    const result = [...models.values()].sort((a, b) => a.model.localeCompare(b.model, undefined, { numeric: true }));
-    if (rmaQty > 0) result.push({ model: "RMA", grades: new Map(), total: rmaQty, rma: rmaQty, latest: rmaLatest });
-    return result;
+    return [...models.values()].sort((a, b) => a.model.localeCompare(b.model, undefined, { numeric: true }));
   }
 
   function render(data) {
@@ -119,22 +108,19 @@
     const grades = buildGradeList(data, flatRows);
     const rows = pivotRows(flatRows, grades);
     const gradeTotals = new Map(grades.map((grade) => [grade.key, 0]));
-    let rmaTotal = 0;
-
     rows.forEach((row) => {
       grades.forEach((grade) => gradeTotals.set(grade.key, Number(gradeTotals.get(grade.key) || 0) + Number(row.grades.get(grade.key) || 0)));
-      rmaTotal += Number(row.rma || 0);
     });
 
     total.textContent = `${Number(data?.total_qty || 0)} pcs`;
     rangeLabel.textContent = data?.date_from && data?.date_to
       ? `Current Ready Stock passed Final QC from ${data.date_from} to ${data.date_to}`
       : "Final-QC-passed devices still held by Greenloop";
-    tableHead.innerHTML = `<tr><th>Model</th>${grades.map((grade) => `<th>${escapeHtml(grade.label)}</th>`).join("")}<th>RMA</th><th>Latest Final QC pass</th><th>Total Qty</th></tr>`;
+    tableHead.innerHTML = `<tr><th>Model</th>${grades.map((grade) => `<th>${escapeHtml(grade.label)}</th>`).join("")}<th>Latest Final QC pass</th><th>Total Qty</th></tr>`;
     tableBody.innerHTML = rows.length
-      ? rows.map((row) => `<tr><td>${escapeHtml(row.model)}</td>${grades.map((grade) => `<td>${escapeHtml(row.grades.get(grade.key) || 0)}</td>`).join("")}<td>${escapeHtml(row.rma || 0)}</td><td>${escapeHtml(formatDateTime(row.latest))}</td><td>${escapeHtml(row.total || 0)}</td></tr>`).join("")
-      : `<tr><td class="ready-stock-empty" colspan="${grades.length + 4}">No Final-QC-passed stock is waiting in Ready Stock.</td></tr>`;
-    tableFoot.innerHTML = `<tr><th>Total</th>${grades.map((grade) => `<th>${escapeHtml(gradeTotals.get(grade.key) || 0)}</th>`).join("")}<th>${escapeHtml(rmaTotal)}</th><th>-</th><th>${escapeHtml(Number(data?.total_qty || 0))} pcs</th></tr>`;
+      ? rows.map((row) => `<tr><td>${escapeHtml(row.model)}</td>${grades.map((grade) => `<td>${escapeHtml(row.grades.get(grade.key) || 0)}</td>`).join("")}<td>${escapeHtml(formatDateTime(row.latest))}</td><td>${escapeHtml(row.total || 0)}</td></tr>`).join("")
+      : `<tr><td class="ready-stock-empty" colspan="${grades.length + 3}">No Final-QC-passed stock is waiting in Ready Stock.</td></tr>`;
+    tableFoot.innerHTML = `<tr><th>Total</th>${grades.map((grade) => `<th>${escapeHtml(gradeTotals.get(grade.key) || 0)}</th>`).join("")}<th>-</th><th>${escapeHtml(Number(data?.total_qty || 0))} pcs</th></tr>`;
   }
 
   async function loadReadyStock() {

@@ -1,5 +1,0 @@
-.module-content { display: grid; min-height: 68vh; place-items: center; }
-.module-card { width: min(100%, 620px); border: 1px solid #dfe9e2; border-radius: 16px; padding: 34px; background: linear-gradient(130deg, #f5fbf6, #fff); }
-.module-card h1 { margin: 5px 0 10px; color: #26392d; font: 800 clamp(1.7rem, 4vw, 2.35rem)/1.05 "Manrope", Arial, sans-serif; letter-spacing: -.06em; }
-.module-card p:not(.eyebrow) { max-width: 470px; margin: 0 0 22px; color: #718076; font-size: .9rem; line-height: 1.6; }
-.module-card .primary-button { display: inline-flex; align-items: center; min-height: 43px; padding: 0 17px; text-decoration: none; }

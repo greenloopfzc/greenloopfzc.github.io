@@ -82,16 +82,6 @@
       title: "Deleted history",
       description: "Every deleted record, including the user, time, deletion method, and its saved snapshot.",
       columns: [["Deleted at", "deleted_at", "date"], ["Deleted by", "deleted_by"], ["Item type", "record_type"], ["Item", "record_label"], ["Deletion", "deletion_method", "status"], ["Reason", "deletion_reason"], ["Saved details", "record_data", "details"]]
-    },
-    rma: {
-      title: "RMA report",
-      description: "RMA devices received during the selected date range and their current workflow position.",
-      columns: [["Received", "received_at", "date"], ["IMEI", "imei"], ["Serial number", "serial_number"], ["Region", "specification_region"], ["Model", "model"], ["Customer", "customer"], ["Job", "job_number"], ["Status", "status", "status"]]
-    },
-    retail_shop: {
-      title: "Retail Shop report",
-      description: "Devices received from, or currently held in, Retail Shop stock.",
-      columns: [["IMEI", "imei"], ["Serial number", "serial_number"], ["Region", "specification_region"], ["Model", "model"], ["Memory", "memory"], ["Grade", "grade"], ["Job", "job_number"], ["Source", "source"], ["Status", "status", "status"], ["Location", "location"]]
     }
   };
 

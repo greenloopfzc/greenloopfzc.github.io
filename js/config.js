@@ -37,8 +37,6 @@ document.addEventListener("click", (event) => {
     "Ready Stock": "ready-stock.html",
     "Export Boxes": "export-box.html",
     "Ready Stock Journey": "ready-stock-journey.html",
-    "RMA": "module.html?module=RMA",
-    "Retail Shop": "module.html?module=Retail%20Shop",
     "Reports": "reports.html",
     "User Access": "user-access.html"
   };
@@ -64,6 +62,7 @@ document.addEventListener("click", (event) => {
     item("Overview", "dashboard.html", "⌘", page === "dashboard.html"),
     item("Stock Received", "stock-entry.html", "+", page === "stock-entry.html" || page === "receiving.html"),
     item("IMEI Entry", "imei-entry.html", "⌕", page === "imei-entry.html"),
+    item("IMEI Search", "imei-search.html", "⌕", page === "imei-search.html"),
     '<p class="nav-label">Operations</p>',
     // Permanent production workflow order:
     // Initial QC -> Lab & Glass -> Final QC -> optional Frame -> Final QC -> Ready Stock.
@@ -177,9 +176,11 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     overview: "dashboard.html",
     stock_received: "stock-entry.html",
     imei_entry: "imei-entry.html",
+    imei_search: "imei-search.html",
     initial_qc: "initial-qc.html",
     lab_glass: "laboratory.html",
     lab_live_board: "lab-live-board.html",
+    frame_department: "laboratory.html#frame",
     parts: "parts.html",
     inventory: "inventory.html",
     final_qc: "final-qc.html",
@@ -195,6 +196,7 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     "stock-entry.html": "stock_received",
     "receiving.html": "stock_received",
     "imei-entry.html": "imei_entry",
+    "imei-search.html": "imei_search",
     "initial-qc.html": "initial_qc",
     "laboratory.html": "lab_glass",
     "lab-live-board.html": "lab_live_board",
@@ -210,7 +212,9 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
   });
 
   function pageKeyForLink(link) {
-    const fileName = new URL(link.href, window.location.href).pathname.split("/").pop().toLowerCase();
+    const target = new URL(link.href, window.location.href);
+    const fileName = target.pathname.split("/").pop().toLowerCase();
+    if (fileName === "laboratory.html" && target.hash.toLowerCase() === "#frame") return "frame_department";
     return filePageKeys[fileName] || "";
   }
 
@@ -330,7 +334,9 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
 
   async function applyPageAccess() {
     const currentFile = (window.location.pathname.split("/").pop() || "dashboard.html").toLowerCase();
-    const currentPageKey = filePageKeys[currentFile];
+    const currentPageKey = currentFile === "laboratory.html" && window.location.hash.toLowerCase() === "#frame"
+      ? "frame_department"
+      : filePageKeys[currentFile];
     if (!currentPageKey) return;
 
     const navigation = document.querySelector(".sidebar-nav");

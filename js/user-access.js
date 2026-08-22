@@ -28,13 +28,17 @@
   let selectedUserId = "";
   let currentUserIsSuperAdmin = false;
 
+  // Permanent rule: every new Greenloop page must be added here with its own
+  // View only and Entry Allowed access choice, plus matching config and SQL keys.
   const pageGuideData = [
     ["overview", "Overview", "Dashboard and live operational summary."],
     ["stock_received", "Stock Received", "Create and view received stock batches."],
     ["imei_entry", "IMEI Entry", "Enter IMEIs and the first device details."],
+    ["imei_search", "IMEI Search", "Search one device and view its complete history."],
     ["initial_qc", "Initial QC", "Inspect, grade, identify work, and assign technicians."],
     ["lab_glass", "Lab & Glass", "Laboratory and glass repair work."],
     ["lab_live_board", "Lab Live Board", "TV display of live technician workload and performance."],
+    ["frame_department", "Frame Department", "Frame work, final grade, pass and fail decisions."],
     ["parts", "Parts", "View requests and issue required parts."],
     ["inventory", "Inventory", "Receive and control parts inventory."],
     ["final_qc", "Final QC", "Final inspection, grade, Battery Health, Pass or Fail."],
