@@ -204,7 +204,7 @@
 
   function syncReworkTechnician() { reworkTechnicianWrap.hidden = reworkDepartment.value !== "laboratory"; }
   async function loadReworkTechnicians() {
-    const { data, error } = await getClient().rpc("get_assignable_technicians");
+    const { data, error } = await getClient().rpc("get_ready_stock_rework_technicians");
     if (error) throw error;
     reworkTechnician.replaceChildren(new Option("Select technician", ""));
     (data || []).forEach((item) => reworkTechnician.add(new Option(item.full_name || item.email || "Technician", item.id)));
