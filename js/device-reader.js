@@ -5,6 +5,7 @@
   const threeUToolsEndpoint = "http://127.0.0.1:51894/v1/device";
   let lastFingerprint = "";
   let lastThreeUToolsAttemptImei = "";
+  let polling = false;
   const appleSalesRegions = new Map([
     ["VC/A", "Canada"], ["C/A", "Canada"], ["CL/A", "Canada"],
     ["LL/A", "United States"], ["CH/A", "Mainland China"], ["ZP/A", "Hong Kong / Macau"],
@@ -44,7 +45,7 @@
     if (device.color || !device.imei || device.imei === lastThreeUToolsAttemptImei) return device;
     lastThreeUToolsAttemptImei = device.imei;
     try {
-      const response = await fetch(threeUToolsEndpoint, { cache: "no-store", signal: AbortSignal.timeout(3500) });
+      const response = await fetch(threeUToolsEndpoint, { cache: "no-store", signal: AbortSignal.timeout(2000) });
       if (!response.ok) return device;
       const fallback = normalise(await response.json());
       if (fallback.imei !== device.imei) return device;
@@ -59,28 +60,40 @@
     }
   }
 
+  function publishDevice(device) {
+    const fingerprint = JSON.stringify(device);
+    if (fingerprint === lastFingerprint) return false;
+    lastFingerprint = fingerprint;
+    window.GREENLOOP_LAST_DEVICE = device;
+    window.dispatchEvent(new CustomEvent("greenloop:device", { detail: device }));
+    return true;
+  }
+
   async function poll() {
-    if (stopped || document.hidden) return;
+    if (stopped || document.hidden || polling) return;
+    polling = true;
     try {
-      const response = await fetch(endpoint, { cache: "no-store", signal: AbortSignal.timeout(2200) });
+      const response = await fetch(endpoint, { cache: "no-store", signal: AbortSignal.timeout(7000) });
       if (!response.ok) return;
       const payload = await response.json();
       if (payload?.ok === false) return;
-      let device = normalise(payload);
+      const device = normalise(payload);
       if (!/^\d{15}$/.test(device.imei)) return;
-      device = await fillMissingColorFrom3uTools(device);
-      window.GREENLOOP_LAST_DEVICE = device;
-      const fingerprint = JSON.stringify(device);
-      if (fingerprint === lastFingerprint) return;
-      lastFingerprint = fingerprint;
-      window.dispatchEvent(new CustomEvent("greenloop:device", { detail: device }));
+      publishDevice(device);
+      if (!device.color) {
+        const enriched = await fillMissingColorFrom3uTools(device);
+        publishDevice(enriched);
+      }
     } catch (_) {
       // The local reader is optional. Manual entry must keep working.
+    } finally {
+      polling = false;
     }
   }
 
   window.addEventListener("beforeunload", () => { stopped = true; });
   window.addEventListener("focus", poll);
-  window.setInterval(poll, 1800);
-  window.setTimeout(poll, 350);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
+  window.setInterval(poll, 900);
+  window.setTimeout(poll, 100);
 })();
