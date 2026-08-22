@@ -315,6 +315,8 @@
     row.classList.remove("is-error");
     row.classList.add("is-loaded");
     setRowState(row, "Loaded", "is-loaded");
+    const { error: receivedError } = await getClient().rpc("receive_final_qc_phone", { p_final_qc_step_id: step.id });
+    if (receivedError) throw receivedError;
   }
 
   async function loadQueue() {

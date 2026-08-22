@@ -36,9 +36,10 @@
     grid.innerHTML = rows.length ? rows.map((row) => {
       const pending = Number(row.pending_count) || 0;
       const working = Number(row.working_count) || 0;
+      const handoff = Number(row.final_qc_handoff_count) || 0;
       const state = working ? "Working now" : pending ? "Pending work" : "Clear";
       const className = working ? "is-busy" : pending ? "" : "is-clear";
-      return `<article class="technician-live-card ${className}"><div class="technician-live-head"><span class="technician-live-avatar">${escapeHtml(initials(row.technician_name))}</span><span class="technician-live-name"><strong>${escapeHtml(row.technician_name)}</strong><span>Lab &amp; Glass technician</span></span><span class="technician-live-state">${state}</span></div><div class="technician-live-main"><div><span>Pending phones</span><strong>${pending}</strong></div><div><span>Working now</span><strong>${working}</strong></div></div><div class="technician-live-stats"><div><span>Completed today</span><strong>${Number(row.completed_today) || 0}</strong></div><div><span>Total completed</span><strong>${Number(row.completed_total) || 0}</strong></div></div><div class="technician-live-device">${deviceLabel(row)}</div></article>`;
+      return `<article class="technician-live-card ${className}"><div class="technician-live-head"><span class="technician-live-avatar">${escapeHtml(initials(row.technician_name))}</span><span class="technician-live-name"><strong>${escapeHtml(row.technician_name)}</strong><span>Lab &amp; Glass technician</span></span><span class="technician-live-state">${state}</span></div><div class="technician-live-main"><div><span>Pending phones</span><strong>${pending}</strong></div><div><span>Working now</span><strong>${working}</strong></div></div><div class="technician-live-stats"><div><span>Awaiting Final QC</span><strong>${handoff}</strong></div><div><span>Completed today</span><strong>${Number(row.completed_today) || 0}</strong></div><div><span>Total completed</span><strong>${Number(row.completed_total) || 0}</strong></div></div><div class="technician-live-device">${deviceLabel(row)}</div></article>`;
     }).join("") : '<p class="technician-live-empty">No active Lab &amp; Glass technicians are available.</p>';
     updated.textContent = `Updated ${dateTime()}`;
   }

@@ -205,9 +205,13 @@
   function renderTechnicianLines() {
     const selectedTech = technicians.find((item) => String(item.id) === String(activeTechnicianId));
     const filtered = technicianRows.filter((row) => isFrameMode ? String(row.department) === "frame" : ["laboratory", "glass"].includes(String(row.department)));
-    technicianLinesCount.textContent = `${filtered.length} line${filtered.length === 1 ? "" : "s"}`;
+    const awaitingFinalQc = isFrameMode ? 0 : Math.max(0, Number(selectedTech?.pending_count || 0) - filtered.length);
+    technicianLinesCount.textContent = `${filtered.length} repair line${filtered.length === 1 ? "" : "s"}${awaitingFinalQc ? ` · ${awaitingFinalQc} Final QC receipt` : ""}`;
     if (!activeTechnicianId) { technicianWorkRows.innerHTML = '<tr><td colspan="12" class="technician-lines-empty">Select a technician.</td></tr>'; return; }
-    if (!filtered.length) { technicianWorkRows.innerHTML = `<tr><td colspan="12" class="technician-lines-empty">${escapeHtml(selectedTech?.full_name || "This technician")} has no ${isFrameMode ? "Frame" : "Laboratory"} phones pending.</td></tr>`; return; }
+    if (!filtered.length) {
+      technicianWorkRows.innerHTML = `<tr><td colspan="12" class="technician-lines-empty">${awaitingFinalQc ? `${escapeHtml(selectedTech?.full_name || "This technician")} has ${awaitingFinalQc} phone${awaitingFinalQc === 1 ? "" : "s"} awaiting Final QC receipt.` : `${escapeHtml(selectedTech?.full_name || "This technician")} has no ${isFrameMode ? "Frame" : "Laboratory"} phones pending.`}</td></tr>`;
+      return;
+    }
     technicianWorkRows.innerHTML = filtered.map((row) => {
       const qcParts = initialNames(row.initial_parts);
       const qcServices = initialServiceNames(row);
