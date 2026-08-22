@@ -1119,6 +1119,7 @@ input:focus {
 .live-headline-item time { color: #98726c; font-size: .9rem; font-weight: 700; }
 .live-headline-item strong { color: #bd332a; font-size: 1.08rem; }
 .live-headline-item b { color: #a52e27; font-size: 1.03rem; font-weight: 800; }
+.live-headline-item em { color: #80534d; font-size: .96rem; font-style: normal; font-weight: 700; }
 @keyframes greenloop-headline-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
 @keyframes dashboard-card-float {

@@ -16,12 +16,6 @@
   let toastTimer;
   let rows = [];
   let currentQueueTotal = 0;
-  const liveUpdatesSessionKey = "greenloop.overview.live-updates.started-at";
-  let liveUpdatesStartedAt = sessionStorage.getItem(liveUpdatesSessionKey);
-  if (!liveUpdatesStartedAt) {
-    liveUpdatesStartedAt = new Date().toISOString();
-    sessionStorage.setItem(liveUpdatesSessionKey, liveUpdatesStartedAt);
-  }
 
   document.querySelector("#dashboard-date").textContent = new Intl.DateTimeFormat("en-US", {
     weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "Asia/Dubai"
@@ -127,16 +121,13 @@
         ? [item.supplier_code, item.supplier_company].filter(Boolean).join(" ")
         : (item.supplier_code || "Supplier");
       const device = [item.model || "Model", item.storage_gb ? `${item.storage_gb} GB` : "GB -", item.color || "Color -"].join(" · ");
-      return `<span class="live-headline-item"><time>${escapeHtml(headlineTime(item.event_at))}</time><strong>${escapeHtml(item.imei || "IMEI")}</strong><span>${escapeHtml(supplier)} · ${escapeHtml(device)}</span><b>${escapeHtml(item.from_stage || "Workflow")} &rarr; ${escapeHtml(item.to_stage || "Updated")}</b></span>`;
+      return `<span class="live-headline-item"><time>${escapeHtml(headlineTime(item.event_at))}</time><strong>${escapeHtml(item.imei || "IMEI")}</strong><span>${escapeHtml(supplier)} · ${escapeHtml(device)}</span><b>${escapeHtml(item.from_stage || "Workflow")} &rarr; ${escapeHtml(item.to_stage || "Updated")}</b><em>${escapeHtml(item.activity_title || "Activity recorded")}</em></span>`;
     }).join("");
     liveHeadlinesItems.innerHTML = itemMarkup + itemMarkup;
   }
 
   async function refreshLiveHeadlines() {
-    const { data, error } = await getClient().rpc("get_overview_activity_headlines", {
-      p_limit: 12,
-      p_since: liveUpdatesStartedAt
-    });
+    const { data, error } = await getClient().rpc("get_overview_activity_headlines", { p_limit: 12 });
     if (error) {
       renderLiveHeadlines([]);
       return;
