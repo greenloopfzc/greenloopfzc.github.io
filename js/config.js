@@ -429,14 +429,47 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     const anchor = main?.querySelector(".page-content");
     if (!main || !anchor) return;
     const style = document.createElement("style");
-    style.textContent = ".greenloop-quick-scan{display:flex;align-items:center;gap:10px;margin:0 0 14px;border:1px solid #cfe4d6;border-radius:11px;padding:9px 13px;background:#f7fcf8}.greenloop-quick-scan strong{color:#176c4d;font-size:.76rem;white-space:nowrap}.greenloop-quick-scan input{width:min(340px,100%);min-height:35px;border:1px solid #bcd8c7;border-radius:7px;padding:0 10px;font:inherit;font-size:.78rem}.greenloop-quick-scan small{color:#718178;font-size:.68rem}@media(max-width:650px){.greenloop-quick-scan{align-items:stretch;flex-direction:column}.greenloop-quick-scan input{width:100%}}";
+    style.textContent = ".greenloop-quick-scan{display:flex;align-items:center;gap:10px;margin:0 0 14px;border:1px solid #cfe4d6;border-radius:11px;padding:9px 13px;background:#f7fcf8}.greenloop-quick-scan strong{color:#176c4d;font-size:.76rem;white-space:nowrap}.greenloop-quick-scan input{width:min(340px,100%);min-height:35px;border:1px solid #bcd8c7;border-radius:7px;padding:0 10px;font:inherit;font-size:.78rem}.greenloop-quick-scan small{color:#718178;font-size:.68rem}.greenloop-quick-scan button{min-height:35px;border:1px solid #bcd8c7;border-radius:7px;padding:0 10px;background:#fff;color:#176c4d;font:700 .72rem/1 inherit}.greenloop-imei-match{outline:3px solid #1a8a60!important;outline-offset:-3px;background:#ecfaf1!important;transition:background .2s,outline .2s}@media(max-width:650px){.greenloop-quick-scan{align-items:stretch;flex-direction:column}.greenloop-quick-scan input{width:100%}}";
     document.head.append(style);
     const scanner = document.createElement("form");
     scanner.id = "greenloop-quick-imei-scanner";
     scanner.className = "greenloop-quick-scan";
-    scanner.innerHTML = '<strong>⌁ Scan IMEI</strong><input inputmode="numeric" autocomplete="off" maxlength="15" placeholder="Scan phone barcode / IMEI"><small>Scans the current phone without loading the full queue.</small>';
+    scanner.innerHTML = '<strong>⌁ Scan IMEI</strong><input inputmode="numeric" autocomplete="off" maxlength="15" placeholder="Scan phone barcode / IMEI"><button type="button" hidden>Show all lines</button><small>Scans the current phone without loading the full queue.</small>';
     anchor.prepend(scanner);
     const input = scanner.querySelector("input");
+    const clearFilter = scanner.querySelector("button");
+    const scannerStatus = scanner.querySelector("small");
+    let filteredTable = null;
+    const normalizeImei = (value) => String(value || "").replace(/\D/g, "").slice(0, 15);
+    const findLoadedImeiRow = (imei) => [...document.querySelectorAll("tbody tr")].find((row) => {
+      const inputMatch = [...row.querySelectorAll("input")].some((field) => normalizeImei(field.value) === imei);
+      const textMatches = (row.textContent.match(/\d{15}/g) || []).some((value) => value === imei);
+      return inputMatch || textMatches;
+    });
+    window.addEventListener("greenloop:imei-scan", (event) => {
+      const imei = normalizeImei(event.detail?.imei);
+      if (!/^\d{15}$/.test(imei)) return;
+      const row = findLoadedImeiRow(imei);
+      if (!row) return;
+      event.preventDefault();
+      const table = row.closest("table");
+      table?.querySelectorAll("tbody tr").forEach((item) => { item.hidden = item !== row; });
+      filteredTable = table;
+      clearFilter.hidden = false;
+      row.classList.remove("greenloop-imei-match");
+      window.requestAnimationFrame(() => row.classList.add("greenloop-imei-match"));
+      window.setTimeout(() => row.classList.remove("greenloop-imei-match"), 4500);
+      row.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+      row.setAttribute("tabindex", "-1");
+      row.focus({ preventScroll: true });
+      scannerStatus.textContent = `Showing only IMEI ${imei} in this page.`;
+    });
+    clearFilter.addEventListener("click", () => {
+      filteredTable?.querySelectorAll("tbody tr").forEach((row) => { row.hidden = false; });
+      filteredTable = null;
+      clearFilter.hidden = true;
+      scannerStatus.textContent = "All current page lines are shown.";
+    });
     input.addEventListener("input", () => {
       input.value = input.value.replace(/\D/g, "").slice(0, 15);
       if (input.value.length === 15) scanner.requestSubmit();
@@ -445,8 +478,8 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
       event.preventDefault();
       const imei = input.value.trim();
       if (!/^\d{15}$/.test(imei)) return;
-      const handled = window.dispatchEvent(new CustomEvent("greenloop:imei-scan", { cancelable: true, detail: { imei } }));
-      if (handled) window.location.href = `imei-search.html?imei=${encodeURIComponent(imei)}`;
+      const notHandled = window.dispatchEvent(new CustomEvent("greenloop:imei-scan", { cancelable: true, detail: { imei } }));
+      if (notHandled) scannerStatus.textContent = "This IMEI is not in the current page's loaded lines.";
       input.value = "";
     });
   }
