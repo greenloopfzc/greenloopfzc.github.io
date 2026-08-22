@@ -111,9 +111,10 @@
 
   function renderLiveHeadlines(headlines) {
     if (!liveHeadlines || !liveHeadlinesItems) return;
-    liveHeadlines.hidden = !headlines.length;
+    liveHeadlines.hidden = false;
     if (!headlines.length) {
-      liveHeadlinesItems.innerHTML = "";
+      const emptyMarkup = '<span class="live-headline-item"><strong>NO LIVE ACTIVITY</strong><span>New Stock Received, IMEI, QC, Lab, Frame, Ready Stock, and Export activity will appear here automatically.</span></span>';
+      liveHeadlinesItems.innerHTML = emptyMarkup + emptyMarkup;
       return;
     }
     const itemMarkup = headlines.map((item) => {
