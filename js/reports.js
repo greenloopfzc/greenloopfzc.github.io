@@ -347,8 +347,14 @@
           <span class="test-cleanup-icon" aria-hidden="true">!</span>
           <div><h3>Delete one IMEI completely</h3><p>Scan or enter one IMEI to remove its full device workflow from the system. An audit record stays permanently in Deleted History. Dropdown options, users, permissions and technicians are always preserved.</p></div>
         </div>
+        <form id="single-imei-delete-form" class="single-imei-delete-form" novalidate>
+          <label>IMEI to delete completely<input name="identifier" type="search" inputmode="numeric" autocomplete="off" placeholder="Scan exact 15-digit IMEI" required></label>
+          <label>Deletion code<input name="deletion_code" type="password" inputmode="numeric" autocomplete="off" placeholder="Enter code" required></label>
+          <button class="danger-button" type="submit">Delete this IMEI</button>
+        </form>
+        <p class="single-imei-delete-help">This button deletes the exact IMEI from every workflow step and saves its audit record in Deleted History.</p>
         <form id="test-data-cleanup-form" class="test-cleanup-form" novalidate>
-          <label class="test-cleanup-wide">IMEI to delete completely <em>Preferred</em><input name="identifier" type="search" autocomplete="off" placeholder="Scan exact 15-digit IMEI or enter DEV-000001"></label>
+          <label class="test-cleanup-wide">Date-range / selected-page cleanup <em>Optional</em><input name="identifier" type="search" autocomplete="off" placeholder="Optional: scan IMEI or enter DEV-000001"></label>
           <label>From received date<input name="date_from" type="date" value="${escapeHtml(dateFrom.value || "")}"></label>
           <label>To received date<input name="date_to" type="date" value="${escapeHtml(dateTo.value || "")}"></label>
           <fieldset class="test-cleanup-pages test-cleanup-wide"><legend>Full device history to delete</legend>
@@ -578,6 +584,35 @@
     setMessage(`Deleted ${Number(data?.deleted_devices || 0)} phone(s) and ${Number(data?.deleted_jobs || 0)} job(s). The IMEI can now be entered again; its audit record is in Deleted History. Dropdowns, users, permissions and technicians were preserved.`, "success");
   }
 
+  async function deleteOneImei(form) {
+    const formData = new FormData(form);
+    const identifier = String(formData.get("identifier") || "").trim();
+    const deletionCode = String(formData.get("deletion_code") || "").trim();
+    if (!identifier) { setMessage("Scan or enter the IMEI to delete."); return; }
+    if (!deletionCode) { setMessage("Enter the deletion code."); return; }
+    if (!window.confirm(`Delete the complete workflow for ${identifier}? The audit copy will remain in Deleted History.`)) return;
+
+    const submit = form.querySelector('button[type="submit"]');
+    submit.disabled = true;
+    submit.textContent = "Deleting...";
+    setMessage();
+    const { error } = await getClient().rpc("delete_greenloop_test_data_selectively", {
+      p_deletion_code: deletionCode,
+      p_confirmation: "DELETE SELECTED TEST DATA",
+      p_identifier: identifier,
+      p_date_from: null,
+      p_date_to: null,
+      p_page_keys: ["stock_received", "imei_entry", "initial_qc", "lab_glass", "parts", "inventory", "final_qc", "frame", "ready_stock", "export_boxes"]
+    });
+    submit.disabled = false;
+    submit.textContent = "Delete this IMEI";
+    if (error) { setMessage(error.message || "This IMEI could not be deleted."); return; }
+
+    correctionRecord = null;
+    await loadReports();
+    setMessage(`IMEI ${identifier} was deleted completely. Its audit record is available in Deleted History.`, "success");
+  }
+
   function renderActiveReport() {
     document.querySelectorAll(".report-tab").forEach((tab) => tab.classList.toggle("active", tab.dataset.report === activeReport));
     if (activeReport === "overview") renderOverview();
@@ -689,6 +724,11 @@
     if (event.target.id === "test-data-cleanup-form") {
       event.preventDefault();
       deleteAllTestData(event.target).catch((error) => setMessage(error.message || "Greenloop data could not be reset."));
+      return;
+    }
+    if (event.target.id === "single-imei-delete-form") {
+      event.preventDefault();
+      deleteOneImei(event.target).catch((error) => setMessage(error.message || "This IMEI could not be deleted."));
     }
   });
   reportContent.addEventListener("input", (event) => {
