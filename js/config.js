@@ -3,6 +3,21 @@ window.GREENLOOP_CONFIG = Object.freeze({
   supabaseAnonKey: "sb_publishable_hMIRbfKmh4vhGvEgVcPjow_F21WmwXt"
 });
 
+// Applied after every page stylesheet so no individual table can override the
+// shared centred layout for its headings and cell values.
+(() => {
+  if (document.querySelector("#greenloop-table-centering")) return;
+  const style = document.createElement("style");
+  style.id = "greenloop-table-centering";
+  style.textContent = `
+    .app-page table th, .app-page table td { text-align: center !important; }
+    .app-page table input:not([type="checkbox"]):not([type="radio"]),
+    .app-page table select,
+    .app-page table textarea { text-align: center !important; }
+  `;
+  document.head.append(style);
+})();
+
 document.addEventListener("click", (event) => {
   const button = event.target.closest(".module-link[data-module]");
   if (!button) return;
