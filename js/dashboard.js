@@ -16,6 +16,7 @@
   let toastTimer;
   let rows = [];
   let currentQueueTotal = 0;
+  let liveHeadlinesSignature = "";
 
   document.querySelector("#dashboard-date").textContent = new Intl.DateTimeFormat("en-US", {
     weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "Asia/Dubai"
@@ -111,10 +112,14 @@
 
   function renderLiveHeadlines(headlines) {
     if (!liveHeadlines || !liveHeadlinesItems) return;
+    const signature = JSON.stringify((headlines || []).map((item) => [item.event_at, item.imei, item.from_stage, item.to_stage, item.activity_title]));
+    if (signature === liveHeadlinesSignature) return;
+    liveHeadlinesSignature = signature;
     liveHeadlines.hidden = false;
     if (!headlines.length) {
       const emptyMarkup = '<span class="live-headline-item"><strong>NO LIVE ACTIVITY</strong><span>New Stock Received, IMEI, QC, Lab, Frame, Ready Stock, and Export activity will appear here automatically.</span></span>';
       liveHeadlinesItems.innerHTML = emptyMarkup + emptyMarkup;
+      setLiveHeadlineSpeed();
       return;
     }
     const itemMarkup = headlines.map((item) => {
@@ -125,6 +130,15 @@
       return `<span class="live-headline-item"><time>${escapeHtml(headlineTime(item.event_at))}</time><strong>${escapeHtml(item.imei || "IMEI")}</strong><span>${escapeHtml(supplier)} · ${escapeHtml(device)}</span><b>${escapeHtml(item.from_stage || "Workflow")} &rarr; ${escapeHtml(item.to_stage || "Updated")}</b><em>${escapeHtml(item.activity_title || "Activity recorded")}</em></span>`;
     }).join("");
     liveHeadlinesItems.innerHTML = itemMarkup + itemMarkup;
+    setLiveHeadlineSpeed();
+  }
+
+  function setLiveHeadlineSpeed() {
+    window.requestAnimationFrame(() => {
+      const loopDistance = liveHeadlinesItems.scrollWidth / 2;
+      const durationSeconds = Math.max(16, Math.ceil(loopDistance / 100));
+      liveHeadlinesItems.style.animationDuration = `${durationSeconds}s`;
+    });
   }
 
   async function refreshLiveHeadlines() {
