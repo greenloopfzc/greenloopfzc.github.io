@@ -10,10 +10,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css?v=20260822-live-board-1">
-    <link rel="stylesheet" href="css/lab-live-board.css?v=20260822-1">
+    <link rel="stylesheet" href="css/lab-live-board.css?v=20260822-performance-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script defer src="js/config.js?v=20260822-lab-live-board-access-1"></script>
-    <script defer src="js/lab-live-board.js?v=20260822-final-qc-receipt-1"></script>
+    <script defer src="js/lab-live-board.js?v=20260822-performance-1"></script>
   </head>
   <body class="app-page lab-live-board-page">
     <div class="app-shell">
@@ -27,7 +27,7 @@
         <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Overview</a><span>/</span><strong>Lab Live Board</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
         <div class="page-content lab-live-board-content">
           <section class="lab-live-hero">
-            <div class="lab-live-hero-copy"><p class="eyebrow">LAB &amp; GLASS PERFORMANCE</p><h1>Lab Live Board</h1><p>Every active technician, current phone workload, and completed work—built for the workshop TV.</p></div>
+            <div class="lab-live-hero-copy"><p class="eyebrow">LAB &amp; GLASS PERFORMANCE</p><h1>Lab Live Board</h1><p>Live workload, daily and monthly completion, quality alerts, and overdue phones—built for the workshop TV.</p></div>
             <div class="lab-live-actions"><span class="lab-live-status"><i></i>Live refresh: 30 sec</span><span id="board-updated" class="lab-live-updated">Loading...</span><button id="refresh-board" class="secondary-button" type="button">Refresh now</button><button id="tv-mode" class="primary-button" type="button">TV mode</button></div>
           </section>
           <div id="permission-message" class="access-message" hidden></div>
@@ -37,6 +37,8 @@
               <article><span>Phones pending</span><strong id="summary-pending">0</strong><small>Assigned work waiting in queue</small></article>
               <article><span>Working now</span><strong id="summary-working">0</strong><small>Active repair sessions</small></article>
               <article><span>Completed today</span><strong id="summary-completed">0</strong><small>Lab &amp; Glass phones completed</small></article>
+              <article><span>Over 2 days</span><strong id="summary-overdue">0</strong><small>Phones needing immediate attention</small></article>
+              <article><span>Completed month</span><strong id="summary-month">0</strong><small>All Lab &amp; Glass work this month</small></article>
             </section>
             <section class="lab-live-panel">
               <div class="lab-live-panel-heading"><div><p class="panel-kicker">TECHNICIAN STATUS</p><h2>Workshop performance at a glance</h2></div><span id="board-count" class="lab-live-count">0 technicians</span></div>
