@@ -14,7 +14,7 @@
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script defer src="js/config.js?v=20260821-privacy-delete-1"></script>
     <script defer src="js/part-notifications.js?v=20260813-1"></script>
-    <script defer src="js/final-qc.js?v=20260821-device-identity-1"></script>
+    <script defer src="js/final-qc.js?v=20260822-restore-layout-1"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -54,7 +54,7 @@
                 <div id="final-top-scroll" class="final-top-scroll" aria-label="Horizontal table scroll"><div id="final-top-scroll-track"></div></div>
                 <div id="final-table-scroll" class="final-table-scroll">
                   <table class="final-bulk-table">
-                    <thead><tr><th>IMEI</th><th>Serial number</th><th>Region</th><th>Model</th><th>GB</th><th>Color</th><th>Initial BH</th><th>Final BH</th><th>Supplier code</th><th>Supplier grade</th><th>Initial grade</th><th>Final grade (direct pass)</th><th>Pass</th><th>Frame</th><th>Fail</th><th>Save</th></tr></thead>
+                    <thead><tr><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>Initial BH</th><th>Final BH</th><th>Supplier code</th><th>Supplier grade</th><th>Initial grade</th><th>Final grade (direct pass)</th><th>Pass</th><th>Frame</th><th>Fail</th><th>Save</th></tr></thead>
                     <tbody id="final-bulk-body"></tbody>
                   </table>
                 </div>
@@ -70,7 +70,7 @@
       <section class="final-pending-dialog" role="dialog" aria-modal="true" aria-labelledby="final-pending-title">
         <header><div><p class="panel-kicker">Final QC queue</p><h2 id="final-pending-title">Phones waiting for Final QC</h2></div><button type="button" class="icon-button" data-close-pending aria-label="Close pending phones">&times;</button></header>
         <label class="final-pending-search">Search pending IMEI or supplier<input id="final-pending-search" type="search" autocomplete="off" placeholder="Type IMEI, supplier code, or model"></label>
-        <div class="final-pending-table-wrap"><table class="final-pending-table"><thead><tr><th>#</th><th>IMEI</th><th>Serial number</th><th>Region</th><th>Supplier code</th><th>Model</th><th>GB</th><th>Color</th><th>Initial BH</th><th>Supplier grade</th><th>Initial grade</th></tr></thead><tbody id="final-pending-list-body"></tbody></table></div>
+        <div class="final-pending-table-wrap"><table class="final-pending-table"><thead><tr><th>#</th><th>IMEI</th><th>Supplier code</th><th>Model</th><th>GB</th><th>Color</th><th>Initial BH</th><th>Supplier grade</th><th>Initial grade</th></tr></thead><tbody id="final-pending-list-body"></tbody></table></div>
       </section>
     </div>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>

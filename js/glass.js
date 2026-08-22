@@ -114,7 +114,7 @@
     const details = [device.brand, device.model, device.original_grade ? `Grade ${device.original_grade}` : ""].filter(Boolean).join(" · ");
     deviceSummary.innerHTML = `
       <div><p class="panel-kicker">Selected device</p><h2>${escapeHtml(device.device_number || "Device")}</h2><p>${escapeHtml(details || "No model details recorded")}</p></div>
-      <dl><div><dt>Job</dt><dd>${escapeHtml(job.job_number)}</dd></div><div><dt>IMEI</dt><dd>${escapeHtml(device.imei_1 || "—")}</dd></div><div><dt>Serial number</dt><dd>${escapeHtml(device.serial_number || "—")}</dd></div><div><dt>Region</dt><dd>${escapeHtml(device.specification_region || "—")}</dd></div><div><dt>Work order</dt><dd>${escapeHtml(workOrder.work_order_number || "—")}</dd></div></dl>
+      <dl><div><dt>Job</dt><dd>${escapeHtml(job.job_number)}</dd></div><div><dt>IMEI</dt><dd>${escapeHtml(device.imei_1 || "—")}</dd></div><div><dt>Work order</dt><dd>${escapeHtml(workOrder.work_order_number || "—")}</dd></div></dl>
     `;
 
     const [findings, recordResponse] = await Promise.all([
@@ -132,7 +132,7 @@
     const selectedId = stepSelect.value;
     const { data, error } = await getClient()
       .from("job_work_order_steps")
-      .select("id, step_order, work_order:job_work_orders!inner(work_order_number, job:jobs!inner(id, job_number, device:devices(device_number, imei_1, serial_number, specification_region, brand, model, original_grade)))")
+      .select("id, step_order, work_order:job_work_orders!inner(work_order_number, job:jobs!inner(id, job_number, device:devices(device_number, imei_1, brand, model, original_grade)))")
       .eq("department", "glass")
       .eq("step_status", "in_progress")
       .order("created_at", { ascending: true });

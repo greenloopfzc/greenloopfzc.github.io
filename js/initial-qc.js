@@ -173,8 +173,6 @@
     const rowId = `initial-qc-row-${rowSequence}`;
     return `<tr data-row-id="${rowId}">
       <td class="qc-bulk-imei-cell"><input class="qc-bulk-imei" inputmode="numeric" autocomplete="off" maxlength="15" placeholder="Scan IMEI"><small data-row-state>Line ${rowSequence} · Waiting</small></td>
-      <td class="qc-bulk-auto" data-auto="serial">-</td>
-      <td class="qc-bulk-auto" data-auto="region">-</td>
       <td class="qc-bulk-auto" data-auto="model">-</td>
       <td class="qc-bulk-auto" data-auto="storage">-</td>
       <td class="qc-bulk-auto" data-auto="color">-</td>
@@ -319,10 +317,6 @@
 
     const job = result.job || {};
     const device = result.device || {};
-    if (device.id) {
-      const { data: identity } = await getClient().from("devices").select("serial_number, specification_region").eq("id", device.id).maybeSingle();
-      Object.assign(device, identity || {});
-    }
     const { data: batchJob } = await getClient()
       .from("jobs")
       .select("receiving_batch:receiving_batches(planned_quantity)")
@@ -335,8 +329,6 @@
       device
     };
     rowJobs.set(row.dataset.rowId, selectedJob);
-    row.querySelector('[data-auto="serial"]').textContent = device.serial_number || "-";
-    row.querySelector('[data-auto="region"]').textContent = device.specification_region || "-";
     row.querySelector('[data-auto="model"]').textContent = device.model || "-";
     row.querySelector('[data-auto="storage"]').textContent = device.storage_gb ? `${device.storage_gb} GB` : "-";
     row.querySelector('[data-auto="color"]').textContent = device.color || "-";
@@ -399,8 +391,6 @@
     const supplier = Array.isArray(job.supplier) ? job.supplier[0] : job.supplier;
     return {
       imei: device?.imei_1 || "-",
-      serial: device?.serial_number || "-",
-      region: device?.specification_region || "-",
       supplier: supplierLabel(supplier?.supplier_code, supplier?.company_name, job?.receiving_batch?.planned_quantity),
       model: device?.model || "-",
       storage: device?.storage_gb ? `${device.storage_gb} GB` : "-",
@@ -410,10 +400,10 @@
 
   function renderPendingJobs(filter = "") {
     const search = String(filter || "").trim().toLocaleLowerCase();
-    const rows = pendingJobs.map(pendingJobData).filter((job) => !search || [job.imei, job.serial, job.region, job.supplier, job.model, job.storage, job.color].some((value) => String(value).toLocaleLowerCase().includes(search)));
+    const rows = pendingJobs.map(pendingJobData).filter((job) => !search || [job.imei, job.supplier, job.model, job.storage, job.color].some((value) => String(value).toLocaleLowerCase().includes(search)));
     pendingListBody.innerHTML = rows.length
-      ? rows.map((job, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(job.imei)}</td><td>${escapeHtml(job.serial)}</td><td>${escapeHtml(job.region)}</td><td>${escapeHtml(job.supplier)}</td><td>${escapeHtml(job.model)}</td><td>${escapeHtml(job.storage)}</td><td>${escapeHtml(job.color)}</td></tr>`).join("")
-      : '<tr><td colspan="8" class="qc-pending-empty">No pending phones match this search.</td></tr>';
+      ? rows.map((job, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(job.imei)}</td><td>${escapeHtml(job.supplier)}</td><td>${escapeHtml(job.model)}</td><td>${escapeHtml(job.storage)}</td><td>${escapeHtml(job.color)}</td></tr>`).join("")
+      : '<tr><td colspan="6" class="qc-pending-empty">No pending phones match this search.</td></tr>';
   }
 
   function openPendingModal() {
@@ -433,7 +423,7 @@
   async function loadPendingCount() {
     const { data, error } = await getClient()
       .from("jobs")
-      .select("job_number, received_at, supplier:suppliers(supplier_code, company_name), receiving_batch:receiving_batches(planned_quantity), device:devices!inner(imei_1, serial_number, specification_region, model, storage_gb, color)")
+      .select("job_number, received_at, supplier:suppliers(supplier_code, company_name), receiving_batch:receiving_batches(planned_quantity), device:devices!inner(imei_1, model, storage_gb, color)")
       .eq("current_status", "initial_qc_pending")
       .is("deleted_at", null)
       .order("received_at", { ascending: true });

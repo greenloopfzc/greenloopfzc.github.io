@@ -137,8 +137,6 @@
     const rowId = `final-qc-row-${rowSequence}`;
     return `<tr data-row-id="${rowId}">
       <td class="final-imei-cell"><input class="final-row-imei" inputmode="numeric" autocomplete="off" maxlength="15" placeholder="Scan IMEI"><small data-row-state>Line ${rowSequence} · Waiting</small></td>
-      <td class="final-auto-cell" data-auto="serial">-</td>
-      <td class="final-auto-cell" data-auto="region">-</td>
       <td class="final-auto-cell" data-auto="model">-</td>
       <td class="final-auto-cell" data-auto="storage">-</td>
       <td class="final-auto-cell" data-auto="color">-</td>
@@ -306,8 +304,6 @@
     const device = getDevice(step) || {};
     const supplier = getSupplier(job) || {};
     rowSteps.set(row.dataset.rowId, step);
-    row.querySelector('[data-auto="serial"]').textContent = device.serial_number || "-";
-    row.querySelector('[data-auto="region"]').textContent = device.specification_region || "-";
     row.querySelector('[data-auto="model"]').textContent = device.model || "-";
     row.querySelector('[data-auto="storage"]').textContent = device.storage_gb ? `${device.storage_gb} GB` : "-";
     row.querySelector('[data-auto="color"]').textContent = device.color || "-";
@@ -324,7 +320,7 @@
   async function loadQueue() {
     const { data, error } = await getClient()
       .from("job_work_order_steps")
-      .select("id, work_order:job_work_orders!inner(work_order_number, job:jobs!inner(id, job_number, supplier_grade, supplier:suppliers(supplier_code, company_name), receiving_batch:receiving_batches(planned_quantity), device:devices(device_number, imei_1, serial_number, specification_region, brand, model, storage_gb, color, battery_health, gc_grade)))")
+      .select("id, work_order:job_work_orders!inner(work_order_number, job:jobs!inner(id, job_number, supplier_grade, supplier:suppliers(supplier_code, company_name), receiving_batch:receiving_batches(planned_quantity), device:devices(device_number, imei_1, brand, model, storage_gb, color, battery_health, gc_grade)))")
       .eq("department", "final_qc")
       .eq("step_status", "in_progress")
       .order("created_at", { ascending: true });
@@ -389,8 +385,6 @@
     const device = getDevice(step) || {};
     return {
       imei: device.imei_1 || "-",
-      serial: device.serial_number || "-",
-      region: device.specification_region || "-",
       supplier: supplierLabel(getSupplier(job) || {}, job.receiving_batch),
       model: device.model || "-",
       storage: device.storage_gb ? `${device.storage_gb} GB` : "-",
@@ -405,8 +399,8 @@
     const search = String(filter || "").trim().toLocaleLowerCase();
     const rows = queueSteps.map(pendingData).filter((row) => !search || Object.values(row).some((value) => String(value).toLocaleLowerCase().includes(search)));
     pendingListBody.innerHTML = rows.length
-      ? rows.map((row, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(row.imei)}</td><td>${escapeHtml(row.serial)}</td><td>${escapeHtml(row.region)}</td><td>${escapeHtml(row.supplier)}</td><td>${escapeHtml(row.model)}</td><td>${escapeHtml(row.storage)}</td><td>${escapeHtml(row.color)}</td><td>${escapeHtml(row.battery)}</td><td>${escapeHtml(row.supplierGrade)}</td><td>${escapeHtml(row.initialGrade)}</td></tr>`).join("")
-      : '<tr><td colspan="11" class="final-pending-empty">No pending phones match this search.</td></tr>';
+      ? rows.map((row, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(row.imei)}</td><td>${escapeHtml(row.supplier)}</td><td>${escapeHtml(row.model)}</td><td>${escapeHtml(row.storage)}</td><td>${escapeHtml(row.color)}</td><td>${escapeHtml(row.battery)}</td><td>${escapeHtml(row.supplierGrade)}</td><td>${escapeHtml(row.initialGrade)}</td></tr>`).join("")
+      : '<tr><td colspan="9" class="final-pending-empty">No pending phones match this search.</td></tr>';
   }
 
   function openPendingModal() {

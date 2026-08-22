@@ -160,13 +160,11 @@
         </div>
         <div class="batch-table-scroll">
           <table class="batch-entry-table">
-            <thead><tr><th>#</th><th>IMEI</th><th>Serial number</th><th>Region</th><th>Model</th><th>GB</th><th>Color</th><th>Battery Health</th><th>Save</th><th>Status</th></tr></thead>
+            <thead><tr><th>#</th><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>Battery Health</th><th>Save</th><th>Status</th></tr></thead>
             <tbody>${slots.map((slot, index) => `
               <tr data-index="${index}">
                 <td>${index + 1}</td>
                 <td><input class="batch-row-imei" inputmode="numeric" autocomplete="off" maxlength="15" placeholder="Scan IMEI"></td>
-                <td><input class="batch-row-serial" autocomplete="off" placeholder="Auto-read"></td>
-                <td><input class="batch-row-region" autocomplete="off" placeholder="Auto-read"></td>
                 <td><div class="batch-option-control"><select class="batch-row-model">${optionsHtml(modelMaster, slot.model)}</select><button type="button" class="batch-option-add" data-option-group="model">+</button><button type="button" class="batch-option-remove" data-option-group="model">−</button></div></td>
                 <td><div class="batch-option-control"><select class="batch-row-storage">${optionsHtml(storageMaster, String(slot.storage || ""))}</select><button type="button" class="batch-option-add" data-option-group="storage_gb">+</button><button type="button" class="batch-option-remove" data-option-group="storage_gb">−</button></div></td>
                 <td><div class="batch-option-control"><select class="batch-row-color">${optionsHtml(colorMaster, slot.color)}</select><button type="button" class="batch-option-add" data-option-group="color">+</button><button type="button" class="batch-option-remove" data-option-group="color">−</button></div></td>
@@ -216,8 +214,6 @@
     async function saveRow(row) {
       if (!row || row.dataset.busy === "yes" || row.dataset.saved === "yes") return;
       const imei = row.querySelector(".batch-row-imei").value.trim();
-      const serialNumber = row.querySelector(".batch-row-serial").value.trim();
-      const specificationRegion = row.querySelector(".batch-row-region").value.trim();
       const model = row.querySelector(".batch-row-model").value;
       const storage = row.querySelector(".batch-row-storage").value;
       const color = row.querySelector(".batch-row-color").value;
@@ -239,16 +235,11 @@
       });
       row.dataset.busy = "";
       if (error) { button.disabled = false; setRowStatus(row, error.message || "Could not save", "is-error"); return; }
-      const { error: identityError } = await api().rpc("save_stock_device_cable_details", {
-        p_imei_1: imei,
-        p_serial_number: serialNumber || null,
-        p_specification_region: specificationRegion || null
-      });
       row.dataset.saved = "yes";
       row.classList.add("batch-saved-row");
       row.querySelectorAll("input, select").forEach((control) => { control.disabled = true; });
       button.textContent = "Saved";
-      setRowStatus(row, identityError ? "Sent to Initial QC — SN/Region retry needed" : "Sent to Initial QC", identityError ? "is-error" : "is-saved");
+      setRowStatus(row, "Sent to Initial QC", "is-saved");
       const nextRow = row.nextElementSibling;
       const nextControl = nextRow?.querySelector(".batch-row-imei:not(:disabled)") || panel.querySelector("tr:not(.batch-saved-row) .batch-row-battery:not(:disabled)");
       nextControl?.focus();
@@ -286,8 +277,6 @@
         select.dataset.manuallyChanged = "yes";
       };
       row.querySelector(".batch-row-imei").value = device.imei;
-      row.querySelector(".batch-row-serial").value = String(device.serialNumber || "").trim();
-      row.querySelector(".batch-row-region").value = String(device.phoneRegion || "").trim();
       setSelect(".batch-row-model", device.model);
       setSelect(".batch-row-storage", device.storageGb);
       setSelect(".batch-row-color", device.color);
