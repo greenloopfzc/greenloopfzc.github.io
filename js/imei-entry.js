@@ -171,7 +171,7 @@
     if (!batch) return;
     const plannedLines = Array.isArray(batch.planned_lines) ? batch.planned_lines : [];
     const nextLine = plannedLines.find((line) => Number(line.remaining_quantity) > 0) || plannedLines[0];
-    const planText = plannedLines.map((line) => `${line.model || "Any model"} · ${line.storage_gb ? `${line.storage_gb} GB` : "Any GB"} · ${line.color || "Any color"} (${line.remaining_quantity}/${line.planned_quantity} remaining)`).join(" | ");
+    const planText = plannedLines.map((line) => `${line.model || "Any model"} - ${line.storage_gb ? `${line.storage_gb} GB` : "Any GB"} - ${line.color || "Any color"} (${line.remaining_quantity}/${line.planned_quantity} remaining)`).join(" | ");
     const summary = [
       ["Invoice number", batch.invoice_number || "Not generated for legacy receipt"], ["Supplier code", supplierLabel(batch)], ["Stock channel", batch.stock_channel],
       ["Quantity received", `${batch.planned_quantity} devices`], ["Progress", `${batch.entered_quantity} / ${batch.planned_quantity}`],

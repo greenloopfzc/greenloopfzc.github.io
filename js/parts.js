@@ -104,7 +104,7 @@
   }
 
   function inventoryOptions() {
-    return [`<option value="">Select inventory part</option>`, ...inventory.filter((part) => part.is_active && Number(part.stock_quantity) > 0).map((part) => `<option value="${escapeHtml(part.id)}">${escapeHtml(part.sku)} · ${escapeHtml(part.part_name)} · ${part.stock_quantity} in stock</option>`)].join("");
+    return [`<option value="">Select inventory part</option>`, ...inventory.filter((part) => part.is_active && Number(part.stock_quantity) > 0).map((part) => `<option value="${escapeHtml(part.id)}">${escapeHtml(part.sku)} - ${escapeHtml(part.part_name)} - ${part.stock_quantity} in stock</option>`)].join("");
   }
 
   function inventoryOptionsForRequest(requestedPartName) {

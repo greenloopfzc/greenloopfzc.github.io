@@ -98,7 +98,7 @@
     document.querySelector("#stat-units").textContent = rows.reduce((total, row) => total + Number(row.stock_quantity || 0), 0).toLocaleString();
     document.querySelector("#stat-value").textContent = money(rows.reduce((total, row) => total + Number(row.stock_value || 0), 0));
     const latest = [...rows].sort((a, b) => new Date(b.last_received_at || 0) - new Date(a.last_received_at || 0))[0];
-    document.querySelector("#stat-latest").textContent = latest ? `${latest.part_name} · ${dateTime(latest.last_received_at)}` : "—";
+    document.querySelector("#stat-latest").textContent = latest ? `${latest.part_name} - ${dateTime(latest.last_received_at)}` : "—";
   }
 
   function renderReceipts(rows) {

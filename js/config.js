@@ -59,10 +59,10 @@ document.addEventListener("click", (event) => {
 
   navigation.innerHTML = [
     '<p class="nav-label">Workspace</p>',
+    item("IMEI Search", "imei-search.html", "⌕", page === "imei-search.html"),
     item("Overview", "dashboard.html", "⌘", page === "dashboard.html"),
     item("Stock Received", "stock-entry.html", "+", page === "stock-entry.html" || page === "receiving.html"),
     item("IMEI Entry", "imei-entry.html", "⌕", page === "imei-entry.html"),
-    item("IMEI Search", "imei-search.html", "⌕", page === "imei-search.html"),
     '<p class="nav-label">Operations</p>',
     // Permanent production workflow order:
     // Initial QC -> Lab & Glass -> Final QC -> optional Frame -> Final QC -> Ready Stock.

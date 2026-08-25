@@ -22,7 +22,7 @@
   function dateTime() { return new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Dubai", hour: "numeric", minute: "2-digit", hour12: true }).format(new Date()); }
   function deviceLabel(row) {
     if (!row.latest_imei) return "No phone currently assigned";
-    return `<strong>${escapeHtml(row.latest_imei)}</strong> · ${escapeHtml([row.latest_model || "Model -", row.latest_gb ? `${row.latest_gb} GB` : "GB -", row.latest_color || "Color -"].join(" · "))}`;
+    return `<strong>${escapeHtml(row.latest_imei)}</strong> - ${escapeHtml([row.latest_model || "Model -", row.latest_gb ? `${row.latest_gb} GB` : "GB -", row.latest_color || "Color -"].join(" - "))}`;
   }
   function pendingAge(hours) {
     const total = Number(hours) || 0;
@@ -53,7 +53,7 @@
       const qcReturns = Number(row.qc_returns_month) || 0;
       const state = working ? "Working now" : pending ? "Pending work" : "Clear";
       const className = overdue ? "is-overdue" : working ? "is-busy" : pending ? "" : "is-clear";
-      const alert = overdue ? `<div class="technician-live-alert"><strong>⚠ ${overdue} phone${overdue === 1 ? "" : "s"} over 2 days</strong><span>${escapeHtml(row.oldest_imei || "Oldest pending phone")} · waiting ${pendingAge(row.oldest_pending_hours)}</span></div>` : "";
+      const alert = overdue ? `<div class="technician-live-alert"><strong>⚠ ${overdue} phone${overdue === 1 ? "" : "s"} over 2 days</strong><span>${escapeHtml(row.oldest_imei || "Oldest pending phone")} - waiting ${pendingAge(row.oldest_pending_hours)}</span></div>` : "";
       return `<article class="technician-live-card ${className}"><div class="technician-live-head"><span class="technician-live-avatar">${escapeHtml(initials(row.technician_name))}</span><span class="technician-live-name"><strong>${escapeHtml(row.technician_name)}</strong><span>Lab &amp; Glass technician</span></span><span class="technician-live-state">${state}</span></div>${alert}<div class="technician-live-main"><div><span>Pending phones</span><strong>${pending}</strong></div><div><span>Working now</span><strong>${working}</strong></div></div><div class="technician-live-stats"><div><span>Awaiting Final QC</span><strong>${handoff}</strong></div><div><span>Completed today</span><strong>${Number(row.completed_today) || 0}</strong></div><div><span>Completed month</span><strong>${Number(row.completed_month) || 0}</strong></div></div><div class="technician-live-quality"><div><span>Damages month</span><strong>${damages}</strong></div><div><span>QC returns month</span><strong>${qcReturns}</strong></div><div><span>Career completed</span><strong>${Number(row.completed_total) || 0}</strong></div></div><div class="technician-live-device">${deviceLabel(row)}</div></article>`;
     }).join("") : '<p class="technician-live-empty">No active Lab &amp; Glass technicians are available.</p>';
     updated.textContent = `Updated ${dateTime()}`;

@@ -124,8 +124,8 @@
     }
     const itemMarkup = headlines.map((item) => {
       const supplier = item.supplier_code || "Supplier";
-      const device = [item.model || "Model", item.storage_gb ? `${item.storage_gb} GB` : "GB -", item.color || "Color -"].join(" · ");
-      return `<span class="live-headline-item"><time>${escapeHtml(headlineTime(item.event_at))}</time><strong>${escapeHtml(item.imei || "IMEI")}</strong><span>${escapeHtml(supplier)} · ${escapeHtml(device)}</span><b>${escapeHtml(item.from_stage || "Workflow")} &rarr; ${escapeHtml(item.to_stage || "Updated")}</b><em>${escapeHtml(item.activity_title || "Activity recorded")}</em></span>`;
+      const device = [item.model || "Model", item.storage_gb ? `${item.storage_gb} GB` : "GB -", item.color || "Color -"].join(" - ");
+      return `<span class="live-headline-item"><time>${escapeHtml(headlineTime(item.event_at))}</time><strong>${escapeHtml(item.imei || "IMEI")}</strong><span>${escapeHtml(supplier)} - ${escapeHtml(device)}</span><b>${escapeHtml(item.from_stage || "Workflow")} &rarr; ${escapeHtml(item.to_stage || "Updated")}</b><em>${escapeHtml(item.activity_title || "Activity recorded")}</em></span>`;
     }).join("");
     liveHeadlinesItems.innerHTML = itemMarkup + itemMarkup;
     setLiveHeadlineSpeed();
@@ -227,9 +227,9 @@
 
   function renderActivity(reportData) {
     const items = [
-      ...(reportData.final_qc || []).map((row) => ({ time: row.inspected_at, title: `Final QC ${titleCase(row.result)}`, text: `${row.job_number || "Job"} · ${row.imei || "No IMEI"}`, style: row.result === "pass" ? "green" : "red" })),
-      ...(reportData.parts_requests || []).map((row) => ({ time: row.requested_at, title: "Part request", text: `${row.part_name || "Part"} · ${row.job_number || "Job"}`, style: "amber" })),
-      ...(reportData.stock_received || []).map((row) => ({ time: row.received_at, title: "Stock received", text: `${row.imei || "No IMEI"} · ${row.model || "Unknown model"}`, style: "green" }))
+      ...(reportData.final_qc || []).map((row) => ({ time: row.inspected_at, title: `Final QC ${titleCase(row.result)}`, text: `${row.job_number || "Job"} - ${row.imei || "No IMEI"}`, style: row.result === "pass" ? "green" : "red" })),
+      ...(reportData.parts_requests || []).map((row) => ({ time: row.requested_at, title: "Part request", text: `${row.part_name || "Part"} - ${row.job_number || "Job"}`, style: "amber" })),
+      ...(reportData.stock_received || []).map((row) => ({ time: row.received_at, title: "Stock received", text: `${row.imei || "No IMEI"} - ${row.model || "Unknown model"}`, style: "green" }))
     ].filter((item) => item.time).sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 4);
     document.querySelector(".activity-list").innerHTML = items.length ? items.map((item) => `
       <li><i class="activity-dot ${item.style}"></i><span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.text)}</small></span><time>${escapeHtml(new Date(item.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))}</time></li>

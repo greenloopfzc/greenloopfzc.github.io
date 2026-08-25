@@ -111,7 +111,7 @@
     const job = getJob(selectedStep) || {};
     const device = getDevice(selectedStep) || {};
     const workOrder = getWorkOrder(selectedStep) || {};
-    const details = [device.brand, device.model, device.original_grade ? `Grade ${device.original_grade}` : ""].filter(Boolean).join(" · ");
+    const details = [device.brand, device.model, device.original_grade ? `Grade ${device.original_grade}` : ""].filter(Boolean).join(" - ");
     deviceSummary.innerHTML = `
       <div><p class="panel-kicker">Selected device</p><h2>${escapeHtml(device.device_number || "Device")}</h2><p>${escapeHtml(details || "No model details recorded")}</p></div>
       <dl><div><dt>Job</dt><dd>${escapeHtml(job.job_number)}</dd></div><div><dt>IMEI</dt><dd>${escapeHtml(device.imei_1 || "—")}</dd></div><div><dt>Work order</dt><dd>${escapeHtml(workOrder.work_order_number || "—")}</dd></div></dl>
@@ -123,7 +123,7 @@
     ]);
     if (recordResponse.error) throw recordResponse.error;
     findingsList.innerHTML = findings.length
-      ? findings.map((finding) => `<li><strong>${escapeHtml(finding.check_item)}</strong><span>${escapeHtml(finding.action_required)} · ${escapeHtml(finding.priority)} priority${finding.notes ? ` · ${escapeHtml(finding.notes)}` : ""}</span></li>`).join("")
+      ? findings.map((finding) => `<li><strong>${escapeHtml(finding.check_item)}</strong><span>${escapeHtml(finding.action_required)} - ${escapeHtml(finding.priority)} priority${finding.notes ? ` - ${escapeHtml(finding.notes)}` : ""}</span></li>`).join("")
       : "<li><strong>Glass work required</strong><span>Review the work order and complete the assigned Glass repair.</span></li>";
     setWorkState(Boolean(recordResponse.data?.started_at && !recordResponse.data?.completed_at), recordResponse.data?.started_at);
   }
@@ -144,7 +144,7 @@
     queueSteps.forEach((step) => {
       const job = getJob(step) || {};
       const device = getDevice(step) || {};
-      stepSelect.add(new Option(`${job.job_number} · ${device.device_number || "Device"} · ${device.brand || "Unknown"} ${device.model || ""}`.trim(), step.id));
+      stepSelect.add(new Option(`${job.job_number} - ${device.device_number || "Device"} - ${device.brand || "Unknown"} ${device.model || ""}`.trim(), step.id));
     });
     emptyState.hidden = queueSteps.length !== 0;
     if (selectedId && queueSteps.some((step) => step.id === selectedId)) {

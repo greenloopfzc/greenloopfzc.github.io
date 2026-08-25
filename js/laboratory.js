@@ -206,7 +206,7 @@
     if (!parts.length) return "";
     const options = parts.map((part) => {
       const available = Number(part.issued || 0) - Number(part.installed || 0) - Number(part.returned || 0);
-      return `<option value="${escapeHtml(part.id)}">${escapeHtml(part.name)} · ${available} issued</option>`;
+      return `<option value="${escapeHtml(part.id)}">${escapeHtml(part.name)} - ${available} issued</option>`;
     }).join("");
     return `<details class="lab-issued-tools"><summary>Manage issued parts</summary><div class="lab-issued-manager"><label class="lab-issued-part-select"><span class="lab-field-label">Part name</span><select data-return-part-select><option value="">Select issued part</option>${options}</select></label><fieldset class="lab-return-reasons"><legend>Reason — tick one</legend><label class="lab-return-reason damaged"><input type="checkbox" data-return-reason value="damaged"><span>Damage</span></label><label class="lab-return-reason faulty"><input type="checkbox" data-return-reason value="faulty"><span>Faulty</span></label><label class="lab-return-reason not-needed"><input type="checkbox" data-return-reason value="not_needed"><span>Not Needed</span></label></fieldset><p class="lab-return-rule">Damage and Faulty never return to usable Inventory. Not Needed returns to Inventory only after Parts approval.</p></div></details>`;
   }
@@ -217,7 +217,7 @@
     const selectedTech = technicians.find((item) => String(item.id) === String(activeTechnicianId));
     const filtered = technicianRows.filter((row) => isFrameMode ? String(row.department) === "frame" : ["laboratory", "glass"].includes(String(row.department)));
     const awaitingFinalQc = isFrameMode ? 0 : Math.max(0, Number(selectedTech?.pending_count || 0) - filtered.length);
-    technicianLinesCount.textContent = `${filtered.length} repair line${filtered.length === 1 ? "" : "s"}${awaitingFinalQc ? ` · ${awaitingFinalQc} Final QC receipt` : ""}`;
+    technicianLinesCount.textContent = `${filtered.length} repair line${filtered.length === 1 ? "" : "s"}${awaitingFinalQc ? ` - ${awaitingFinalQc} Final QC receipt` : ""}`;
     if (!activeTechnicianId) { technicianWorkRows.innerHTML = '<tr><td colspan="12" class="technician-lines-empty">Select a technician.</td></tr>'; return; }
     if (!filtered.length) {
       technicianWorkRows.innerHTML = `<tr><td colspan="12" class="technician-lines-empty">${awaitingFinalQc ? `${escapeHtml(selectedTech?.full_name || "This technician")} has ${awaitingFinalQc} phone${awaitingFinalQc === 1 ? "" : "s"} awaiting Final QC receipt.` : `${escapeHtml(selectedTech?.full_name || "This technician")} has no ${isFrameMode ? "Frame" : "Laboratory"} phones pending.`}</td></tr>`;

@@ -172,7 +172,7 @@
     rowSequence += 1;
     const rowId = `initial-qc-row-${rowSequence}`;
     return `<tr data-row-id="${rowId}">
-      <td class="qc-bulk-imei-cell"><input class="qc-bulk-imei" inputmode="numeric" autocomplete="off" maxlength="15" placeholder="Scan IMEI"><small data-row-state>Line ${rowSequence} · Waiting</small></td>
+      <td class="qc-bulk-imei-cell"><input class="qc-bulk-imei" inputmode="numeric" autocomplete="off" maxlength="15" placeholder="Scan IMEI"><small data-row-state>Line ${rowSequence} - Waiting</small></td>
       <td class="qc-bulk-auto" data-auto="model">-</td>
       <td class="qc-bulk-auto" data-auto="storage">-</td>
       <td class="qc-bulk-auto" data-auto="color">-</td>
@@ -268,7 +268,7 @@
     });
     row.classList.remove("is-loaded", "is-error");
     rowJobs.delete(row.dataset.rowId);
-    setRowState(row, `Line ${[...tableBody.rows].indexOf(row) + 1} · Waiting`);
+    setRowState(row, `Line ${[...tableBody.rows].indexOf(row) + 1} - Waiting`);
   }
 
   function focusNextScan(row) {
@@ -594,7 +594,7 @@
     row.querySelectorAll("input, select, button").forEach((control) => { control.disabled = true; });
     rowButton.textContent = "Saved";
     const route = submission.routeToFrame ? "frame" : (hasWork ? "laboratory" : "final_qc");
-    setRowState(row, route === "frame" ? "Completed · Frame" : (hasWork ? "Completed · Laboratory" : "Completed · Final QC"), "is-completed");
+    setRowState(row, route === "frame" ? "Completed - Frame" : (hasWork ? "Completed - Laboratory" : "Completed - Final QC"), "is-completed");
     return { ok: true, hasWork, route };
   }
 

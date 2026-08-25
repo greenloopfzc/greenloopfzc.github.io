@@ -314,8 +314,8 @@
     if (device.current_owner_type === "customer_owned" && device.current_owner_customer_id && customerInput.querySelector(`option[value="${device.current_owner_customer_id}"]`)) {
       customerInput.value = device.current_owner_customer_id;
     }
-    const description = [device.model, device.storage_gb ? `${device.storage_gb} GB` : "", device.color].filter(Boolean).join(" · ");
-    duplicateNotice.innerHTML = `<strong>Existing IMEI found: ${device.device_number}</strong><span>${description || "Device details not entered"} · Current status: ${device.current_status.replaceAll("_", " ")}. Device details were loaded automatically. Submitting this form will create a new job and preserve its full history.</span>`;
+    const description = [device.model, device.storage_gb ? `${device.storage_gb} GB` : "", device.color].filter(Boolean).join(" - ");
+    duplicateNotice.innerHTML = `<strong>Existing IMEI found: ${device.device_number}</strong><span>${description || "Device details not entered"} - Current status: ${device.current_status.replaceAll("_", " ")}. Device details were loaded automatically. Submitting this form will create a new job and preserve its full history.</span>`;
     duplicateNotice.hidden = false;
     if (lastLoadedImei !== imei) showToast("Existing device details loaded automatically.");
     lastLoadedImei = imei;

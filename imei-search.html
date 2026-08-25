@@ -9,11 +9,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
-  <link rel="stylesheet" href="css/imei-search.css?v=20260811-2">
+  <link rel="stylesheet" href="css/imei-search.css?v=20260825-complete-1">
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script defer src="js/config.js?v=20260822-page-list-cleanup-1"></script>
+  <script defer src="js/config.js?v=20260825-complete-imei-1"></script>
   <script defer src="js/part-notifications.js"></script>
-  <script defer src="js/imei-search.js?v=20260822-page-list-cleanup-1"></script>
+  <script defer src="js/imei-search.js?v=20260825-complete-1"></script>
 </head>
 <body class="app-page">
   <div class="app-shell">
@@ -60,6 +60,7 @@
           <section id="history-result" class="history-result" hidden>
             <div id="device-summary" class="device-summary"></div>
             <div class="cost-cards"><div><span>Total recorded cost</span><strong id="total-cost">AED 0.00</strong><small>Purchase + recorded material costs</small></div><div><span>Current status</span><strong id="current-status">—</strong><small id="current-location">—</small></div></div>
+            <section class="history-panel journey-panel full-width"><div class="history-panel-heading"><div><p class="panel-kicker">Complete journey</p><h2>Receiving, QC, repair, export and customer record</h2></div></div><dl id="journey-details" class="journey-details"></dl></section>
             <div class="history-grid">
               <section class="history-panel"><div class="history-panel-heading"><div><p class="panel-kicker">Job history</p><h2>Jobs and costs</h2></div></div><div id="job-history" class="job-history"></div></section>
               <section class="history-panel"><div class="history-panel-heading"><div><p class="panel-kicker">IMEI timeline</p><h2>System events</h2></div></div><ol id="event-history" class="event-history"></ol></section>

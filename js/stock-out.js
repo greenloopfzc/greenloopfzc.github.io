@@ -126,7 +126,7 @@
 
     const device = relation(selectedJob.device) || {};
     const customer = relation(selectedJob.customer);
-    const details = [device.brand, device.model, device.original_grade ? `Grade ${device.original_grade}` : ""].filter(Boolean).join(" · ");
+    const details = [device.brand, device.model, device.original_grade ? `Grade ${device.original_grade}` : ""].filter(Boolean).join(" - ");
     deviceSummary.innerHTML = `
       <div><p class="panel-kicker">Selected device</p><h2>${escapeHtml(device.device_number || "Device")}</h2><p>${escapeHtml(details || "No model details recorded")}</p></div>
       <dl>
@@ -154,7 +154,7 @@
     jobSelect.replaceChildren(new Option(queueJobs.length ? "Select a device for Stock Out" : "No Stock Out jobs waiting", ""));
     queueJobs.forEach((job) => {
       const device = relation(job.device) || {};
-      jobSelect.add(new Option(`${job.job_number} · ${device.device_number || "Device"} · ${device.brand || "Unknown"} ${device.model || ""}`.trim(), job.id));
+      jobSelect.add(new Option(`${job.job_number} - ${device.device_number || "Device"} - ${device.brand || "Unknown"} ${device.model || ""}`.trim(), job.id));
     });
     emptyState.hidden = queueJobs.length !== 0;
     if (selectedId && queueJobs.some((job) => job.id === selectedId)) {
