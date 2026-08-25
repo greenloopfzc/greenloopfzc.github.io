@@ -103,7 +103,9 @@
   function allLabPartRequests(row) { return asList(row.lab_part_requests); }
   function activeLabPartRequests(row) { return allLabPartRequests(row).filter((item) => !isReturnedPartRequest(item, row)); }
   function manualPartNames(row) { return unique(asList(row.manual_parts).map((item) => item.name)); }
-  function usesManualParts(row) { return manualLabPartsMode && allLabPartRequests(row).length === 0; }
+  function usesManualParts(row) {
+    return manualLabPartsMode && !allLabPartRequests(row).some((item) => Number(item.issued || 0) > 0);
+  }
   function initialServiceNames(row, requiredOnly = false) {
     return unique(asList(row.initial_services)
       .filter((item) => !requiredOnly || item.lab_decision !== "not_required")
