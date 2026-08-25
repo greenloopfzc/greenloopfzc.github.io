@@ -37,6 +37,7 @@
   let technicianRows = [];
   let activeTechnicianId = "";
   let partOptions = [...standardParts];
+  let manualLabPartsMode = false;
   let frameGradeItems = [];
   const lineDrafts = new Map();
   let toastTimer;
@@ -101,6 +102,8 @@
   }
   function allLabPartRequests(row) { return asList(row.lab_part_requests); }
   function activeLabPartRequests(row) { return allLabPartRequests(row).filter((item) => !isReturnedPartRequest(item, row)); }
+  function manualPartNames(row) { return unique(asList(row.manual_parts).map((item) => item.name)); }
+  function usesManualParts(row) { return manualLabPartsMode && allLabPartRequests(row).length === 0; }
   function initialServiceNames(row, requiredOnly = false) {
     return unique(asList(row.initial_services)
       .filter((item) => !requiredOnly || item.lab_decision !== "not_required")
@@ -108,6 +111,8 @@
       .filter(isInitialQcService));
   }
   function labPartNames(row) {
+    const manuallyAdded = manualPartNames(row);
+    if (usesManualParts(row) && manuallyAdded.length) return manuallyAdded;
     const allRequests = allLabPartRequests(row);
     const activeNames = unique(activeLabPartRequests(row).map((item) => item.name));
     if (allRequests.length) return activeNames;
@@ -151,17 +156,20 @@
     const requests = activeLabPartRequests(row);
     const pendingReturns = asList(row.pending_part_returns).filter((item) => item.status === "pending");
     const initialParts = asList(row.initial_parts);
-    const submitted = allRequests.length > 0 || asList(row.lab_services).length > 0 || initialParts.some((item) => ["requested", "not_required", "unused_returned"].includes(String(item.status)));
+    const manualFlow = usesManualParts(row);
+    const submitted = manualFlow
+      ? asList(row.lab_services).length > 0 || initialParts.some((item) => ["manually_installed", "not_required"].includes(String(item.status))) || manualPartNames(row).length > 0
+      : allRequests.length > 0 || asList(row.lab_services).length > 0 || initialParts.some((item) => ["requested", "not_required", "unused_returned"].includes(String(item.status)));
     const needsParts = requests.length > 0 || labPartNames(row).length > 0;
-    const allIssued = submitted && (!needsParts || (requests.length > 0 && requests.every((item) => Number(item.issued || 0) >= Number(item.quantity || 1))));
-    return { requests, pendingReturns, submitted, allIssued, hasParts: needsParts };
+    const allIssued = manualFlow ? submitted : submitted && (!needsParts || (requests.length > 0 && requests.every((item) => Number(item.issued || 0) >= Number(item.quantity || 1))));
+    return { requests, pendingReturns, submitted, allIssued, hasParts: needsParts, manualFlow };
   }
   function linePartVisual(row) {
     const state = lineWorkflowState(row);
     const needsParts = state.hasParts;
     if (state.pendingReturns.length) return { className: "parts-pending", label: "Return pending" };
     if (needsParts && !state.allIssued) return { className: "parts-pending", label: "Parts pending" };
-    return { className: "parts-issued", label: needsParts ? "Parts issued" : "No parts required" };
+    return { className: "parts-issued", label: needsParts ? (state.manualFlow ? "Parts added in Lab" : "Parts issued") : "No parts required" };
   }
   function actionCell(row) {
     const state = lineWorkflowState(row);
@@ -175,15 +183,16 @@
       if (!plannedParts.length && !plannedServices.length) {
         return `<button class="line-save line-state parts-issued" type="button" data-order-parts="${escapeHtml(row.step_id)}" disabled>✓ No Parts Required</button><button class="line-save job-completed" type="button" data-complete-lab="${escapeHtml(row.step_id)}">✓ Job Completed</button><small class="line-status success" data-line-status>Ready to send to Final QC</small>`;
       }
-      const label = plannedParts.length ? "Request Parts" : "Save Services";
-      const help = plannedParts.length ? "Send only selected parts to Parts Department" : "Save services; no Parts notification will be sent";
+      const label = plannedParts.length ? (state.manualFlow ? "Save Manual Parts" : "Request Parts") : "Save Services";
+      const help = plannedParts.length ? (state.manualFlow ? "Save selected parts against this IMEI; no Parts request will be sent" : "Send only selected parts to Parts Department") : "Save services; no Parts notification will be sent";
       return `<button class="line-save order-parts" type="button" data-order-parts="${escapeHtml(row.step_id)}">${label}</button><button class="line-save job-completed" type="button" data-complete-lab="${escapeHtml(row.step_id)}" disabled>✓ Job Completed</button><small class="line-status" data-line-status>${help}</small>`;
     }
     if (!state.allIssued) {
       return `<button class="line-save line-state parts-ordered" type="button" data-order-parts="${escapeHtml(row.step_id)}" disabled>Parts Ordered</button><button class="line-save job-completed" type="button" data-complete-lab="${escapeHtml(row.step_id)}" disabled>✓ Job Completed</button><small class="line-status" data-line-status>Waiting for Parts Department</small>`;
     }
-    const issuedLabel = state.hasParts ? "✓ Parts Issued" : "✓ No Parts Required";
-    return `<button class="line-save line-state parts-issued" type="button" data-order-parts="${escapeHtml(row.step_id)}" disabled>${issuedLabel}</button><button class="line-save job-completed" type="button" data-complete-lab="${escapeHtml(row.step_id)}">✓ Job Completed</button><small class="line-status success" data-line-status>Ready to send to Final QC</small>`;
+    const issuedLabel = state.hasParts ? (state.manualFlow ? "✓ Parts Added in Lab" : "✓ Parts Issued") : "✓ No Parts Required";
+    const readyText = state.manualFlow && state.hasParts ? "Manual parts saved on this IMEI. Ready to send to Final QC" : "Ready to send to Final QC";
+    return `<button class="line-save line-state parts-issued" type="button" data-order-parts="${escapeHtml(row.step_id)}" disabled>${issuedLabel}</button><button class="line-save job-completed" type="button" data-complete-lab="${escapeHtml(row.step_id)}">✓ Job Completed</button><small class="line-status success" data-line-status>${readyText}</small>`;
   }
   function returnableParts(row) {
     return activeLabPartRequests(row).filter((item) => Number(item.issued || 0) - Number(item.installed || 0) - Number(item.returned || 0) > 0);
@@ -238,7 +247,7 @@
       const draft = lineDrafts.get(String(row.step_id));
       const displayedParts = draft?.parts || labPartNames(row);
       const displayedServices = draft?.services || labServiceNames(row);
-      return `<tr class="lab-phone-row ${visual.className}" data-step-id="${escapeHtml(row.step_id)}"><td colspan="12"><article class="lab-phone-card"><div class="lab-card-status"><span>${escapeHtml(visual.label)}</span></div><div class="lab-static-grid">${staticLine}</div><div class="lab-edit-grid"><div class="lab-edit-field lab-parts-field"><span class="lab-field-label">Final parts required</span>${choiceCell("part", partOptions, displayedParts)}</div><div class="lab-edit-field"><span class="lab-field-label">Final services required</span>${choiceCell("service", standardServices, displayedServices)}</div><div class="lab-line-actions">${saveCell}${issuedPartTools(row)}</div></div></article></td></tr>`;
+      return `<tr class="lab-phone-row ${visual.className}" data-step-id="${escapeHtml(row.step_id)}"><td colspan="12"><article class="lab-phone-card"><div class="lab-card-status"><span>${escapeHtml(visual.label)}</span></div><div class="lab-static-grid">${staticLine}</div><div class="lab-edit-grid"><div class="lab-edit-field lab-parts-field"><span class="lab-field-label">${usesManualParts(row) ? "Parts added in Lab" : "Final parts required"}</span>${choiceCell("part", partOptions, displayedParts)}</div><div class="lab-edit-field"><span class="lab-field-label">Final services required</span>${choiceCell("service", standardServices, displayedServices)}</div><div class="lab-line-actions">${saveCell}${issuedPartTools(row)}</div></div></article></td></tr>`;
     }).join("");
   }
 
@@ -295,7 +304,7 @@
     setBoardMessage();
     if (!activeTechnicianId) { technicianRows = []; renderTechnicianLines(); return; }
     const [rowResponse, returnResponse] = await Promise.all([
-      getClient().rpc("get_lab_technician_rows", { p_technician_id: activeTechnicianId }),
+      getClient().rpc("get_lab_technician_rows_v2", { p_technician_id: activeTechnicianId }),
       getClient().rpc("get_lab_part_return_requests_for_technician", { p_technician_id: activeTechnicianId })
     ]);
     if (rowResponse.error) throw rowResponse.error;
@@ -343,6 +352,9 @@
   }
   async function refreshAll() {
     if (isFrameMode) { await loadFrameRows(); return; }
+    const { data: manualMode, error: manualModeError } = await getClient().rpc("get_manual_lab_parts_mode");
+    if (manualModeError) throw manualModeError;
+    manualLabPartsMode = Boolean(manualMode);
     await loadTechnicians(activeTechnicianId);
     await loadTechnicianRows();
   }
@@ -447,6 +459,7 @@
     }
     const selectedParts = selectedChoices(row, "part");
     const selectedServices = selectedChoices(row, "service");
+    const manualFlow = lineWorkflowState(row).manualFlow;
     rememberLineDraft(row);
     setSubmitting(button, true, "Saving...");
     const { data, error } = await getClient().rpc("save_lab_technician_line_v2", {
@@ -462,10 +475,10 @@
     if (error) { status.textContent = error.message; status.className = "line-status error"; return; }
     lineDrafts.delete(String(row.dataset.stepId));
     const notifications = Number(data?.parts_notified || 0) + (data?.repeat_part_requested ? 1 : 0);
-    status.textContent = data?.repeat_part_requested ? `${notifications} part notification(s); repeat order #${Number(data.repeat_number || 2)}` : `${notifications} part notification(s)`;
+    status.textContent = manualFlow || data?.manual_mode ? "Manual parts saved on this IMEI. No Parts request was sent." : (data?.repeat_part_requested ? `${notifications} part notification(s); repeat order #${Number(data.repeat_number || 2)}` : `${notifications} part notification(s)`);
     status.className = "line-status success";
     document.dispatchEvent(new CustomEvent("greenloop:notifications-changed"));
-    showToast("Parts order submitted. Services were saved without a Parts notification.");
+    showToast(manualFlow || data?.manual_mode ? "Manual parts saved against this IMEI. No Parts request was created." : "Parts order submitted. Services were saved without a Parts notification.");
     await refreshAll();
   }
   async function completeLab(button) {

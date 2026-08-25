@@ -9,11 +9,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/parts.css?v=20260818-status-1">
+    <link rel="stylesheet" href="css/parts.css?v=20260825-manual-lab-parts-mode-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script defer src="js/config.js?v=20260821-privacy-delete-1"></script>
     <script defer src="js/part-notifications.js?v=20260815-1"></script>
-    <script defer src="js/parts.js?v=20260822-restore-layout-1"></script>
+    <script defer src="js/parts.js?v=20260825-manual-lab-parts-mode-1"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -46,6 +46,7 @@
           <div id="permission-message" class="access-message" hidden></div>
           <section id="parts-app" class="parts-app" hidden>
             <section class="parts-summary"><div><p class="panel-kicker">Parts queue</p><h2>Pending and issued requests</h2></div><span id="request-count" class="queue-count">0 waiting</span><button id="refresh-parts" class="secondary-button" type="button">Refresh</button></section>
+            <section id="manual-lab-parts-control" class="manual-lab-parts-control" hidden><div><p class="panel-kicker">Workflow control</p><h2>Manual Lab Parts Mode</h2><p>ON: Lab records parts directly against each IMEI; no Parts request or inventory deduction. OFF: normal automatic Parts and Inventory workflow.</p></div><button id="manual-lab-parts-toggle" class="manual-lab-parts-toggle" type="button" aria-pressed="false">Manual Lab Parts: OFF</button></section>
             <section class="form-panel part-return-report-panel">
               <div class="form-panel-heading return-report-heading">
                 <span class="section-number">01</span>

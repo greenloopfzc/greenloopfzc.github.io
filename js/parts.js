@@ -17,6 +17,8 @@
   const damagedPartsCount = document.querySelector("#damaged-parts-count");
   const faultyPartsCount = document.querySelector("#faulty-parts-count");
   const pendingReturnsCount = document.querySelector("#pending-returns-count");
+  const manualLabPartsControl = document.querySelector("#manual-lab-parts-control");
+  const manualLabPartsToggle = document.querySelector("#manual-lab-parts-toggle");
   const sidebar = document.querySelector("#sidebar");
   const backdrop = document.querySelector("#menu-backdrop");
   const toast = document.querySelector("#toast");
@@ -27,6 +29,7 @@
   let partReturns = [];
   let pendingReturns = [];
   let activeReturnCondition = "pending";
+  let manualLabPartsMode = false;
   let toastTimer;
 
   const getClient = () => (client ||= window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey));
@@ -60,6 +63,30 @@
     toast.hidden = false;
     toast.classList.add("is-visible");
     toastTimer = setTimeout(() => { toast.hidden = true; toast.classList.remove("is-visible"); }, 3400);
+  }
+
+  function renderManualLabPartsMode() {
+    manualLabPartsToggle.dataset.state = manualLabPartsMode ? "on" : "off";
+    manualLabPartsToggle.setAttribute("aria-pressed", String(manualLabPartsMode));
+    manualLabPartsToggle.textContent = `Manual Lab Parts: ${manualLabPartsMode ? "ON" : "OFF"}`;
+  }
+
+  async function loadManualLabPartsMode() {
+    const { data, error } = await getClient().rpc("get_manual_lab_parts_mode");
+    if (error) throw error;
+    manualLabPartsMode = Boolean(data);
+    renderManualLabPartsMode();
+  }
+
+  async function toggleManualLabPartsMode() {
+    const nextMode = !manualLabPartsMode;
+    manualLabPartsToggle.disabled = true;
+    const { data, error } = await getClient().rpc("set_manual_lab_parts_mode", { p_enabled: nextMode });
+    manualLabPartsToggle.disabled = false;
+    if (error) { setMessage(issueMessage, error.message || "Manual Lab Parts Mode could not be changed."); return; }
+    manualLabPartsMode = Boolean(data);
+    renderManualLabPartsMode();
+    toastMessage(manualLabPartsMode ? "Manual Lab Parts Mode is ON. New Lab parts stay outside Parts and Inventory." : "Manual Lab Parts Mode is OFF. Normal Parts and Inventory workflow is active.");
   }
 
   async function loadPartNames() {
@@ -316,6 +343,12 @@
     const { data: canUse, error } = await getClient().rpc("has_role", { required_roles: ["super_admin", "owner", "manager", "parts"] });
     if (error) throw error;
     if (!canUse) { permissionMessage.textContent = "Your account does not have Parts permission."; permissionMessage.hidden = false; return; }
+    const { data: canManageWorkflow, error: workflowRoleError } = await getClient().rpc("has_role", { required_roles: ["super_admin", "owner"] });
+    if (workflowRoleError) throw workflowRoleError;
+    if (canManageWorkflow) {
+      manualLabPartsControl.hidden = false;
+      await loadManualLabPartsMode();
+    }
     app.hidden = false;
     await Promise.all([loadPartNames(), loadData(), loadPartReturnReport()]);
     window.setInterval(() => {
@@ -336,6 +369,7 @@
   document.querySelector("#remove-part-name").addEventListener("click", removePartName);
   document.querySelector("#refresh-parts").addEventListener("click", () => loadData().catch((error) => toastMessage(error.message || "Parts data could not be refreshed.")));
   document.querySelector("#refresh-return-report").addEventListener("click", () => loadPartReturnReport().catch((error) => setMessage(returnReportMessage, error.message || "Part return reports could not be refreshed.")));
+  manualLabPartsToggle.addEventListener("click", () => toggleManualLabPartsMode().catch((error) => setMessage(issueMessage, error.message || "Manual Lab Parts Mode could not be changed.")));
   document.addEventListener("greenloop:notifications-changed", () => loadPartReturnReport().catch(() => {}));
   document.querySelectorAll("[data-return-report]").forEach((button) => button.addEventListener("click", () => {
     activeReturnCondition = button.dataset.returnReport;

@@ -3,6 +3,12 @@
 .parts-summary { display: flex; align-items: center; gap: 12px; border: 1px solid #e3eae5; border-radius: 13px; padding: 17px 19px; background: linear-gradient(118deg, #f5fbf7, #fff); }
 .parts-summary h2 { margin: 3px 0 0; color: #2b3a30; font-family: "Manrope", Arial, sans-serif; font-size: 1rem; letter-spacing: -.045em; }
 .parts-summary .queue-count { margin-left: auto; }
+.manual-lab-parts-control { display: flex; align-items: center; justify-content: space-between; gap: 18px; border: 1px solid #d8e6dd; border-radius: 13px; padding: 16px 19px; background: linear-gradient(118deg, #f7fbf8, #fff); }
+.manual-lab-parts-control h2 { margin: 3px 0 4px; color: #2b3a30; font: 800 1rem "Manrope", Arial, sans-serif; letter-spacing: -.035em; }
+.manual-lab-parts-control p:not(.panel-kicker) { max-width: 820px; margin: 0; color: #687a70; font-size: .72rem; line-height: 1.45; }
+.manual-lab-parts-toggle { min-width: 205px; min-height: 43px; border: 1px solid #117a56; border-radius: 9px; padding: 0 14px; color: #087451; background: #effaf4; font: 800 .76rem "DM Sans", Arial, sans-serif; cursor: pointer; }
+.manual-lab-parts-toggle[data-state="on"] { border-color: #c63f35; color: #fff; background: #d9473d; box-shadow: 0 8px 18px rgba(196, 56, 47, .16); }
+.manual-lab-parts-toggle:disabled { opacity: .65; cursor: wait; }
 .parts-sheet-panel, .inventory-panel { display: grid; gap: 13px; }
 .parts-sheet-wrap { overflow-x: auto; border: 1px solid #dce7df; border-radius: 9px; background: #fff; }
 .parts-sheet { width: 100%; min-width: 1080px; border-collapse: collapse; color: #405047; font-size: .69rem; text-align: left; }
@@ -48,4 +54,4 @@
 .part-status-chip.issued { color: #0d704b; background: #d9f1e3; }
 @media (max-width: 960px) { .inventory-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .inventory-grid .secondary-button { width: 100%; } }
 @media (max-width: 960px) { .return-report-heading { align-items: flex-start; flex-direction: column; } .return-report-actions { width: 100%; margin-left: 0; } }
-@media (max-width: 650px) { .parts-summary { display: grid; align-items: start; } .parts-summary .queue-count { margin-left: 0; width: fit-content; } .parts-summary .secondary-button { width: 100%; } .inventory-grid { grid-template-columns: 1fr; } .return-report-actions { display: grid; grid-template-columns: 1fr; } }
+@media (max-width: 650px) { .parts-summary, .manual-lab-parts-control { display: grid; align-items: start; } .parts-summary .queue-count { margin-left: 0; width: fit-content; } .parts-summary .secondary-button, .manual-lab-parts-toggle { width: 100%; } .inventory-grid { grid-template-columns: 1fr; } .return-report-actions { display: grid; grid-template-columns: 1fr; } }
