@@ -27,26 +27,3 @@
 .inventory-empty { color: #839188; text-align: center !important; }
 @media (max-width: 1180px) { .receipt-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .receipt-notes { grid-column: span 2; } }
 @media (max-width: 760px) { .inventory-stats, .receipt-grid { grid-template-columns: 1fr; } .receipt-notes { grid-column: auto; } .inventory-stats article { min-height: auto; } }
-
-/* Professional supplier-lot inventory */
-.pro-inventory { gap: 20px; }
-.pro-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 11px; align-items: end; }
-.pro-grid > label { display: grid; gap: 6px; color: #41564a; font-size: .7rem; font-weight: 800; }
-.pro-grid label small { color: #809187; font-size: .58rem; font-weight: 700; text-transform: uppercase; }
-.pro-grid input, .pro-grid select { min-width: 0; min-height: 40px; border: 1px solid #d2e2d8; border-radius: 8px; padding: 0 10px; color: #254134; background: #fff; font: inherit; font-size: .75rem; }
-.pro-grid .pro-wide { grid-column: span 2; }
-.pro-grid .primary-button { min-height: 40px; white-space: nowrap; }
-.pro-lot-table { min-width: 1540px; font-size: .69rem; }
-.pro-lot-table td { vertical-align: top; }
-.pro-lot-table small { display: block; margin-top: 4px; color: #718378; line-height: 1.35; white-space: normal; }
-.lot-actions { display: flex; flex-wrap: wrap; gap: 5px; min-width: 165px; }
-.lot-action { min-height: 29px; border: 1px solid #bddac8; border-radius: 6px; padding: 0 7px; color: #116844; background: #f3fbf6; font: 800 .6rem/1 "DM Sans",Arial,sans-serif; cursor: pointer; }
-.lot-action[data-to="faulty_quarantine"] { border-color: #f1c370; color: #976006; background: #fff8e7; }
-.lot-action[data-to="damaged_write_off"] { border-color: #ebb5ae; color: #a3352c; background: #fff4f2; }
-.stock-status { color: #577267; font-size: .62rem; font-weight: 800; }
-.stock-alert-list { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; }
-.stock-alert { display: grid; gap: 5px; border: 1px solid #f0d08b; border-radius: 9px; padding: 12px; background: #fff9eb; }
-.stock-alert.expiry { border-color: #e9b1ac; background: #fff4f2; }
-.stock-alert strong { color: #6e4d0b; font-size: .72rem; }.stock-alert.expiry strong { color: #913b32; }.stock-alert span { color: #6d7d73; font-size: .66rem; line-height: 1.4; }
-@media (max-width:1100px) { .pro-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .stock-alert-list { grid-template-columns: 1fr; } }
-@media (max-width:620px) { .pro-grid { grid-template-columns: 1fr; } .pro-grid .pro-wide { grid-column: auto; } }

@@ -1,10 +1,73 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0d5c43"><title>Parts Control | Greenloop</title><link rel="stylesheet" href="css/styles.css"><link rel="stylesheet" href="css/parts.css?v=20260825-professional-1"><script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script defer src="js/config.js?v=20260825-professional-inventory-1"></script><script defer src="js/parts.js?v=20260825-professional-1"></script></head>
-<body class="app-page"><div class="app-shell"><aside id="sidebar" class="sidebar"><div class="sidebar-top"><a class="app-brand" href="dashboard.html"><img class="brand-image" src="assets/looplogo.jpg" alt=""><span>greenloop</span></a><button id="close-menu" class="icon-button close-menu" type="button">×</button></div><nav class="sidebar-nav"></nav></aside><div id="menu-backdrop" class="menu-backdrop" hidden></div><main class="app-main"><header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button">☰</button><div class="breadcrumb"><a href="dashboard.html">Overview</a><span>/</span><strong>Parts</strong></div><div class="topbar-actions"><span class="live-chip">Traceable ledger</span></div></header><div class="page-content parts-content"><section class="page-heading"><div><p class="eyebrow dashboard-eyebrow">Parts Control Desk</p><h1>Issue, consume and recover with full traceability</h1><p class="heading-subtitle">Every action creates a permanent movement record. Lab & Glass workflow is paused and is not changed here.</p></div><a class="quiet-link" href="inventory.html">Open Inventory →</a></section><div id="permission-message" class="access-message" hidden></div>
-<section id="parts-app" class="parts-app pro-parts" hidden><section class="parts-summary"><div><p class="panel-kicker">Available controlled stock</p><h2 id="parts-summary-title">Loading supplier lots...</h2></div><button id="refresh-parts" class="secondary-button" type="button">Refresh</button></section>
-<section class="parts-action-grid"><section class="form-panel"><div class="form-panel-heading"><span class="section-number">01</span><div><h2>Issue to repair ticket</h2><p>Links exact lot, repair ticket and technician. Stock cannot go below zero.</p></div></div><form id="issue-form" class="parts-form"><label>Available lot<select id="issue-lot" required><option value="">Loading lots...</option></select></label><label>Repair ticket<select id="issue-job" required><option value="">Loading tickets...</option></select></label><label>Technician<select id="issue-technician" required><option value="">Select technician</option></select></label><label>Quantity<input id="issue-qty" type="number" min="0.001" step="0.001" required></label><label>Reason<input id="issue-reason" required value="Issued for repair ticket"></label><button class="primary-button" type="submit">Issue to technician</button></form><p id="issue-message" class="form-message receiving-message"></p></section>
-<section class="form-panel"><div class="form-panel-heading"><span class="section-number">02</span><div><h2>Workshop consumption</h2><p>For glue, cloth, flux and other general consumption; optionally link a repair ticket.</p></div></div><form id="consume-form" class="parts-form"><label>Available lot<select id="consume-lot" required><option value="">Loading lots...</option></select></label><label>Quantity<input id="consume-qty" type="number" min="0.001" step="0.001" required></label><label>Consumption reason<input id="consume-reason" required placeholder="Bench cleaning / repair use"></label><button class="secondary-button" type="submit">Record workshop use</button></form><p id="consume-message" class="form-message receiving-message"></p></section>
-<section class="form-panel"><div class="form-panel-heading"><span class="section-number">03</span><div><h2>Supplier faulty claim / RMA</h2><p>Faulty Quarantine moves to Supplier Return Pending and keeps supplier, batch and resolution history.</p></div></div><form id="claim-form" class="parts-form"><label>Faulty lot<select id="claim-lot" required><option value="">Loading faulty lots...</option></select></label><label>Quantity<input id="claim-qty" type="number" min="0.001" step="0.001" required></label><label>Fault reason<input id="claim-reason" required placeholder="DOA / incompatible / defect"></label><label>Return date<input id="claim-date" type="date"></label><button class="danger-button" type="submit">Create supplier claim</button></form><p id="claim-message" class="form-message receiving-message"></p></section>
-<section class="form-panel"><div class="form-panel-heading"><span class="section-number">04</span><div><h2>Manual adjustment request</h2><p>Does not change stock immediately. A manager must approve it and the audit ledger records the result.</p></div></div><form id="adjust-form" class="parts-form"><label>Lot<select id="adjust-lot" required><option value="">Loading lots...</option></select></label><label>Quantity change<input id="adjust-delta" type="number" step="0.001" required placeholder="+2 or -1"></label><label>Reason<input id="adjust-reason" required placeholder="Count correction with evidence"></label><button class="secondary-button" type="submit">Request manager approval</button></form><p id="adjust-message" class="form-message receiving-message"></p></section></section>
-<section class="form-panel"><div class="form-panel-heading"><span class="section-number">05</span><div><h2>Immutable stock movement ledger</h2><p>Receive, QC, issue, consumption, returns, transfers and adjustments remain permanently traceable.</p></div></div><div class="parts-sheet-wrap"><table class="parts-sheet ledger-table"><thead><tr><th>Time</th><th>Movement</th><th>Part</th><th>Lot</th><th>Qty</th><th>From</th><th>To</th><th>Repair ticket / IMEI</th><th>Technician</th><th>Reason</th><th>Recorded by</th></tr></thead><tbody id="ledger-list"></tbody></table></div></section>
-</section></div></main></div><div id="toast" class="toast" hidden></div></body></html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0d5c43">
+    <title>Parts | Greenloop</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/parts.css?v=20260825-manual-lab-parts-mode-1">
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="js/config.js?v=20260825-complete-imei-1"></script>
+    <script defer src="js/part-notifications.js?v=20260815-1"></script>
+  <script defer src="js/parts.js?v=20260825-clean-separators-1"></script>
+  </head>
+  <body class="app-page">
+    <div class="app-shell">
+      <aside id="sidebar" class="sidebar" aria-label="Main navigation">
+        <div class="sidebar-top"><a class="app-brand" href="dashboard.html"><img class="brand-image" src="assets/looplogo.jpg" alt=""><span>greenloop</span></a><button id="close-menu" class="icon-button close-menu" type="button" aria-label="Close menu">&times;</button></div>
+        <nav class="sidebar-nav">
+          <p class="nav-label">Workspace</p>
+          <a class="nav-item" href="dashboard.html"><span class="nav-icon">⌘</span>Overview</a>
+          <a class="nav-item" href="receiving.html"><span class="nav-icon">+</span>Stock Received</a>
+          <a class="nav-item" href="imei-search.html"><span class="nav-icon">⌕</span>IMEI Search</a>
+          <p class="nav-label">Operations</p>
+          <a class="nav-item" href="initial-qc.html"><span class="nav-icon">✓</span>Initial QC</a>
+          <a class="nav-item active" href="parts.html"><span class="nav-icon">▦</span>Parts</a>
+          <a class="nav-item" href="laboratory.html"><span class="nav-icon">⌁</span>Laboratory &amp; Glass</a>
+          <a class="nav-item" href="final-qc.html"><span class="nav-icon">◎</span>Final QC</a>
+          <a class="nav-item" href="production.html"><span class="nav-icon">↗</span>Production</a>
+          <a class="nav-item" href="stock-out.html"><span class="nav-icon">↝</span>Stock Out</a>
+          <p class="nav-label">Control</p>
+          <button class="nav-item module-link" type="button" data-module="RMA"><span class="nav-icon">↶</span>RMA</button>
+          <button class="nav-item module-link" type="button" data-module="Retail Shop"><span class="nav-icon">⌂</span>Retail Shop</button>
+          <button class="nav-item module-link" type="button" data-module="Reports"><span class="nav-icon">▤</span>Reports</button>
+        </nav>
+        <div class="sidebar-user"><span class="user-avatar">SA</span><span><strong>System Admin</strong><small>Super Admin</small></span></div>
+      </aside>
+      <div id="menu-backdrop" class="menu-backdrop" hidden></div>
+      <main class="app-main">
+        <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Overview</a><span>/</span><strong>Parts</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span><a class="topbar-profile" href="dashboard.html"><span class="user-avatar small">SA</span><span class="profile-name">System Admin</span></a></div></header>
+        <div class="page-content parts-content">
+          <section class="page-heading"><div><p class="eyebrow dashboard-eyebrow">Parts Department</p><h1>Parts issue sheet</h1><p class="heading-subtitle">Every request is visible in one horizontal row. Issue stock directly from this sheet.</p></div><a class="quiet-link" href="inventory.html">Open Inventory &rarr;</a></section>
+          <div id="permission-message" class="access-message" hidden></div>
+          <section id="parts-app" class="parts-app" hidden>
+            <section class="parts-summary"><div><p class="panel-kicker">Parts queue</p><h2>Pending and issued requests</h2></div><span id="request-count" class="queue-count">0 waiting</span><button id="refresh-parts" class="secondary-button" type="button">Refresh</button></section>
+            <section id="manual-lab-parts-control" class="manual-lab-parts-control" hidden><div><p class="panel-kicker">Workflow control</p><h2>Manual Lab Parts Mode</h2><p>ON: Lab records parts directly against each IMEI; no Parts request or inventory deduction. OFF: normal automatic Parts and Inventory workflow.</p></div><button id="manual-lab-parts-toggle" class="manual-lab-parts-toggle" type="button" aria-pressed="false">Manual Lab Parts: OFF</button></section>
+            <section class="form-panel part-return-report-panel">
+              <div class="form-panel-heading return-report-heading">
+                <span class="section-number">01</span>
+                <div><h2>Parts returns, damage and faults</h2><p>Not Needed stock returns only after Parts approval. Damaged and Faulty parts never enter usable Inventory.</p></div>
+                <div class="return-report-actions">
+                  <button class="return-report-tab is-active" type="button" data-return-report="pending">Pending Approval <span id="pending-returns-count">0</span></button>
+                  <button class="return-report-tab" type="button" data-return-report="restocked">Returned Parts <span id="returned-parts-count">0</span></button>
+                  <button class="return-report-tab damaged" type="button" data-return-report="damaged">Damaged Parts <span id="damaged-parts-count">0</span></button>
+                  <button class="return-report-tab faulty" type="button" data-return-report="faulty">Faulty Parts <span id="faulty-parts-count">0</span></button>
+                  <button id="refresh-return-report" class="secondary-button" type="button">Refresh</button>
+                </div>
+              </div>
+              <p id="return-report-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
+              <div class="parts-sheet-wrap"><table class="parts-sheet return-report-table"><thead><tr><th>Time</th><th>IMEI</th><th>Supplier</th><th>Part</th><th>Qty</th><th>Reason</th><th>Invoice</th><th>Unit cost</th><th>Total</th><th>Recorded by</th><th>Action</th></tr></thead><tbody id="part-return-report"></tbody></table></div>
+            </section>
+            <section class="form-panel parts-sheet-panel"><div class="form-panel-heading"><span class="section-number">02</span><div><h2>Issue requested parts</h2><p>Every confirmed request shows the technician who needs the part. Parts Department may issue or cancel an unissued request.</p></div></div><div class="parts-sheet-wrap"><table class="parts-sheet"><thead><tr><th>IMEI</th><th>Device</th><th>Job</th><th>Supplier code</th><th>Technician</th><th>Part</th><th>Required</th><th>Remaining</th><th>Invoice lot to issue</th><th>Qty</th><th>Actions</th></tr></thead><tbody id="parts-queue-list"></tbody></table></div><p id="issue-message" class="form-message receiving-message" role="status" aria-live="polite"></p></section>
+            <section class="form-panel inventory-panel"><div class="form-panel-heading"><span class="section-number">03</span><div><h2>Inventory availability</h2><p>Each invoice is a separate stock lot with its own price. Receive stock from the Inventory page.</p></div><a class="secondary-button" href="inventory.html">Open Inventory</a></div><form id="inventory-form" class="inventory-form" novalidate hidden><div class="inventory-grid"><div class="form-field"><label for="inventory-sku">SKU</label><input id="inventory-sku" required></div><div class="form-field"><label for="inventory-name">Part name</label><div class="master-option-control"><select id="inventory-name" required><option value="">Loading part names...</option></select><button id="add-part-name" class="master-add" type="button">+</button><button id="remove-part-name" class="master-remove" type="button">−</button></div></div><div class="form-field"><label for="inventory-qty">Stock quantity</label><input id="inventory-qty" type="number" min="0" step="1" required value="0"></div><div class="form-field"><label for="inventory-cost">Unit cost (AED)</label><input id="inventory-cost" type="number" min="0" step="0.01" required value="0"></div><button id="inventory-button" class="secondary-button" type="submit">Save item</button></div></form><p id="inventory-message" class="form-message receiving-message" role="status" aria-live="polite" hidden></p><div class="parts-sheet-wrap"><table class="parts-sheet inventory-table"><thead><tr><th>Invoice</th><th>SKU</th><th>Part</th><th>In stock</th><th>Unit cost</th><th>Origin</th></tr></thead><tbody id="inventory-table"></tbody></table></div></section>
+          </section>
+        </div>
+      </main>
+    </div>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  </body>
+</html>
