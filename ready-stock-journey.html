@@ -11,12 +11,12 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/ready-stock.css">
-    <link rel="stylesheet" href="css/ready-stock-journey.css?v=20260822-device-details-1">
+    <link rel="stylesheet" href="css/ready-stock-journey.css?v=20260825-compact-journey-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script defer src="js/config.js?v=20260821-privacy-delete-1"></script>
     <script defer src="js/device-reader.js?v=20260822-ready-stock-cable-backfill-1"></script>
     <script defer src="js/part-notifications.js"></script>
-    <script defer src="js/ready-stock-journey.js?v=20260825-manual-lab-parts-journey-1"></script>
+    <script defer src="js/ready-stock-journey.js?v=20260825-compact-journey-1"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -35,7 +35,7 @@
             <section class="ready-stock-filters" aria-label="Ready Stock Journey date range"><div class="ready-stock-filter-heading"><strong>Final QC pass date range</strong><span>By default, this table shows devices passed today. Clear both dates to view all current Ready Stock.</span></div><label>From<input id="journey-from" type="date"></label><label>To<input id="journey-to" type="date"></label><button id="apply-journey-range" class="primary-button" type="button">Apply range</button><button id="clear-journey-range" class="secondary-button" type="button">View all</button></section>
             <section class="journey-summary"><span>Devices shown</span><strong id="journey-total">0</strong><small id="journey-range-label">Latest Final QC pass appears first.</small></section>
             <section class="journey-cable-card"><div><p class="panel-kicker">Existing phone details</p><h2>Fill missing Serial Number and Region</h2><p id="journey-cable-status">Connect one Ready Stock phone by cable. Its IMEI, Serial Number and Region will be read automatically.</p></div><div class="journey-cable-values"><span>IMEI <strong id="journey-cable-imei">Waiting for phone</strong></span><span>Serial Number <strong id="journey-cable-serial">-</strong></span><span>Region <strong id="journey-cable-region">-</strong></span><button id="save-journey-cable-details" class="primary-button" type="button" disabled>Save to this IMEI</button></div></section>
-            <section class="journey-panel"><div class="journey-table-wrap"><table class="journey-table"><thead><tr><th>Stock Received</th><th>Supplier Code</th><th>Stock Channel</th><th>Batch</th><th>IMEI</th><th>Serial Number</th><th>Region</th><th>Model</th><th>GB</th><th>Color</th><th>Initial BH</th><th>Final BH</th><th>Supplier Grade</th><th>Company Initial Grade</th><th>Company Final QC Grade</th><th>Parts Used</th><th>Parts Cost (AED)</th><th>Work Done</th><th>Worked By</th><th>Step by Step</th><th>Final QC Passed</th></tr></thead><tbody id="journey-body"></tbody></table></div></section>
+            <section class="journey-panel"><div class="journey-table-wrap"><table class="journey-table"><thead><tr><th>IMEI</th><th>Model · GB · Color · Region</th><th>Date received</th><th>Date completed</th><th>Stock channel</th><th>Invoice</th><th>Supplier company</th><th>Quantity received</th><th>Supplier code</th><th>Initial BH / Final BH</th><th>Supplier grade</th><th>Company initial grade</th><th>Company final grade</th><th>Parts issued</th><th>Parts cost (AED)</th><th>Service done</th><th>Technician name</th><th>Box number</th><th>Export date</th><th>Customer name</th></tr></thead><tbody id="journey-body"></tbody></table></div></section>
           </section>
         </div>
       </main>
