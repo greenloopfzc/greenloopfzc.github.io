@@ -43,6 +43,13 @@
     };
   }
 
+  async function readThreeUToolsDevice() {
+    const response = await fetch(threeUToolsEndpoint, { cache: "no-store", signal: AbortSignal.timeout(2500) });
+    if (!response.ok) return null;
+    const device = normalise(await response.json());
+    return /^\d{15}$/.test(device.imei) ? device : null;
+  }
+
   async function fillMissingColorFrom3uTools(device) {
     if (device.color || !device.imei) return device;
     const now = Date.now();
@@ -51,9 +58,8 @@
     // Retry automatically instead of requiring a cable reconnect.
     nextThreeUToolsAttemptAt.set(device.imei, now + 1500);
     try {
-      const response = await fetch(threeUToolsEndpoint, { cache: "no-store", signal: AbortSignal.timeout(2000) });
-      if (!response.ok) return device;
-      const fallback = normalise(await response.json());
+      const fallback = await readThreeUToolsDevice();
+      if (!fallback) return device;
       if (fallback.imei !== device.imei) return device;
       return {
         ...device,
@@ -84,14 +90,22 @@
     if (stopped || document.hidden || polling) return;
     polling = true;
     try {
-      const response = await fetch(endpoint, { cache: "no-store", signal: AbortSignal.timeout(7000) });
-      if (!response.ok) { failedReads += 1; if (failedReads >= 3) publishReaderState("offline"); return; }
+      let device = null;
+      try {
+        const response = await fetch(endpoint, { cache: "no-store", signal: AbortSignal.timeout(2500) });
+        if (response.ok) {
+          const payload = await response.json();
+          if (payload?.ok !== false) device = normalise(payload);
+        }
+      } catch (_) {
+        // A 3uTools-only receiving PC does not run the Apple driver reader.
+      }
+      if (!device || !/^\d{15}$/.test(device.imei)) {
+        try { device = await readThreeUToolsDevice(); } catch (_) { device = null; }
+      }
+      if (!device) { failedReads += 1; if (failedReads >= 3) publishReaderState("offline"); return; }
       failedReads = 0;
       publishReaderState("ready");
-      const payload = await response.json();
-      if (payload?.ok === false) return;
-      const device = normalise(payload);
-      if (!/^\d{15}$/.test(device.imei)) return;
       publishDevice(device);
       if (!device.color) {
         const enriched = await fillMissingColorFrom3uTools(device);
