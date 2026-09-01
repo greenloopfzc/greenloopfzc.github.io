@@ -23,12 +23,18 @@
   const autoSaveToggle = document.querySelector("#auto-save-toggle");
   const autoSaveState = document.querySelector("#auto-save-state");
   const readerStatus = document.querySelector("#device-reader-status");
+  const duplicateDialog = document.querySelector("#duplicate-imei-dialog");
+  const duplicateDetails = document.querySelector("#duplicate-imei-details");
+  const duplicateClose = document.querySelector("#duplicate-imei-close");
+  const duplicateJourney = document.querySelector("#duplicate-imei-journey");
   const requestedBatchId = new URLSearchParams(window.location.search).get("batch");
   let client;
   let toastTimer;
   let batches = [];
   let autoSaveTimer;
   let saving = false;
+  let duplicateTimer;
+  let lastDuplicateImei = "";
 
   function withTimeout(promise, label, milliseconds = 15000) {
     let timeoutId;
@@ -68,6 +74,38 @@
     const text = String(value ?? "").trim();
     if (input && text) input.value = text;
   }
+  function displayStage(value) { return String(value || "Unknown stage").replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()); }
+  function displayDate(value) { return value ? new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "Not recorded"; }
+  function closeDuplicateDialog() { if (duplicateDialog?.open) duplicateDialog.close(); }
+  function showDuplicateDialog(record) {
+    if (!duplicateDialog || !duplicateDetails) return;
+    const fields = [
+      ["IMEI", record.imei || "-"], ["Device number", record.device_number || "-"],
+      ["Model", [record.model, record.storage_gb ? `${record.storage_gb} GB` : "", record.color].filter(Boolean).join(" - ") || "-"],
+      ["Current stage", displayStage(record.current_stage)], ["Current location", record.current_location || "Not recorded"],
+      ["Supplier code", record.supplier_code || "-"], ["Received", displayDate(record.received_at)]
+    ];
+    duplicateDetails.innerHTML = fields.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("");
+    duplicateDialog.dataset.imei = record.imei || "";
+    if (!duplicateDialog.open) duplicateDialog.showModal();
+  }
+  async function checkDuplicateImei(value, { show = true } = {}) {
+    const scannedImei = String(value || "").replace(/\D/g, "").slice(0, 15);
+    if (!/^\d{15}$/.test(scannedImei)) return false;
+    if (lastDuplicateImei === scannedImei) return true;
+    const { data, error } = await api().rpc("get_imei_entry_duplicate_status", { p_imei: scannedImei });
+    if (error) {
+      if (!String(error.message || "").includes("get_imei_entry_duplicate_status")) setMessage(error.message || "IMEI duplicate check could not be completed.");
+      return false;
+    }
+    const record = Array.isArray(data) ? data[0] : data;
+    if (!record?.found) { lastDuplicateImei = ""; return false; }
+    lastDuplicateImei = scannedImei;
+    if (show) showDuplicateDialog(record);
+    setMessage(`Duplicate IMEI blocked. This phone is currently in ${displayStage(record.current_stage)}.`, "error");
+    return true;
+  }
+  window.GREENLOOP_CHECK_IMEI_DUPLICATE = checkDuplicateImei;
 
   const masterFields = [
     ["model", model, "Select model"],
@@ -220,7 +258,9 @@
     const extraDetails = [serialNumber?.value ? "serial number" : "", phoneRegion?.value ? "phone region" : ""].filter(Boolean);
     if (readerStatus) readerStatus.textContent = extraDetails.length ? `Connected phone loaded with ${extraDetails.join(" and ")}` : "Connected phone loaded";
     setMessage("Connected phone data loaded. Review it, then save.", "success");
-    if (autoSaveEnabled()) scheduleAutoSave();
+    checkDuplicateImei(imei.value).then((duplicate) => {
+      if (!duplicate && autoSaveEnabled()) scheduleAutoSave();
+    }).catch(() => {});
   }
 
   function canAutoSave() {
@@ -250,6 +290,7 @@
     if (!form.checkValidity()) { form.reportValidity(); return; }
     const scannedImei = imei.value.trim();
     if (!/^\d{15}$/.test(scannedImei)) { setMessage("IMEI must contain exactly 15 digits."); return; }
+    if (await checkDuplicateImei(scannedImei)) return;
     saving = true;
     setBusy(submit, true, automatic ? "Saving automatically..." : "Saving IMEI...");
     const { data, error } = await api().rpc("receive_stock_batch_imei_with_plan", {
@@ -306,7 +347,11 @@
   document.querySelector("#close-menu").addEventListener("click", () => setMenu(false));
   backdrop.addEventListener("click", () => setMenu(false));
   batchSelect.addEventListener("change", updateBatchView);
-  imei.addEventListener("input", () => { imei.value = imei.value.replace(/\D/g, ""); });
+  imei.addEventListener("input", () => {
+    imei.value = imei.value.replace(/\D/g, "");
+    window.clearTimeout(duplicateTimer);
+    if (/^\d{15}$/.test(imei.value)) duplicateTimer = window.setTimeout(() => checkDuplicateImei(imei.value).catch(() => {}), 180);
+  });
   battery.addEventListener("input", scheduleAutoSave);
   battery.addEventListener("change", scheduleAutoSave);
   battery.addEventListener("blur", scheduleAutoSave);
@@ -326,6 +371,16 @@
   });
   window.addEventListener("greenloop:device", (event) => {
     applyConnectedDevice(event.detail || {});
+  });
+  window.addEventListener("greenloop:device-reader-status", (event) => {
+    const state = event.detail?.state;
+    if (readerStatus && state === "offline") readerStatus.textContent = "Cable reader unavailable — start Greenloop Cable Reader, then reconnect the phone";
+    if (readerStatus && state === "ready" && !window.GREENLOOP_LAST_DEVICE?.imei) readerStatus.textContent = "Cable reader ready — connect a phone";
+  });
+  duplicateClose?.addEventListener("click", closeDuplicateDialog);
+  duplicateJourney?.addEventListener("click", () => {
+    const value = duplicateDialog?.dataset.imei;
+    if (value) window.location.assign(`imei-search.html?q=${encodeURIComponent(value)}`);
   });
   initialize().catch((error) => {
     batchSelect.disabled = false;

@@ -15,9 +15,9 @@
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="js/config.js?v=20260825-complete-imei-1"></script>
     <script defer src="js/part-notifications.js?v=20260813-1"></script>
-    <script defer src="js/device-reader.js?v=20260822-color-retry-1"></script>
-  <script defer src="js/imei-entry.js?v=20260825-clean-separators-1"></script>
-    <script defer src="js/batch-workflow.js?v=20260822-hard-stop-duplicate-cable-imei-1"></script>
+    <script defer src="js/device-reader.js?v=20260901-reader-health-1"></script>
+  <script defer src="js/imei-entry.js?v=20260901-duplicate-popup-1"></script>
+    <script defer src="js/batch-workflow.js?v=20260901-duplicate-popup-1"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -62,5 +62,11 @@
       </main>
     </div>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+    <dialog id="duplicate-imei-dialog" class="imei-duplicate-dialog" aria-labelledby="duplicate-imei-title">
+      <div class="duplicate-imei-dialog-heading"><span aria-hidden="true">!</span><div><p class="panel-kicker">Duplicate IMEI blocked</p><h2 id="duplicate-imei-title">This phone is already in Greenloop</h2></div></div>
+      <p>This IMEI cannot be received again. Its current recorded details are:</p>
+      <dl id="duplicate-imei-details" class="duplicate-imei-details"></dl>
+      <div class="duplicate-imei-actions"><button id="duplicate-imei-close" class="secondary-button" type="button">Close</button><button id="duplicate-imei-journey" class="primary-button" type="button">Open IMEI journey</button></div>
+    </dialog>
   </body>
 </html>

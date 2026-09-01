@@ -6,6 +6,8 @@
   let lastFingerprint = "";
   const nextThreeUToolsAttemptAt = new Map();
   let polling = false;
+  let failedReads = 0;
+  let readerState = "";
   const appleSalesRegions = new Map([
     ["VC/A", "Canada"], ["C/A", "Canada"], ["CL/A", "Canada"],
     ["LL/A", "United States"], ["CH/A", "Mainland China"], ["ZP/A", "Hong Kong / Macau"],
@@ -72,13 +74,20 @@
     window.dispatchEvent(new CustomEvent("greenloop:device", { detail: device }));
     return true;
   }
+  function publishReaderState(state) {
+    if (state === readerState) return;
+    readerState = state;
+    window.dispatchEvent(new CustomEvent("greenloop:device-reader-status", { detail: { state } }));
+  }
 
   async function poll() {
     if (stopped || document.hidden || polling) return;
     polling = true;
     try {
       const response = await fetch(endpoint, { cache: "no-store", signal: AbortSignal.timeout(7000) });
-      if (!response.ok) return;
+      if (!response.ok) { failedReads += 1; if (failedReads >= 3) publishReaderState("offline"); return; }
+      failedReads = 0;
+      publishReaderState("ready");
       const payload = await response.json();
       if (payload?.ok === false) return;
       const device = normalise(payload);
@@ -89,7 +98,8 @@
         publishDevice(enriched);
       }
     } catch (_) {
-      // The local reader is optional. Manual entry must keep working.
+      failedReads += 1;
+      if (failedReads >= 3) publishReaderState("offline");
     } finally {
       polling = false;
     }

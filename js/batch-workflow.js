@@ -190,6 +190,9 @@
       panel.querySelectorAll(".batch-row-imei").forEach((input) => input.addEventListener("input", () => {
         input.value = input.value.replace(/\D/g, "");
         if (input.value.length === 15) {
+          window.GREENLOOP_CHECK_IMEI_DUPLICATE?.(input.value).then((duplicate) => {
+            if (duplicate) setRowStatus(input.closest("tr"), "Duplicate IMEI — see popup", "is-error");
+          }).catch(() => {});
           const nextImei = input.closest("tr").nextElementSibling?.querySelector(".batch-row-imei:not(:disabled)");
           window.setTimeout(() => (nextImei || panel.querySelector(".batch-row-battery:not(:disabled)"))?.focus(), 0);
         }
@@ -222,6 +225,7 @@
       const battery = row.querySelector(".batch-row-battery").value;
       const button = row.querySelector(".batch-save-button");
       if (!/^\d{15}$/.test(imei)) { setRowStatus(row, "IMEI must be 15 digits", "is-error"); row.querySelector(".batch-row-imei").focus(); return; }
+      if (await window.GREENLOOP_CHECK_IMEI_DUPLICATE?.(imei)) { setRowStatus(row, "Duplicate IMEI — see popup", "is-error"); return; }
       if (!model || !storage || !color) { setRowStatus(row, "Select Model, GB and Color", "is-error"); return; }
       if (battery === "" || Number(battery) < 0 || Number(battery) > 100) { setRowStatus(row, "Enter BH 0–100", "is-error"); return; }
       row.dataset.busy = "yes";
@@ -298,9 +302,15 @@
       if (device.batteryHealth !== "" && Number.isFinite(batteryHealth) && batteryHealth > 0 && batteryHealth <= 100) {
         row.querySelector(".batch-row-battery").value = batteryHealth;
       }
-      setRowStatus(row, autoSaveEnabled() ? "Phone loaded — saving" : "Phone loaded — review and save", "is-saving");
-      if (autoSaveEnabled()) saveRow(row);
-      else row.querySelector(".batch-save-button")?.focus();
+      Promise.resolve(window.GREENLOOP_CHECK_IMEI_DUPLICATE?.(connectedImei)).then((duplicate) => {
+        if (duplicate) { setRowStatus(row, "Duplicate IMEI — see popup", "is-error"); return; }
+        setRowStatus(row, autoSaveEnabled() ? "Phone loaded — saving" : "Phone loaded — review and save", "is-saving");
+        if (autoSaveEnabled()) saveRow(row);
+        else row.querySelector(".batch-save-button")?.focus();
+      }).catch(() => {
+        setRowStatus(row, "Phone loaded — review and save", "is-saving");
+        row.querySelector(".batch-save-button")?.focus();
+      });
     });
   }
 
