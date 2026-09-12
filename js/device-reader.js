@@ -79,6 +79,7 @@
 
   function publishDevice(device) {
     const previous = window.GREENLOOP_LAST_DEVICE;
+    if (previous?.imei !== device.imei) window.GREENLOOP_CABLE_CONNECTION_ID = (window.GREENLOOP_CABLE_CONNECTION_ID || 0) + 1;
     if (previous?.imei === device.imei) {
       // Late/partial USB responses enrich the same phone, never erase good data.
       device = { ...device };
@@ -157,7 +158,7 @@
 
   window.addEventListener("beforeunload", () => { stopped = true; });
   window.addEventListener("focus", poll);
-  window.addEventListener("greenloop:retry-device", () => { lastFingerprint = ""; poll(); });
+  window.addEventListener("greenloop:retry-device", () => { lastFingerprint = ""; window.GREENLOOP_CABLE_CONNECTION_ID = (window.GREENLOOP_CABLE_CONNECTION_ID || 0) + 1; poll(); });
   document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
   window.setInterval(poll, 900);
   window.setTimeout(poll, 100);
