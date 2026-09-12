@@ -60,6 +60,10 @@
 
     let currentBatch;
     let slots = [];
+    let loadVersion = 0;
+    const savedImeis = window.GREENLOOP_SAVED_ENTRY_IMEIS ||= new Set();
+    const savingImeis = window.GREENLOOP_SAVING_ENTRY_IMEIS ||= new Set();
+    window.GREENLOOP_BULK_CABLE_OWNER = () => Boolean(currentBatch && !panel.hidden);
     // Shared on the page so a late cable-reader update can never claim another row.
     const cableRows = window.GREENLOOP_CABLE_BATCH_ROWS || (window.GREENLOOP_CABLE_BATCH_ROWS = new Map());
 
@@ -225,14 +229,18 @@
       const battery = row.querySelector(".batch-row-battery").value;
       const button = row.querySelector(".batch-save-button");
       if (!/^\d{15}$/.test(imei)) { setRowStatus(row, "IMEI must be 15 digits", "is-error"); row.querySelector(".batch-row-imei").focus(); return; }
-      if (await window.GREENLOOP_CHECK_IMEI_DUPLICATE?.(imei)) { setRowStatus(row, "Duplicate IMEI — see popup", "is-error"); return; }
       if (!model || !storage || !color) { setRowStatus(row, "Select Model, GB and Color", "is-error"); return; }
       if (battery === "" || Number(battery) < 0 || Number(battery) > 100) { setRowStatus(row, "Enter BH 0–100", "is-error"); return; }
       row.dataset.busy = "yes";
+      if (savedImeis.has(imei) || savingImeis.has(imei)) { row.dataset.busy = ""; return; }
+      savingImeis.add(imei);
+      const batchId = currentBatch.batch_id;
       button.disabled = true;
       setRowStatus(row, "Saving...", "is-saving");
+      try {
+      if (await window.GREENLOOP_CHECK_IMEI_DUPLICATE?.(imei)) { setRowStatus(row, "Duplicate IMEI — see popup", "is-error"); return; }
       const { error } = await api().rpc("receive_stock_batch_imei_with_plan", {
-        p_batch_id: currentBatch.batch_id,
+        p_batch_id: batchId,
         p_imei_1: imei,
         p_model: model,
         p_storage_gb: Number(storage),
@@ -242,23 +250,38 @@
       row.dataset.busy = "";
       if (error) { button.disabled = false; setRowStatus(row, error.message || "Could not save", "is-error"); return; }
       row.dataset.saved = "yes";
+      savedImeis.add(imei);
       row.classList.add("batch-saved-row");
       row.querySelectorAll("input, select").forEach((control) => { control.disabled = true; });
       button.textContent = "Saved";
       setRowStatus(row, "Sent to Initial QC", "is-saved");
+      if (row.dataset.cableImei === imei && (row.dataset.serialNumber || row.dataset.phoneRegion)) {
+        const { error: detailsError } = await api().rpc("save_stock_device_cable_details", {
+          p_imei_1: imei, p_serial_number: row.dataset.serialNumber || null, p_specification_region: row.dataset.phoneRegion || null
+        });
+        if (detailsError) setRowStatus(row, `IMEI saved; serial/region not saved: ${detailsError.message}`, "is-error");
+      }
       const nextRow = row.nextElementSibling;
       const nextControl = nextRow?.querySelector(".batch-row-imei:not(:disabled)") || panel.querySelector("tr:not(.batch-saved-row) .batch-row-battery:not(:disabled)");
       nextControl?.focus();
+      } catch (error) { setRowStatus(row, row.dataset.saved === "yes" ? `IMEI saved; details need checking: ${error.message}` : (error.message || "Could not save"), "is-error"); }
+      finally { row.dataset.busy = ""; savingImeis.delete(imei); button.disabled = row.dataset.saved === "yes"; }
     }
 
     async function loadSelectedBatch() {
+      const version = ++loadVersion;
+      const selectedId = batchSelect.value;
       if (!batchSelect.value) { currentBatch = undefined; slots = []; renderRows(); return; }
-      const { data, error } = await api().rpc("get_open_stock_entry_batches_with_lines");
-      if (error) return;
+      if (String(currentBatch?.batch_id) === selectedId) { applyCableDevice(window.GREENLOOP_GET_CONNECTED_DEVICE?.()); return; }
+      let { data, error } = await api().rpc("get_open_stock_entry_batches_with_lines");
+      if (error) ({ data, error } = await api().rpc("get_open_stock_entry_batches"));
+      if (version !== loadVersion || batchSelect.value !== selectedId) return;
+      if (error) { panel.hidden = false; panel.textContent = `Could not load phone lines: ${error.message}`; return; }
       currentBatch = (data || []).find((batch) => String(batch.batch_id) === String(batchSelect.value));
       slots = currentBatch ? makeSlots(currentBatch) : [];
       renderRows();
       originalActions.hidden = !currentBatch;
+      applyCableDevice(window.GREENLOOP_GET_CONNECTED_DEVICE?.());
     }
 
     batchSelect.addEventListener("change", () => window.setTimeout(loadSelectedBatch, 80));
@@ -267,23 +290,43 @@
     }).observe(batchSelect, { childList: true });
     if (batchSelect.value) window.setTimeout(loadSelectedBatch, 250);
 
-    window.addEventListener("greenloop:device", (event) => {
+    window.addEventListener("greenloop:entry-ready", loadSelectedBatch);
+    window.addEventListener("greenloop:device", (event) => applyCableDevice(event.detail));
+    window.addEventListener("greenloop:imei-entry-saved", (event) => {
+      panel.querySelectorAll("tbody tr").forEach((row) => {
+        if (row.querySelector(".batch-row-imei")?.value === event.detail.imei) {
+          row.dataset.saved = "yes";
+          row.querySelectorAll("input, select, button").forEach((control) => { control.disabled = true; });
+          setRowStatus(row, "Sent to Initial QC", "is-saved");
+        }
+      });
+    });
+    function applyCableDevice(device) {
       if (!currentBatch || !panel || panel.hidden) return;
-      const device = event.detail || {};
+      if (!device) return;
       const rows = [...panel.querySelectorAll("tbody tr")];
       const connectedImei = String(device.imei || "").replace(/\D/g, "").slice(0, 15);
       if (!/^\d{15}$/.test(connectedImei)) return;
+      if (savedImeis.has(connectedImei) || savingImeis.has(connectedImei)) return;
       const rowKey = `${currentBatch.batch_id}:${connectedImei}`;
       const rememberedRow = cableRows.get(rowKey);
       // The cable reader can publish once with basic data and again when color arrives.
       // Update that phone's existing unsaved row; never use a second blank row for it.
-      const matchingRow = rememberedRow && panel.contains(rememberedRow)
+      const matchingRow = rememberedRow && panel.contains(rememberedRow) && rememberedRow.querySelector(".batch-row-imei")?.value.trim() === connectedImei
         ? rememberedRow
         : rows.find((item) => item.querySelector(".batch-row-imei")?.value.trim() === connectedImei);
       if (matchingRow?.dataset.saved === "yes") return;
       const row = matchingRow || rows.find((item) => item.dataset.saved !== "yes" && !item.querySelector(".batch-row-imei").value.trim());
       if (!row) return;
+      if (row.dataset.busy === "yes") return;
+      if (!matchingRow) {
+        // Batch defaults are not phone readings. Never inherit another phone's color/BH.
+        row.querySelectorAll("select, .batch-row-battery").forEach((control) => { control.value = ""; });
+      }
       cableRows.set(rowKey, row);
+      row.dataset.cableImei = connectedImei;
+      if (device.serialNumber) row.dataset.serialNumber = device.serialNumber;
+      if (device.phoneRegion) row.dataset.phoneRegion = device.phoneRegion;
       const setSelect = (selector, value) => {
         const select = row.querySelector(selector);
         const text = String(value ?? "").trim();
@@ -303,15 +346,19 @@
         row.querySelector(".batch-row-battery").value = batteryHealth;
       }
       Promise.resolve(window.GREENLOOP_CHECK_IMEI_DUPLICATE?.(connectedImei)).then((duplicate) => {
+        if (!panel.contains(row) || row.dataset.saved === "yes" || row.dataset.busy === "yes" || row.querySelector(".batch-row-imei").value !== connectedImei) return;
         if (duplicate) { setRowStatus(row, "Duplicate IMEI — see popup", "is-error"); return; }
-        setRowStatus(row, autoSaveEnabled() ? "Phone loaded — saving" : "Phone loaded — review and save", "is-saving");
-        if (autoSaveEnabled()) saveRow(row);
+        const complete = [".batch-row-model", ".batch-row-storage", ".batch-row-color", ".batch-row-battery"].every((selector) => row.querySelector(selector).value !== "");
+        const estimated = device.batteryHealthSource === "capacity-estimate";
+        row.querySelector(".batch-row-battery").title = estimated ? "Estimated from battery capacity. Verify before saving." : "Read from connected phone";
+        setRowStatus(row, !complete ? "Phone loaded — waiting for missing fields" : estimated ? "Phone loaded — verify estimated BH and save" : "Phone loaded — review and save", "is-saving");
+        if (autoSaveEnabled() && complete && !estimated) saveRow(row);
         else row.querySelector(".batch-save-button")?.focus();
       }).catch(() => {
         setRowStatus(row, "Phone loaded — review and save", "is-saving");
         row.querySelector(".batch-save-button")?.focus();
       });
-    });
+    }
   }
 
   function initialisePendingTable({ selectSelector, title, columns, workspaceSelector }) {

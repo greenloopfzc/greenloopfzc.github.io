@@ -8,6 +8,8 @@
   let polling = false;
   let failedReads = 0;
   let readerState = "";
+  window.GREENLOOP_GET_CONNECTED_DEVICE = () =>
+    Date.now() - (window.GREENLOOP_LAST_DEVICE_AT || 0) < 30000 ? window.GREENLOOP_LAST_DEVICE : null;
   const appleSalesRegions = new Map([
     ["VC/A", "Canada"], ["C/A", "Canada"], ["CL/A", "Canada"],
     ["LL/A", "United States"], ["CH/A", "Mainland China"], ["ZP/A", "Hong Kong / Macau"],
@@ -38,6 +40,7 @@
       batteryHealth: batteryRaw === "" || batteryRaw === null || batteryRaw === undefined
         ? ""
         : (Number(batteryRaw) || ""),
+      batteryHealthSource: String(source.batteryHealthSource || "device"),
       serialNumber: String(source.serialNumber || source.serial_number || "").trim(),
       phoneRegion: formatPhoneRegion(source.phoneRegion || source.phone_region || source.specificationRegion || source.specification_region || source.region)
     };
@@ -46,7 +49,9 @@
   async function readThreeUToolsDevice() {
     const response = await fetch(threeUToolsEndpoint, { cache: "no-store", signal: AbortSignal.timeout(2500) });
     if (!response.ok) return null;
-    const device = normalise(await response.json());
+    const payload = await response.json();
+    if (payload?.ok === false) return null;
+    const device = normalise(payload);
     return /^\d{15}$/.test(device.imei) ? device : null;
   }
 
@@ -73,17 +78,34 @@
   }
 
   function publishDevice(device) {
+    const previous = window.GREENLOOP_LAST_DEVICE;
+    if (previous?.imei === device.imei) {
+      // Late/partial USB responses enrich the same phone, never erase good data.
+      device = { ...device };
+      for (const key of ["model", "storageGb", "color", "batteryHealth", "serialNumber", "phoneRegion"]) {
+        if (device[key] === "" || device[key] == null) device[key] = previous[key];
+      }
+      if (!device.batteryHealth || device.batteryHealth === previous.batteryHealth) device.batteryHealthSource = previous.batteryHealthSource;
+    }
     const fingerprint = JSON.stringify(device);
+    window.GREENLOOP_LAST_DEVICE_AT = Date.now();
     if (fingerprint === lastFingerprint) return false;
     lastFingerprint = fingerprint;
     window.GREENLOOP_LAST_DEVICE = device;
     window.dispatchEvent(new CustomEvent("greenloop:device", { detail: device }));
     return true;
   }
-  function publishReaderState(state) {
-    if (state === readerState) return;
-    readerState = state;
-    window.dispatchEvent(new CustomEvent("greenloop:device-reader-status", { detail: { state } }));
+  function publishReaderState(state, message = "") {
+    const key = `${state}:${message}`;
+    if (key === readerState) return;
+    readerState = key;
+    window.GREENLOOP_READER_STATUS = { state, message };
+    window.dispatchEvent(new CustomEvent("greenloop:device-reader-status", { detail: { state, message } }));
+  }
+  function forgetConnection() {
+    lastFingerprint = "";
+    window.GREENLOOP_LAST_DEVICE = null;
+    window.GREENLOOP_LAST_DEVICE_AT = 0;
   }
 
   async function poll() {
@@ -91,19 +113,32 @@
     polling = true;
     try {
       let device = null;
+      let readerResponded = false;
+      let readerMessage = "";
+      if (!window.GREENLOOP_LAST_DEVICE) publishReaderState("reading", "Reading connected phone...");
       try {
-        const response = await fetch(endpoint, { cache: "no-store", signal: AbortSignal.timeout(2500) });
+        // USB startup + optional diagnostics are bounded by the helper. Do not
+        // abort a healthy first read after only 2.5 seconds.
+        const response = await fetch(endpoint, { cache: "no-store", signal: AbortSignal.timeout(20000) });
+        const payload = await response.json();
+        readerResponded = true;
+        readerMessage = payload?.message || "Connect one unlocked phone and accept Trust if asked.";
         if (response.ok) {
-          const payload = await response.json();
           if (payload?.ok !== false) device = normalise(payload);
         }
       } catch (_) {
         // A 3uTools-only receiving PC does not run the Apple driver reader.
       }
-      if (!device || !/^\d{15}$/.test(device.imei)) {
+      // A known disconnected/locked phone must not be replaced with stale OCR.
+      if (!readerResponded && (!device || !/^\d{15}$/.test(device.imei))) {
         try { device = await readThreeUToolsDevice(); } catch (_) { device = null; }
       }
-      if (!device) { failedReads += 1; if (failedReads >= 3) publishReaderState("offline"); return; }
+      if (!device || !/^\d{15}$/.test(device.imei)) {
+        failedReads += 1;
+        forgetConnection();
+        publishReaderState(readerResponded ? "waiting" : "offline", readerResponded ? readerMessage : "Cable reader unavailable. Start Greenloop Cable Reader; allow local-network access if your browser asks.");
+        return;
+      }
       failedReads = 0;
       publishReaderState("ready");
       publishDevice(device);
@@ -113,7 +148,8 @@
       }
     } catch (_) {
       failedReads += 1;
-      if (failedReads >= 3) publishReaderState("offline");
+      forgetConnection();
+      publishReaderState("offline", "Cable reader could not respond. Start Greenloop Cable Reader, then retry.");
     } finally {
       polling = false;
     }
@@ -121,6 +157,7 @@
 
   window.addEventListener("beforeunload", () => { stopped = true; });
   window.addEventListener("focus", poll);
+  window.addEventListener("greenloop:retry-device", () => { lastFingerprint = ""; poll(); });
   document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
   window.setInterval(poll, 900);
   window.setTimeout(poll, 100);
