@@ -34,10 +34,10 @@
       ['fmip', 'FMIP', 'Find My status is not verified by this reader. ActivationState is not a Find My check.'],
       ['icloudLock', 'iCloud Lock', 'Activation Lock is not verified by this read-only report. Activated does not mean lock-free.'],
       ['mdm', 'MDM', 'MDM enrolment is not verified. Not supervised does not prove no MDM.'],
-      ['supervised', 'Supervised'], ['profiles', 'Profiles', 'Configuration profiles have not been queried. Missing data does not mean no profiles.']
+      ['supervised', 'Supervised'], ['profiles', 'Profiles', 'Installed-profile list is read by the Advanced Details extension. Missing data does not mean no profiles.']
     ]],
     ['06', 'Panics & parts history', [
-      ['panics', 'Panics', 'Panic logs have not been collected. This is not a zero-panic result.'],
+      ['panics', 'Panics', 'Advanced reading lists only the accessible main crash-report folder, not the full historical panic record. No logs are moved or deleted.'],
       ['parts', 'Parts', partsNote], ['batteryPartsMessage', 'Battery Parts Message', partsNote],
       ['displayPartsMessage', 'Display Parts Message', partsNote], ['cameraPartsMessage', 'Camera Parts Message', partsNote],
       ['frontCameraPartsMessage', 'Front Camera / Face ID Message', partsNote], ['logicBoardPartsMessage', 'Logic Board Parts Message', partsNote]
@@ -51,6 +51,10 @@
   let controller = null;
   let generation = 0;
   let fields = {};
+  let advancedFields = {};
+  let advancedRead = 0;
+  let advancedPending = false;
+  const advancedKeys = ['profiles', 'supervised', 'mdm', 'panics'];
   let deviceKey = '';
   let lastRead = 0;
   let legacy = false;
@@ -85,7 +89,7 @@
         row.querySelector('.cdd-source').textContent = readOnly ? 'View-only access. Manual entry is disabled.' : note;
         continue;
       }
-      const field = fields[key];
+      const field = advancedFields[key] || fields[key];
       const available = field && ['read', 'calculated'].includes(field.status) && ['string', 'number', 'boolean'].includes(typeof field.value) && String(field.value).trim() !== '';
       row.dataset.available = available ? 'yes' : 'no';
       const label = row.querySelector('.cdd-badge');
@@ -93,7 +97,7 @@
         ? (key === 'region' ? regionName(field.value) : String(field.value))
         : (!connected ? 'Waiting for phone' : verificationKeys.has(key) ? 'Not verified' : 'Not available');
       label.textContent = available ? field.status === 'calculated' ? 'Calculated' : 'Read' : '—';
-      row.querySelector('.cdd-source').textContent = available ? String(field.source || 'Connected reader') : (note || unknown);
+      row.querySelector('.cdd-source').textContent = available ? String(field.source || 'Connected reader') : String(field?.status === 'unavailable' && field.source ? field.source : (note || unknown));
       if (available) readCount++;
     }
     host.querySelector('.cdd-count').textContent = `${readCount} / ${definitions.length - 1} automatic fields available`;
@@ -102,7 +106,8 @@
     host.querySelector('.cdd-device-title').textContent = String(title);
     host.querySelector('.cdd-device-subtitle').textContent = fields.imei1?.value ? `IMEI ${fields.imei1.value}` : 'Unlock the phone and accept Trust This Computer.';
   }
-  function clear() { fields = {}; deviceKey = ''; lastRead = 0; manualValue = 'Not checked'; paint(false); }
+  function clear() { fields = {}; advancedFields = {}; advancedRead = 0; advancedPending = false; deviceKey = ''; lastRead = 0; manualValue = 'Not checked'; paint(false); advancedStatus('Advanced checks wait for a connected phone.'); }
+  function advancedStatus(text) { if (host) host.querySelector('.cdd-advanced-status').textContent = text; }
   async function request(path, signal, timeout = 20000) {
     const response = await fetch(`${endpoint}${path}`, { cache: 'no-store', signal: AbortSignal.any([signal, AbortSignal.timeout(timeout)]) });
     if (response.status === 404) return { unsupported: true };
@@ -126,6 +131,35 @@
     output.usbConnectionStatus = { value: 'Connected', status: 'read', source: 'Successful local cable reader response' };
     return { deviceKey: String(key), fields: output };
   }
+  async function readAdvanced(signal, current, force) {
+    if (!force && !advancedPending && Date.now() - advancedRead < 30000) return;
+    const expectedKey = deviceKey;
+    if (!advancedPending) { advancedFields = {}; paint(true); }
+    advancedStatus('Reading installed profiles, supervision and main panic-log folder...');
+    try {
+      const refresh = force && !advancedPending ? '?refresh=1' : '';
+      const result = await request('/v1/details/advanced' + refresh, signal, 6000);
+      if (current !== generation || !host || deviceKey !== expectedKey) return;
+      if (result.unsupported) {
+        advancedPending = false; advancedRead = Date.now();
+        advancedStatus('Basic details are ready. Install the Advanced Details reader update on this PC for Profiles, Supervised and panic-log listing.');
+        return;
+      }
+      if (result.connected === false || result.deviceKey !== expectedKey) {
+        clear(); connection('waiting', 'Phone disconnected or changed; results cleared.'); return;
+      }
+      if (result.schemaVersion !== 1 || !result.fields || typeof result.fields !== 'object' || Array.isArray(result.fields)) throw new Error('Invalid advanced reader response.');
+      advancedPending = result.pending === true;
+      if (advancedPending) return;
+      advancedFields = Object.fromEntries(advancedKeys.filter(key => result.fields[key]).map(key => [key, result.fields[key]]));
+      advancedRead = Date.now(); paint(true);
+      advancedStatus('Advanced checks finished. See each field for its reading scope or why it could not be verified.');
+    } catch (error) {
+      if (current !== generation || !host) return;
+      advancedFields = {}; advancedPending = false; advancedRead = Date.now(); paint(true);
+      advancedStatus('Advanced checks unavailable: ' + (error.name === 'TimeoutError' ? 'reader timed out.' : error.message) + ' Basic details remain available. Read again to retry.');
+    }
+  }
   async function poll(force = false) {
     if (!host || document.hidden || controller) return;
     const current = generation;
@@ -135,6 +169,7 @@
     button.disabled = true;
     try {
       let result;
+      let basicRead = false;
       if (!legacy) {
         const probe = await request('/v1/details/probe', abort.signal, 5000);
         if (current !== generation) return;
@@ -144,8 +179,9 @@
           if (!probe.connected) { clear(); connection('waiting', 'Waiting for a connected iPhone'); return; }
           if (!probe.deviceKey) throw new Error('Reader connection identity is missing.');
           if (deviceKey !== probe.deviceKey) { clear(); connection('reading', 'Phone connected - reading details...'); }
-          if (!force && deviceKey === probe.deviceKey && Date.now() - lastRead < 30000) return;
-          result = await request('/v1/details', abort.signal);
+          if (!force && deviceKey === probe.deviceKey && Date.now() - lastRead < 30000) {
+            result = { connected: true, schemaVersion: 1, deviceKey, fields };
+          } else { result = await request('/v1/details', abort.signal); basicRead = true; }
           if (result.unsupported) { legacy = true; }
           else {
             if (result.connected === false) { clear(); connection('waiting', 'Phone disconnected'); return; }
@@ -155,15 +191,17 @@
           }
         }
       }
-      if (legacy) result = legacyFields(await request('/v1/device', abort.signal, 22000));
+      if (legacy) { result = legacyFields(await request('/v1/device', abort.signal, 22000)); basicRead = true; }
       if (current !== generation || !host) return;
       if (deviceKey !== result.deviceKey) manualValue = 'Not checked';
       deviceKey = result.deviceKey;
       // Replace snapshots. Never carry missing data across phones or read failures.
       fields = result.fields;
-      lastRead = Date.now();
+      if (basicRead) lastRead = Date.now();
       paint(true);
       connection('connected', legacy ? 'Connected - basic reader only; install the Details extension for more fields.' : 'Connected - automatic reading is on');
+      if (!legacy) await readAdvanced(abort.signal, current, force);
+      else advancedStatus('Advanced checks need the updated Details extension on this PC.');
     } catch (error) {
       if (current !== generation || !host) return;
       clear();
@@ -181,7 +219,7 @@
     generation++;
     clearTimeout(timer);
     controller?.abort(); controller = null;
-    host = null; fields = {}; deviceKey = ''; lastRead = 0; manualValue = 'Not checked'; legacy = false;
+    host = null; fields = {}; advancedFields = {}; advancedRead = 0; advancedPending = false; deviceKey = ''; lastRead = 0; manualValue = 'Not checked'; legacy = false;
   }
   function mount(container) {
     if (host?.isConnected && host.parentElement === container) return;
@@ -200,6 +238,8 @@
     state.setAttribute('role', 'status');
     status.append(state, element('span', 'cdd-count'), element('span', 'cdd-time'));
     host.append(toolbar, status, element('p', 'cdd-notice', 'Live connected-phone details, not historical database records. Unavailable is not Clean, Unlocked or Genuine. No phone settings or stock records are changed. Date filters do not apply to this tab.'));
+    const advancedNotice = element('p', 'cdd-notice cdd-advanced-status', 'Advanced checks wait for a connected phone.');
+    advancedNotice.setAttribute('role', 'status'); host.append(advancedNotice);
     const grid = element('div', 'cdd-grid');
     for (const [number, title, rows] of groups) {
       const card = element('section', 'cdd-card');
