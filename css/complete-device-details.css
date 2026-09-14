@@ -1,0 +1,26 @@
+.complete-device-details { color: #203e36; padding: 22px; }
+.cdd-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+.cdd-eyebrow { color: #0c795b; font-size: 12px; font-weight: 800; letter-spacing: .12em; margin: 0 0 8px; }
+.cdd-device-title { font-size: clamp(22px, 2vw, 30px); margin: 0 0 6px; overflow-wrap: anywhere; }
+.cdd-device-subtitle { color: #657c73; margin: 0; font-size: 15px; }
+.cdd-retry { flex-shrink: 0; min-height: 44px; }
+.cdd-status { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 24px; background: #eff7f3; border: 1px solid #cfdfd7; border-radius: 12px; padding: 14px 18px; margin: 20px 0 12px; font-size: 13px; }
+.cdd-state { flex: 1 1 320px; font-size: 14px; }
+[data-connection="error"] .cdd-status { color: #913829; background: #fff2ee; border-color: #eac6ba; }
+.cdd-notice { font-size: 13px; line-height: 1.6; color: #6a7c74; margin: 0 0 22px; max-width: 1060px; }
+.cdd-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
+.cdd-card { border: 1px solid #d7e5dd; border-radius: 14px; overflow: hidden; min-width: 0; background: #fff; }
+.cdd-card h4 { display: flex; align-items: center; gap: 10px; margin: 0; padding: 15px 18px; background: #f2f8f5; font-size: 16px; }
+.cdd-section-number { color: #0f7759; background: #e0eee6; padding: 5px 7px; border-radius: 6px; font-size: 11px; }
+.cdd-fields { margin: 0; }
+.cdd-row { display: grid; grid-template-columns: minmax(110px, .85fr) minmax(0, 1.35fr); gap: 14px; padding: 13px 18px; border-top: 1px solid #edf1ee; align-items: start; }
+.cdd-row dt { color: #46645a; font-size: 14px; font-weight: 600; padding-top: 2px; overflow-wrap: anywhere; }
+.cdd-row dd { margin: 0; min-width: 0; }
+.cdd-value { font-size: 15px; line-height: 1.45; font-weight: 700; overflow-wrap: anywhere; }
+.cdd-badge { display: inline-block; color: #527567; font-size: 10px; border: 1px solid #d4e7dc; padding: 2px 5px; border-radius: 5px; vertical-align: middle; margin-left: 7px; }
+.cdd-source { display: block; color: #788a81; font-size: 11px; line-height: 1.5; margin-top: 4px; overflow-wrap: anywhere; }
+.cdd-row[data-available="no"] .cdd-value { font-weight: 500; color: #8b7561; font-size: 14px; }
+.cdd-row[data-available="no"] .cdd-badge { display: none; }
+.cdd-row select { width: 100%; max-width: 270px; min-height: 40px; border: 1px solid #bfd6ca; border-radius: 7px; padding: 7px; background: #fff; color: #234c3c; }
+@media (max-width: 1100px) { .cdd-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 550px) { .complete-device-details { padding: 12px; } .cdd-toolbar { flex-wrap: wrap; } .cdd-row { grid-template-columns: minmax(100px, .9fr) minmax(0, 1.1fr); padding: 12px; gap: 10px; } }

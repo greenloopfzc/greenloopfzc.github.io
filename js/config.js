@@ -275,6 +275,8 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
 
     function isMutationControl(control) {
       if (!control) return false;
+      // Report-category navigation is read-only, even "Complete Device Details".
+      if (control.matches(".report-tab")) return false;
       const text = `${control.textContent || ""} ${control.value || ""} ${control.id || ""}`;
       return control.matches(mutationSelector) || mutationWords.test(text);
     }

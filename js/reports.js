@@ -28,6 +28,11 @@
   let selectedSupplier = "all";
 
   const reports = {
+    complete_device_details: {
+      title: "Complete Device Details",
+      description: "Read the connected iPhone. No historical phone or stock data is changed.",
+      columns: []
+    },
     stock_received: {
       title: "Stock received",
       description: "Every incoming IMEI received during the selected date range.",
@@ -597,6 +602,18 @@
 
   function renderActiveReport() {
     document.querySelectorAll(".report-tab").forEach((tab) => tab.classList.toggle("active", tab.dataset.report === activeReport));
+    const liveDetails = activeReport === "complete_device_details";
+    filterForm.hidden = liveDetails;
+    summary.hidden = liveDetails;
+    if (liveDetails) {
+      panelKicker.textContent = "Connected phone";
+      panelTitle.textContent = "Complete Device Details";
+      panelDescription.textContent = reports.complete_device_details.description;
+      rowCount.textContent = "Live / read-only USB";
+      window.GREENLOOP_COMPLETE_DEVICE_DETAILS?.mount(reportContent);
+      return;
+    }
+    window.GREENLOOP_COMPLETE_DEVICE_DETAILS?.unmount();
     if (activeReport === "overview") renderOverview();
     else if (activeReport === "supplier_progress") renderSupplierProgress();
     else if (activeReport === "export_boxes") renderExportBoxes();
@@ -650,6 +667,9 @@
     const { data: canView, error } = await getClient().rpc("has_role", { required_roles: ["super_admin", "owner", "manager", "receiving", "initial_qc", "parts", "technician", "final_qc", "production", "rma", "shop_staff"] });
     if (error) throw error;
     if (!canView) { permissionMessage.textContent = "Your account does not have Reports permission."; permissionMessage.hidden = false; return; }
+    // Wait for the shared page permission check before any local USB requests.
+    await window.GREENLOOP_ACCESS_READY;
+    if (window.GREENLOOP_PAGE_ACCESS?.pageKey !== "reports") return;
     const { data: correctionPermission } = await getClient().rpc("has_role", { required_roles: ["super_admin", "owner", "manager"] });
     canManageCorrections = Boolean(correctionPermission);
     const correctionTab = document.querySelector('[data-report="data_correction"]');
@@ -660,6 +680,7 @@
     dateFrom.value = localDate(new Date(now.getFullYear(), now.getMonth(), 1));
     dateTo.value = localDate(now);
     app.hidden = false;
+    renderActiveReport();
     await loadReports();
   }
 
