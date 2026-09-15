@@ -35,3 +35,41 @@ body.lab-tv-mode { background: #ecf5ef; } body.lab-tv-mode .sidebar,body.lab-tv-
 @media(max-width:1300px){.lab-live-summary{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:1000px){.lab-live-hero{align-items:flex-start;flex-direction:column}.lab-live-actions{justify-content:flex-start}.lab-live-summary{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:620px){.lab-live-hero{padding:20px}.lab-live-actions{width:100%}.lab-live-summary{grid-template-columns:1fr}.technician-live-grid{grid-template-columns:1fr;padding:12px}.lab-live-panel-heading{align-items:flex-start;flex-direction:column}.lab-live-actions .secondary-button,.lab-live-actions .primary-button{flex:1}}
+
+/* Full-board and five-second technician presentation share the same live cards. */
+.lab-board-view-controls { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:16px; }
+.lab-board-view-controls button[aria-pressed="true"] { color:#fff; background:#087451; border-color:#087451; }
+.lab-performance-help { padding:12px 22px; color:#526d5c; background:#f7fbf8; font-size:.8rem; line-height:1.6; border-bottom:1px solid #dcebe1; }
+.lab-performance-help summary { cursor:pointer; font-weight:700; color:#14563c; }
+.lab-performance-help p { max-width:1000px; margin:8px 0; }
+.technician-performance { margin-top:14px; padding:12px; border-radius:12px; background:#e6f4eb; }
+.technician-performance > div { display:flex; align-items:center; justify-content:space-between; gap:10px; color:#135337; font-weight:800; }
+.technician-performance strong { font:800 1.8rem/1.1 Manrope,Arial,sans-serif; }
+.technician-performance p { margin:6px 0; color:#567561; font-size:.68rem; }
+.technician-performance meter { display:block; width:100%; height:12px; accent-color:#087451; }
+.technician-live-card[hidden] { display:none !important; }
+.technician-live-alert { align-items:flex-start; flex-direction:column; }
+.technician-live-alert strong,.technician-live-alert span { white-space:normal; overflow-wrap:anywhere; }
+#lab-live-board.is-technician-view .lab-live-summary { display:none; }
+#lab-live-board.is-technician-view .technician-live-grid { grid-template-columns:minmax(0,900px); justify-content:center; }
+#lab-live-board.is-technician-view .technician-live-card { width:100%; padding:24px; }
+#lab-live-board.is-technician-view .technician-live-name strong { font-size:clamp(1.3rem,2.5vw,2.1rem); white-space:normal; }
+#lab-live-board.is-technician-view .technician-performance strong { font-size:2.8rem; }
+#lab-live-board.is-technician-view .technician-live-main strong { font-size:2.5rem; }
+#lab-live-board.is-technician-view .technician-live-stats strong,#lab-live-board.is-technician-view .technician-live-quality strong { font-size:1.3rem; }
+#lab-live-board.is-technician-view .technician-live-main span,#lab-live-board.is-technician-view .technician-live-stats span,#lab-live-board.is-technician-view .technician-live-quality span,#lab-live-board.is-technician-view .technician-live-alert,#lab-live-board.is-technician-view .technician-live-device { font-size:.9rem; }
+@media(prefers-reduced-motion:reduce){.technician-live-card.is-overdue,.technician-live-alert{animation:none}}
+@media(max-width:620px){#lab-live-board.is-technician-view .technician-live-card{padding:14px}.technician-live-head{flex-wrap:wrap}.lab-board-view-controls button{flex:1}}
+@media(min-width:900px){
+ body.lab-tv-mode .lab-live-hero { padding:14px 22px; align-items:center; margin-bottom:12px; }
+ body.lab-tv-mode .lab-live-hero h1 { font-size:1.9rem; }
+ body.lab-tv-mode .lab-live-hero p:not(.eyebrow) { display:none; }
+ body.lab-tv-mode #lab-live-board.is-technician-view .technician-live-card:not([hidden]) { display:grid; grid-template-columns:1fr 1fr; column-gap:18px; padding:18px; }
+ body.lab-tv-mode #lab-live-board.is-technician-view .technician-live-head,
+ body.lab-tv-mode #lab-live-board.is-technician-view .technician-live-alert,
+ body.lab-tv-mode #lab-live-board.is-technician-view .technician-live-device { grid-column:1/-1; }
+ body.lab-tv-mode #lab-live-board.is-technician-view .technician-performance { grid-column:1; grid-row:2; }
+ body.lab-tv-mode #lab-live-board.is-technician-view .technician-live-main { grid-column:2; grid-row:2; margin-bottom:0; }
+ body.lab-tv-mode #lab-live-board.is-technician-view .technician-live-stats,
+ body.lab-tv-mode #lab-live-board.is-technician-view .technician-live-quality { margin-top:12px; }
+}

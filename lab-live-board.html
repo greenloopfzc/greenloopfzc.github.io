@@ -10,10 +10,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css?v=20260822-live-board-1">
-    <link rel="stylesheet" href="css/lab-live-board.css?v=20260822-performance-1">
+    <link rel="stylesheet" href="css/lab-live-board.css?v=20260915-tech-loop-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="js/config.js?v=20260825-complete-imei-1"></script>
-  <script defer src="js/lab-live-board.js?v=20260825-clean-separators-1"></script>
+  <script defer src="js/lab-live-board.js?v=20260915-tech-loop-1"></script>
   </head>
   <body class="app-page lab-live-board-page">
     <div class="app-shell">
@@ -32,16 +32,18 @@
           </section>
           <div id="permission-message" class="access-message" hidden></div>
           <section id="lab-live-board" hidden>
+            <div class="lab-board-view-controls" role="group" aria-label="Board view"><button id="full-board-view" class="secondary-button" type="button" aria-pressed="true">Full board</button><button id="auto-technician-view" class="secondary-button" type="button" aria-pressed="false">Technician auto view · 5 sec</button></div>
             <section class="lab-live-summary" aria-label="Laboratory work summary">
               <article><span>Active technicians</span><strong id="summary-technicians">0</strong><small>Current Lab &amp; Glass roster</small></article>
               <article><span>Phones pending</span><strong id="summary-pending">0</strong><small>Assigned work waiting in queue</small></article>
               <article><span>Working now</span><strong id="summary-working">0</strong><small>Active repair sessions</small></article>
               <article><span>Completed today</span><strong id="summary-completed">0</strong><small>Lab &amp; Glass phones completed</small></article>
-              <article><span>Over 2 days</span><strong id="summary-overdue">0</strong><small>Phones needing immediate attention</small></article>
+              <article><span>Overdue phones</span><strong id="summary-overdue">0</strong><small>Pending longer than 2 days</small></article>
               <article><span>Completed month</span><strong id="summary-month">0</strong><small>All Lab &amp; Glass work this month</small></article>
             </section>
             <section class="lab-live-panel">
               <div class="lab-live-panel-heading"><div><p class="panel-kicker">TECHNICIAN STATUS</p><h2>Workshop performance at a glance</h2></div><span id="board-count" class="lab-live-count">0 technicians</span></div>
+              <details class="lab-performance-help"><summary>How performance % is calculated</summary><p>Higher is better. 80 points come from this month's completed repairs and quality: completed ÷ (completed + 2 × QC returns + 3 × technician damage incidents). The other 20 points come from the share of the current pending queue that is within 2 days. An empty queue earns these 20 points only when there are completed repairs this month.</p><p>No monthly repairs or quality records: N/A. Quality incidents with no completed repairs: 0%. This is a workload indicator based on recorded QC returns and damaged-part incidents, not a customer-return rate. Repair difficulty and reasons for delays are not recorded in this score. Compare the counts alongside the percentage.</p></details>
               <div id="technician-live-grid" class="technician-live-grid" aria-live="polite"></div>
             </section>
           </section>
