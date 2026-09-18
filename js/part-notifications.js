@@ -16,7 +16,7 @@
 
   function getClient() {
     if (!supabaseClient && window.supabase && config.supabaseUrl && config.supabaseAnonKey) {
-      supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+      supabaseClient = window.GREENLOOP_GET_CLIENT();
     }
     return supabaseClient;
   }

@@ -27,7 +27,7 @@
       ['tmo', 'TMO', 'T-Mobile (US). No verified carrier-specific lookup is connected.'],
       ['att', 'ATT', 'AT&T (US). No verified carrier-specific lookup is connected.'],
       ['cce', 'CCE', 'Meaning is not verified in this project. No result is assumed.'],
-      ['vrz', 'VRZ', 'Possibly Verizon; mapping is not confirmed in this project. No verified lookup is connected.'],
+      ['vrz', 'VRZ', 'Meaning is not verified in this project. No carrier mapping or result is assumed.'],
       ['carrierLockManual', 'Carrier Lock — Manual', 'Optional observation for this connection only. Not saved to the database.']
     ]],
     ['05', 'Security & management', [

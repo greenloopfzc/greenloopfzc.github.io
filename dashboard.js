@@ -9,18 +9,38 @@
   const searchEmpty = document.querySelector("#search-empty");
   const toast = document.querySelector("#toast");
   const dashboardTitle = document.querySelector("#dashboard-title");
+  const liveHeadlines = document.querySelector(".live-headlines");
+  const liveHeadlinesItems = document.querySelector("#live-headlines-items");
   const config = window.GREENLOOP_CONFIG || {};
   let client;
   let toastTimer;
   let rows = [];
   let currentQueueTotal = 0;
+  let liveHeadlinesSignature = "";
 
   document.querySelector("#dashboard-date").textContent = new Intl.DateTimeFormat("en-US", {
     weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "Asia/Dubai"
   }).format(new Date());
 
+  function getDubaiHour() {
+    const hourPart = new Intl.DateTimeFormat("en-US", {
+      hour: "2-digit",
+      hourCycle: "h23",
+      timeZone: "Asia/Dubai"
+    }).formatToParts(new Date()).find((part) => part.type === "hour");
+    return Number(hourPart?.value || 0);
+  }
+
+  function updateDashboardGreeting(name = "Admin") {
+    const hour = getDubaiHour();
+    const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : hour < 22 ? "Good evening" : "Good night";
+    dashboardTitle.textContent = `${greeting}, ${name || "Admin"}.`;
+  }
+
+  updateDashboardGreeting();
+
   function getClient() {
-    return (client ||= window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey));
+    return (client ||= window.GREENLOOP_GET_CLIENT());
   }
 
   function escapeHtml(value) {
@@ -31,11 +51,6 @@
     return String(value || "Pending").replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
   }
 
-  function localDate(value) {
-    const date = value instanceof Date ? value : new Date(value);
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-  }
-
   function dateInDubai(value) {
     const format = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Dubai", year: "numeric", month: "2-digit", day: "2-digit" });
     const parts = Object.fromEntries(format.formatToParts(new Date(value)).filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
@@ -43,7 +58,7 @@
   }
 
   function dateLabel(value) {
-    return new Date(`${value}T00:00:00`).toLocaleDateString("en-US", { weekday: "short", timeZone: "Asia/Dubai" });
+    return new Date(`${value}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", timeZone: "Asia/Dubai" });
   }
 
   function setMenu(isOpen) {
@@ -63,20 +78,73 @@
     }, 3600);
   }
 
-  function renderMetrics(summary, readyTotal) {
+  function renderMetrics(workflow) {
     const cards = [
-      ["Stock received", summary.stock_received, "Open received-stock data", "company-stock", "reports.html?report=stock_received"],
-      ["Initial QC waiting", summary.initial_qc_pending, "Open Initial QC queue", "customer-stock", "initial-qc.html"],
-      ["Parts requests open", summary.parts_pending, "Open parts-request data", "rma-stock", "reports.html?report=parts_requests"],
-      ["Ready Stock", readyTotal, "Open current Ready Stock", "ready-stock", "ready-stock.html"]
+      ["Stock Received", workflow.stock_received, "Total received quantity", "company-stock", "stock-entry.html", "◫"],
+      ["IMEI Entry", workflow.imei_entry, "Waiting for IMEI entry", "imei-entry-stock", "imei-entry.html", "⌕"],
+      ["Initial QC", workflow.initial_qc, "Waiting for inspection", "customer-stock", "initial-qc.html", "✓"],
+      ["Lab & Glass", workflow.lab_glass, "Waiting for repair", "lab-stock", "laboratory.html", "⌁"],
+      ["Parts", workflow.parts, "Open part requests", "rma-stock", "parts.html", "▦"],
+      ["Final QC", workflow.final_qc, "Waiting for final check", "final-qc-stock", "final-qc.html", "◉"],
+      ["Frame Department", workflow.frame, "Waiting for frame work", "frame-stock", "laboratory.html#frame", "□"],
+      ["Ready Stock", workflow.ready_stock, "Available now", "ready-stock", "ready-stock.html", "▤"],
+      ["Export Data", workflow.export_data, "IMEIs in export boxes", "export-stock", "export-box.html", "↝"]
     ];
 
-    document.querySelector(".metric-grid").innerHTML = cards.map(([label, value, note, style, href]) => `
+    document.querySelector(".workflow-metric-grid").innerHTML = cards.map(([label, value, note, style, href, icon]) => `
       <a class="metric-card metric-card-link ${style}" href="${href}">
-        <div class="metric-topline"><span class="metric-icon">&#9673;</span><span class="trend up">Live</span></div>
+        <div class="metric-topline"><span class="metric-icon">${icon}</span><span class="trend up">Live</span></div>
         <p>${escapeHtml(label)}</p><strong>${escapeHtml(value || 0)}</strong><small>${escapeHtml(note)} <span aria-hidden="true">&rarr;</span></small>
       </a>
     `).join("");
+  }
+
+  function headlineTime(value) {
+    return new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Dubai", hour: "numeric", minute: "2-digit", hour12: true, day: "2-digit", month: "short"
+    }).format(new Date(value));
+  }
+
+  function renderLiveHeadlines(headlines) {
+    if (!liveHeadlines || !liveHeadlinesItems) return;
+    const signature = JSON.stringify((headlines || []).map((item) => [item.event_at, item.imei, item.from_stage, item.to_stage, item.activity_title]));
+    if (signature === liveHeadlinesSignature) return;
+    liveHeadlinesSignature = signature;
+    liveHeadlines.hidden = false;
+    if (!headlines.length) {
+      const emptyMarkup = '<span class="live-headline-item"><strong>NO LIVE ACTIVITY</strong><span>New Stock Received, IMEI, QC, Lab, Frame, Ready Stock, and Export activity will appear here automatically.</span></span>';
+      liveHeadlinesItems.innerHTML = emptyMarkup + emptyMarkup;
+      setLiveHeadlineSpeed();
+      return;
+    }
+    const itemMarkup = headlines.map((item) => {
+      const supplier = item.supplier_code || "Supplier";
+      const device = [item.model || "Model", item.storage_gb ? `${item.storage_gb} GB` : "GB -", item.color || "Color -"].join(" - ");
+      return `<span class="live-headline-item"><time>${escapeHtml(headlineTime(item.event_at))}</time><strong>${escapeHtml(item.imei || "IMEI")}</strong><span>${escapeHtml(supplier)} - ${escapeHtml(device)}</span><b>${escapeHtml(item.from_stage || "Workflow")} &rarr; ${escapeHtml(item.to_stage || "Updated")}</b><em>${escapeHtml(item.activity_title || "Activity recorded")}</em></span>`;
+    }).join("");
+    liveHeadlinesItems.innerHTML = itemMarkup + itemMarkup;
+    setLiveHeadlineSpeed();
+  }
+
+  function setLiveHeadlineSpeed() {
+    window.requestAnimationFrame(() => {
+      const loopDistance = liveHeadlinesItems.scrollWidth / 2;
+      const durationSeconds = Math.max(16, Math.ceil(loopDistance / 100));
+      liveHeadlinesItems.style.animationDuration = `${durationSeconds}s`;
+    });
+  }
+
+  async function refreshLiveHeadlines() {
+    const { data, error } = await getClient().rpc("get_overview_activity_headlines", { p_limit: 12 });
+    if (error) {
+      liveHeadlinesSignature = "";
+      if (liveHeadlines && liveHeadlinesItems) {
+        liveHeadlines.hidden = false;
+        liveHeadlinesItems.textContent = "Live activity is temporarily unavailable. Retrying automatically.";
+      }
+      return;
+    }
+    renderLiveHeadlines(data || []);
   }
 
   function renderQueues(summary, readyTotal) {
@@ -85,7 +153,7 @@
       ["Parts", Number(summary.parts_pending) || 0, "parts"],
       ["Laboratory & Glass", Number(summary.laboratory_pending) || 0, "lab"],
       ["Final QC", Number(summary.final_qc_pending) || 0, "final-qc"],
-      ["Production", Number(readyTotal) || 0, "production"]
+      ["Ready Stock", Number(readyTotal) || 0, "production"]
     ];
     const maximum = Math.max(...queues.map(([, count]) => count), 1);
     currentQueueTotal = queues.reduce((total, [, count]) => total + count, 0);
@@ -99,8 +167,8 @@
       : "<strong>All live queues are clear.</strong> No device is waiting in the current workflow queues.";
   }
 
-  function renderThroughput(production, days) {
-    const completed = production.filter((row) => row.completed_at);
+  function renderThroughput(finalQc, days) {
+    const completed = finalQc.filter((row) => row.result === "pass" && row.inspected_at).map((row) => ({ completed_at: row.inspected_at }));
     const counts = new Map(days.map((day) => [day, 0]));
     completed.forEach((row) => {
       const day = dateInDubai(row.completed_at);
@@ -113,7 +181,11 @@
       const value = counts.get(day) || 0;
       return `<div class="bar-column${day === today ? " current" : ""}"><span class="bar-value">${value}</span><i style="height: ${value ? Math.max(8, Math.round((value / maximum) * 86)) : 2}%"></i><small>${escapeHtml(dateLabel(day))}</small></div>`;
     }).join("");
-    document.querySelector(".throughput-summary").innerHTML = `<strong>${completed.length}</strong><span>devices completed in the last 7 days</span><em>${counts.get(today) || 0} completed today</em>`;
+    document.querySelector(".throughput-panel .panel-kicker").textContent = "Last 7 days";
+    document.querySelector(".throughput-panel h2").textContent = "Final QC passes";
+    document.querySelector(".throughput-panel .chart-legend").lastChild.textContent = "Passed";
+    const displayedTotal = [...counts.values()].reduce((total, count) => total + count, 0);
+    document.querySelector(".throughput-summary").innerHTML = `<strong>${displayedTotal}</strong><span>phones passed Final QC in the last 7 days</span><em>${counts.get(today) || 0} passed today</em>`;
   }
 
   function renderPriority(rowsToRender) {
@@ -131,6 +203,11 @@
     filterRows();
   }
 
+  function isReadyStockStatus(status) {
+    return ["qc_passed", "production_pending", "production_completed", "ready_for_packing", "ready_for_shipment"]
+      .includes(String(status || "").trim().toLowerCase().replaceAll(" ", "_"));
+  }
+
   function renderParts(inventory) {
     const list = document.querySelector(".stock-list");
     const lowStock = inventory.filter((row) => row.low_stock).slice(0, 4);
@@ -144,20 +221,18 @@
     locationPanel.querySelector("h2").textContent = "Live stock status";
     locationPanel.querySelector(".location-grid").innerHTML = [
       ["Ready Stock", readyTotal],
-      ["Retail Shop", summary.retail_shop_stock || 0],
-      ["RMA received", (reportData.rma || []).length],
       ["Work in progress", (reportData.work_in_progress || []).length]
     ].map(([label, value]) => `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("");
   }
 
   function renderActivity(reportData) {
     const items = [
-      ...(reportData.final_qc || []).map((row) => ({ time: row.inspected_at, title: `Final QC ${titleCase(row.result)}`, text: `${row.job_number || "Job"} · ${row.imei || "No IMEI"}`, style: row.result === "pass" ? "green" : "red" })),
-      ...(reportData.parts_requests || []).map((row) => ({ time: row.requested_at, title: "Part request", text: `${row.part_name || "Part"} · ${row.job_number || "Job"}`, style: "amber" })),
-      ...(reportData.stock_received || []).map((row) => ({ time: row.received_at, title: "Stock received", text: `${row.imei || "No IMEI"} · ${row.model || "Unknown model"}`, style: "green" }))
+      ...(reportData.final_qc || []).map((row) => ({ time: row.inspected_at, title: `Final QC ${titleCase(row.result)}`, text: `${row.job_number || "Job"} - ${row.imei || "No IMEI"}`, style: row.result === "pass" ? "green" : "red" })),
+      ...(reportData.parts_requests || []).map((row) => ({ time: row.requested_at, title: "Part request", text: `${row.part_name || "Part"} - ${row.job_number || "Job"}`, style: "amber" })),
+      ...(reportData.stock_received || []).map((row) => ({ time: row.received_at, title: "Stock received", text: `${row.imei || "No IMEI"} - ${row.model || "Unknown model"}`, style: "green" }))
     ].filter((item) => item.time).sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 4);
     document.querySelector(".activity-list").innerHTML = items.length ? items.map((item) => `
-      <li><i class="activity-dot ${item.style}"></i><span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.text)}</small></span><time>${escapeHtml(new Date(item.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))}</time></li>
+      <li><i class="activity-dot ${item.style}"></i><span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.text)}</small></span><time>${escapeHtml(new Date(item.time).toLocaleTimeString([], { timeZone: "Asia/Dubai", hour: "2-digit", minute: "2-digit" }))}</time></li>
     `).join("") : '<li><span><strong>No recent live activity.</strong><small>New receipts and workflow actions will appear here.</small></span></li>';
   }
 
@@ -174,32 +249,47 @@
 
   async function loadLiveDashboard() {
     const now = new Date();
-    const start = new Date(now);
-    start.setDate(start.getDate() - 6);
+    const start = new Date(`${dateInDubai(now)}T12:00:00Z`);
+    start.setUTCDate(start.getUTCDate() - 6);
     const days = Array.from({ length: 7 }, (_, index) => {
       const day = new Date(start);
-      day.setDate(start.getDate() + index);
-      return localDate(day);
+      day.setUTCDate(start.getUTCDate() + index);
+      return day.toISOString().slice(0, 10);
     });
-    const [reportsResult, readyResult, partsResult] = await Promise.all([
+    const [reportsResult, readyResult, partsResult, workflowResult] = await Promise.all([
       getClient().rpc("get_greenloop_reports", { p_date_from: days[0], p_date_to: days[6] }),
       getClient().rpc("get_ready_stock_summary"),
-      getClient().rpc("get_open_parts_pending_count")
+      getClient().rpc("get_open_parts_pending_count"),
+      getClient().rpc("get_overview_workflow_counts")
     ]);
     if (reportsResult.error) throw reportsResult.error;
+    if (workflowResult.error) throw workflowResult.error;
+    if (readyResult.error) throw readyResult.error;
     const reportData = Array.isArray(reportsResult.data) ? reportsResult.data[0] : (reportsResult.data || {});
+    if (!reportData?.summary) throw new Error("Live overview data is unavailable. Please refresh to retry.");
     const summary = reportData.summary || {};
-    if (!partsResult.error && Number.isFinite(Number(partsResult.data))) summary.parts_pending = Number(partsResult.data);
-    const readyData = readyResult.error ? {} : (Array.isArray(readyResult.data) ? readyResult.data[0] : readyResult.data || {});
+    if (!partsResult.error && partsResult.data !== null && partsResult.data !== undefined && partsResult.data !== "" && Number.isFinite(Number(partsResult.data))) summary.parts_pending = Number(partsResult.data);
+    const readyData = Array.isArray(readyResult.data) ? readyResult.data[0] : readyResult.data || {};
     const readyTotal = Number(readyData.total_qty) || 0;
 
-    renderMetrics(summary, readyTotal);
+    const workflow = Array.isArray(workflowResult.data) ? workflowResult.data[0] : (workflowResult.data || {});
+    renderMetrics(workflow);
+    await refreshLiveHeadlines();
     renderQueues(summary, readyTotal);
-    renderThroughput(reportData.production || [], days);
-    renderPriority(reportData.work_in_progress || []);
+    renderThroughput(reportData.final_qc || [], days);
+    renderPriority((reportData.work_in_progress || []).filter((row) => !isReadyStockStatus(row.status)));
     renderParts(reportData.parts_inventory || []);
     renderLiveStatus(summary, readyTotal, reportData);
     renderActivity(reportData);
+  }
+
+  function showDashboardUnavailable(error) {
+    const text = "Live data could not be loaded. Refresh the page to try again.";
+    document.querySelectorAll(".workflow-metric-grid, .queue-list, .queue-insight p, .bar-chart, .throughput-summary, .location-grid").forEach((element) => { element.textContent = text; });
+    document.querySelector(".priority-table tbody").innerHTML = `<tr><td colspan="4">${text}</td></tr>`;
+    document.querySelectorAll(".stock-list, .activity-list").forEach((element) => { element.innerHTML = `<li>${text}</li>`; });
+    rows = [];
+    showToast(error?.message || text);
   }
 
   openMenuButton.addEventListener("click", () => setMenu(true));
@@ -217,7 +307,7 @@
 
   async function protectDashboard() {
     if (!config.supabaseUrl || !config.supabaseAnonKey || !window.supabase) {
-      showToast("Dashboard authentication is not configured.");
+      showDashboardUnavailable(new Error("Dashboard authentication is not configured."));
       return;
     }
     const { data: sessionData, error: sessionError } = await getClient().auth.getSession();
@@ -225,10 +315,22 @@
     const { data: profile } = await getClient().from("user_profiles").select("full_name").eq("id", sessionData.session.user.id).maybeSingle();
     if (profile?.full_name) {
       const firstName = profile.full_name.trim().split(/\s+/)[0];
-      if (firstName) dashboardTitle.textContent = `Good morning, ${firstName}.`;
+      updateDashboardGreeting(firstName || "Admin");
+    } else {
+      updateDashboardGreeting();
     }
+    await window.GREENLOOP_ACCESS_READY;
     await loadLiveDashboard();
   }
 
-  protectDashboard().catch((error) => showToast(error.message || "Live dashboard data could not be loaded."));
+  window.setInterval(() => {
+    const currentName = dashboardTitle.textContent
+      .replace(/good\s+(morning|afternoon|evening|night)\s*,?\s*/i, "")
+      .replace(/\.$/, "")
+      .trim() || "Admin";
+    updateDashboardGreeting(currentName);
+  }, 60000);
+
+  protectDashboard().catch(showDashboardUnavailable);
+  window.setInterval(() => refreshLiveHeadlines().catch(() => {}), 15000);
 })();

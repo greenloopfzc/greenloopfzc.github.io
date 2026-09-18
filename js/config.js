@@ -1,7 +1,52 @@
+// GreenLoop audit release: 20260918-audit-2
 window.GREENLOOP_CONFIG = Object.freeze({
   supabaseUrl: "https://prypklagfznpdlleldll.supabase.co",
   supabaseAnonKey: "sb_publishable_hMIRbfKmh4vhGvEgVcPjow_F21WmwXt"
 });
+
+// Every page uses the same client and storage choice. Session-only sign-in must
+// survive page navigation without leaving the token in persistent storage.
+(() => {
+  let sharedClient;
+  const modeKey = "greenloop-session-mode";
+  const authKey = `sb-${new URL(window.GREENLOOP_CONFIG.supabaseUrl).hostname.split(".")[0]}-auth-token`;
+  const authKeys = [authKey, `${authKey}-code-verifier`, `${authKey}-user`];
+  const storage = () => window.sessionStorage.getItem(modeKey) === "session" ? window.sessionStorage : window.localStorage;
+  window.GREENLOOP_SET_REMEMBER_SESSION = (remember) => {
+    window.sessionStorage.setItem(modeKey, remember ? "local" : "session");
+    const otherStorage = remember ? window.sessionStorage : window.localStorage;
+    authKeys.forEach((key) => otherStorage.removeItem(key));
+  };
+  window.GREENLOOP_CLEAR_SESSION = () => {
+    authKeys.forEach((key) => {
+      window.localStorage.removeItem(key);
+      window.sessionStorage.removeItem(key);
+    });
+  };
+  window.GREENLOOP_GET_CLIENT = () => {
+    if (!sharedClient) {
+      sharedClient = window.supabase.createClient(window.GREENLOOP_CONFIG.supabaseUrl, window.GREENLOOP_CONFIG.supabaseAnonKey, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storage: {
+          getItem: (key) => storage().getItem(key),
+          setItem: (key, value) => storage().setItem(key, value),
+          removeItem: (key) => { window.localStorage.removeItem(key); window.sessionStorage.removeItem(key); }
+        } }
+      });
+      const rpc = sharedClient.rpc.bind(sharedClient);
+      sharedClient.rpc = async (name, ...args) => {
+        // Capture guards also cover automatic saves and scanner callbacks that
+        // never pass through a button click. The database must enforce this too.
+        const writes = /^(add_|archive_|assign_|cancel_|close_|complete_|correct_|create_|delete_|ensure_|issue_|mark_|pause_|receive_|record_|remove_|request_|reset_|resume_|return_|review_|route_|save_|scan_imei_to_export_box$|send_|set_|start_|transfer_|update_|get_or_create_open_export_box$)/;
+        if (writes.test(name)) {
+          await window.GREENLOOP_ACCESS_READY;
+          if (!window.GREENLOOP_PAGE_ACCESS?.canEdit) return { data: null, error: { code: "42501", message: "Entry Allowed permission is required to make changes on this page." } };
+        }
+        return rpc(name, ...args);
+      };
+    }
+    return sharedClient;
+  };
+})();
 
 // Applied after every page stylesheet so no individual table can override the
 // shared centred layout for its headings and cell values.
@@ -108,11 +153,11 @@ document.addEventListener("click", (event) => {
     logoutButton.textContent = "Logging out...";
     try {
       if (window.supabase && window.GREENLOOP_CONFIG?.supabaseUrl && window.GREENLOOP_CONFIG?.supabaseAnonKey) {
-        const client = window.supabase.createClient(window.GREENLOOP_CONFIG.supabaseUrl, window.GREENLOOP_CONFIG.supabaseAnonKey);
-        await client.auth.signOut();
+        const client = window.GREENLOOP_GET_CLIENT();
+        await client.auth.signOut({ scope: "local" });
       }
     } finally {
-      window.location.replace("index.html");
+      try { window.GREENLOOP_CLEAR_SESSION(); } finally { window.location.replace("index.html"); }
     }
   });
 })();
@@ -206,6 +251,8 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     "final-qc.html": "final_qc",
     "ready-stock.html": "ready_stock",
     "export-box.html": "export_boxes",
+    "packing.html": "export_boxes",
+    "stock-out.html": "export_boxes",
     "ready-stock-journey.html": "ready_stock_journey",
     "reports.html": "reports",
     "user-access.html": "user_access"
@@ -260,13 +307,14 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     if (!main) return;
     main.style.visibility = "";
     main.removeAttribute("aria-busy");
-    main.innerHTML = '<div class="page-content"><section class="panel"><p class="form-message error-message">Your page permissions could not be loaded. Please logout, sign in again, and refresh the page.</p></section></div>';
+    main.innerHTML = '<div class="page-content"><section class="panel"><p class="form-message error-message">Your page permissions could not be loaded. Refresh to retry, or return to sign-in.</p><a class="secondary-button" href="index.html">Return to sign-in</a><button type="button" id="retry-page-access" class="secondary-button">Retry</button></section></div>';
+    main.querySelector("#retry-page-access").addEventListener("click", () => window.location.reload());
   }
 
   function makePageViewOnly(main, pageKey) {
     window.GREENLOOP_PAGE_ACCESS = { pageKey, accessLevel: "view", canEdit: false };
     document.documentElement.dataset.pageAccess = "view";
-    const mutationWords = /\b(save|create|add|remove|delete|receive|issue|install|return|approve|reject|order|complete|route|pass|fail|cancel|submit|update|edit)\b/i;
+    const mutationWords = /\b(save|create|add|remove|delete|receive|issue|install|return|approve|reject|order|complete|route|pass|fail|cancel|submit|update|edit|start|pause)\b/i;
     const mutationSelector = [
       "[data-save-row]", "[data-order-parts]", "[data-complete-lab]", "[data-complete-frame]",
       "[data-add-choice]", "[data-remove-choice]", "[data-review-return]", "[data-delete]",
@@ -350,10 +398,7 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
       return;
     }
 
-    const client = window.supabase.createClient(
-      window.GREENLOOP_CONFIG.supabaseUrl,
-      window.GREENLOOP_CONFIG.supabaseAnonKey
-    );
+    const client = window.GREENLOOP_GET_CLIENT();
     const { data: sessionData } = await client.auth.getSession();
     if (!sessionData?.session) {
       window.location.replace("index.html");
@@ -364,7 +409,7 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     let accessRows;
     if (error && (error.code === "PGRST202" || String(error.message || "").includes("get_my_page_access_v2"))) {
       ({ data, error } = await client.rpc("get_my_page_access"));
-      accessRows = (Array.isArray(data) ? data : []).map((pageKey) => ({ page_key: pageKey, access_level: "edit" }));
+      accessRows = (Array.isArray(data) ? data : []).map((pageKey) => ({ page_key: pageKey, access_level: "view" }));
     } else {
       accessRows = Array.isArray(data) ? data : [];
     }
@@ -424,7 +469,11 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
       return;
     }
 
-    if (main) main.style.display = "none";
+    if (main) {
+      unlockApplication(main);
+      const content = main.querySelector(".page-content");
+      if (content) content.innerHTML = '<section class="panel"><h1>No pages assigned</h1><p>Please contact your administrator to enable your pages. You can use Logout above to switch accounts.</p></section>';
+    }
     if (navigation) navigation.innerHTML = '<p class="nav-label">No pages assigned</p>';
   }
 
@@ -527,6 +576,7 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     })
     .catch((error) => {
       console.error("Page access error:", error);
+      showAccessError(document.querySelector(".sidebar-nav"), document.querySelector(".app-main"));
       return null;
     });
 })();

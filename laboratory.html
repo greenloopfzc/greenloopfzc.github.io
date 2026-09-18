@@ -12,9 +12,9 @@
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/laboratory.css?v=20260825-manual-lab-parts-mode-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script defer src="js/config.js?v=20260825-complete-imei-1"></script>
-    <script defer src="js/part-notifications.js?v=20260815-simple-1"></script>
-  <script defer src="js/laboratory.js?v=20260825-clean-separators-1"></script>
+  <script defer src="js/config.js?v=20260918-audit-2"></script>
+    <script defer src="js/part-notifications.js?v=20260918-audit-2"></script>
+  <script defer src="js/laboratory.js?v=20260918-audit-2"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -43,7 +43,7 @@
               <div class="frame-report-heading"><div><p class="panel-kicker">Frame performance</p><h2>Pass and Fail history</h2></div><div class="frame-report-counts"><span id="frame-pass-count">0 Pass</span><span id="frame-fail-count">0 Fail</span></div></div>
               <div class="frame-report-scroll"><table><thead><tr><th>Time</th><th>IMEI</th><th>Supplier</th><th>Model</th><th>Result</th><th>Recorded by</th></tr></thead><tbody id="frame-report-rows"><tr><td colspan="6">No Frame results recorded yet.</td></tr></tbody></table></div>
             </section>
-            <section class="lab-rule-card"><strong>Workflow rule</strong><span id="workflow-rule-text">Laboratory saves parts and services. Only parts create a Parts Department notification. Laboratory completion sends the phone to Final QC. Direct Final QC Pass decides the Final Grade. Frame phones receive Final Grade in Frame Department and then go to Production.</span></section>
+            <section class="lab-rule-card"><strong>Workflow rule</strong><span id="workflow-rule-text">Laboratory saves parts and services. Only parts create a Parts Department notification. Laboratory completion sends the phone to Final QC. Direct Final QC Pass decides the Final Grade. Frame phones receive Final Grade in Frame Department and then go to Ready Stock.</span></section>
           </section>
         </div>
       </main>

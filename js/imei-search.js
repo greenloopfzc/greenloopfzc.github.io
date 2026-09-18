@@ -24,8 +24,9 @@
   let client;
   let toastTimer;
   let autoSearchTimer;
+  let searchVersion = 0;
 
-  function getClient() { return (client ||= window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey)); }
+  function getClient() { return (client ||= window.GREENLOOP_GET_CLIENT()); }
   function escapeHtml(value) { return String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]); }
   function label(value) { return String(value || "-").replaceAll("_", " ").replace(/\b\w/g, (character) => character.toUpperCase()); }
   function money(value) { return `AED ${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; }
@@ -51,7 +52,7 @@
     return window.GREENLOOP_CAN_VIEW_PARTNER_NAMES && safeName ? [safeCode, safeName].filter(Boolean).join(" - ") : (safeCode || "Confidential customer");
   }
   function setMessage(text = "") { message.textContent = text; message.classList.toggle("is-visible", Boolean(text)); }
-  function setSubmitting(isSubmitting) { searchButton.disabled = isSubmitting; if (isSubmitting) searchButton.dataset.label = searchButton.textContent.trim(); searchButton.textContent = isSubmitting ? "Searching..." : searchButton.dataset.label || "Search device"; }
+  function setSubmitting(isSubmitting) { if (isSubmitting && !searchButton.disabled) searchButton.dataset.label = searchButton.textContent.trim(); searchButton.disabled = isSubmitting; searchButton.textContent = isSubmitting ? "Searching..." : searchButton.dataset.label || "Search device"; }
   function setMenu(isOpen) { sidebar.classList.toggle("is-open", isOpen); backdrop.hidden = !isOpen; document.body.classList.toggle("menu-open", isOpen); }
   function showToast(text) { clearTimeout(toastTimer); toast.textContent = text; toast.hidden = false; toast.classList.add("is-visible"); toastTimer = setTimeout(() => { toast.hidden = true; toast.classList.remove("is-visible"); }, 3400); }
   function detailCard(title, value) { return `<div class="journey-detail"><dt>${escapeHtml(title)}</dt><dd>${escapeHtml(value || "-")}</dd></div>`; }
@@ -110,25 +111,37 @@
   }
 
   async function search(event) {
-    event?.preventDefault(); setMessage(); result.hidden = true;
+    event?.preventDefault(); window.clearTimeout(autoSearchTimer); setMessage(); result.hidden = true;
+    const version = ++searchVersion;
     const imei = query.value.trim();
-    if (!imei) { setMessage("Enter an IMEI number first."); return; }
+    const isCurrent = () => version === searchVersion && query.value.trim() === imei;
+    if (!imei) { setSubmitting(false); setMessage("Enter an IMEI number first."); return; }
     setSubmitting(true);
+    try {
     const { data: identifierRows, error: identifierError } = await getClient().rpc("resolve_device_identifier", { p_identifier: imei });
-    if (identifierError) { setSubmitting(false); setMessage(identifierError.message || "Device search could not be completed."); return; }
+    if (!isCurrent()) return;
+    if (identifierError) throw identifierError;
     let identifier = Array.isArray(identifierRows) ? identifierRows[0]?.imei_1 : identifierRows?.imei_1;
     if (!identifier) {
-      const { data: directMatches, error: directError } = await getClient().from("devices").select("imei_1").is("deleted_at", null).or(`imei_1.eq.${imei},imei_2.eq.${imei},device_number.eq.${imei},serial_number.eq.${imei}`).limit(1);
-      if (directError) { setSubmitting(false); setMessage(directError.message || "Device search could not be completed."); return; }
-      identifier = directMatches?.[0]?.imei_1;
+      const matches = await Promise.all(["imei_1", "imei_2", "device_number", "serial_number"].map((field) =>
+        getClient().from("devices").select("imei_1").is("deleted_at", null).eq(field, imei).limit(1)));
+      if (!isCurrent()) return;
+      const directError = matches.find((match) => match.error)?.error;
+      if (directError) throw directError;
+      identifier = matches.find((match) => match.data?.length)?.data[0]?.imei_1;
     }
-    if (!identifier) { setSubmitting(false); setMessage("No active device was found for this IMEI, device number, or serial number."); return; }
+    if (!identifier) { setMessage("No active device was found for this IMEI, device number, or serial number."); return; }
     const { data, error } = await getClient().rpc("search_imei_history", { p_imei: identifier });
-    setSubmitting(false);
-    if (error) { setMessage(error.message || "IMEI history could not be loaded."); return; }
+    if (!isCurrent()) return;
+    if (error) throw error;
     const history = Array.isArray(data) ? data[0]?.search_imei_history || data[0] : data;
     if (!history?.found) { setMessage("No active device was found for this IMEI."); return; }
     renderHistory(history); showToast("Complete IMEI history loaded.");
+    } catch (error) {
+      if (isCurrent()) setMessage(error.message || "Device search could not be completed. Please try again.");
+    } finally {
+      if (version === searchVersion) setSubmitting(false);
+    }
   }
 
   async function initialize() {
@@ -141,7 +154,7 @@
     if (requestedQuery.trim()) { query.value = requestedQuery.trim(); await search(); }
   }
 
-  query.addEventListener("input", () => { window.clearTimeout(autoSearchTimer); const value = query.value.trim(); if (/^\d{15}$/.test(value) || /^DEV-\d+$/i.test(value)) autoSearchTimer = window.setTimeout(() => search(), 300); });
+  query.addEventListener("input", () => { ++searchVersion; window.clearTimeout(autoSearchTimer); setSubmitting(false); result.hidden = true; setMessage(); const value = query.value.trim(); if (/^\d{15}$/.test(value) || /^DEV-\d+$/i.test(value)) autoSearchTimer = window.setTimeout(() => search(), 300); });
   form.addEventListener("submit", search);
   document.querySelector("#open-menu").addEventListener("click", () => setMenu(true)); document.querySelector("#close-menu").addEventListener("click", () => setMenu(false)); backdrop.addEventListener("click", () => setMenu(false));
   initialize().catch((error) => { permissionMessage.textContent = error.message || "IMEI Search could not be loaded."; permissionMessage.hidden = false; });

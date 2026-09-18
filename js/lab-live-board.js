@@ -22,7 +22,7 @@
   let client;
   let toastTimer;
 
-  function getClient() { return (client ||= window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey)); }
+  function getClient() { return (client ||= window.GREENLOOP_GET_CLIENT()); }
   function escapeHtml(value) { return String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]); }
   function initials(name) { return String(name || "T").trim().split(/\s+/).slice(0, 2).map((word) => word[0]).join("").toUpperCase(); }
   function showToast(text) { window.clearTimeout(toastTimer); toast.textContent = text; toast.hidden = false; toast.classList.add("is-visible"); toastTimer = window.setTimeout(() => { toast.hidden = true; toast.classList.remove("is-visible"); }, 3200); }
@@ -142,6 +142,7 @@
     const { data, error } = await getClient().auth.getSession();
     if (error || !data.session) { window.location.replace("index.html"); return; }
     await window.GREENLOOP_ACCESS_READY;
+    if (!window.GREENLOOP_PAGE_ACCESS) return;
     boardReady = true;
     board.hidden = false;
     await loadBoard();

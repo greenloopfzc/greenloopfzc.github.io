@@ -14,11 +14,20 @@
   const sidebar = document.querySelector("#sidebar");
   const backdrop = document.querySelector("#menu-backdrop");
   const toast = document.querySelector("#toast");
+  const reworkForm = document.querySelector("#ready-stock-rework-form");
+  const reworkImei = document.querySelector("#ready-stock-rework-imei");
+  const reworkDepartment = document.querySelector("#ready-stock-rework-department");
+  const reworkReason = document.querySelector("#ready-stock-rework-reason");
+  const reworkTechnician = document.querySelector("#ready-stock-rework-technician");
+  const reworkTechnicianWrap = document.querySelector("#ready-stock-rework-technician-wrap");
+  const reworkSubmit = document.querySelector("#ready-stock-rework-submit");
   let client;
   let toastTimer;
+  let sendingForRework = false;
+  let readyGeneration = 0;
 
   function getClient() {
-    if (!client) client = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+    if (!client) client = window.GREENLOOP_GET_CLIENT();
     return client;
   }
 
@@ -74,7 +83,6 @@
       if (label) labels.set(normalize(label), label);
     });
     rows.forEach((row) => {
-      if (row.is_rma) return;
       const label = String(row.final_grade || "Unspecified").trim() || "Unspecified";
       if (!labels.has(normalize(label))) labels.set(normalize(label), label);
     });
@@ -83,16 +91,8 @@
 
   function pivotRows(rows, grades) {
     const models = new Map();
-    let rmaQty = 0;
-    let rmaLatest = null;
-
     rows.forEach((row) => {
       const quantity = Number(row.quantity || 0);
-      if (row.is_rma) {
-        rmaQty += quantity;
-        if (!rmaLatest || String(row.latest_passed_at || "") > String(rmaLatest || "")) rmaLatest = row.latest_passed_at;
-        return;
-      }
       const model = String(row.model || "Unknown model").trim() || "Unknown model";
       if (!models.has(model)) models.set(model, { model, grades: new Map(), total: 0, latest: null });
       const target = models.get(model);
@@ -102,9 +102,7 @@
       if (!target.latest || String(row.latest_passed_at || "") > String(target.latest || "")) target.latest = row.latest_passed_at;
     });
 
-    const result = [...models.values()].sort((a, b) => a.model.localeCompare(b.model, undefined, { numeric: true }));
-    if (rmaQty > 0) result.push({ model: "RMA", grades: new Map(), total: rmaQty, rma: rmaQty, latest: rmaLatest });
-    return result;
+    return [...models.values()].sort((a, b) => a.model.localeCompare(b.model, undefined, { numeric: true }));
   }
 
   function render(data) {
@@ -112,22 +110,19 @@
     const grades = buildGradeList(data, flatRows);
     const rows = pivotRows(flatRows, grades);
     const gradeTotals = new Map(grades.map((grade) => [grade.key, 0]));
-    let rmaTotal = 0;
-
     rows.forEach((row) => {
       grades.forEach((grade) => gradeTotals.set(grade.key, Number(gradeTotals.get(grade.key) || 0) + Number(row.grades.get(grade.key) || 0)));
-      rmaTotal += Number(row.rma || 0);
     });
 
     total.textContent = `${Number(data?.total_qty || 0)} pcs`;
     rangeLabel.textContent = data?.date_from && data?.date_to
       ? `Current Ready Stock passed Final QC from ${data.date_from} to ${data.date_to}`
       : "Final-QC-passed devices still held by Greenloop";
-    tableHead.innerHTML = `<tr><th>Model</th>${grades.map((grade) => `<th>${escapeHtml(grade.label)}</th>`).join("")}<th>RMA</th><th>Latest Final QC pass</th><th>Total Qty</th></tr>`;
+    tableHead.innerHTML = `<tr><th>Model</th>${grades.map((grade) => `<th>${escapeHtml(grade.label)}</th>`).join("")}<th>Latest Final QC pass</th><th>Total Qty</th></tr>`;
     tableBody.innerHTML = rows.length
-      ? rows.map((row) => `<tr><td>${escapeHtml(row.model)}</td>${grades.map((grade) => `<td>${escapeHtml(row.grades.get(grade.key) || 0)}</td>`).join("")}<td>${escapeHtml(row.rma || 0)}</td><td>${escapeHtml(formatDateTime(row.latest))}</td><td>${escapeHtml(row.total || 0)}</td></tr>`).join("")
-      : `<tr><td class="ready-stock-empty" colspan="${grades.length + 4}">No Final-QC-passed stock is waiting in Ready Stock.</td></tr>`;
-    tableFoot.innerHTML = `<tr><th>Total</th>${grades.map((grade) => `<th>${escapeHtml(gradeTotals.get(grade.key) || 0)}</th>`).join("")}<th>${escapeHtml(rmaTotal)}</th><th>-</th><th>${escapeHtml(Number(data?.total_qty || 0))} pcs</th></tr>`;
+      ? rows.map((row) => `<tr><td>${escapeHtml(row.model)}</td>${grades.map((grade) => `<td>${escapeHtml(row.grades.get(grade.key) || 0)}</td>`).join("")}<td>${escapeHtml(formatDateTime(row.latest))}</td><td>${escapeHtml(row.total || 0)}</td></tr>`).join("")
+      : `<tr><td class="ready-stock-empty" colspan="${grades.length + 3}">No Final-QC-passed stock is waiting in Ready Stock.</td></tr>`;
+    tableFoot.innerHTML = `<tr><th>Total</th>${grades.map((grade) => `<th>${escapeHtml(gradeTotals.get(grade.key) || 0)}</th>`).join("")}<th>-</th><th>${escapeHtml(Number(data?.total_qty || 0))} pcs</th></tr>`;
   }
 
   async function loadReadyStock() {
@@ -141,14 +136,61 @@
       refresh.textContent = "Refresh table";
       throw new Error("Select a valid From date and To date, or clear both dates.");
     }
+    const generation = ++readyGeneration;
+    try {
     const { data, error } = await getClient().rpc("get_ready_stock_final_grade_table", {
       p_date_from: from,
       p_date_to: to
     });
-    refresh.disabled = false;
-    refresh.textContent = "Refresh table";
+    if (generation !== readyGeneration) return;
     if (error) throw error;
     render(Array.isArray(data) ? data[0] : data);
+    } finally { if (generation === readyGeneration) { refresh.disabled = false; refresh.textContent = "Refresh table"; } }
+  }
+
+  async function sendForRework(event) {
+    event.preventDefault();
+    if (sendingForRework) return;
+    const department = reworkDepartment.value;
+    const technician = reworkTechnician.value;
+    const imei = reworkImei.value.replace(/\D/g, "").slice(0, 15);
+    const reason = reworkReason.value.trim();
+    if (!/^\d{15}$/.test(imei)) { showToast("Enter a 15-digit Ready Stock IMEI."); reworkImei.focus(); return; }
+    const departmentName = department === "frame" ? "Frame Department" : "Laboratory";
+    if (department === "laboratory" && !technician) { showToast("Select the Laboratory technician."); reworkTechnician.focus(); return; }
+    if (!window.confirm(`Send ${imei} from Ready Stock to ${departmentName}?`)) return;
+    sendingForRework = true;
+    reworkSubmit.disabled = true;
+    reworkSubmit.textContent = "Sending...";
+    try {
+      const { error } = await getClient().rpc("send_ready_stock_for_rework_atomic", {
+        p_imei: imei, p_department: department, p_customer_reason: reason || null,
+        p_technician_id: department === "laboratory" ? technician : null
+      });
+      if (error) {
+        if (error.code === "PGRST202") throw new Error("Run the latest Greenloop database update before sending Ready Stock for rework.");
+        if (String(error.message || "").includes("not currently available in Ready Stock")) throw new Error("This mobile is not in Ready Stock.");
+        throw error;
+      }
+      reworkForm.reset();
+      showToast(`Phone sent to ${departmentName}. Journey updated.`);
+      syncReworkTechnician();
+      try { await loadReadyStock(); } catch (_) { showToast("Phone sent for rework. Refresh Ready Stock to update the table."); }
+    } finally { sendingForRework = false; reworkSubmit.disabled = false; reworkSubmit.textContent = "Send for rework"; }
+  }
+
+  function syncReworkTechnician() { reworkTechnicianWrap.hidden = reworkDepartment.value !== "laboratory"; }
+  async function loadReworkTechnicians() {
+    const { data, error } = await getClient().rpc("get_ready_stock_rework_technicians");
+    if (error) {
+      reworkTechnician.replaceChildren(new Option("Technicians unavailable — run the update", ""));
+      reworkTechnician.disabled = true;
+      showToast(error.message || "Laboratory technicians could not be loaded.");
+      return;
+    }
+    reworkTechnician.replaceChildren(new Option("Select technician", ""));
+    (data || []).forEach((item) => reworkTechnician.add(new Option(item.full_name || item.email || "Technician", item.id)));
+    reworkTechnician.disabled = false;
   }
 
   async function initialize() {
@@ -175,7 +217,8 @@
     const today = dubaiDate();
     rangeFrom.value = today;
     rangeTo.value = today;
-    await loadReadyStock();
+    await Promise.all([loadReadyStock(), loadReworkTechnicians()]);
+    syncReworkTechnician();
   }
 
   document.querySelector("#open-menu").addEventListener("click", () => setMenu(true));
@@ -188,6 +231,9 @@
     rangeTo.value = "";
     loadReadyStock().catch((error) => showToast(error.message || "Ready Stock could not be loaded."));
   });
+  reworkImei.addEventListener("input", () => { reworkImei.value = reworkImei.value.replace(/\D/g, "").slice(0, 15); });
+  reworkDepartment.addEventListener("change", syncReworkTechnician);
+  reworkForm.addEventListener("submit", (event) => sendForRework(event).catch((error) => showToast(error.message || "Phone could not be sent for rework.")));
   initialize().catch((error) => {
     permissionMessage.textContent = error.message || "Ready Stock could not be loaded.";
     permissionMessage.hidden = false;

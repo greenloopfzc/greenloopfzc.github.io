@@ -26,6 +26,32 @@
   let canManageCorrections = false;
   let auditView = "deleted";
   let selectedSupplier = "all";
+  let reportGeneration = 0;
+  let correctionSearchGeneration = 0;
+  let reportMutationPending = false;
+  const summaryKeys = ["stock_received", "initial_qc_pending", "parts_pending", "laboratory_pending", "final_qc_pending"];
+
+  function hasReportSummary(data) {
+    const values = data?.summary;
+    return values && typeof values === "object" && !Array.isArray(values)
+      && summaryKeys.every((key) => {
+        const value = values[key];
+        return ["number", "string"].includes(typeof value) && String(value).trim() !== ""
+          && Number.isFinite(Number(value)) && Number(value) >= 0;
+      });
+  }
+
+  async function runReportMutation(control, action) {
+    if (reportMutationPending || !window.GREENLOOP_PAGE_ACCESS?.canEdit) return;
+    reportMutationPending = true;
+    const label = control?.textContent;
+    try { await action(); }
+    catch (error) { setMessage(error.message || "The action could not be completed. Refresh to check its status before retrying."); }
+    finally {
+      reportMutationPending = false;
+      if (control?.isConnected) { control.disabled = false; control.textContent = label; }
+    }
+  }
 
   const reports = {
     complete_device_details: {
@@ -90,10 +116,10 @@
     }
   };
 
-  function getClient() { if (!client) client = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey); return client; }
+  function getClient() { if (!client) client = window.GREENLOOP_GET_CLIENT(); return client; }
   function escapeHtml(value) { return String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]); }
-  async function addDeviceIdentityToReports() {
-    const imeis = [...new Set(Object.values(reportData)
+  async function addDeviceIdentityToReports(targetData = reportData) {
+    const imeis = [...new Set(Object.values(targetData)
       .flatMap((section) => Array.isArray(section) ? section : [])
       .map((row) => String(row?.imei || "").trim())
       .filter(Boolean))];
@@ -106,7 +132,7 @@
       if (error) return;
       (data || []).forEach((device) => identityByImei.set(String(device.imei_1 || ""), device));
     }
-    Object.values(reportData).forEach((section) => {
+    Object.values(targetData).forEach((section) => {
       if (!Array.isArray(section)) return;
       section.forEach((row) => {
         const identity = identityByImei.get(String(row?.imei || ""));
@@ -144,14 +170,17 @@
   }
 
   function renderSummary() {
+    if (!hasReportSummary(reportData)) {
+      summary.innerHTML = '<p class="report-empty">Operational totals are unavailable. Apply the date range to retry.</p>';
+      return;
+    }
     const data = reportData.summary || {};
     const cards = [
       ["Stock received", data.stock_received, "Selected date range", ""],
       ["Initial QC pending", data.initial_qc_pending, "Waiting for inspection", ""],
       ["Parts pending", data.parts_pending, "Open part requests", ""],
       ["Laboratory pending", data.laboratory_pending, "Laboratory queue", ""],
-      ["Final QC pending", data.final_qc_pending, "Waiting for final inspection", ""],
-      ["Retail Shop stock", data.retail_shop_stock, "Devices currently in shop", ""]
+      ["Final QC pending", data.final_qc_pending, "Waiting for final inspection", ""]
     ];
     summary.innerHTML = cards.map(([label, value, note, style]) => `<article class="report-metric ${style}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value ?? 0)}</strong><small>${escapeHtml(note)}</small></article>`).join("");
   }
@@ -166,6 +195,7 @@
       return `<span class="report-status ${escapeHtml(raw)}">${escapeHtml(title(value))}</span>`;
     }
     if (type === "details") {
+      if (!window.GREENLOOP_CAN_VIEW_PARTNER_NAMES) return "Saved details restricted by partner-name permission";
       const details = value && typeof value === "object" ? JSON.stringify(value, null, 2) : String(value || "No extra details saved.");
       return `<details class="report-deletion-details"><summary>View saved data</summary><pre>${escapeHtml(details)}</pre></details>`;
     }
@@ -174,11 +204,19 @@
   }
 
   function renderOverview() {
+    if (!hasReportSummary(reportData)) {
+      panelKicker.textContent = "Overview";
+      panelTitle.textContent = "Live workflow overview";
+      panelDescription.textContent = "Operational totals have not been loaded.";
+      rowCount.textContent = "Unavailable";
+      reportContent.innerHTML = '<p class="report-empty">Reports are unavailable. Apply the date range to retry.</p>';
+      return;
+    }
     const data = reportData.summary || {};
     const items = [
       ["Stock received", data.stock_received], ["Initial QC pending", data.initial_qc_pending],
       ["Parts pending", data.parts_pending], ["Laboratory pending", data.laboratory_pending],
-      ["Final QC pending", data.final_qc_pending], ["Retail Shop stock", data.retail_shop_stock]
+      ["Final QC pending", data.final_qc_pending]
     ];
     panelKicker.textContent = "Overview";
     panelTitle.textContent = "Live workflow overview";
@@ -323,7 +361,7 @@
       <details>
         <summary><span>${escapeHtml(event.title || title(event.event_type))}</span><time>${escapeHtml(dateTime(event.occurred_at))}</time></summary>
         <p>Recorded by ${escapeHtml(event.actor || "System")}</p>
-        ${event.details && Object.keys(event.details).length ? `<pre>${escapeHtml(JSON.stringify(event.details, null, 2))}</pre>` : ""}
+        ${window.GREENLOOP_CAN_VIEW_PARTNER_NAMES && event.details && Object.keys(event.details).length ? `<pre>${escapeHtml(JSON.stringify(event.details, null, 2))}</pre>` : ""}
       </details>`).join("")}</div>`;
   }
 
@@ -432,6 +470,7 @@
   }
 
   function renderChangedFields(value) {
+    if (!window.GREENLOOP_CAN_VIEW_PARTNER_NAMES) return "Saved values restricted by partner-name permission";
     const changes = value && typeof value === "object" ? value : {};
     const entries = Object.entries(changes);
     if (!entries.length) return "No field details saved.";
@@ -453,7 +492,7 @@
         <td>${formatCell(row.changed_at, "date")}</td><td>${escapeHtml(row.changed_by || "System")}</td>
         <td>${escapeHtml(row.device_number || "-")}</td><td>${escapeHtml(row.imei_before || "-")}<br><span class="audit-arrow">→ ${escapeHtml(row.imei_after || "-")}</span></td>
         <td>${escapeHtml(row.job_number || "-")}</td><td class="audit-reason">${escapeHtml(row.change_reason || "-")}</td>
-        <td><details class="report-deletion-details"><summary>View old / new values</summary><div class="change-fields">${renderChangedFields(row.changed_fields)}</div><details><summary>Full snapshots</summary><pre>${escapeHtml(JSON.stringify({ before: row.before_data, after: row.after_data }, null, 2))}</pre></details></details></td>
+        <td><details class="report-deletion-details"><summary>View old / new values</summary><div class="change-fields">${renderChangedFields(row.changed_fields)}</div>${window.GREENLOOP_CAN_VIEW_PARTNER_NAMES ? `<details><summary>Full snapshots</summary><pre>${escapeHtml(JSON.stringify({ before: row.before_data, after: row.after_data }, null, 2))}</pre></details>` : ""}</details></td>
       </tr>`).join("") : '<tr><td class="report-empty" colspan="7">No data corrections were found for this date range.</td></tr>';
       table = `<div class="report-table-wrap"><table class="report-table audit-table"><thead><tr><th>Changed at</th><th>Changed by</th><th>Device</th><th>IMEI old → new</th><th>Job</th><th>Reason</th><th>Changes</th></tr></thead><tbody>${body}</tbody></table></div>`;
     } else {
@@ -486,8 +525,10 @@
   async function searchCorrectionRecord(identifier) {
     const cleaned = String(identifier || "").trim();
     if (!cleaned) { setMessage("Enter an IMEI or device number first."); return; }
+    const generation = ++correctionSearchGeneration;
     setMessage();
     const { data, error } = await getClient().rpc("get_imei_correction_record", { p_identifier: cleaned });
+    if (generation !== correctionSearchGeneration || activeReport !== "data_correction") return;
     if (error) { correctionRecord = null; renderDataCorrection(); setMessage(error.message || "The device record could not be loaded."); return; }
     correctionRecord = data || null;
     renderDataCorrection();
@@ -625,39 +666,55 @@
   async function loadReports(event) {
     event?.preventDefault();
     setMessage();
-    if (!dateFrom.value || !dateTo.value) { setMessage("Select both dates first."); return; }
+    const from = dateFrom.value, to = dateTo.value;
+    if (!from || !to || from > to) { setMessage("Select a valid From date and To date."); return; }
+    const generation = ++reportGeneration;
     const submit = document.querySelector("#apply-report-filter");
     submit.disabled = true;
     submit.textContent = "Loading...";
-    const { data, error } = await getClient().rpc("get_greenloop_reports", { p_date_from: dateFrom.value, p_date_to: dateTo.value });
-    submit.disabled = false;
-    submit.textContent = "Apply date range";
-    if (error) { setMessage(error.message || "Reports could not be loaded."); return; }
-    reportData = Array.isArray(data) ? data[0] : data || {};
-    const { data: exportBoxes, error: exportBoxesError } = await getClient().rpc("get_export_box_report", { p_date_from: dateFrom.value, p_date_to: dateTo.value });
-    reportData.export_boxes = exportBoxesError ? [] : (exportBoxes || []);
-    const { data: supplierProgress, error: supplierProgressError } = await getClient().rpc("get_supplier_stock_progress", { p_date_from: dateFrom.value, p_date_to: dateTo.value });
-    reportData.supplier_progress = supplierProgressError ? [] : (supplierProgress || []);
-    if (supplierProgressError) setMessage(supplierProgressError.message || "Supplier Progress report could not be loaded.");
-    const { data: deletedHistory, error: deletedHistoryError } = await getClient().rpc("get_deletion_history", { p_date_from: dateFrom.value, p_date_to: dateTo.value });
-    reportData.deleted_history = deletedHistoryError ? [] : (deletedHistory || []);
-    if (canManageCorrections) {
-      const { data: dataChanges, error: dataChangesError } = await getClient().rpc("get_data_change_history", { p_date_from: dateFrom.value, p_date_to: dateTo.value });
-      reportData.data_changes = dataChangesError ? [] : (dataChanges || []);
-    } else {
-      reportData.data_changes = [];
+    try {
+      const dates = { p_date_from: from, p_date_to: to };
+      const [base, boxes, suppliers, deletions, changes, parts] = await Promise.all([
+        getClient().rpc("get_greenloop_reports", dates),
+        getClient().rpc("get_export_box_report", dates),
+        getClient().rpc("get_supplier_stock_progress", dates),
+        getClient().rpc("get_deletion_history", dates),
+        canManageCorrections ? getClient().rpc("get_data_change_history", dates) : Promise.resolve({ data: [] }),
+        getClient().rpc("get_open_parts_pending_count")
+      ]);
+      if (generation !== reportGeneration) return;
+      if (base.error) throw base.error;
+      const next = Array.isArray(base.data) ? base.data[0] : base.data;
+      if (!hasReportSummary(next)) throw new Error("Reports are unavailable because the response did not contain valid operational totals. Apply the date range to retry.");
+      next.date_from = from;
+      next.date_to = to;
+      const warnings = [];
+      for (const [key, label, response] of [["export_boxes", "Export boxes", boxes], ["supplier_progress", "Supplier progress", suppliers], ["deleted_history", "Deleted history", deletions], ["data_changes", "Data changes", changes]]) {
+        next[key] = response.error ? [] : response.data || [];
+        if (response.error) warnings.push(label + " could not be loaded");
+      }
+      if (!parts.error && ["number", "string"].includes(typeof parts.data) && String(parts.data).trim() !== "" && Number.isFinite(Number(parts.data)) && Number(parts.data) >= 0) {
+        next.summary = next.summary || {};
+        next.summary.parts_pending = Number(parts.data);
+      } else if (parts.error) warnings.push("Live parts count could not be refreshed");
+      await addDeviceIdentityToReports(next);
+      if (generation !== reportGeneration) return;
+      reportData = next;
+      selectedExportBox = ""; exportBoxImeiFilter = ""; selectedSupplier = "all";
+      renderSummary();
+      renderActiveReport();
+      if (warnings.length) setMessage(warnings.join(". ") + ". Do not treat an unavailable report as zero records.");
+    } catch (error) {
+      if (generation === reportGeneration) {
+        if (!hasReportSummary(reportData)) {
+          renderSummary();
+          if (activeReport === "overview") renderOverview();
+        }
+        setMessage(error.message || "Reports could not be loaded.");
+      }
+    } finally {
+      if (generation === reportGeneration) { submit.disabled = false; submit.textContent = "Apply date range"; }
     }
-    await addDeviceIdentityToReports();
-    selectedExportBox = "";
-    exportBoxImeiFilter = "";
-    selectedSupplier = "all";
-    const { data: openPartsCount } = await getClient().rpc("get_open_parts_pending_count");
-    if (Number.isFinite(Number(openPartsCount))) {
-      reportData.summary = reportData.summary || {};
-      reportData.summary.parts_pending = Number(openPartsCount);
-    }
-    renderSummary();
-    renderActiveReport();
   }
 
   async function initialize() {
@@ -690,7 +747,7 @@
   filterForm.addEventListener("submit", loadReports);
   tabs.addEventListener("click", (event) => {
     const tab = event.target.closest(".report-tab");
-    if (!tab) return;
+    if (!tab || (tab.dataset.report !== "overview" && !reports[tab.dataset.report])) return;
     activeReport = tab.dataset.report;
     renderActiveReport();
   });
@@ -703,7 +760,7 @@
     }
     const deleteBoxButton = event.target.closest("[data-delete-export-box]");
     if (deleteBoxButton) {
-      deleteSelectedExportBox(deleteBoxButton.dataset.deleteExportBox || "").catch((error) => setMessage(error.message || "The export box could not be deleted."));
+      runReportMutation(deleteBoxButton, () => deleteSelectedExportBox(deleteBoxButton.dataset.deleteExportBox || ""));
       return;
     }
     const boxButton = event.target.closest("[data-export-box]");
@@ -721,17 +778,17 @@
     }
     if (event.target.id === "correction-save-form") {
       event.preventDefault();
-      saveCorrection(event.target).catch((error) => setMessage(error.message || "The correction could not be saved."));
+      runReportMutation(event.target.querySelector('button[type="submit"]'), () => saveCorrection(event.target));
       return;
     }
     if (event.target.id === "test-data-cleanup-form") {
       event.preventDefault();
-      deleteAllTestData(event.target).catch((error) => setMessage(error.message || "Greenloop data could not be reset."));
+      runReportMutation(event.target.querySelector('button[type="submit"]'), () => deleteAllTestData(event.target));
       return;
     }
     if (event.target.id === "single-imei-delete-form") {
       event.preventDefault();
-      deleteOneImei(event.target).catch((error) => setMessage(error.message || "This IMEI could not be deleted."));
+      runReportMutation(event.target.querySelector('button[type="submit"]'), () => deleteOneImei(event.target));
     }
   });
   reportContent.addEventListener("input", (event) => {

@@ -29,9 +29,10 @@
   let queueJobs = [];
   let selectedJob;
   let toastTimer;
+  let submitting = false;
 
   function getClient() {
-    if (!client) client = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+    if (!client) client = window.GREENLOOP_GET_CLIENT();
     return client;
   }
 
@@ -66,6 +67,8 @@
   }
 
   function setSubmitting(isSubmitting) {
+    submitting = isSubmitting;
+    jobSelect.disabled = isSubmitting;
     completeButton.disabled = isSubmitting;
     if (isSubmitting) completeButton.dataset.originalLabel = completeButton.textContent.trim();
     completeButton.textContent = isSubmitting ? "Saving dispatch..." : completeButton.dataset.originalLabel || "Confirm Stock Out →";
@@ -73,7 +76,7 @@
 
   function updateRouteCopy(fillDefaults = false) {
     const customer = relation(selectedJob?.customer);
-    const customerName = customer?.company_name || "Customer";
+    const customerName = window.GREENLOOP_PARTNER_LABEL?.(customer?.customer_code, customer?.company_name, "Customer") || customer?.customer_code || "Customer";
     const type = typeField.value;
     const descriptions = {
       export: {
@@ -92,7 +95,7 @@
         outcome: "Customer return",
         text: "The device will be marked as Returned to Customer and moved to Outbound / Dispatched.",
         destinationValue: customerName,
-        recipientValue: customer?.contact_name || ""
+        recipientValue: window.GREENLOOP_CAN_VIEW_PARTNER_NAMES ? customer?.contact_name || "" : ""
       },
       retail_shop: {
         destination: "Retail shop destination",
@@ -132,7 +135,7 @@
       <dl>
         <div><dt>Job</dt><dd>${escapeHtml(selectedJob.job_number)}</dd></div>
         <div><dt>IMEI</dt><dd>${escapeHtml(device.imei_1 || "—")}</dd></div>
-        <div><dt>Customer</dt><dd>${escapeHtml(customer?.company_name || "Company owned")}</dd></div>
+        <div><dt>Customer</dt><dd>${escapeHtml(customer ? (window.GREENLOOP_PARTNER_LABEL?.(customer.customer_code, customer.company_name, "Confidential customer") || customer.customer_code || "Confidential customer") : "Company owned")}</dd></div>
       </dl>`;
     typeField.querySelector('option[value="customer_return"]').disabled = !customer;
     typeField.value = "export";
@@ -143,7 +146,7 @@
     const selectedId = jobSelect.value;
     const { data, error } = await getClient()
       .from("jobs")
-      .select("id,job_number,customer:customers(company_name,contact_name,customer_code),device:devices(device_number,imei_1,brand,model,original_grade)")
+      .select("id,job_number,customer:greenloop_customers(company_name,contact_name,customer_code),device:devices(device_number,imei_1,brand,model,original_grade)")
       .eq("current_status", "ready_for_shipment")
       .is("deleted_at", null)
       .order("received_at", { ascending: true });
@@ -170,10 +173,12 @@
 
   async function completeStockOut(event) {
     event.preventDefault();
+    if (submitting) return;
     setMessage();
     if (!selectedJob || !form.reportValidity()) return;
 
     setSubmitting(true);
+    try {
     const { data, error } = await getClient().rpc("complete_stock_out", {
       p_job_id: selectedJob.id,
       p_stock_out_type: typeField.value,
@@ -182,7 +187,6 @@
       p_shipment_reference: referenceField.value,
       p_notes: notesField.value
     });
-    setSubmitting(false);
 
     if (error) {
       setMessage(error.message || "Stock Out could not be completed.");
@@ -191,7 +195,12 @@
 
     const record = data?.[0];
     showToast(`Stock Out completed: ${record?.stock_out_number || "dispatch saved"}.`);
-    await loadQueue();
+    selectedJob = undefined;
+    workspace.hidden = true;
+    try { await loadQueue(); } catch (_) { setMessage("Stock Out was saved, but the queue could not refresh. Refresh the queue before continuing."); }
+    } catch (error) {
+      setMessage(error.message || "Stock Out could not be completed.");
+    } finally { setSubmitting(false); }
   }
 
   async function initialize() {
@@ -215,6 +224,8 @@
       return;
     }
 
+    await window.GREENLOOP_ACCESS_READY;
+    if (window.GREENLOOP_PAGE_ACCESS?.pageKey !== "stock_out") return;
     app.hidden = false;
     await loadQueue();
   }

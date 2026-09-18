@@ -11,6 +11,7 @@
   const message = document.querySelector("#form-message");
   const config = window.GREENLOOP_CONFIG || {};
   let client;
+  let submitting = false;
 
   function showMessage(text, type = "error") {
     message.textContent = text;
@@ -29,19 +30,14 @@
 
   function getClient() {
     if (!client) {
-      client = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey, {
-        auth: {
-          persistSession: rememberSessionInput.checked,
-          autoRefreshToken: true,
-          detectSessionInUrl: true
-        }
-      });
+      client = window.GREENLOOP_GET_CLIENT();
     }
 
     return client;
   }
 
   function setSubmitting(isSubmitting) {
+    submitting = isSubmitting;
     signInButton.disabled = isSubmitting;
     signInButton.querySelector("span").textContent = isSubmitting ? "Signing in..." : "Sign in";
   }
@@ -74,6 +70,7 @@
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (submitting) return;
     clearMessage();
 
     if (!form.checkValidity()) {
@@ -87,11 +84,14 @@
     }
 
     setSubmitting(true);
+    const loginUsername = usernameInput.value;
+    const loginPassword = passwordInput.value;
 
     try {
+      window.GREENLOOP_SET_REMEMBER_SESSION(rememberSessionInput.checked);
       const { error } = await getClient().auth.signInWithPassword({
-        email: await resolveUsername(usernameInput.value),
-        password: passwordInput.value
+        email: await resolveUsername(loginUsername),
+        password: loginPassword
       });
 
       if (error) {
@@ -125,5 +125,5 @@
     }
   }
 
-  redirectSignedInUser();
+  redirectSignedInUser().catch(() => showMessage("Your saved session could not be checked. Please sign in again."));
 })();

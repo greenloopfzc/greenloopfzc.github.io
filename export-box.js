@@ -28,9 +28,11 @@
   let scanTimer;
   let toastTimer;
   let scanning = false;
+  let boxBusy = false;
+  let canEdit = false;
 
   function getClient() {
-    if (!client) client = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+    if (!client) client = window.GREENLOOP_GET_CLIENT();
     return client;
   }
 
@@ -72,7 +74,15 @@
   }
 
   function render() {
-    if (!currentBox) return;
+    if (!currentBox) {
+      boxNumber.textContent = "No open export box";
+      boxStatus.textContent = "View only";
+      boxCount.textContent = sheetTotal.textContent = "0 phones";
+      boxRemaining.textContent = "No open box to display";
+      startNextButton.disabled = deleteBoxButton.disabled = imeiInput.disabled = printButton.disabled = true;
+      tableBody.innerHTML = '<tr><td class="export-sheet-empty" colspan="7">No open export box is available.</td></tr>';
+      return;
+    }
     const count = lines.length;
     const isFinished = ["full", "closed"].includes(String(currentBox.box_status));
 
@@ -81,11 +91,11 @@
     boxCount.textContent = `${count} phone${count === 1 ? "" : "s"}`;
     boxRemaining.textContent = isFinished ? "Start a new box" : "Ready to scan";
     progressBar.style.width = count ? "100%" : "0";
-    startNextButton.disabled = scanning || (!isFinished && count === 0);
+    startNextButton.disabled = !canEdit || boxBusy || scanning || (!isFinished && count === 0);
     startNextButton.textContent = isFinished ? "Start next box" : "Finish box and start next";
     printButton.disabled = count === 0;
-    deleteBoxButton.disabled = scanning || !currentBox.box_id;
-    imeiInput.disabled = isFinished || scanning;
+    deleteBoxButton.disabled = !canEdit || boxBusy || scanning || !currentBox.box_id;
+    imeiInput.disabled = !canEdit || boxBusy || isFinished || scanning;
     sheetTitle.textContent = `${currentBox.box_number || "Export Box"} - Export packing list`;
     sheetDate.textContent = `Opened: ${formatDateTime(currentBox.opened_at)}`;
     sheetTotal.textContent = `${count} phone${count === 1 ? "" : "s"}`;
@@ -104,18 +114,34 @@
   }
 
   async function loadCurrentBox() {
-    const { data, error } = await getClient().rpc("get_or_create_open_export_box", { p_capacity: 1000000 });
-    if (error) throw error;
-    currentBox = asRow(data);
-    if (!currentBox) throw new Error("An export box could not be opened.");
-    await loadLines();
+    let nextBox;
+    if (!canEdit) {
+      const { data, error } = await getClient().from("export_boxes").select("id, box_number, box_status, opened_at").eq("box_status", "open").order("opened_at", { ascending: true }).limit(1);
+      if (error) throw error;
+      const row = data?.[0];
+      nextBox = row ? { ...row, box_id: row.id } : null;
+    } else {
+      const { data, error } = await getClient().rpc("get_or_create_open_export_box", { p_capacity: 1000000 });
+      if (error) throw error;
+      nextBox = asRow(data);
+      if (!nextBox) throw new Error("An export box could not be opened.");
+    }
+    let nextLines = [];
+    if (nextBox) {
+      const { data, error } = await getClient().rpc("get_export_box_lines", { p_box_id: nextBox.box_id });
+      if (error) throw error;
+      nextLines = Array.isArray(data) ? data : [];
+    }
+    currentBox = nextBox;
+    lines = nextLines;
+    render();
     if (!imeiInput.disabled) imeiInput.focus();
   }
 
   async function scanImei() {
     const imei = imeiInput.value.replace(/\D/g, "").slice(0, 15);
     imeiInput.value = imei;
-    if (scanning || imei.length !== 15) return;
+    if (!canEdit || boxBusy || scanning || imei.length !== 15) return;
 
     scanning = true;
     setMessage();
@@ -147,27 +173,33 @@
   }
 
   async function finishAndStartNext() {
-    if (!currentBox) return;
+    if (!canEdit || scanning || boxBusy || !currentBox) return;
     if (!lines.length && String(currentBox.box_status) === "open") return;
-
-    if (String(currentBox.box_status) === "open") {
-      const confirmed = window.confirm(`Finish ${currentBox.box_number}? Print its box sheet before starting the next box.`);
-      if (!confirmed) return;
-      const { error } = await getClient().rpc("close_export_box", { p_box_id: currentBox.box_id });
-      if (error) throw error;
-    }
-
-    lines = [];
-    await loadCurrentBox();
-    setMessage(`${currentBox.box_number} is ready for scanning.`, "success");
+    if (String(currentBox.box_status) === "open" && !window.confirm("Finish " + currentBox.box_number + "? Print its box sheet before starting the next box.")) return;
+    boxBusy = true;
+    clearTimeout(scanTimer);
+    render();
+    try {
+      if (String(currentBox.box_status) === "open") {
+        const { error } = await getClient().rpc("close_export_box", { p_box_id: currentBox.box_id });
+        if (error) throw error;
+        currentBox.box_status = "closed";
+      }
+      await loadCurrentBox();
+      imeiInput.value = "";
+      setMessage(currentBox.box_number + " is ready for scanning.", "success");
+    } finally { boxBusy = false; render(); }
   }
 
   async function deleteCurrentBox() {
+    if (!canEdit || scanning || boxBusy || !currentBox) return;
     const deleteCode = window.prompt("Enter the deletion code to delete this box and return its phones to Ready Stock:");
     if (deleteCode === null) return;
 
     setMessage();
-    deleteBoxButton.disabled = true;
+    boxBusy = true;
+    clearTimeout(scanTimer);
+    render();
     try {
       const { data, error } = await getClient().rpc("delete_export_box_with_restore", {
         p_box_id: currentBox.box_id,
@@ -178,12 +210,13 @@
       const restored = Number(result?.restored_items || 0);
       setMessage(`${result?.deleted_box_number || "Export box"} was deleted. ${restored} phone(s) returned to Ready Stock.`, "success");
       showToast(`${restored} phone(s) restored to Ready Stock.`);
+      currentBox = null;
       lines = [];
+      imeiInput.value = "";
       await loadCurrentBox();
     } catch (error) {
       setMessage(error.message || "The export box could not be deleted.");
-      render();
-    }
+    } finally { boxBusy = false; render(); }
   }
 
   async function initialize() {
@@ -203,6 +236,9 @@
       permissionMessage.hidden = false;
       return;
     }
+    await window.GREENLOOP_ACCESS_READY;
+    if (window.GREENLOOP_PAGE_ACCESS?.pageKey !== "export_boxes") return;
+    canEdit = window.GREENLOOP_PAGE_ACCESS.canEdit === true;
     app.hidden = false;
     await loadCurrentBox();
   }

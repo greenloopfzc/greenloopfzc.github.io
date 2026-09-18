@@ -27,27 +27,33 @@
   let users = [];
   let selectedUserId = "";
   let currentUserIsSuperAdmin = false;
+  let savingAccess = false;
+  let creatingUser = false;
 
-  const roleGuideData = [
-    ["super_admin", "Super Admin", "All pages, settings, reports, deleted history, and user access."],
-    ["owner", "Owner", "Business-wide viewing, reports, cost, and user access."],
-    ["manager", "Manager", "All operational pages, reports, approvals, and deleted history."],
-    ["receiving", "Receiving", "Stock Received, IMEI Entry, and receiving history."],
-    ["initial_qc", "Initial QC", "Initial QC queue, diagnosis, technician assignment, and parts request."],
-    ["parts", "Parts", "Parts requests, issue sheet, and parts inventory."],
-    ["technician", "Technician", "Laboratory work, issued parts, and assigned repairs."],
-    ["final_qc", "Final QC", "Final QC inspection, final grade, pass, fail, and rework return."],
-    ["production", "Production", "Ready Stock, Production, and export box preparation."],
-    ["shipping", "Shipping", "Export Boxes, packing lists, and shipment handling."],
-    ["rma", "RMA", "RMA Stock Received and RMA workflow."],
-    ["shop_staff", "Retail Shop", "Retail Shop stock and shop-related device records."],
-    ["glass", "Glass", "Glass department work and device history."],
-    ["frame", "Frame", "Frame department work and device history."],
-    ["packing", "Packing", "Packing and outbound preparation."]
+  // Permanent rule: every new Greenloop page must be added here with its own
+  // View only and Entry Allowed access choice, plus matching config and SQL keys.
+  const pageGuideData = [
+    ["overview", "Overview", "Dashboard and live operational summary."],
+    ["stock_received", "Stock Received", "Create and view received stock batches."],
+    ["imei_entry", "IMEI Entry", "Enter IMEIs and the first device details."],
+    ["imei_search", "IMEI Search", "Search one device and view its complete history."],
+    ["initial_qc", "Initial QC", "Inspect, grade, identify work, and assign technicians."],
+    ["lab_glass", "Lab & Glass", "Laboratory and glass repair work."],
+    ["lab_live_board", "Lab Live Board", "TV display of live technician workload and performance."],
+    ["frame_department", "Frame Department", "Frame work, final grade, pass and fail decisions."],
+    ["parts", "Parts", "View requests and issue required parts."],
+    ["inventory", "Inventory", "Receive and control parts inventory."],
+    ["final_qc", "Final QC", "Final inspection, grade, Battery Health, Pass or Fail."],
+    ["ready_stock", "Ready Stock", "View all Final QC passed stock."],
+    ["export_boxes", "Export Boxes", "Create boxes and scan phones for export."],
+    ["ready_stock_journey", "Ready Stock Journey", "View complete IMEI workflow history."],
+    ["reports", "Reports", "View operational and management reports."],
+    ["user_access", "User Access", "Create users and control their page permissions."],
+    ["partner_names", "Supplier & Customer Names", "Show confidential supplier and customer names. Codes remain visible to everyone with page access."]
   ];
 
   function getClient() {
-    return (client ||= window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey));
+    return (client ||= window.GREENLOOP_GET_CLIENT());
   }
 
   function escapeHtml(value) {
@@ -72,22 +78,65 @@
     document.body.classList.toggle("menu-open", open);
   }
 
-  function roleName(roleKey) {
-    return roleGuideData.find(([key]) => key === roleKey)?.[1] || String(roleKey).replaceAll("_", " ");
+  function pageName(pageKey) {
+    return pageGuideData.find(([key]) => key === pageKey)?.[1] || String(pageKey).replaceAll("_", " ");
   }
 
-  function roleCheckboxes(roles = roleGuideData, selectedRoles = new Set()) {
-    return roles.map(([key, name, scope]) => `
-      <label class="role-option">
-        <input type="checkbox" value="${escapeHtml(key)}"${selectedRoles.has(key) ? " checked" : ""}>
-        <strong>${escapeHtml(name)}</strong>
-        <small>${escapeHtml(scope)}</small>
-      </label>
-    `).join("");
+  function pageCheckboxes(pages = pageGuideData, selectedPermissions = {}) {
+    return pages.map(([key, name, scope]) => {
+      const accessLevel = selectedPermissions[key] || "edit";
+      const checked = Object.hasOwn(selectedPermissions, key);
+      return `
+        <article class="role-option${checked ? " is-selected" : ""}" data-page-permission="${escapeHtml(key)}">
+          <label class="permission-check"><input type="checkbox" value="${escapeHtml(key)}"${checked ? " checked" : ""}><strong>${escapeHtml(name)}</strong></label>
+          <select data-access-level aria-label="${escapeHtml(name)} access level"${checked ? "" : " disabled"}>
+            <option value="view"${accessLevel === "view" ? " selected" : ""}>Only View</option>
+            <option value="edit"${accessLevel !== "view" ? " selected" : ""}>Entry Allowed</option>
+          </select>
+          <small>${escapeHtml(scope)}</small>
+        </article>
+      `;
+    }).join("");
   }
 
-  function renderRoleGuide() {
-    roleGuide.innerHTML = roleGuideData.map(([, name, scope]) => `
+  function permissionsForUser(user) {
+    if (user?.page_permissions && typeof user.page_permissions === "object" && !Array.isArray(user.page_permissions)) return user.page_permissions;
+    return Object.fromEntries((user?.page_keys || []).map((key) => [key, "edit"]));
+  }
+
+  function databaseBoolean(value) {
+    let candidate = value;
+    if (Array.isArray(candidate)) candidate = candidate[0];
+    if (candidate && typeof candidate === "object") {
+      candidate = candidate.can_view ?? candidate.allowed ?? Object.values(candidate)[0];
+    }
+    return candidate === true || String(candidate ?? "").trim().toLowerCase() === "true";
+  }
+
+  function displayPermissionsForUser(user) {
+    const permissions = { ...permissionsForUser(user) };
+    if (["view", "edit"].includes(user?.partner_names_access)) permissions.partner_names = user.partner_names_access;
+    else delete permissions.partner_names;
+    return permissions;
+  }
+
+  function collectPagePermissions(container) {
+    const result = {};
+    container.querySelectorAll("[data-page-permission]").forEach((card) => {
+      const checkbox = card.querySelector('input[type="checkbox"]');
+      if (checkbox.checked) result[checkbox.value] = card.querySelector("[data-access-level]").value || "view";
+    });
+    return result;
+  }
+
+  function syncPermissionCard(checkbox) {
+    const card = checkbox.closest("[data-page-permission]");
+    card.classList.toggle("is-selected", checkbox.checked);
+    card.querySelector("[data-access-level]").disabled = !checkbox.checked;
+  }
+
+  function renderPageGuide() {
+    roleGuide.innerHTML = pageGuideData.map(([, name, scope]) => `
       <article class="role-guide-item">
         <strong>${escapeHtml(name)}</strong>
         <span>${escapeHtml(scope)}</span>
@@ -95,28 +144,29 @@
     `).join("");
   }
 
-  function renderNewUserRoles() {
-    const availableRoles = currentUserIsSuperAdmin
-      ? roleGuideData
-      : roleGuideData.filter(([key]) => key !== "super_admin" && key !== "owner");
-    newRoleOptions.innerHTML = roleCheckboxes(availableRoles);
+  function renderNewUserPages() {
+    const availablePages = currentUserIsSuperAdmin
+      ? pageGuideData
+      : pageGuideData.filter(([key]) => key !== "user_access");
+    newRoleOptions.innerHTML = pageCheckboxes(availablePages);
   }
 
   function renderUsers() {
     userList.innerHTML = users.length ? users.map((user) => {
-      const roles = user.role_keys || [];
+      const permissions = displayPermissionsForUser(user);
+      const pages = Object.keys(permissions);
       return `
-        <button class="user-list-item${user.user_id === selectedUserId ? " active" : ""}${user.is_active ? "" : " inactive"}" type="button" data-user-id="${escapeHtml(user.user_id)}">
+        <button class="user-list-item${String(user.user_id) === String(selectedUserId) ? " active" : ""}${user.is_active ? "" : " inactive"}" type="button" data-user-id="${escapeHtml(user.user_id)}">
           <strong>${escapeHtml(user.full_name || user.login_username || "Unnamed user")}</strong>
           <small>@${escapeHtml(user.login_username || "No username")}</small>
-          <span class="user-role-summary">${escapeHtml(roles.length ? roles.map(roleName).join(", ") : "No role assigned")}</span>
+          <span class="user-role-summary">${escapeHtml(pages.length ? pages.map((key) => `${pageName(key)} (${permissions[key] === "view" ? "View" : "Entry"})`).join(", ") : "No page assigned")}</span>
         </button>
       `;
     }).join("") : '<p class="access-empty">No user profiles were found.</p>';
   }
 
   function renderEditor() {
-    const user = users.find((item) => item.user_id === selectedUserId);
+    const user = users.find((item) => String(item.user_id) === String(selectedUserId));
     editor.hidden = !user;
     selectUserMessage.hidden = Boolean(user);
     setMessage(message);
@@ -125,16 +175,33 @@
     fullName.value = user.full_name || "";
     username.value = user.login_username || "";
     active.checked = Boolean(user.is_active);
-    roleOptions.innerHTML = roleCheckboxes(roleGuideData, new Set(user.role_keys || []));
+    roleOptions.innerHTML = pageCheckboxes(pageGuideData, displayPermissionsForUser(user));
   }
 
   async function loadUsers(preferredUserId = selectedUserId) {
-    const { data, error } = await getClient().rpc("get_user_access_matrix");
+    let { data, error } = await getClient().rpc("get_user_page_access_matrix_v2");
+    if (error && (error.code === "PGRST202" || String(error.message || "").includes("get_user_page_access_matrix_v2"))) {
+      ({ data, error } = await getClient().rpc("get_user_page_access_matrix"));
+    }
     if (error) throw error;
     users = data || [];
-    selectedUserId = users.some((user) => user.user_id === preferredUserId)
-      ? preferredUserId
-      : (users[0]?.user_id || "");
+    const { data: partnerAccess, error: partnerError } = await getClient().rpc("get_user_partner_name_access_matrix");
+    if (partnerError) throw partnerError;
+    const accessByUser = new Map((partnerAccess || []).map((row) => {
+      const savedLevel = String(row.access_level || "").trim().toLowerCase();
+      const accessLevel = ["view", "edit"].includes(savedLevel)
+        ? savedLevel
+        : (databaseBoolean(row.can_view) ? "view" : "none");
+      return [String(row.user_id), accessLevel];
+    }));
+    users.forEach((user) => {
+      user.partner_names_access = accessByUser.get(String(user.user_id)) || "none";
+      user.partner_names_allowed = user.partner_names_access !== "none";
+    });
+    const preferred = String(preferredUserId || "");
+    selectedUserId = users.some((user) => String(user.user_id) === preferred)
+      ? preferred
+      : String(users[0]?.user_id || "");
     renderUsers();
     renderEditor();
   }
@@ -154,6 +221,7 @@
 
   async function createUser(event) {
     event.preventDefault();
+    if (creatingUser || !window.GREENLOOP_PAGE_ACCESS?.canEdit) return;
     setMessage(createUserMessage);
 
     if (!createUserForm.checkValidity()) {
@@ -167,35 +235,62 @@
       return;
     }
 
-    const selectedRoles = [...newRoleOptions.querySelectorAll("input:checked")].map((input) => input.value);
-    if (!selectedRoles.length) {
-      setMessage(createUserMessage, "Select at least one role for this user.");
+    const selectedPermissions = collectPagePermissions(newRoleOptions);
+    const partnerNamesAccess = selectedPermissions.partner_names || "none";
+    const normalPermissions = Object.fromEntries(Object.entries(selectedPermissions).filter(([key]) => key !== "partner_names"));
+    const selectedPages = Object.keys(normalPermissions);
+    if (!selectedPages.length) {
+      setMessage(createUserMessage, "Select at least one page for this user.");
       return;
     }
 
+    creatingUser = true;
+    let createdAccount = null;
+    let permissionsSaved = false;
+    const requestedName = newFullName.value.trim();
     createUserButton.disabled = true;
     createUserButton.textContent = "Creating...";
 
     try {
       const { data, error } = await getClient().functions.invoke("admin-create-user", {
         body: {
-          full_name: newFullName.value.trim(),
+          full_name: requestedName,
           username: newUsername.value.trim(),
           password: newPassword.value,
-          role_keys: selectedRoles
+          page_keys: selectedPages
         }
       });
 
       if (error) throw new Error(await readFunctionError(error));
       if (!data?.success || !data?.user_id) throw new Error(data?.error || "The user account could not be created.");
+      createdAccount = data;
+
+      const { error: accessError } = await getClient().rpc("save_user_access_complete", {
+        p_user_id: data.user_id,
+        p_full_name: requestedName,
+        p_login_username: data.username,
+        p_is_active: true,
+        p_page_permissions: normalPermissions,
+        p_partner_names_access: partnerNamesAccess
+      });
+      if (accessError) throw accessError;
+      permissionsSaved = true;
 
       createUserForm.reset();
-      renderNewUserRoles();
+      renderNewUserPages();
       await loadUsers(data.user_id);
       setMessage(createUserMessage, `User @${data.username} was created and can sign in now.`, "success");
     } catch (error) {
-      setMessage(createUserMessage, error.message || "The user account could not be created.");
+      if (createdAccount) {
+        createUserForm.reset();
+        renderNewUserPages();
+        await loadUsers(createdAccount.user_id).catch(() => {});
+        setMessage(createUserMessage, permissionsSaved
+          ? `User @${createdAccount.username} was created and permissions were saved, but the user list could not be refreshed. Use Refresh to reload the list; do not create the account again. ${error.message || ""}`
+          : `User @${createdAccount.username} already exists, but permission setup did not finish. Select that user and save the intended permissions; do not create the account again. ${error.message || ""}`);
+      } else setMessage(createUserMessage, error.message || "The user account could not be created.");
     } finally {
+      creatingUser = false;
       createUserButton.disabled = false;
       createUserButton.textContent = "Create user";
     }
@@ -203,33 +298,51 @@
 
   async function saveAccess(event) {
     event.preventDefault();
-    const selectedRoles = [...roleOptions.querySelectorAll("input:checked")].map((input) => input.value);
+    if (savingAccess || !window.GREENLOOP_PAGE_ACCESS?.canEdit) return;
+    if (!editor.checkValidity()) { editor.reportValidity(); return; }
+    const selectedPermissions = collectPagePermissions(roleOptions);
+    const partnerNamesAccess = selectedPermissions.partner_names || "none";
+    const normalPermissions = Object.fromEntries(Object.entries(selectedPermissions).filter(([key]) => key !== "partner_names"));
     if (!selectedUserId) return;
+    const targetUserId = selectedUserId;
 
     const button = document.querySelector("#save-access");
+    savingAccess = true;
     button.disabled = true;
     button.textContent = "Saving...";
-
-    const { error } = await getClient().rpc("save_user_access", {
-      p_user_id: selectedUserId,
+    let pagesSaved = false;
+    try {
+    const { error } = await getClient().rpc("save_user_access_complete", {
+      p_user_id: targetUserId,
       p_full_name: fullName.value.trim(),
       p_login_username: username.value.trim(),
       p_is_active: active.checked,
-      p_role_keys: selectedRoles
+      p_page_permissions: normalPermissions,
+      p_partner_names_access: partnerNamesAccess
     });
 
-    button.disabled = false;
-    button.textContent = "Save access";
-    if (error) {
-      setMessage(message, error.message || "User access could not be saved.");
-      return;
-    }
+    if (error) throw error;
+    pagesSaved = true;
 
-    await loadUsers(selectedUserId);
+    const savedUser = users.find((user) => String(user.user_id) === String(targetUserId));
+    if (savedUser) {
+      savedUser.partner_names_access = partnerNamesAccess;
+      savedUser.partner_names_allowed = partnerNamesAccess !== "none";
+    }
+    await loadUsers(targetUserId);
     setMessage(message, "User access was saved.", "success");
+    } catch (error) {
+      setMessage(message, `${pagesSaved ? "Access was saved, but the list could not be refreshed. " : ""}${error.message || "User access could not be saved."}`);
+    } finally {
+      savingAccess = false;
+      button.disabled = false;
+      button.textContent = "Save access";
+    }
   }
 
   async function initialize() {
+    await window.GREENLOOP_ACCESS_READY;
+    if (!window.GREENLOOP_PAGE_ACCESS) return;
     if (!config.supabaseUrl || !config.supabaseAnonKey || !window.supabase) {
       throw new Error("Supabase authentication is not configured.");
     }
@@ -257,8 +370,8 @@
     currentUserIsSuperAdmin = Boolean(isSuperAdmin);
 
     app.hidden = false;
-    renderRoleGuide();
-    renderNewUserRoles();
+    renderPageGuide();
+    renderNewUserPages();
     await loadUsers();
   }
 
@@ -266,9 +379,11 @@
   document.querySelector("#close-menu").addEventListener("click", () => setMenu(false));
   backdrop.addEventListener("click", () => setMenu(false));
   document.querySelector("#refresh-users").addEventListener("click", () => {
+    if (savingAccess || creatingUser) return;
     loadUsers().catch((error) => setMessage(message, error.message || "Users could not be loaded."));
   });
   userList.addEventListener("click", (event) => {
+    if (savingAccess) return;
     const item = event.target.closest("[data-user-id]");
     if (!item) return;
     selectedUserId = item.dataset.userId;
@@ -277,6 +392,14 @@
   });
   newUsername.addEventListener("blur", () => {
     newUsername.value = newUsername.value.trim().toLowerCase().replace(/\s+/g, "");
+  });
+  newRoleOptions.addEventListener("change", (event) => {
+    const checkbox = event.target.closest('input[type="checkbox"]');
+    if (checkbox) syncPermissionCard(checkbox);
+  });
+  roleOptions.addEventListener("change", (event) => {
+    const checkbox = event.target.closest('input[type="checkbox"]');
+    if (checkbox) syncPermissionCard(checkbox);
   });
   createUserForm.addEventListener("submit", (event) => {
     createUser(event).catch((error) => setMessage(createUserMessage, error.message || "The user account could not be created."));

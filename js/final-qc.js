@@ -28,7 +28,7 @@
   let toastTimer;
 
   function getClient() {
-    return (client ||= window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey));
+    return (client ||= window.GREENLOOP_GET_CLIENT());
   }
 
   function escapeHtml(value) {
@@ -173,8 +173,11 @@
   }
 
   function clearRowData(row) {
+    row.dataset.loadVersion = String(Number(row.dataset.loadVersion || 0) + 1);
+    row.dataset.loading = "";
     ["serial", "region", "model", "storage", "color", "battery", "supplier", "supplier-grade", "initial-grade"].forEach((field) => {
-      row.querySelector(`[data-auto="${field}"]`).textContent = "-";
+      const cell = row.querySelector(`[data-auto="${field}"]`);
+      if (cell) cell.textContent = "-";
     });
     row.querySelector("[data-final-battery]").value = "";
     row.classList.remove("is-loaded", "is-error");
@@ -285,14 +288,17 @@
       return;
     }
 
+    const loadVersion = row.dataset.loadVersion = String(Number(row.dataset.loadVersion || 0) + 1);
+    const isCurrent = () => tableBody.contains(row) && row.dataset.loadVersion === loadVersion && input.value.trim() === imei;
     row.dataset.loading = "yes";
     setRowState(row, "Loading...", "is-loading");
+    try {
     let step = queueSteps.find((candidate) => String(getDevice(candidate)?.imei_1 || "") === imei);
-    if (!step) {
+    if (!step || String(getDevice(step)?.imei_1 || "") !== row.querySelector(".final-row-imei").value.trim()) {
       await loadQueue();
       step = queueSteps.find((candidate) => String(getDevice(candidate)?.imei_1 || "") === imei);
     }
-    row.dataset.loading = "";
+    if (!isCurrent()) return;
     if (!step) {
       row.classList.add("is-error");
       setRowState(row, "Not waiting in Final QC", "is-error");
@@ -300,6 +306,9 @@
       return;
     }
 
+    const { error: receivedError } = await getClient().rpc("receive_final_qc_phone", { p_final_qc_step_id: step.id });
+    if (!isCurrent()) return;
+    if (receivedError) throw receivedError;
     const job = getJob(step) || {};
     const device = getDevice(step) || {};
     const supplier = getSupplier(job) || {};
@@ -315,14 +324,15 @@
     row.classList.remove("is-error");
     row.classList.add("is-loaded");
     setRowState(row, "Loaded", "is-loaded");
-    const { error: receivedError } = await getClient().rpc("receive_final_qc_phone", { p_final_qc_step_id: step.id });
-    if (receivedError) throw receivedError;
+    } catch (error) {
+      if (isCurrent()) { rowSteps.delete(row.dataset.rowId); setRowState(row, error.message || "Could not load IMEI", "is-error"); }
+    } finally { if (isCurrent()) row.dataset.loading = ""; }
   }
 
   async function loadQueue() {
     const { data, error } = await getClient()
       .from("job_work_order_steps")
-      .select("id, work_order:job_work_orders!inner(work_order_number, job:jobs!inner(id, job_number, supplier_grade, supplier:suppliers(supplier_code, company_name), receiving_batch:receiving_batches(planned_quantity), device:devices(device_number, imei_1, brand, model, storage_gb, color, battery_health, gc_grade)))")
+      .select("id, work_order:job_work_orders!inner(work_order_number, job:jobs!inner(id, job_number, supplier_grade, supplier:greenloop_suppliers(supplier_code, company_name), receiving_batch:receiving_batches(planned_quantity), device:devices(device_number, imei_1, brand, model, storage_gb, color, battery_health, gc_grade)))")
       .eq("department", "final_qc")
       .eq("step_status", "in_progress")
       .order("created_at", { ascending: true });
@@ -334,6 +344,7 @@
   }
 
   async function autoPickAllPending() {
+    if (autoPickButton.disabled || tableBody.querySelector('tr[data-saving="yes"]')) return;
     setMessage();
     setSubmitting(autoPickButton, true, "Loading...");
     try {
@@ -420,7 +431,7 @@
   }
 
   async function saveOneRow(row, progressText = "Saving...") {
-    if (!row || row.dataset.saving === "yes" || row.dataset.completed === "yes") return { ok: false, error: "This row is already complete." };
+    if (!row || !tableBody.contains(row) || row.dataset.loading === "yes" || row.dataset.saving === "yes" || row.dataset.completed === "yes") return { ok: false, error: "This row is already complete." };
     const step = rowSteps.get(row.dataset.rowId);
     if (!step) {
       const errorText = "Scan and load this IMEI before saving.";
@@ -463,6 +474,9 @@
 
     const rowButton = row.querySelector("[data-save-row]");
     row.dataset.saving = "yes";
+    const controls = [...row.querySelectorAll("input, select, button")].map((control) => [control, control.disabled]);
+    controls.forEach(([control]) => { control.disabled = true; });
+    try {
     setSubmitting(rowButton, true, "Saving...");
     setRowState(row, progressText, "is-loading");
     const rpcResponse = result === "frame"
@@ -503,6 +517,16 @@
     queueSteps = queueSteps.filter((candidate) => candidate.id !== step.id);
     queueCount.textContent = `${queueSteps.length} waiting`;
     return { ok: true, result };
+    } catch (error) {
+      setRowState(row, error.message || "Could not save", "is-error");
+      return { ok: false, error: error.message || "Could not save" };
+    } finally {
+      row.dataset.saving = "";
+      if (row.dataset.completed !== "yes") {
+        controls.forEach(([control, disabled]) => { control.disabled = disabled; });
+        setSubmitting(rowButton, false);
+      }
+    }
   }
 
   async function saveRowFromButton(row) {
@@ -523,6 +547,7 @@
 
   async function submitAll(event) {
     event.preventDefault();
+    if (document.querySelector("#complete-final-qc").disabled) return;
     setMessage();
     const rows = [...tableBody.rows].filter((row) => rowSteps.has(row.dataset.rowId) && row.dataset.completed !== "yes");
     if (!rows.length) {
@@ -557,6 +582,7 @@
   }
 
   function resetTray() {
+    if (tableBody.querySelector('tr[data-saving="yes"]')) { setMessage("Wait for the current save to finish before clearing the tray."); return; }
     const unfinished = [...tableBody.rows].some((row) => rowSteps.has(row.dataset.rowId) && row.dataset.completed !== "yes");
     if (unfinished && !window.confirm("Clear the unfinished Final QC tray? No database records will be deleted.")) return;
     tableBody.innerHTML = "";
@@ -614,8 +640,8 @@
     input.value = input.value.replace(/\D/g, "").slice(0, 15);
     const row = input.closest("tr");
     window.clearTimeout(rowTimers.get(row));
+    clearRowData(row);
     if (input.value.length !== 15) {
-      clearRowData(row);
       return;
     }
     focusNextScan(row);

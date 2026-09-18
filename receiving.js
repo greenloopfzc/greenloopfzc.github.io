@@ -36,6 +36,9 @@
   let toastTimer;
   let imeiLookupTimer;
   let lastLoadedImei = "";
+  let duplicateVersion = 0;
+  let receiving = false;
+  let savingContact = false;
 
   const jobTypes = {
     company_owned: [
@@ -56,7 +59,7 @@
   };
 
   function getClient() {
-    if (!client) client = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+    if (!client) client = window.GREENLOOP_GET_CLIENT();
     return client;
   }
 
@@ -251,16 +254,26 @@
   async function loadReferenceData() {
     const api = getClient();
     const [customersResponse, suppliersResponse, locationsResponse] = await Promise.all([
-      api.from("customers").select("id, customer_code, company_name").order("company_name"),
-      api.from("suppliers").select("id, supplier_code, company_name").order("company_name"),
+      api.from("greenloop_customers").select("id, customer_code, company_name").order("company_name"),
+      api.from("greenloop_suppliers").select("id, supplier_code, company_name").order("company_name"),
       api.from("locations").select("id, location_code, location_name").order("location_name")
     ]);
 
     const error = customersResponse.error || suppliersResponse.error || locationsResponse.error;
     if (error) throw error;
 
-    fillSelect(customerInput, customersResponse.data || [], "Select customer", (item) => `${item.company_name} · ${item.customer_code}`);
-    fillSelect(supplierInput, suppliersResponse.data || [], "Select supplier", (item) => `${item.company_name} · ${item.supplier_code}`);
+    fillSelect(customerInput, customersResponse.data || [], "Select customer", (item) => {
+      if (typeof window.GREENLOOP_PARTNER_LABEL === "function") {
+        return window.GREENLOOP_PARTNER_LABEL(item.customer_code, item.company_name, "Customer");
+      }
+      return item.customer_code || "Customer";
+    });
+    fillSelect(supplierInput, suppliersResponse.data || [], "Select supplier", (item) => {
+      if (typeof window.GREENLOOP_PARTNER_LABEL === "function") {
+        return window.GREENLOOP_PARTNER_LABEL(item.supplier_code, item.company_name, "Supplier");
+      }
+      return item.supplier_code || "Supplier";
+    });
     fillSelect(locationInput, locationsResponse.data || [], "Select location", (item) => item.location_name);
 
     const receivingLocation = (locationsResponse.data || []).find((location) => location.location_code === "RECEIVING");
@@ -268,6 +281,7 @@
   }
 
   async function checkDuplicate() {
+    const version = ++duplicateVersion;
     const imei = imieOneInput.value.trim();
     duplicateNotice.hidden = true;
     duplicateNotice.textContent = "";
@@ -277,10 +291,11 @@
     const { data, error } = await getClient()
       .from("devices")
       .select("device_number, model, storage_gb, color, battery_health, current_owner_type, current_owner_customer_id, current_status")
+      .is("deleted_at", null)
       .or(`imei_1.eq.${imei},imei_2.eq.${imei}`)
       .limit(1);
 
-    if (error) return;
+    if (error || version !== duplicateVersion || imieOneInput.value.trim() !== imei) return;
     const device = data?.[0];
     if (!device) return;
 
@@ -304,14 +319,15 @@
     if (device.current_owner_type === "customer_owned" && device.current_owner_customer_id && customerInput.querySelector(`option[value="${device.current_owner_customer_id}"]`)) {
       customerInput.value = device.current_owner_customer_id;
     }
-    const description = [device.model, device.storage_gb ? `${device.storage_gb} GB` : "", device.color].filter(Boolean).join(" · ");
-    duplicateNotice.innerHTML = `<strong>Existing IMEI found: ${device.device_number}</strong><span>${description || "Device details not entered"} · Current status: ${device.current_status.replaceAll("_", " ")}. Device details were loaded automatically. Submitting this form will create a new job and preserve its full history.</span>`;
+    const description = [device.model, device.storage_gb ? `${device.storage_gb} GB` : "", device.color].filter(Boolean).join(" - ");
+    duplicateNotice.innerHTML = `<strong>Existing IMEI found: ${escapeHtml(device.device_number)}</strong><span>${escapeHtml(description || "Device details not entered")} - Current status: ${escapeHtml(String(device.current_status || "Unknown").replaceAll("_", " "))}. Device details were loaded automatically. Submitting this form will create a new job and preserve its full history.</span>`;
     duplicateNotice.hidden = false;
     if (lastLoadedImei !== imei) showToast("Existing device details loaded automatically.");
     lastLoadedImei = imei;
   }
 
   function clearForm() {
+    ++duplicateVersion;
     form.reset();
     updateStockChannel();
     duplicateNotice.hidden = true;
@@ -334,15 +350,20 @@
 
   async function saveContact(event) {
     event.preventDefault();
+    if (savingContact) return;
     setContactMessage();
     if (!contactForm.checkValidity()) {
       contactForm.reportValidity();
       return;
     }
 
+    savingContact = true;
+    const savedContactKind = contactKind;
     setSubmitting(saveContactButton, true, "Saving...");
+    let saved = false;
+    try {
     const input = contactForm.elements;
-    const fn = contactKind === "supplier" ? "create_supplier" : "create_customer";
+    const fn = savedContactKind === "supplier" ? "create_supplier" : "create_customer";
     const { data, error } = await getClient().rpc(fn, {
       p_company_name: input["contact-company"].value,
       p_contact_name: input["contact-person"].value,
@@ -354,23 +375,30 @@
 
     if (error) {
       setContactMessage(error.message || "Could not save the contact.");
-      setSubmitting(saveContactButton, false);
       return;
     }
 
     const contact = data?.[0];
+    saved = true;
+    dialog.close();
     await loadReferenceData();
     if (contact) {
-      if (contactKind === "supplier") supplierInput.value = contact.id;
+      if (savedContactKind === "supplier") supplierInput.value = contact.id;
       else customerInput.value = contact.id;
     }
-    dialog.close();
-    setSubmitting(saveContactButton, false);
-    showToast(`${contactKind === "supplier" ? "Supplier" : "Customer"} saved.`);
+    showToast(`${savedContactKind === "supplier" ? "Supplier" : "Customer"} saved.`);
+    } catch (error) {
+      if (saved) setFormMessage("Contact saved, but the list could not refresh. Refresh the page before continuing.");
+      else setContactMessage(error.message || "Could not save the contact.");
+    } finally {
+      savingContact = false;
+      setSubmitting(saveContactButton, false);
+    }
   }
 
   async function submitReceiving(event) {
     event.preventDefault();
+    if (receiving) return;
     setFormMessage();
 
     if (!form.checkValidity()) {
@@ -384,6 +412,9 @@
       return;
     }
 
+    receiving = true;
+    let saved = false;
+    try {
     const channel = stockChannelInput.value;
     if (channel === "retail_shop_out") {
       setSubmitting(receiveButton, true, "Sending...");
@@ -391,12 +422,13 @@
         p_imei: imeiOne,
         p_notes: null
       });
-      setSubmitting(receiveButton, false);
       if (error) {
         setFormMessage(error.message || "The device could not be sent to Retail Shop.");
         return;
       }
       const result = data?.[0];
+      saved = true;
+      ++duplicateVersion;
       setFormMessage(`Device ${result?.device_number || ""} was sent to Retail Shop.`, "success");
       form.reset();
       updateStockChannel();
@@ -421,13 +453,15 @@
       p_stock_channel: channel
     });
 
-    setSubmitting(receiveButton, false);
     if (error) {
       setFormMessage(error.message || "The device could not be received.");
       return;
     }
 
     const result = data?.[0];
+    saved = true;
+    ++duplicateVersion;
+    if (!result) { setFormMessage("The device was received, but the job reference could not be loaded. Check IMEI Search before saving again.", "success"); form.reset(); updateStockChannel(); return; }
     const sourceLabel = channel === "rma_received" ? "RMA" : channel === "retail_shop_received" ? "Retail Shop" : "Stock";
     const message = result.existing_device
       ? `Existing device ${result.device_number} matched. New ${sourceLabel} job ${result.job_number} was created and sent to Initial QC.`
@@ -439,6 +473,12 @@
     await loadReferenceData();
     await loadTodayStock();
     imieOneInput.focus();
+    } catch (error) {
+      setFormMessage(saved ? "Device saved, but the page could not refresh. Check IMEI Search before saving again." : (error.message || "The device could not be received."), saved ? "success" : "error");
+    } finally {
+      receiving = false;
+      setSubmitting(receiveButton, false);
+    }
   }
 
   async function initialize() {
@@ -478,11 +518,13 @@
   ownershipInput.addEventListener("change", updateJobTypes);
   stockChannelInput.addEventListener("change", updateStockChannel);
   imieOneInput.addEventListener("input", () => {
+    ++duplicateVersion;
+    duplicateNotice.hidden = true;
     imieOneInput.value = imieOneInput.value.replace(/\D/g, "");
     window.clearTimeout(imeiLookupTimer);
-    if (imieOneInput.value.length === 15) imeiLookupTimer = window.setTimeout(checkDuplicate, 280);
+    if (imieOneInput.value.length === 15) imeiLookupTimer = window.setTimeout(() => checkDuplicate().catch(() => {}), 280);
   });
-  imieOneInput.addEventListener("blur", checkDuplicate);
+  imieOneInput.addEventListener("blur", () => checkDuplicate().catch(() => {}));
   clearButton.addEventListener("click", clearForm);
   document.querySelectorAll(".master-add").forEach((button) => button.addEventListener("click", () => addMasterOption(button)));
   document.querySelectorAll(".master-remove").forEach((button) => button.addEventListener("click", () => removeMasterOption(button)));

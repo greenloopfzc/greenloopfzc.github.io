@@ -21,8 +21,9 @@
   const toast = document.querySelector("#toast");
   let client;
   let toastTimer;
+  let savingReceipt = false;
 
-  function api() { return (client ||= window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey)); }
+  function api() { return (client ||= window.GREENLOOP_GET_CLIENT()); }
   function escapeHtml(value) { return String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]); }
   function money(value) { return `AED ${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; }
   function dateTime(value) { return value ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "—"; }
@@ -149,11 +150,14 @@
 
   async function saveReceipt(event) {
     event.preventDefault();
+    if (savingReceipt) return;
     setMessage();
     if (!form.checkValidity()) { form.reportValidity(); return; }
     const button = document.querySelector("#save-receipt");
     button.disabled = true;
     button.textContent = "Receiving...";
+    savingReceipt = true;
+    try {
     let data;
     let error;
     ({ data, error } = await api().rpc("receive_part_inventory_with_invoice", {
@@ -166,8 +170,6 @@
       p_notes: notes.value.trim() || null
     }));
     if (missingInventoryFunction(error)) error = new Error("Run the latest Greenloop database update before receiving parts.");
-    button.disabled = false;
-    button.textContent = "Receive parts";
     if (error) { setMessage(error.message || "Inventory receipt could not be saved."); return; }
     const result = Array.isArray(data) ? data[0] : data;
     form.reset();
@@ -175,7 +177,12 @@
     updateUnitCost();
     setMessage(`${result?.part_name || "Part"} received. ${result?.stock_quantity || 0} units are now in stock at ${money(result?.average_unit_cost)} average cost.`, true);
     showToast("Inventory receipt saved. Parts can now be issued to Laboratory jobs.");
-    await loadData();
+    try { await loadData(); } catch (_) { setMessage("Inventory receipt saved. The stock table could not refresh; use Refresh before continuing.", true); }
+    } finally {
+      savingReceipt = false;
+      button.disabled = false;
+      button.textContent = "Receive parts";
+    }
   }
 
   async function initialize() {

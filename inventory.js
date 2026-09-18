@@ -21,9 +21,9 @@
   const toast = document.querySelector("#toast");
   let client;
   let toastTimer;
-  let invoiceHistoryAvailable = true;
+  let savingReceipt = false;
 
-  function api() { return (client ||= window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey)); }
+  function api() { return (client ||= window.GREENLOOP_GET_CLIENT()); }
   function escapeHtml(value) { return String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]); }
   function money(value) { return `AED ${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; }
   function dateTime(value) { return value ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "—"; }
@@ -56,28 +56,6 @@
       invoice: invoiceMatch?.[1]?.trim() || "--",
       origin: originMatch?.[1]?.trim() || "--"
     };
-  }
-
-  async function loadLegacyInventory() {
-    const { data, error } = await api()
-      .from("part_inventory")
-      .select("id, sku, part_name, stock_quantity, unit_cost, notes, updated_at, created_at")
-      .eq("is_active", true)
-      .order("part_name");
-    if (error) throw error;
-    const rows = (data || []).map((row) => {
-      const legacy = legacyReceiptDetails(row);
-      return {
-        ...row,
-        stock_value: Number(row.stock_quantity || 0) * Number(row.unit_cost || 0),
-        last_invoice_number: legacy.invoice,
-        last_origin: legacy.origin,
-        last_received_at: row.updated_at || row.created_at
-      };
-    });
-    renderStock(rows);
-    renderReceipts([]);
-    return rows;
   }
 
   async function loadPartNames(selected = partName.value) {
@@ -115,13 +93,13 @@
 
   function renderStock(rows) {
     stockList.innerHTML = rows.length
-      ? rows.map((row) => `<tr><td>${escapeHtml(row.sku)}</td><td><strong>${escapeHtml(row.part_name)}</strong></td><td>${Number(row.stock_quantity).toLocaleString()}</td><td>${money(row.unit_cost)}</td><td>${money(row.stock_value)}</td><td>${escapeHtml(row.last_invoice_number || "—")}</td><td class="history-origin">${escapeHtml(row.last_origin || "—")}</td><td>${dateTime(row.last_received_at)}</td></tr>`).join("")
-      : '<tr><td colspan="8" class="inventory-empty">No parts have been received yet.</td></tr>';
+      ? rows.map((row) => `<tr><td>${escapeHtml(row.sku)}</td><td><strong>${escapeHtml(row.part_name)}</strong></td><td>${Number(row.total_received||0).toLocaleString()}</td><td>${Number(row.stock_quantity||0).toLocaleString()}</td><td>${Number(row.used_in_phones||0).toLocaleString()}</td><td>${Number(row.damaged_quantity||0).toLocaleString()}</td><td>${Number(row.faulty_quantity||0).toLocaleString()}</td><td>${Number(row.issued_pending||0).toLocaleString()}</td><td>${money(row.unit_cost)}</td><td>${money(row.stock_value)}</td><td>${escapeHtml(row.last_invoice_number||"—")}</td><td class="history-origin">${escapeHtml(row.last_origin||"—")}</td><td>${dateTime(row.last_received_at)}</td></tr>`).join("")
+      : '<tr><td colspan="13" class="inventory-empty">No parts have been received yet.</td></tr>';
     document.querySelector("#stat-part-types").textContent = rows.length.toLocaleString();
     document.querySelector("#stat-units").textContent = rows.reduce((total, row) => total + Number(row.stock_quantity || 0), 0).toLocaleString();
     document.querySelector("#stat-value").textContent = money(rows.reduce((total, row) => total + Number(row.stock_value || 0), 0));
     const latest = [...rows].sort((a, b) => new Date(b.last_received_at || 0) - new Date(a.last_received_at || 0))[0];
-    document.querySelector("#stat-latest").textContent = latest ? `${latest.part_name} · ${dateTime(latest.last_received_at)}` : "—";
+    document.querySelector("#stat-latest").textContent = latest ? `${latest.part_name} - ${dateTime(latest.last_received_at)}` : "—";
   }
 
   function renderReceipts(rows) {
@@ -132,18 +110,14 @@
 
   async function loadData() {
     const [stockResponse, receiptResponse] = await Promise.all([
-      api().rpc("get_part_inventory_overview"),
+      api().rpc("get_part_inventory_breakdown"),
       api().rpc("get_part_inventory_receipts", { p_limit: 150 })
     ]);
     if (missingInventoryFunction(stockResponse.error) || missingInventoryFunction(receiptResponse.error)) {
-      invoiceHistoryAvailable = false;
-      await loadLegacyInventory();
-      setMessage("Inventory is using the existing Parts stock system. Invoice and origin are saved with each stock item; detailed receipt history activates after the Inventory database SQL is run.", true);
-      return;
+      throw new Error("Run the latest Greenloop database update first. Inventory totals are not shown from an unsafe fallback.");
     }
     if (stockResponse.error) throw stockResponse.error;
     if (receiptResponse.error) throw receiptResponse.error;
-    invoiceHistoryAvailable = true;
     renderStock(stockResponse.data || []);
     renderReceipts(receiptResponse.data || []);
   }
@@ -176,11 +150,14 @@
 
   async function saveReceipt(event) {
     event.preventDefault();
+    if (savingReceipt) return;
     setMessage();
     if (!form.checkValidity()) { form.reportValidity(); return; }
     const button = document.querySelector("#save-receipt");
     button.disabled = true;
     button.textContent = "Receiving...";
+    savingReceipt = true;
+    try {
     let data;
     let error;
     ({ data, error } = await api().rpc("receive_part_inventory_with_invoice", {
@@ -192,26 +169,20 @@
       p_total_cost: Number(totalCost.value),
       p_notes: notes.value.trim() || null
     }));
-    if (missingInventoryFunction(error)) {
-      invoiceHistoryAvailable = false;
-      try {
-        data = await saveThroughExistingParts();
-        error = null;
-      } catch (fallbackError) {
-        error = fallbackError;
-      }
-    }
-    button.disabled = false;
-    button.textContent = "Receive parts";
+    if (missingInventoryFunction(error)) error = new Error("Run the latest Greenloop database update before receiving parts.");
     if (error) { setMessage(error.message || "Inventory receipt could not be saved."); return; }
     const result = Array.isArray(data) ? data[0] : data;
     form.reset();
     origin.value = "local";
     updateUnitCost();
-    const fallbackNote = invoiceHistoryAvailable ? "" : " Invoice and origin were saved with this stock item.";
-    setMessage(`${result?.part_name || "Part"} received. ${result?.stock_quantity || 0} units are now in stock at ${money(result?.average_unit_cost)} average cost.${fallbackNote}`, true);
+    setMessage(`${result?.part_name || "Part"} received. ${result?.stock_quantity || 0} units are now in stock at ${money(result?.average_unit_cost)} average cost.`, true);
     showToast("Inventory receipt saved. Parts can now be issued to Laboratory jobs.");
-    await loadData();
+    try { await loadData(); } catch (_) { setMessage("Inventory receipt saved. The stock table could not refresh; use Refresh before continuing.", true); }
+    } finally {
+      savingReceipt = false;
+      button.disabled = false;
+      button.textContent = "Receive parts";
+    }
   }
 
   async function initialize() {

@@ -2,7 +2,7 @@
   "use strict";
 
   const config = window.GREENLOOP_CONFIG || {};
-  const workItems = [
+  const defaultPartItems = [
     { label: "Case", kind: "part", partName: "Case", action: "Replace case" },
     { label: "Glass", kind: "part", partName: "Glass", action: "Replace glass" },
     { label: "TP", kind: "part", partName: "Touch panel", action: "Replace touch panel" },
@@ -12,15 +12,19 @@
     { label: "Camera", kind: "part", partName: "Camera", action: "Replace or repair camera" },
     { label: "Face ID", kind: "part", partName: "Face ID flex", action: "Repair Face ID" },
     { label: "LCD", kind: "part", partName: "LCD display", action: "Replace LCD display" },
+  ];
+  const serviceItems = [
     { label: "Polish", kind: "service", partName: null, action: "Polish device" },
     { label: "Cleaning", kind: "service", partName: null, action: "Clean device" },
     { label: "Software", kind: "service", partName: null, action: "Complete software service" },
     { label: "Testing", kind: "service", partName: null, action: "Complete technical testing" }
   ];
+  let workItems = [...defaultPartItems, ...serviceItems];
 
   const app = document.querySelector("#qc-app");
   const permissionMessage = document.querySelector("#permission-message");
   const queueCount = document.querySelector("#queue-count");
+  const autoPickButton = document.querySelector("#auto-pick-pending");
   const trayCount = document.querySelector("#tray-count");
   const tableBody = document.querySelector("#qc-bulk-body");
   const tableScroll = document.querySelector("#qc-bulk-scroll");
@@ -43,7 +47,7 @@
   let toastTimer;
 
   function getClient() {
-    return (client ||= window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey));
+    return (client ||= window.GREENLOOP_GET_CLIENT());
   }
 
   function escapeHtml(value) {
@@ -52,8 +56,9 @@
     })[character]);
   }
 
-  function supplierLabel(code, name) {
-    return [code, name].filter((value) => String(value || "").trim()).join(" - ") || "-";
+  function supplierLabel(code, name, quantity) {
+    if (typeof window.GREENLOOP_SUPPLIER_RECEIPT_LABEL === "function") return window.GREENLOOP_SUPPLIER_RECEIPT_LABEL(code, quantity, name, "-");
+    return code && Number(quantity) > 0 ? `${code}-(${quantity})` : (String(code || "").trim() || "-");
   }
 
   function setMenu(isOpen) {
@@ -133,6 +138,27 @@
     return `<option value="">${placeholder}</option>${items.map((item) => `<option value="${escapeHtml(item.label)}"${selectedValue === item.label ? " selected" : ""}>${escapeHtml(item.label)}</option>`).join("")}`;
   }
 
+  async function loadPartOptions() {
+    const { data, error } = await getClient().rpc("get_entry_options", { p_option_group: "part_name" });
+    if (error) throw error;
+
+    const partNames = [...defaultPartItems.map((item) => item.partName), ...(data || []).map((item) => item.option_value)]
+      .map((value) => String(value || "").trim())
+      .filter(Boolean)
+      .filter((value, index, values) => values.findIndex((candidate) => candidate.toLocaleLowerCase() === value.toLocaleLowerCase()) === index)
+      .sort((left, right) => left.localeCompare(right, undefined, { numeric: true, sensitivity: "base" }));
+
+    workItems = [
+      ...partNames.map((partName) => ({
+        label: partName,
+        kind: "part",
+        partName,
+        action: `Replace or use ${partName}`
+      })),
+      ...serviceItems
+    ];
+  }
+
   function requirementSelect(kind, selectedValue = "") {
     return `<select data-requirement="${kind}">${requirementOptions(kind, selectedValue)}</select>`;
   }
@@ -146,7 +172,7 @@
     rowSequence += 1;
     const rowId = `initial-qc-row-${rowSequence}`;
     return `<tr data-row-id="${rowId}">
-      <td class="qc-bulk-imei-cell"><input class="qc-bulk-imei" inputmode="numeric" autocomplete="off" maxlength="15" placeholder="Scan IMEI"><small data-row-state>Line ${rowSequence} · Waiting</small></td>
+      <td class="qc-bulk-imei-cell"><input class="qc-bulk-imei" inputmode="numeric" autocomplete="off" maxlength="15" placeholder="Scan IMEI"><small data-row-state>Line ${rowSequence} - Waiting</small></td>
       <td class="qc-bulk-auto" data-auto="model">-</td>
       <td class="qc-bulk-auto" data-auto="storage">-</td>
       <td class="qc-bulk-auto" data-auto="color">-</td>
@@ -157,7 +183,7 @@
       <td>${requirementGroup("part")}</td>
       <td>${requirementGroup("service")}</td>
       <td><div class="qc-bulk-technician"><select data-carry-field="technician">${technicianOptions()}</select><button type="button" data-add-technician title="Add technician">+</button><button type="button" class="remove" data-remove-technician title="Remove technician">−</button></div></td>
-      <td class="qc-row-save-cell"><button type="button" class="qc-row-save" data-save-row>Save</button></td>
+      <td class="qc-row-save-cell"><label class="qc-frame-route" title="No-work phone: send directly to Frame Department"><input type="checkbox" data-route-frame><span>Frame</span></label><button type="button" class="qc-row-save" data-save-row>Save</button></td>
     </tr>`;
   }
 
@@ -237,12 +263,15 @@
   }
 
   function clearAutoData(row) {
-    ["model", "storage", "color", "battery", "supplier"].forEach((key) => {
-      row.querySelector(`[data-auto="${key}"]`).textContent = "-";
+    row.dataset.loadVersion = String(Number(row.dataset.loadVersion || 0) + 1);
+    row.dataset.loading = "";
+    ["serial", "region", "model", "storage", "color", "battery", "supplier"].forEach((key) => {
+      const cell = row.querySelector(`[data-auto="${key}"]`);
+      if (cell) cell.textContent = "-";
     });
     row.classList.remove("is-loaded", "is-error");
     rowJobs.delete(row.dataset.rowId);
-    setRowState(row, `Line ${[...tableBody.rows].indexOf(row) + 1} · Waiting`);
+    setRowState(row, `Line ${[...tableBody.rows].indexOf(row) + 1} - Waiting`);
   }
 
   function focusNextScan(row) {
@@ -272,10 +301,13 @@
       return;
     }
 
+    const loadVersion = row.dataset.loadVersion = String(Number(row.dataset.loadVersion || 0) + 1);
+    const isCurrent = () => tableBody.contains(row) && row.dataset.loadVersion === loadVersion && input.value.trim() === imei;
     row.dataset.loading = "yes";
     setRowState(row, "Loading...", "is-loading");
+    try {
     const { data, error } = await getClient().rpc("get_initial_qc_job_by_identifier", { p_identifier: imei });
-    row.dataset.loading = "";
+    if (!isCurrent()) return;
     if (error) {
       row.classList.add("is-error");
       setRowState(row, error.message || "Could not load IMEI", "is-error");
@@ -291,9 +323,16 @@
 
     const job = result.job || {};
     const device = result.device || {};
+    const { data: batchJob } = await getClient()
+      .from("jobs")
+      .select("receiving_batch:receiving_batches(planned_quantity)")
+      .eq("id", job.id)
+      .maybeSingle();
+    if (!isCurrent()) return;
+    const receivingBatch = Array.isArray(batchJob?.receiving_batch) ? batchJob.receiving_batch[0] : batchJob?.receiving_batch;
     const selectedJob = {
       ...job,
-      supplierDisplay: supplierLabel(job.supplier_code, result.supplier),
+      supplierDisplay: supplierLabel(job.supplier_code, result.supplier, receivingBatch?.planned_quantity),
       device
     };
     rowJobs.set(row.dataset.rowId, selectedJob);
@@ -315,6 +354,9 @@
     row.classList.remove("is-error");
     row.classList.add("is-loaded");
     setRowState(row, "Loaded", "is-loaded");
+    } catch (error) {
+      if (isCurrent()) { rowJobs.delete(row.dataset.rowId); setRowState(row, error.message || "Could not load IMEI", "is-error"); }
+    } finally { if (isCurrent()) row.dataset.loading = ""; }
   }
 
   async function loadTechnicians() {
@@ -359,7 +401,7 @@
     const supplier = Array.isArray(job.supplier) ? job.supplier[0] : job.supplier;
     return {
       imei: device?.imei_1 || "-",
-      supplier: supplierLabel(supplier?.supplier_code, supplier?.company_name),
+      supplier: supplierLabel(supplier?.supplier_code, supplier?.company_name, job?.receiving_batch?.planned_quantity),
       model: device?.model || "-",
       storage: device?.storage_gb ? `${device.storage_gb} GB` : "-",
       color: device?.color || "-"
@@ -391,7 +433,7 @@
   async function loadPendingCount() {
     const { data, error } = await getClient()
       .from("jobs")
-      .select("job_number, received_at, supplier:suppliers(supplier_code, company_name), device:devices!inner(imei_1, model, storage_gb, color)")
+      .select("job_number, received_at, supplier:greenloop_suppliers(supplier_code, company_name), receiving_batch:receiving_batches(planned_quantity), device:devices!inner(imei_1, model, storage_gb, color)")
       .eq("current_status", "initial_qc_pending")
       .is("deleted_at", null)
       .order("received_at", { ascending: true });
@@ -400,6 +442,66 @@
     queueCount.textContent = `${pendingJobs.length} waiting`;
     queueCount.setAttribute("aria-label", `View ${pendingJobs.length} phones waiting for Initial QC`);
     if (!pendingModal.hidden) renderPendingJobs(pendingSearch.value);
+  }
+
+  async function autoPickAllPending() {
+    if (autoPickButton.disabled || tableBody.querySelector('tr[data-saving="yes"]')) return;
+    setMessage();
+    setSubmitting(autoPickButton, true, "Loading...");
+    try {
+      await loadPendingCount();
+      const imeis = pendingJobs
+        .map(pendingJobData)
+        .map((job) => String(job.imei || "").trim())
+        .filter((imei) => /^\d{15}$/.test(imei));
+
+      if (!imeis.length) {
+        setMessage("No valid IMEIs are waiting in Initial QC.");
+        return;
+      }
+
+      const trayHasData = rowJobs.size > 0 || [...tableBody.querySelectorAll(".qc-bulk-imei")].some((input) => input.value.trim());
+      if (trayHasData && !window.confirm(`Replace the current tray and load all ${imeis.length} pending Initial QC IMEIs? Unsaved tray entries will be cleared.`)) return;
+
+      tableBody.innerHTML = "";
+      rowJobs.clear();
+      rowSequence = 0;
+      createRows(imeis.length);
+      const rows = [...tableBody.rows];
+      const batchSize = 6;
+
+      for (let start = 0; start < imeis.length; start += batchSize) {
+        const end = Math.min(start + batchSize, imeis.length);
+        await Promise.all(imeis.slice(start, end).map((imei, offset) => {
+          const row = rows[start + offset];
+          row.querySelector(".qc-bulk-imei").value = imei;
+          return loadScannedRow(row);
+        }));
+        autoPickButton.textContent = `Loading ${end}/${imeis.length}`;
+      }
+
+      // Auto-pick may contain different suppliers and grades. Keep every row's
+      // own saved grades instead of carrying line 1 across the whole queue.
+      rows.forEach((row) => {
+        const selectedJob = rowJobs.get(row.dataset.rowId);
+        if (!selectedJob) return;
+        row.querySelector('[data-carry-field="supplierGrade"]').value = selectedJob.supplier_grade ? String(selectedJob.supplier_grade).toUpperCase() : "";
+        row.querySelector('[data-carry-field="gcGrade"]').value = selectedJob.device?.gc_grade ? String(selectedJob.device.gc_grade).toUpperCase() : "";
+      });
+
+      const loadedCount = rows.filter((row) => rowJobs.has(row.dataset.rowId)).length;
+      if (loadedCount === imeis.length) {
+        setMessage(`${loadedCount} pending Initial QC IMEIs loaded. Review every row, then save.`, true);
+      } else {
+        setMessage(`${loadedCount} of ${imeis.length} pending Initial QC IMEIs loaded. Check the highlighted rows.`);
+      }
+      rows.find((row) => rowJobs.has(row.dataset.rowId))?.querySelector('[data-carry-field="supplierGrade"]')?.focus();
+      window.requestAnimationFrame(syncHorizontalScrollWidth);
+    } catch (error) {
+      setMessage(error.message || "Pending Initial QC IMEIs could not be loaded.");
+    } finally {
+      setSubmitting(autoPickButton, false);
+    }
   }
 
   function uniqueValues(values) {
@@ -411,7 +513,6 @@
     const servicesSelected = uniqueValues(valuesForGroup(row, "service"));
     const selectedLabels = [...partsSelected, ...servicesSelected];
     const technicianId = row.querySelector('[data-carry-field="technician"]').value || null;
-    if (selectedLabels.length && !technicianId) throw new Error("Select a technician because parts or services are required.");
 
     const findings = selectedLabels.map((label) => {
       const item = workItems.find((entry) => entry.label === label);
@@ -426,6 +527,7 @@
       findings,
       parts,
       technicianId,
+      routeToFrame: Boolean(row.querySelector("[data-route-frame]")?.checked),
       supplierGrade: row.querySelector('[data-carry-field="supplierGrade"]').value || null,
       gcGrade: row.querySelector('[data-carry-field="gcGrade"]').value || null,
       notes: `Initial QC 1: ${summary}.`
@@ -446,9 +548,9 @@
   }
 
   async function saveOneRow(row, progressText = "Saving...") {
-    if (!row || row.dataset.saving === "yes" || row.dataset.completed === "yes") return { ok: false, error: "This row is already complete." };
+    if (!row || !tableBody.contains(row) || row.dataset.loading === "yes" || row.dataset.saving === "yes" || row.dataset.completed === "yes") return { ok: false, error: "This row is already complete." };
     const selectedJob = rowJobs.get(row.dataset.rowId);
-    if (!selectedJob) {
+    if (!selectedJob || String(selectedJob?.device?.imei_1 || "") !== row.querySelector(".qc-bulk-imei").value.trim()) {
       const errorText = "Scan and load this IMEI before saving.";
       setRowState(row, errorText, "is-error");
       row.querySelector(".qc-bulk-imei")?.focus();
@@ -464,23 +566,33 @@
       return { ok: false, error: error.message };
     }
 
-    const hasWork = submission.findings.length > 0 || submission.parts.length > 0;
+    // Any one of Part, Service, or Technician means Laboratory work is required.
+    // Only a completely blank repair selection may go directly to Final QC.
+    const hasWork = submission.findings.length > 0
+      || submission.parts.length > 0
+      || Boolean(submission.technicianId);
+    if (submission.routeToFrame && hasWork) {
+      const errorText = "Frame direct route needs Parts, Service, and Technician to be blank.";
+      setRowState(row, errorText, "is-error");
+      return { ok: false, error: errorText };
+    }
     const rowButton = row.querySelector("[data-save-row]");
     row.dataset.saving = "yes";
+    const controls = [...row.querySelectorAll("input, select, button")].map((control) => [control, control.disabled]);
+    controls.forEach(([control]) => { control.disabled = true; });
+    try {
     setSubmitting(rowButton, true, "Saving...");
     setRowState(row, progressText, "is-loading");
-    const rpcName = hasWork ? "complete_initial_qc_lab_first" : "complete_scanned_initial_qc_with_roster_and_grades";
-    const { error } = await getClient().rpc(rpcName, {
-      p_job_id: selectedJob.id,
-      p_overall_condition: "",
-      p_cosmetic_condition: "",
-      p_notes: submission.notes,
-      p_findings: submission.findings,
-      p_part_requests: submission.parts,
-      p_assigned_technician_roster_id: submission.technicianId,
-      p_supplier_grade: submission.supplierGrade,
+    const rpcName = submission.routeToFrame
+      ? "complete_initial_qc_direct_to_frame"
+      : (hasWork ? "complete_initial_qc_lab_first" : "complete_scanned_initial_qc_with_roster_and_grades");
+    const payload = {
+      p_job_id: selectedJob.id, p_overall_condition: "", p_cosmetic_condition: "", p_notes: submission.notes,
+      p_findings: submission.findings, p_part_requests: submission.parts,
+      p_assigned_technician_roster_id: submission.technicianId, p_supplier_grade: submission.supplierGrade,
       p_gc_grade: submission.gcGrade
-    });
+    };
+    const { error } = await getClient().rpc(rpcName, payload);
     row.dataset.saving = "";
 
     if (error) {
@@ -495,8 +607,19 @@
     row.classList.add("is-completed");
     row.querySelectorAll("input, select, button").forEach((control) => { control.disabled = true; });
     rowButton.textContent = "Saved";
-    setRowState(row, hasWork ? "Completed · Laboratory" : "Completed · Final QC", "is-completed");
-    return { ok: true, hasWork };
+    const route = submission.routeToFrame ? "frame" : (hasWork ? "laboratory" : "final_qc");
+    setRowState(row, route === "frame" ? "Completed - Frame" : (hasWork ? "Completed - Laboratory" : "Completed - Final QC"), "is-completed");
+    return { ok: true, hasWork, route };
+    } catch (error) {
+      setRowState(row, error.message || "Could not save", "is-error");
+      return { ok: false, error: error.message || "Could not save" };
+    } finally {
+      row.dataset.saving = "";
+      if (row.dataset.completed !== "yes") {
+        controls.forEach(([control, disabled]) => { control.disabled = disabled; });
+        setSubmitting(rowButton, false);
+      }
+    }
   }
 
   async function saveRowFromButton(row) {
@@ -507,12 +630,13 @@
       return;
     }
     await loadPendingCount();
-    showToast(result.hasWork ? "Initial QC saved. Phone sent to Laboratory." : "Initial QC saved. Phone sent directly to Final QC.");
+    showToast(result.route === "frame" ? "Initial QC saved. Phone sent directly to Frame." : (result.hasWork ? "Initial QC saved. Phone sent to Laboratory." : "Initial QC saved. Phone sent directly to Final QC."));
     focusNextInspectionRow(row);
   }
 
   async function submitInitialQc(event) {
     event.preventDefault();
+    if (document.querySelector("#complete-qc").disabled) return;
     setMessage();
     const rows = [...tableBody.rows].filter((row) => rowJobs.has(row.dataset.rowId) && row.dataset.completed !== "yes");
     if (!rows.length) {
@@ -526,6 +650,7 @@
     let completed = 0;
     let directFinalQc = 0;
     let sentToLab = 0;
+    let sentToFrame = 0;
     const errors = [];
 
     for (let index = 0; index < rows.length; index += 1) {
@@ -536,12 +661,14 @@
         continue;
       }
       completed += 1;
-      if (result.hasWork) sentToLab += 1; else directFinalQc += 1;
+      if (result.route === "frame") sentToFrame += 1;
+      else if (result.hasWork) sentToLab += 1;
+      else directFinalQc += 1;
     }
 
     setSubmitting(button, false);
     await loadPendingCount();
-    if (completed) showToast(`${completed} Initial QC completed: ${sentToLab} to Laboratory, ${directFinalQc} direct to Final QC.`);
+    if (completed) showToast(`${completed} Initial QC completed: ${sentToLab} to Laboratory, ${sentToFrame} direct to Frame, ${directFinalQc} direct to Final QC.`);
     if (errors.length) {
       setMessage(`${completed} completed. ${errors.length} row(s) need correction. ${errors[0]}`);
     } else {
@@ -550,6 +677,7 @@
   }
 
   function resetTray() {
+    if (tableBody.querySelector('tr[data-saving="yes"]')) { setMessage("Wait for the current save to finish before clearing the tray."); return; }
     const hasUnfinished = [...tableBody.rows].some((row) => rowJobs.has(row.dataset.rowId) && row.dataset.completed !== "yes");
     if (hasUnfinished && !window.confirm("Clear the unfinished Initial QC tray? No database records will be deleted.")) return;
     tableBody.innerHTML = "";
@@ -559,6 +687,24 @@
     setMessage();
     tableBody.querySelector(".qc-bulk-imei")?.focus();
   }
+
+  window.addEventListener("greenloop:imei-scan", (event) => {
+    const imei = String(event.detail?.imei || "").replace(/\D/g, "").slice(0, 15);
+    if (!/^\d{15}$/.test(imei)) return;
+    const existing = [...tableBody.rows].find((row) => String(rowJobs.get(row.dataset.rowId)?.device?.imei_1 || "") === imei);
+    if (existing) {
+      event.preventDefault();
+      existing.scrollIntoView({ behavior: "smooth", block: "center" });
+      existing.querySelector('[data-carry-field="supplierGrade"]')?.focus();
+      setRowState(existing, "Scanned phone selected", "is-loaded");
+      return;
+    }
+    const blank = [...tableBody.querySelectorAll(".qc-bulk-imei")].find((input) => !input.value.trim() && !input.disabled);
+    if (!blank) return;
+    event.preventDefault();
+    blank.value = imei;
+    loadScannedRow(blank.closest("tr")).catch((error) => setRowState(blank.closest("tr"), error.message || "Could not load IMEI", "is-error"));
+  });
 
   async function initialize() {
     if (!config.supabaseUrl || !config.supabaseAnonKey || !window.supabase) throw new Error("Supabase authentication is not configured.");
@@ -570,7 +716,7 @@
     const { data: canInspect, error } = await getClient().rpc("has_role", { required_roles: ["super_admin", "owner", "manager", "initial_qc"] });
     if (error) throw error;
     if (!canInspect) throw new Error("Your account does not have Initial QC permission.");
-    await Promise.all([loadTechnicians(), loadPendingCount()]);
+    await Promise.all([loadTechnicians(), loadPendingCount(), loadPartOptions()]);
     createRows(10);
     app.hidden = false;
     setupHorizontalScroll();
@@ -583,8 +729,8 @@
     input.value = input.value.replace(/\D/g, "").slice(0, 15);
     const row = input.closest("tr");
     window.clearTimeout(rowTimers.get(row));
+    clearAutoData(row);
     if (input.value.length !== 15) {
-      clearAutoData(row);
       return;
     }
     focusNextScan(row);
@@ -658,6 +804,7 @@
 
   document.querySelector("#add-ten-rows").addEventListener("click", () => createRows(10));
   document.querySelector("#clear-tray").addEventListener("click", resetTray);
+  autoPickButton.addEventListener("click", autoPickAllPending);
   queueCount.addEventListener("click", openPendingModal);
   pendingSearch.addEventListener("input", () => renderPendingJobs(pendingSearch.value));
   pendingModal.addEventListener("click", (event) => { if (event.target.closest("[data-close-pending]")) closePendingModal(); });

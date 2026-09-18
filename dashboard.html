@@ -14,9 +14,9 @@
     >
     <link rel="stylesheet" href="css/styles.css?v=20260822-live-updates-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script defer src="js/config.js?v=20260825-complete-imei-1"></script>
-    <script defer src="js/part-notifications.js?v=20260820-1"></script>
-  <script defer src="js/dashboard.js?v=20260825-clean-separators-1"></script>
+  <script defer src="js/config.js?v=20260918-audit-2"></script>
+    <script defer src="js/part-notifications.js?v=20260918-audit-2"></script>
+  <script defer src="js/dashboard.js?v=20260918-audit-2"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -141,14 +141,9 @@
                 <button class="panel-link module-link" type="button" data-module="Department queues">View queues <span aria-hidden="true">→</span></button>
               </div>
               <div class="queue-list">
-                <div class="queue-row"><span class="queue-name"><i class="queue-dot qc"></i>Initial QC</span><span class="queue-bar"><b style="width: 54%"></b></span><strong>38</strong></div>
-                <div class="queue-row"><span class="queue-name"><i class="queue-dot parts"></i>Parts</span><span class="queue-bar"><b style="width: 23%"></b></span><strong>14</strong></div>
-                <div class="queue-row"><span class="queue-name"><i class="queue-dot lab"></i>Laboratory</span><span class="queue-bar"><b style="width: 90%"></b></span><strong>62</strong></div>
-                <div class="queue-row"><span class="queue-name"><i class="queue-dot glass"></i>Glass</span><span class="queue-bar"><b style="width: 36%"></b></span><strong>23</strong></div>
-                <div class="queue-row"><span class="queue-name"><i class="queue-dot frame"></i>Frame</span><span class="queue-bar"><b style="width: 30%"></b></span><strong>19</strong></div>
-                <div class="queue-row"><span class="queue-name"><i class="queue-dot final-qc"></i>Final QC</span><span class="queue-bar"><b style="width: 48%"></b></span><strong>31</strong></div>
+                <p>Loading live queues...</p>
               </div>
-              <div class="queue-insight"><span aria-hidden="true">!</span><p><strong>Laboratory is the main bottleneck.</strong> It holds 30% of all active department tasks.</p></div>
+              <div class="queue-insight"><span aria-hidden="true">!</span><p>Loading live workload...</p></div>
             </article>
 
             <article class="panel throughput-panel">
@@ -160,15 +155,9 @@
                 <span class="chart-legend"><i></i>Completed</span>
               </div>
               <div class="bar-chart" aria-label="Devices completed over the last seven days">
-                <div class="bar-column"><span class="bar-value">64</span><i style="height: 51%"></i><small>Mon</small></div>
-                <div class="bar-column"><span class="bar-value">78</span><i style="height: 63%"></i><small>Tue</small></div>
-                <div class="bar-column"><span class="bar-value">52</span><i style="height: 42%"></i><small>Wed</small></div>
-                <div class="bar-column"><span class="bar-value">93</span><i style="height: 75%"></i><small>Thu</small></div>
-                <div class="bar-column"><span class="bar-value">84</span><i style="height: 68%"></i><small>Fri</small></div>
-                <div class="bar-column"><span class="bar-value">41</span><i style="height: 33%"></i><small>Sat</small></div>
-                <div class="bar-column current"><span class="bar-value">106</span><i style="height: 86%"></i><small>Today</small></div>
+                <p>Loading Final QC activity...</p>
               </div>
-              <div class="throughput-summary"><strong>518</strong><span>devices completed this week</span><em>+12.8% vs previous week</em></div>
+              <div class="throughput-summary">Loading Final QC totals...</div>
             </article>
           </section>
 
@@ -185,13 +174,10 @@
                 <table class="priority-table">
                   <thead><tr><th>Job</th><th>Current task</th><th>Age</th><th>Status</th></tr></thead>
                   <tbody>
-                    <tr data-search="JOB-2026-00451 356938035643809 iPhone 15 Pro laboratory"><td><strong>JOB-2026-00451</strong><small>356938035643809</small></td><td>Laboratory repair</td><td>5h 24m</td><td><span class="status-chip danger">Overdue</span></td></tr>
-                    <tr data-search="RMA-2026-00125 351756104208119 Samsung S24 final QC"><td><strong>RMA-2026-00125</strong><small>351756104208119</small></td><td>Final QC inspection</td><td>3h 11m</td><td><span class="status-chip warning">Priority</span></td></tr>
-                    <tr data-search="JOB-2026-00466 352099117492531 iPhone 14 frame"><td><strong>JOB-2026-00466</strong><small>352099117492531</small></td><td>Frame alignment</td><td>2h 37m</td><td><span class="status-chip neutral">In progress</span></td></tr>
-                    <tr data-search="JOB-2026-00470 353811027463821 iPhone 15 Plus parts"><td><strong>JOB-2026-00470</strong><small>353811027463821</small></td><td>Waiting for parts</td><td>1h 52m</td><td><span class="status-chip info">Waiting</span></td></tr>
+                    <tr><td colspan="4">Loading active devices...</td></tr>
                   </tbody>
                 </table>
-                <p id="search-empty" class="search-empty" hidden>No preview job matches that search.</p>
+                <p id="search-empty" class="search-empty" hidden>No active job matches that search.</p>
               </div>
             </article>
 
@@ -204,10 +190,7 @@
                 <button class="panel-link module-link" type="button" data-module="Parts inventory">Parts inventory <span aria-hidden="true">→</span></button>
               </div>
               <ul class="stock-list">
-                <li><span class="part-icon">BT</span><span><strong>iPhone 15 Pro battery</strong><small>Minimum: 20 units</small></span><b class="stock-level critical">7 left</b></li>
-                <li><span class="part-icon">BG</span><span><strong>iPhone 14 back glass</strong><small>Minimum: 30 units</small></span><b class="stock-level warning">12 left</b></li>
-                <li><span class="part-icon">CG</span><span><strong>Samsung S24 camera glass</strong><small>Minimum: 15 units</small></span><b class="stock-level warning">9 left</b></li>
-                <li><span class="part-icon">FR</span><span><strong>iPhone 13 frame, black</strong><small>Minimum: 10 units</small></span><b class="stock-level critical">3 left</b></li>
+                <li>Loading parts stock...</li>
               </ul>
               <button class="outline-button module-link" type="button" data-module="Parts purchase order">Create purchase order <span aria-hidden="true">→</span></button>
             </article>
@@ -220,18 +203,13 @@
                 <button class="panel-link module-link" type="button" data-module="Locations">View all <span aria-hidden="true">→</span></button>
               </div>
               <div class="location-grid">
-                <div><span>Main warehouse</span><strong>742</strong></div>
-                <div><span>Retail shop</span><strong>198</strong></div>
-                <div><span>Packing</span><strong>126</strong></div>
-                <div><span>RMA area</span><strong>47</strong></div>
+                <p>Loading live stock status...</p>
               </div>
             </article>
             <article class="panel activity-panel">
               <div class="panel-heading"><div><p class="panel-kicker">Today</p><h2>Recent activity</h2></div></div>
               <ol class="activity-list">
-                <li><i class="activity-dot green"></i><span><strong>Final QC passed</strong><small>JOB-2026-00440 moved to Ready Stock</small></span><time>10 min</time></li>
-                <li><i class="activity-dot amber"></i><span><strong>Part issued</strong><small>Battery issued to JOB-2026-00451</small></span><time>26 min</time></li>
-                <li><i class="activity-dot red"></i><span><strong>RMA received</strong><small>RMA-2026-00125 requires diagnosis</small></span><time>41 min</time></li>
+                <li>Loading recent activity...</li>
               </ol>
             </article>
           </section>

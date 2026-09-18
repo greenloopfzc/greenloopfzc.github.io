@@ -27,6 +27,8 @@
   let users = [];
   let selectedUserId = "";
   let currentUserIsSuperAdmin = false;
+  let savingAccess = false;
+  let creatingUser = false;
 
   // Permanent rule: every new Greenloop page must be added here with its own
   // View only and Entry Allowed access choice, plus matching config and SQL keys.
@@ -51,7 +53,7 @@
   ];
 
   function getClient() {
-    return (client ||= window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey));
+    return (client ||= window.GREENLOOP_GET_CLIENT());
   }
 
   function escapeHtml(value) {
@@ -219,6 +221,7 @@
 
   async function createUser(event) {
     event.preventDefault();
+    if (creatingUser || !window.GREENLOOP_PAGE_ACCESS?.canEdit) return;
     setMessage(createUserMessage);
 
     if (!createUserForm.checkValidity()) {
@@ -241,13 +244,17 @@
       return;
     }
 
+    creatingUser = true;
+    let createdAccount = null;
+    let permissionsSaved = false;
+    const requestedName = newFullName.value.trim();
     createUserButton.disabled = true;
     createUserButton.textContent = "Creating...";
 
     try {
       const { data, error } = await getClient().functions.invoke("admin-create-user", {
         body: {
-          full_name: newFullName.value.trim(),
+          full_name: requestedName,
           username: newUsername.value.trim(),
           password: newPassword.value,
           page_keys: selectedPages
@@ -256,25 +263,34 @@
 
       if (error) throw new Error(await readFunctionError(error));
       if (!data?.success || !data?.user_id) throw new Error(data?.error || "The user account could not be created.");
+      createdAccount = data;
 
-      const { error: accessError } = await getClient().rpc("save_user_page_access_v2", {
+      const { error: accessError } = await getClient().rpc("save_user_access_complete", {
         p_user_id: data.user_id,
-        p_full_name: newFullName.value.trim(),
+        p_full_name: requestedName,
         p_login_username: data.username,
         p_is_active: true,
-        p_page_permissions: normalPermissions
+        p_page_permissions: normalPermissions,
+        p_partner_names_access: partnerNamesAccess
       });
       if (accessError) throw accessError;
-      const { error: partnerError } = await getClient().rpc("save_user_partner_name_access", { p_user_id: data.user_id, p_access_level: partnerNamesAccess });
-      if (partnerError) throw partnerError;
+      permissionsSaved = true;
 
       createUserForm.reset();
       renderNewUserPages();
       await loadUsers(data.user_id);
       setMessage(createUserMessage, `User @${data.username} was created and can sign in now.`, "success");
     } catch (error) {
-      setMessage(createUserMessage, error.message || "The user account could not be created.");
+      if (createdAccount) {
+        createUserForm.reset();
+        renderNewUserPages();
+        await loadUsers(createdAccount.user_id).catch(() => {});
+        setMessage(createUserMessage, permissionsSaved
+          ? `User @${createdAccount.username} was created and permissions were saved, but the user list could not be refreshed. Use Refresh to reload the list; do not create the account again. ${error.message || ""}`
+          : `User @${createdAccount.username} already exists, but permission setup did not finish. Select that user and save the intended permissions; do not create the account again. ${error.message || ""}`);
+      } else setMessage(createUserMessage, error.message || "The user account could not be created.");
     } finally {
+      creatingUser = false;
       createUserButton.disabled = false;
       createUserButton.textContent = "Create user";
     }
@@ -282,45 +298,51 @@
 
   async function saveAccess(event) {
     event.preventDefault();
+    if (savingAccess || !window.GREENLOOP_PAGE_ACCESS?.canEdit) return;
+    if (!editor.checkValidity()) { editor.reportValidity(); return; }
     const selectedPermissions = collectPagePermissions(roleOptions);
     const partnerNamesAccess = selectedPermissions.partner_names || "none";
     const normalPermissions = Object.fromEntries(Object.entries(selectedPermissions).filter(([key]) => key !== "partner_names"));
     if (!selectedUserId) return;
+    const targetUserId = selectedUserId;
 
     const button = document.querySelector("#save-access");
+    savingAccess = true;
     button.disabled = true;
     button.textContent = "Saving...";
-
-    let { error } = await getClient().rpc("save_user_page_access_v2", {
-      p_user_id: selectedUserId,
+    let pagesSaved = false;
+    try {
+    const { error } = await getClient().rpc("save_user_access_complete", {
+      p_user_id: targetUserId,
       p_full_name: fullName.value.trim(),
       p_login_username: username.value.trim(),
       p_is_active: active.checked,
-      p_page_permissions: normalPermissions
+      p_page_permissions: normalPermissions,
+      p_partner_names_access: partnerNamesAccess
     });
 
-    button.disabled = false;
-    button.textContent = "Save access";
-    if (error) {
-      setMessage(message, error.message || "User access could not be saved.");
-      return;
-    }
-    const { error: partnerError } = await getClient().rpc("save_user_partner_name_access", { p_user_id: selectedUserId, p_access_level: partnerNamesAccess });
-    if (partnerError) {
-      setMessage(message, partnerError.message || "Supplier and customer name access could not be saved.");
-      return;
-    }
+    if (error) throw error;
+    pagesSaved = true;
 
-    const savedUser = users.find((user) => String(user.user_id) === String(selectedUserId));
+    const savedUser = users.find((user) => String(user.user_id) === String(targetUserId));
     if (savedUser) {
       savedUser.partner_names_access = partnerNamesAccess;
       savedUser.partner_names_allowed = partnerNamesAccess !== "none";
     }
-    await loadUsers(selectedUserId);
+    await loadUsers(targetUserId);
     setMessage(message, "User access was saved.", "success");
+    } catch (error) {
+      setMessage(message, `${pagesSaved ? "Access was saved, but the list could not be refreshed. " : ""}${error.message || "User access could not be saved."}`);
+    } finally {
+      savingAccess = false;
+      button.disabled = false;
+      button.textContent = "Save access";
+    }
   }
 
   async function initialize() {
+    await window.GREENLOOP_ACCESS_READY;
+    if (!window.GREENLOOP_PAGE_ACCESS) return;
     if (!config.supabaseUrl || !config.supabaseAnonKey || !window.supabase) {
       throw new Error("Supabase authentication is not configured.");
     }
@@ -357,9 +379,11 @@
   document.querySelector("#close-menu").addEventListener("click", () => setMenu(false));
   backdrop.addEventListener("click", () => setMenu(false));
   document.querySelector("#refresh-users").addEventListener("click", () => {
+    if (savingAccess || creatingUser) return;
     loadUsers().catch((error) => setMessage(message, error.message || "Users could not be loaded."));
   });
   userList.addEventListener("click", (event) => {
+    if (savingAccess) return;
     const item = event.target.closest("[data-user-id]");
     if (!item) return;
     selectedUserId = item.dataset.userId;

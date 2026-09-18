@@ -25,22 +25,59 @@
   let correctionRecord = null;
   let canManageCorrections = false;
   let auditView = "deleted";
+  let selectedSupplier = "all";
+  let reportGeneration = 0;
+  let correctionSearchGeneration = 0;
+  let reportMutationPending = false;
+  const summaryKeys = ["stock_received", "initial_qc_pending", "parts_pending", "laboratory_pending", "final_qc_pending"];
+
+  function hasReportSummary(data) {
+    const values = data?.summary;
+    return values && typeof values === "object" && !Array.isArray(values)
+      && summaryKeys.every((key) => {
+        const value = values[key];
+        return ["number", "string"].includes(typeof value) && String(value).trim() !== ""
+          && Number.isFinite(Number(value)) && Number(value) >= 0;
+      });
+  }
+
+  async function runReportMutation(control, action) {
+    if (reportMutationPending || !window.GREENLOOP_PAGE_ACCESS?.canEdit) return;
+    reportMutationPending = true;
+    const label = control?.textContent;
+    try { await action(); }
+    catch (error) { setMessage(error.message || "The action could not be completed. Refresh to check its status before retrying."); }
+    finally {
+      reportMutationPending = false;
+      if (control?.isConnected) { control.disabled = false; control.textContent = label; }
+    }
+  }
 
   const reports = {
+    complete_device_details: {
+      title: "Complete Device Details",
+      description: "Read the connected iPhone. No historical phone or stock data is changed.",
+      columns: []
+    },
     stock_received: {
       title: "Stock received",
       description: "Every incoming IMEI received during the selected date range.",
-      columns: [["Received", "received_at", "date"], ["IMEI", "imei"], ["Model", "model"], ["Memory", "memory"], ["Color", "color"], ["Battery", "battery", "percent"], ["Source", "source"], ["Job", "job_number"]]
+      columns: [["Received", "received_at", "date"], ["IMEI", "imei"], ["Serial number", "serial_number"], ["Region", "specification_region"], ["Model", "model"], ["Memory", "memory"], ["Color", "color"], ["Battery", "battery", "percent"], ["Source", "source"], ["Job", "job_number"]]
+    },
+    supplier_progress: {
+      title: "Supplier stock progress",
+      description: "Supplier and model-wise stock received, pending department, Ready Stock, and exported quantity.",
+      columns: []
     },
     work_in_progress: {
       title: "Work in progress",
       description: "All active devices currently moving through the Greenloop workflow.",
-      columns: [["IMEI", "imei"], ["Model", "model"], ["Job", "job_number"], ["Current status", "status", "status"], ["Location", "location"], ["Received", "received_at", "date"], ["Days open", "days_open"]]
+      columns: [["IMEI", "imei"], ["Serial number", "serial_number"], ["Region", "specification_region"], ["Model", "model"], ["Job", "job_number"], ["Current status", "status", "status"], ["Location", "location"], ["Received", "received_at", "date"], ["Days open", "days_open"]]
     },
     parts_requests: {
       title: "Parts required and usage",
       description: "Requested, issued, installed, and returned parts during the selected date range.",
-      columns: [["Requested", "requested_at", "date"], ["IMEI", "imei"], ["Job", "job_number"], ["Part", "part_name"], ["Required", "requested"], ["Issued", "issued"], ["Installed", "installed"], ["Returned", "returned"], ["Status", "status", "status"], ["Request source", "source"]]
+      columns: [["Requested", "requested_at", "date"], ["IMEI", "imei"], ["Serial number", "serial_number"], ["Region", "specification_region"], ["Job", "job_number"], ["Part", "part_name"], ["Required", "requested"], ["Issued", "issued"], ["Installed", "installed"], ["Returned", "returned"], ["Status", "status", "status"], ["Request source", "source"]]
     },
     parts_inventory: {
       title: "Parts inventory",
@@ -55,12 +92,12 @@
     final_qc: {
       title: "Final QC results",
       description: "Pass and fail results, QC attempts, and failure reasons for the selected date range.",
-      columns: [["Inspected", "inspected_at", "date"], ["IMEI", "imei"], ["Model", "model"], ["Job", "job_number"], ["Attempt", "attempt"], ["Result", "result", "status"], ["Return department", "failure_department"], ["Failure reason", "failure_reason"]]
+      columns: [["Inspected", "inspected_at", "date"], ["IMEI", "imei"], ["Serial number", "serial_number"], ["Region", "specification_region"], ["Model", "model"], ["Job", "job_number"], ["Attempt", "attempt"], ["Result", "result", "status"], ["Return department", "failure_department"], ["Failure reason", "failure_reason"]]
     },
     costs: {
       title: "Device cost",
       description: "Purchase, installed parts, laboratory, glass, and total recorded cost by IMEI.",
-      columns: [["IMEI", "imei"], ["Model", "model"], ["Job", "job_number"], ["Purchase", "purchase_cost", "money"], ["Parts", "parts_cost", "money"], ["Laboratory", "laboratory_cost", "money"], ["Glass", "glass_cost", "money"], ["Total cost", "total_cost", "money"]]
+      columns: [["IMEI", "imei"], ["Serial number", "serial_number"], ["Region", "specification_region"], ["Model", "model"], ["Job", "job_number"], ["Purchase", "purchase_cost", "money"], ["Parts", "parts_cost", "money"], ["Laboratory", "laboratory_cost", "money"], ["Glass", "glass_cost", "money"], ["Total cost", "total_cost", "money"]]
     },
     export_boxes: {
       title: "Export boxes",
@@ -76,26 +113,35 @@
       title: "Deleted history",
       description: "Every deleted record, including the user, time, deletion method, and its saved snapshot.",
       columns: [["Deleted at", "deleted_at", "date"], ["Deleted by", "deleted_by"], ["Item type", "record_type"], ["Item", "record_label"], ["Deletion", "deletion_method", "status"], ["Reason", "deletion_reason"], ["Saved details", "record_data", "details"]]
-    },
-    rma: {
-      title: "RMA report",
-      description: "RMA devices received during the selected date range and their current workflow position.",
-      columns: [["Received", "received_at", "date"], ["IMEI", "imei"], ["Model", "model"], ["Customer", "customer"], ["Job", "job_number"], ["Status", "status", "status"]]
-    },
-    retail_shop: {
-      title: "Retail Shop report",
-      description: "Devices received from, or currently held in, Retail Shop stock.",
-      columns: [["IMEI", "imei"], ["Model", "model"], ["Memory", "memory"], ["Grade", "grade"], ["Job", "job_number"], ["Source", "source"], ["Status", "status", "status"], ["Location", "location"]]
-    },
-    production: {
-      title: "Production report",
-      description: "Today's Production is shown above. This table contains every production record in the selected date range.",
-      columns: [["IMEI", "imei"], ["Model", "model"], ["Memory", "memory"], ["Grade", "grade"], ["Job", "job_number"], ["Status", "status", "status"], ["Started", "started_at", "date"], ["Completed", "completed_at", "date"]]
     }
   };
 
-  function getClient() { if (!client) client = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey); return client; }
+  function getClient() { if (!client) client = window.GREENLOOP_GET_CLIENT(); return client; }
   function escapeHtml(value) { return String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]); }
+  async function addDeviceIdentityToReports(targetData = reportData) {
+    const imeis = [...new Set(Object.values(targetData)
+      .flatMap((section) => Array.isArray(section) ? section : [])
+      .map((row) => String(row?.imei || "").trim())
+      .filter(Boolean))];
+    if (!imeis.length) return;
+    const identityByImei = new Map();
+    for (let start = 0; start < imeis.length; start += 200) {
+      const { data, error } = await getClient().from("devices")
+        .select("imei_1, serial_number, specification_region")
+        .in("imei_1", imeis.slice(start, start + 200));
+      if (error) return;
+      (data || []).forEach((device) => identityByImei.set(String(device.imei_1 || ""), device));
+    }
+    Object.values(targetData).forEach((section) => {
+      if (!Array.isArray(section)) return;
+      section.forEach((row) => {
+        const identity = identityByImei.get(String(row?.imei || ""));
+        if (!identity) return;
+        row.serial_number = identity.serial_number || row.serial_number || "";
+        row.specification_region = identity.specification_region || row.specification_region || "";
+      });
+    });
+  }
   function setMenu(isOpen) { sidebar.classList.toggle("is-open", isOpen); backdrop.hidden = !isOpen; document.body.classList.toggle("menu-open", isOpen); }
   function setMessage(text = "", type = "error") { message.textContent = text; message.classList.toggle("is-visible", Boolean(text)); message.classList.toggle("is-success", type === "success"); }
   function localDate(value) { const date = new Date(value); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
@@ -103,18 +149,38 @@
   function dateTime(value) { return value ? new Date(value).toLocaleString([], { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"; }
   function money(value) { return `AED ${Number(value || 0).toFixed(2)}`; }
   function title(value) { return String(value || "—").replaceAll("_", " "); }
+  function partnerLabel(code, name, fallback = "—") {
+    if (typeof window.GREENLOOP_PARTNER_LABEL === "function") return window.GREENLOOP_PARTNER_LABEL(code, name, fallback);
+    return String(code || "").trim() || fallback;
+  }
+  function supplierReceiptLabel(code, quantity, name, fallback = "—") {
+    if (typeof window.GREENLOOP_SUPPLIER_RECEIPT_LABEL === "function") return window.GREENLOOP_SUPPLIER_RECEIPT_LABEL(code, quantity, name, fallback);
+    const safeCode = String(code || "").trim();
+    return safeCode && Number(quantity) > 0 ? `${safeCode}-(${quantity})` : (safeCode || fallback);
+  }
+  function confidentialPartnerText(value, fallback = "Confidential supplier") {
+    if (window.GREENLOOP_CAN_VIEW_PARTNER_NAMES) return String(value || "—");
+    const match = String(value || "").match(/\bSUP-\d+(?:-[A-Z0-9()]+)?/i);
+    return match?.[0] || fallback;
+  }
+  function formatReportValue(row, key, type) {
+    if (!window.GREENLOOP_CAN_VIEW_PARTNER_NAMES && key === "customer") return "Confidential customer";
+    if (!window.GREENLOOP_CAN_VIEW_PARTNER_NAMES && key === "supplier_name") return escapeHtml(row.supplier_code || "Confidential supplier");
+    return formatCell(row[key], type);
+  }
 
   function renderSummary() {
+    if (!hasReportSummary(reportData)) {
+      summary.innerHTML = '<p class="report-empty">Operational totals are unavailable. Apply the date range to retry.</p>';
+      return;
+    }
     const data = reportData.summary || {};
     const cards = [
       ["Stock received", data.stock_received, "Selected date range", ""],
       ["Initial QC pending", data.initial_qc_pending, "Waiting for inspection", ""],
       ["Parts pending", data.parts_pending, "Open part requests", ""],
       ["Laboratory pending", data.laboratory_pending, "Laboratory queue", ""],
-      ["Final QC pending", data.final_qc_pending, "Waiting for final inspection", ""],
-      ["Today's Production", data.today_production, "Completed today", "production"],
-      ["Total Production", data.total_production, `${dateLabel(reportData.date_from)} to ${dateLabel(reportData.date_to)}`, "production"],
-      ["Retail Shop stock", data.retail_shop_stock, "Devices currently in shop", ""]
+      ["Final QC pending", data.final_qc_pending, "Waiting for final inspection", ""]
     ];
     summary.innerHTML = cards.map(([label, value, note, style]) => `<article class="report-metric ${style}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value ?? 0)}</strong><small>${escapeHtml(note)}</small></article>`).join("");
   }
@@ -129,6 +195,7 @@
       return `<span class="report-status ${escapeHtml(raw)}">${escapeHtml(title(value))}</span>`;
     }
     if (type === "details") {
+      if (!window.GREENLOOP_CAN_VIEW_PARTNER_NAMES) return "Saved details restricted by partner-name permission";
       const details = value && typeof value === "object" ? JSON.stringify(value, null, 2) : String(value || "No extra details saved.");
       return `<details class="report-deletion-details"><summary>View saved data</summary><pre>${escapeHtml(details)}</pre></details>`;
     }
@@ -137,12 +204,19 @@
   }
 
   function renderOverview() {
+    if (!hasReportSummary(reportData)) {
+      panelKicker.textContent = "Overview";
+      panelTitle.textContent = "Live workflow overview";
+      panelDescription.textContent = "Operational totals have not been loaded.";
+      rowCount.textContent = "Unavailable";
+      reportContent.innerHTML = '<p class="report-empty">Reports are unavailable. Apply the date range to retry.</p>';
+      return;
+    }
     const data = reportData.summary || {};
     const items = [
       ["Stock received", data.stock_received], ["Initial QC pending", data.initial_qc_pending],
       ["Parts pending", data.parts_pending], ["Laboratory pending", data.laboratory_pending],
-      ["Final QC pending", data.final_qc_pending], ["Today's Production", data.today_production],
-      ["Total Production", data.total_production], ["Retail Shop stock", data.retail_shop_stock]
+      ["Final QC pending", data.final_qc_pending]
     ];
     panelKicker.textContent = "Overview";
     panelTitle.textContent = "Live workflow overview";
@@ -160,9 +234,68 @@
     rowCount.textContent = `${rows.length} record${rows.length === 1 ? "" : "s"}`;
     const headers = report.columns.map(([label]) => `<th>${escapeHtml(label)}</th>`).join("");
     const body = rows.length
-      ? rows.map((row) => `<tr>${report.columns.map(([, key, type]) => `<td>${formatCell(row[key], type)}</td>`).join("")}</tr>`).join("")
+      ? rows.map((row) => `<tr>${report.columns.map(([, key, type]) => `<td>${formatReportValue(row, key, type)}</td>`).join("")}</tr>`).join("")
       : `<tr><td class="report-empty" colspan="${report.columns.length}">No records were found for this report.</td></tr>`;
     reportContent.innerHTML = `<div class="report-table-wrap"><table class="report-table"><thead><tr>${headers}</tr></thead><tbody>${body}</tbody></table></div>`;
+  }
+
+  function supplierTotal(rows, key) {
+    return rows.reduce((total, row) => total + Number(row[key] || 0), 0);
+  }
+
+  function renderSupplierProgress() {
+    const allRows = reportData.supplier_progress || [];
+    const suppliers = [...new Map(allRows.map((row) => [String(row.supplier_id), {
+      id: String(row.supplier_id),
+      label: supplierReceiptLabel(row.supplier_code, row.planned_quantity, row.supplier_name)
+    }])).values()].sort((left, right) => left.label.localeCompare(right.label));
+
+    if (selectedSupplier !== "all" && !suppliers.some((supplier) => supplier.id === selectedSupplier)) selectedSupplier = "all";
+    const rows = selectedSupplier === "all" ? allRows : allRows.filter((row) => String(row.supplier_id) === selectedSupplier);
+    const received = supplierTotal(rows, "received_quantity");
+    const ready = supplierTotal(rows, "ready_quantity");
+    const exported = supplierTotal(rows, "exported_quantity");
+    const stagePending = supplierTotal(rows, "initial_qc_pending") + supplierTotal(rows, "lab_glass_pending") + supplierTotal(rows, "parts_pending") + supplierTotal(rows, "final_qc_pending") + supplierTotal(rows, "other_quantity");
+    const completedPercent = received ? Math.round(((ready + exported) / received) * 100) : 0;
+
+    panelKicker.textContent = "Supplier progress";
+    panelTitle.textContent = "Supplier stock progress";
+    panelDescription.textContent = `Models received from ${dateLabel(reportData.date_from)} to ${dateLabel(reportData.date_to)}, with their present workflow position.`;
+    rowCount.textContent = `${rows.length} model line${rows.length === 1 ? "" : "s"}`;
+
+    const supplierOptions = suppliers.map((supplier) => `<option value="${escapeHtml(supplier.id)}"${supplier.id === selectedSupplier ? " selected" : ""}>${escapeHtml(supplier.label)}</option>`).join("");
+    const tableBody = rows.length ? rows.map((row) => `<tr>
+      <td><strong>${escapeHtml(supplierReceiptLabel(row.supplier_code, row.planned_quantity, row.supplier_name))}</strong></td>
+      <td>${escapeHtml(row.model)}</td>
+      <td>${escapeHtml(row.storage_label || "—")}</td>
+      <td>${escapeHtml(row.batch_numbers)}</td>
+      <td>${escapeHtml(row.stock_channels)}</td>
+      <td>${escapeHtml(row.planned_quantity)}</td>
+      <td>${escapeHtml(row.received_quantity)}</td>
+      <td class="supplier-count pending">${escapeHtml(row.imei_entry_pending)}</td>
+      <td class="supplier-count pending">${escapeHtml(row.initial_qc_pending)}</td>
+      <td class="supplier-count pending">${escapeHtml(row.lab_glass_pending)}</td>
+      <td class="supplier-count pending">${escapeHtml(row.parts_pending)}</td>
+      <td class="supplier-count pending">${escapeHtml(row.final_qc_pending)}</td>
+      <td class="supplier-count ready">${escapeHtml(row.ready_quantity)}</td>
+      <td class="supplier-count exported">${escapeHtml(row.exported_quantity)}</td>
+      <td>${escapeHtml(row.other_quantity)}</td>
+    </tr>`).join("") : '<tr><td class="report-empty" colspan="15">No supplier stock was received in this date range.</td></tr>';
+
+    reportContent.innerHTML = `<div class="supplier-report-tools">
+      <label>Supplier<select id="supplier-progress-filter"><option value="all">All suppliers</option>${supplierOptions}</select></label>
+      <div class="supplier-progress-track"><span style="width:${Math.min(completedPercent, 100)}%"></span></div><strong>${completedPercent}% Ready / Exported</strong>
+    </div>
+    <div class="supplier-report-summary">
+      <article><span>Planned stock</span><strong>${supplierTotal(rows, "planned_quantity")}</strong></article>
+      <article><span>IMEIs entered</span><strong>${received}</strong></article>
+      <article><span>Workflow pending</span><strong>${stagePending}</strong></article>
+      <article class="ready"><span>Ready Stock</span><strong>${ready}</strong></article>
+      <article class="exported"><span>Exported</span><strong>${exported}</strong></article>
+    </div>
+    <div class="report-table-wrap"><table class="report-table supplier-progress-table"><thead><tr>
+      <th>Supplier</th><th>Model</th><th>GB</th><th>Batch</th><th>Channel</th><th>Planned</th><th>IMEIs entered</th><th>IMEI entry pending</th><th>Initial QC</th><th>Lab &amp; Glass</th><th>Parts</th><th>Final QC</th><th>Ready Stock</th><th>Exported</th><th>Other</th>
+    </tr></thead><tbody>${tableBody}</tbody></table></div>`;
   }
 
   function getExportBoxGroups() {
@@ -194,13 +327,13 @@
       const filter = exportBoxImeiFilter.trim().toLowerCase();
       const rows = selected.rows.filter((row) => !filter || String(row.imei || "").toLowerCase().includes(filter));
       const body = rows.length
-        ? rows.map((row) => `<tr><td>${escapeHtml(row.serial_no)}</td><td>${escapeHtml(row.imei)}</td><td>${formatCell(row.model)}</td><td>${formatCell(row.memory)}</td><td>${formatCell(row.final_grade)}</td><td>${formatCell(row.color)}</td><td>${formatCell(row.scanned_at, "date")}</td></tr>`).join("")
-        : '<tr><td class="report-empty" colspan="7">No IMEI in this box matches your search.</td></tr>';
+        ? rows.map((row) => `<tr><td>${escapeHtml(row.serial_no)}</td><td>${escapeHtml(row.imei)}</td><td>${formatCell(row.serial_number)}</td><td>${formatCell(row.specification_region)}</td><td>${formatCell(row.model)}</td><td>${formatCell(row.memory)}</td><td>${formatCell(row.final_grade)}</td><td>${formatCell(row.color)}</td><td>${formatCell(row.scanned_at, "date")}</td></tr>`).join("")
+        : '<tr><td class="report-empty" colspan="9">No IMEI in this box matches your search.</td></tr>';
       detail = `
         <section class="export-box-detail">
           <div class="export-box-detail-heading"><div><p class="panel-kicker">Selected export box</p><h3>${escapeHtml(selected.boxNumber)}</h3></div><div class="export-box-detail-actions"><span>${selected.rows.length} phone${selected.rows.length === 1 ? "" : "s"}</span><button class="report-delete-box" type="button" data-delete-export-box="${escapeHtml(selected.boxNumber)}">Delete box</button></div></div>
           <label class="export-box-imei-search" for="export-box-imei-filter">Search IMEI in this box<input id="export-box-imei-filter" type="search" autocomplete="off" value="${escapeHtml(exportBoxImeiFilter)}" placeholder="Type or scan an IMEI"></label>
-          <div class="report-table-wrap"><table class="report-table export-box-lines"><thead><tr><th>S.No</th><th>IMEI</th><th>Model</th><th>GB</th><th>Grade</th><th>Color</th><th>Scanned</th></tr></thead><tbody>${body}</tbody></table></div>
+          <div class="report-table-wrap"><table class="report-table export-box-lines"><thead><tr><th>S.No</th><th>IMEI</th><th>Serial number</th><th>Region</th><th>Model</th><th>GB</th><th>Grade</th><th>Color</th><th>Scanned</th></tr></thead><tbody>${body}</tbody></table></div>
         </section>`;
     }
 
@@ -218,7 +351,7 @@
     const selected = String(selectedId ?? "");
     const values = Array.isArray(options) ? [...options] : [];
     if (selected && !values.some((option) => String(option.id) === selected)) values.unshift({ id: selected, label: selectedLabel || "Current supplier" });
-    return `<option value="">No supplier</option>${values.map((option) => `<option value="${escapeHtml(option.id)}"${String(option.id) === selected ? " selected" : ""}>${escapeHtml(option.label)}</option>`).join("")}`;
+    return `<option value="">No supplier</option>${values.map((option) => `<option value="${escapeHtml(option.id)}"${String(option.id) === selected ? " selected" : ""}>${escapeHtml(confidentialPartnerText(option.label))}</option>`).join("")}`;
   }
 
   function renderCorrectionHistory(record) {
@@ -228,7 +361,7 @@
       <details>
         <summary><span>${escapeHtml(event.title || title(event.event_type))}</span><time>${escapeHtml(dateTime(event.occurred_at))}</time></summary>
         <p>Recorded by ${escapeHtml(event.actor || "System")}</p>
-        ${event.details && Object.keys(event.details).length ? `<pre>${escapeHtml(JSON.stringify(event.details, null, 2))}</pre>` : ""}
+        ${window.GREENLOOP_CAN_VIEW_PARTNER_NAMES && event.details && Object.keys(event.details).length ? `<pre>${escapeHtml(JSON.stringify(event.details, null, 2))}</pre>` : ""}
       </details>`).join("")}</div>`;
   }
 
@@ -237,12 +370,29 @@
       <section class="test-cleanup-card">
         <div class="test-cleanup-copy">
           <span class="test-cleanup-icon" aria-hidden="true">!</span>
-          <div><h3>Delete all test phone data</h3><p>Deletes every phone, job, batch, QC, Laboratory, Parts issue, Final QC, Ready Stock, and Export Box workflow record. Users, suppliers, dropdowns, technicians, and Parts Inventory are kept. Issued part quantities return to inventory, and every deleted row remains in Deleted History.</p></div>
+          <div><h3>Delete one IMEI completely</h3><p>Scan or enter one IMEI to remove its full device workflow from the system. An audit record stays permanently in Deleted History. Dropdown options, users, permissions and technicians are always preserved.</p></div>
         </div>
-        <form id="test-data-cleanup-form" class="test-cleanup-form" novalidate>
+        <form id="single-imei-delete-form" class="single-imei-delete-form" novalidate>
+          <label>IMEI to delete completely<input name="identifier" type="search" inputmode="numeric" autocomplete="off" placeholder="Scan exact 15-digit IMEI" required></label>
           <label>Deletion code<input name="deletion_code" type="password" inputmode="numeric" autocomplete="off" placeholder="Enter code" required></label>
-          <label>Type DELETE TEST DATA<input name="confirmation" type="text" autocomplete="off" placeholder="DELETE TEST DATA" required></label>
-          <button class="danger-button" type="submit">Delete test data</button>
+          <button class="danger-button" type="submit">Delete this IMEI</button>
+        </form>
+        <p class="single-imei-delete-help">This button deletes the exact IMEI from every workflow step and saves its audit record in Deleted History.</p>
+        <form id="test-data-cleanup-form" class="test-cleanup-form" novalidate>
+          <label class="test-cleanup-wide">Date-range / selected-page cleanup <em>Optional</em><input name="identifier" type="search" autocomplete="off" placeholder="Optional: scan IMEI or enter DEV-000001"></label>
+          <label>From received date<input name="date_from" type="date" value="${escapeHtml(dateFrom.value || "")}"></label>
+          <label>To received date<input name="date_to" type="date" value="${escapeHtml(dateTo.value || "")}"></label>
+          <fieldset class="test-cleanup-pages test-cleanup-wide"><legend>Full device history to delete</legend>
+            ${[
+              ["stock_received", "Stock Received"], ["imei_entry", "IMEI Entry"], ["initial_qc", "Initial QC"],
+              ["lab_glass", "Lab & Glass"], ["parts", "Parts"], ["inventory", "Inventory"],
+              ["final_qc", "Final QC"], ["frame", "Frame"], ["ready_stock", "Ready Stock"],
+              ["export_boxes", "Export Boxes"], ["supplier_records", "Supplier records"]
+            ].map(([key, label]) => `<label><input name="page_keys" type="checkbox" value="${key}"${key === "inventory" || key === "supplier_records" ? "" : " checked"}>${label}</label>`).join("")}
+          </fieldset>
+          <label>Deletion code<input name="deletion_code" type="password" inputmode="numeric" autocomplete="off" placeholder="Enter code" required></label>
+          <label>Type DELETE SELECTED TEST DATA<input name="confirmation" type="text" autocomplete="off" placeholder="DELETE SELECTED TEST DATA" required></label>
+          <button class="danger-button" type="submit">Delete IMEI and save audit history</button>
         </form>
       </section>`;
   }
@@ -275,7 +425,7 @@
           <div><span>Device</span><strong>${escapeHtml(record.device_number)}</strong></div>
           <div><span>Job</span><strong>${escapeHtml(record.job_number || "-")}</strong></div>
           <div><span>Status</span><strong>${escapeHtml(title(record.current_status))}</strong></div>
-          <div><span>Supplier</span><strong>${escapeHtml(record.supplier_label || "-")}</strong></div>
+          <div><span>Supplier</span><strong>${escapeHtml(confidentialPartnerText(record.supplier_label))}</strong></div>
           <div><span>Batch</span><strong>${escapeHtml(record.batch_number || "-")}</strong></div>
         </section>
         <form id="correction-save-form" class="correction-form" novalidate>
@@ -320,6 +470,7 @@
   }
 
   function renderChangedFields(value) {
+    if (!window.GREENLOOP_CAN_VIEW_PARTNER_NAMES) return "Saved values restricted by partner-name permission";
     const changes = value && typeof value === "object" ? value : {};
     const entries = Object.entries(changes);
     if (!entries.length) return "No field details saved.";
@@ -341,7 +492,7 @@
         <td>${formatCell(row.changed_at, "date")}</td><td>${escapeHtml(row.changed_by || "System")}</td>
         <td>${escapeHtml(row.device_number || "-")}</td><td>${escapeHtml(row.imei_before || "-")}<br><span class="audit-arrow">→ ${escapeHtml(row.imei_after || "-")}</span></td>
         <td>${escapeHtml(row.job_number || "-")}</td><td class="audit-reason">${escapeHtml(row.change_reason || "-")}</td>
-        <td><details class="report-deletion-details"><summary>View old / new values</summary><div class="change-fields">${renderChangedFields(row.changed_fields)}</div><details><summary>Full snapshots</summary><pre>${escapeHtml(JSON.stringify({ before: row.before_data, after: row.after_data }, null, 2))}</pre></details></details></td>
+        <td><details class="report-deletion-details"><summary>View old / new values</summary><div class="change-fields">${renderChangedFields(row.changed_fields)}</div>${window.GREENLOOP_CAN_VIEW_PARTNER_NAMES ? `<details><summary>Full snapshots</summary><pre>${escapeHtml(JSON.stringify({ before: row.before_data, after: row.after_data }, null, 2))}</pre></details>` : ""}</details></td>
       </tr>`).join("") : '<tr><td class="report-empty" colspan="7">No data corrections were found for this date range.</td></tr>';
       table = `<div class="report-table-wrap"><table class="report-table audit-table"><thead><tr><th>Changed at</th><th>Changed by</th><th>Device</th><th>IMEI old → new</th><th>Job</th><th>Reason</th><th>Changes</th></tr></thead><tbody>${body}</tbody></table></div>`;
     } else {
@@ -374,8 +525,10 @@
   async function searchCorrectionRecord(identifier) {
     const cleaned = String(identifier || "").trim();
     if (!cleaned) { setMessage("Enter an IMEI or device number first."); return; }
+    const generation = ++correctionSearchGeneration;
     setMessage();
     const { data, error } = await getClient().rpc("get_imei_correction_record", { p_identifier: cleaned });
+    if (generation !== correctionSearchGeneration || activeReport !== "data_correction") return;
     if (error) { correctionRecord = null; renderDataCorrection(); setMessage(error.message || "The device record could not be loaded."); return; }
     correctionRecord = data || null;
     renderDataCorrection();
@@ -429,30 +582,81 @@
   async function deleteAllTestData(form) {
     const formData = new FormData(form);
     const confirmation = String(formData.get("confirmation") || "").trim();
-    if (confirmation !== "DELETE TEST DATA") { setMessage("Type DELETE TEST DATA exactly to confirm."); return; }
-    const approved = window.confirm("This will permanently remove every phone and its complete workflow data. Deleted History will be kept. Continue?");
+    const identifier = String(formData.get("identifier") || "").trim();
+    const pages = formData.getAll("page_keys");
+    if (confirmation !== "DELETE SELECTED TEST DATA") { setMessage("Type DELETE SELECTED TEST DATA exactly to confirm."); return; }
+    if (!identifier && (!formData.get("date_from") || !formData.get("date_to"))) { setMessage("Enter one IMEI/device number or select both received dates."); return; }
+    if (!pages.length) { setMessage("Select at least one data page."); return; }
+    const approved = window.confirm(identifier ? `Delete the complete test history for ${identifier}?` : "Delete selected test data inside this received-date range?");
     if (!approved) return;
 
     const submit = form.querySelector('button[type="submit"]');
     submit.disabled = true;
     submit.textContent = "Deleting...";
     setMessage();
-    const { data, error } = await getClient().rpc("delete_all_test_operational_data", {
+    const { data, error } = await getClient().rpc("delete_greenloop_test_data_selectively", {
       p_deletion_code: formData.get("deletion_code"),
-      p_confirmation: confirmation
+      p_confirmation: confirmation,
+      p_identifier: identifier || null,
+      p_date_from: formData.get("date_from") || null,
+      p_date_to: formData.get("date_to") || null,
+      p_page_keys: pages
     });
     submit.disabled = false;
-    submit.textContent = "Delete test data";
-    if (error) { setMessage(error.message || "Test data could not be deleted."); return; }
+    submit.textContent = "Delete IMEI and save audit history";
+    if (error) { setMessage(error.message || "Selected test data could not be deleted."); return; }
 
     correctionRecord = null;
     await loadReports();
-    setMessage(`${Number(data?.deleted_devices || 0)} phone(s), ${Number(data?.deleted_jobs || 0)} job(s), and ${Number(data?.deleted_batches || 0)} batch(es) were deleted. ${Number(data?.restored_part_units || 0)} issued part unit(s) returned to inventory. ${Number(data?.history_records_saved || 0)} audit record(s) were saved.`, "success");
+    form.reset();
+    setMessage(`Deleted ${Number(data?.deleted_devices || 0)} phone(s) and ${Number(data?.deleted_jobs || 0)} job(s). The IMEI can now be entered again; its audit record is in Deleted History. Dropdowns, users, permissions and technicians were preserved.`, "success");
+  }
+
+  async function deleteOneImei(form) {
+    const formData = new FormData(form);
+    const identifier = String(formData.get("identifier") || "").trim();
+    const deletionCode = String(formData.get("deletion_code") || "").trim();
+    if (!identifier) { setMessage("Scan or enter the IMEI to delete."); return; }
+    if (!deletionCode) { setMessage("Enter the deletion code."); return; }
+    if (!window.confirm(`Delete the complete workflow for ${identifier}? The audit copy will remain in Deleted History.`)) return;
+
+    const submit = form.querySelector('button[type="submit"]');
+    submit.disabled = true;
+    submit.textContent = "Deleting...";
+    setMessage();
+    const { error } = await getClient().rpc("delete_greenloop_test_data_selectively", {
+      p_deletion_code: deletionCode,
+      p_confirmation: "DELETE SELECTED TEST DATA",
+      p_identifier: identifier,
+      p_date_from: null,
+      p_date_to: null,
+      p_page_keys: ["stock_received", "imei_entry", "initial_qc", "lab_glass", "parts", "inventory", "final_qc", "frame", "ready_stock", "export_boxes"]
+    });
+    submit.disabled = false;
+    submit.textContent = "Delete this IMEI";
+    if (error) { setMessage(error.message || "This IMEI could not be deleted."); return; }
+
+    correctionRecord = null;
+    await loadReports();
+    setMessage(`IMEI ${identifier} was deleted completely. Its audit record is available in Deleted History.`, "success");
   }
 
   function renderActiveReport() {
     document.querySelectorAll(".report-tab").forEach((tab) => tab.classList.toggle("active", tab.dataset.report === activeReport));
+    const liveDetails = activeReport === "complete_device_details";
+    filterForm.hidden = liveDetails;
+    summary.hidden = liveDetails;
+    if (liveDetails) {
+      panelKicker.textContent = "Connected phone";
+      panelTitle.textContent = "Complete Device Details";
+      panelDescription.textContent = reports.complete_device_details.description;
+      rowCount.textContent = "Live / read-only USB";
+      window.GREENLOOP_COMPLETE_DEVICE_DETAILS?.mount(reportContent);
+      return;
+    }
+    window.GREENLOOP_COMPLETE_DEVICE_DETAILS?.unmount();
     if (activeReport === "overview") renderOverview();
+    else if (activeReport === "supplier_progress") renderSupplierProgress();
     else if (activeReport === "export_boxes") renderExportBoxes();
     else if (activeReport === "data_correction") renderDataCorrection();
     else if (activeReport === "deleted_history") renderDeletedHistory();
@@ -462,34 +666,55 @@
   async function loadReports(event) {
     event?.preventDefault();
     setMessage();
-    if (!dateFrom.value || !dateTo.value) { setMessage("Select both dates first."); return; }
+    const from = dateFrom.value, to = dateTo.value;
+    if (!from || !to || from > to) { setMessage("Select a valid From date and To date."); return; }
+    const generation = ++reportGeneration;
     const submit = document.querySelector("#apply-report-filter");
     submit.disabled = true;
     submit.textContent = "Loading...";
-    const { data, error } = await getClient().rpc("get_greenloop_reports", { p_date_from: dateFrom.value, p_date_to: dateTo.value });
-    submit.disabled = false;
-    submit.textContent = "Apply date range";
-    if (error) { setMessage(error.message || "Reports could not be loaded."); return; }
-    reportData = Array.isArray(data) ? data[0] : data || {};
-    const { data: exportBoxes, error: exportBoxesError } = await getClient().rpc("get_export_box_report", { p_date_from: dateFrom.value, p_date_to: dateTo.value });
-    reportData.export_boxes = exportBoxesError ? [] : (exportBoxes || []);
-    const { data: deletedHistory, error: deletedHistoryError } = await getClient().rpc("get_deletion_history", { p_date_from: dateFrom.value, p_date_to: dateTo.value });
-    reportData.deleted_history = deletedHistoryError ? [] : (deletedHistory || []);
-    if (canManageCorrections) {
-      const { data: dataChanges, error: dataChangesError } = await getClient().rpc("get_data_change_history", { p_date_from: dateFrom.value, p_date_to: dateTo.value });
-      reportData.data_changes = dataChangesError ? [] : (dataChanges || []);
-    } else {
-      reportData.data_changes = [];
+    try {
+      const dates = { p_date_from: from, p_date_to: to };
+      const [base, boxes, suppliers, deletions, changes, parts] = await Promise.all([
+        getClient().rpc("get_greenloop_reports", dates),
+        getClient().rpc("get_export_box_report", dates),
+        getClient().rpc("get_supplier_stock_progress", dates),
+        getClient().rpc("get_deletion_history", dates),
+        canManageCorrections ? getClient().rpc("get_data_change_history", dates) : Promise.resolve({ data: [] }),
+        getClient().rpc("get_open_parts_pending_count")
+      ]);
+      if (generation !== reportGeneration) return;
+      if (base.error) throw base.error;
+      const next = Array.isArray(base.data) ? base.data[0] : base.data;
+      if (!hasReportSummary(next)) throw new Error("Reports are unavailable because the response did not contain valid operational totals. Apply the date range to retry.");
+      next.date_from = from;
+      next.date_to = to;
+      const warnings = [];
+      for (const [key, label, response] of [["export_boxes", "Export boxes", boxes], ["supplier_progress", "Supplier progress", suppliers], ["deleted_history", "Deleted history", deletions], ["data_changes", "Data changes", changes]]) {
+        next[key] = response.error ? [] : response.data || [];
+        if (response.error) warnings.push(label + " could not be loaded");
+      }
+      if (!parts.error && ["number", "string"].includes(typeof parts.data) && String(parts.data).trim() !== "" && Number.isFinite(Number(parts.data)) && Number(parts.data) >= 0) {
+        next.summary = next.summary || {};
+        next.summary.parts_pending = Number(parts.data);
+      } else if (parts.error) warnings.push("Live parts count could not be refreshed");
+      await addDeviceIdentityToReports(next);
+      if (generation !== reportGeneration) return;
+      reportData = next;
+      selectedExportBox = ""; exportBoxImeiFilter = ""; selectedSupplier = "all";
+      renderSummary();
+      renderActiveReport();
+      if (warnings.length) setMessage(warnings.join(". ") + ". Do not treat an unavailable report as zero records.");
+    } catch (error) {
+      if (generation === reportGeneration) {
+        if (!hasReportSummary(reportData)) {
+          renderSummary();
+          if (activeReport === "overview") renderOverview();
+        }
+        setMessage(error.message || "Reports could not be loaded.");
+      }
+    } finally {
+      if (generation === reportGeneration) { submit.disabled = false; submit.textContent = "Apply date range"; }
     }
-    selectedExportBox = "";
-    exportBoxImeiFilter = "";
-    const { data: openPartsCount } = await getClient().rpc("get_open_parts_pending_count");
-    if (Number.isFinite(Number(openPartsCount))) {
-      reportData.summary = reportData.summary || {};
-      reportData.summary.parts_pending = Number(openPartsCount);
-    }
-    renderSummary();
-    renderActiveReport();
   }
 
   async function initialize() {
@@ -499,6 +724,9 @@
     const { data: canView, error } = await getClient().rpc("has_role", { required_roles: ["super_admin", "owner", "manager", "receiving", "initial_qc", "parts", "technician", "final_qc", "production", "rma", "shop_staff"] });
     if (error) throw error;
     if (!canView) { permissionMessage.textContent = "Your account does not have Reports permission."; permissionMessage.hidden = false; return; }
+    // Wait for the shared page permission check before any local USB requests.
+    await window.GREENLOOP_ACCESS_READY;
+    if (window.GREENLOOP_PAGE_ACCESS?.pageKey !== "reports") return;
     const { data: correctionPermission } = await getClient().rpc("has_role", { required_roles: ["super_admin", "owner", "manager"] });
     canManageCorrections = Boolean(correctionPermission);
     const correctionTab = document.querySelector('[data-report="data_correction"]');
@@ -509,6 +737,7 @@
     dateFrom.value = localDate(new Date(now.getFullYear(), now.getMonth(), 1));
     dateTo.value = localDate(now);
     app.hidden = false;
+    renderActiveReport();
     await loadReports();
   }
 
@@ -518,7 +747,7 @@
   filterForm.addEventListener("submit", loadReports);
   tabs.addEventListener("click", (event) => {
     const tab = event.target.closest(".report-tab");
-    if (!tab) return;
+    if (!tab || (tab.dataset.report !== "overview" && !reports[tab.dataset.report])) return;
     activeReport = tab.dataset.report;
     renderActiveReport();
   });
@@ -531,7 +760,7 @@
     }
     const deleteBoxButton = event.target.closest("[data-delete-export-box]");
     if (deleteBoxButton) {
-      deleteSelectedExportBox(deleteBoxButton.dataset.deleteExportBox || "").catch((error) => setMessage(error.message || "The export box could not be deleted."));
+      runReportMutation(deleteBoxButton, () => deleteSelectedExportBox(deleteBoxButton.dataset.deleteExportBox || ""));
       return;
     }
     const boxButton = event.target.closest("[data-export-box]");
@@ -549,12 +778,17 @@
     }
     if (event.target.id === "correction-save-form") {
       event.preventDefault();
-      saveCorrection(event.target).catch((error) => setMessage(error.message || "The correction could not be saved."));
+      runReportMutation(event.target.querySelector('button[type="submit"]'), () => saveCorrection(event.target));
       return;
     }
     if (event.target.id === "test-data-cleanup-form") {
       event.preventDefault();
-      deleteAllTestData(event.target).catch((error) => setMessage(error.message || "Test data could not be deleted."));
+      runReportMutation(event.target.querySelector('button[type="submit"]'), () => deleteAllTestData(event.target));
+      return;
+    }
+    if (event.target.id === "single-imei-delete-form") {
+      event.preventDefault();
+      runReportMutation(event.target.querySelector('button[type="submit"]'), () => deleteOneImei(event.target));
     }
   });
   reportContent.addEventListener("input", (event) => {
@@ -566,6 +800,11 @@
       filter.focus();
       filter.setSelectionRange(filter.value.length, filter.value.length);
     }
+  });
+  reportContent.addEventListener("change", (event) => {
+    if (event.target.id !== "supplier-progress-filter") return;
+    selectedSupplier = event.target.value || "all";
+    renderSupplierProgress();
   });
   initialize().catch((error) => { permissionMessage.textContent = error.message || "Reports could not be loaded."; permissionMessage.hidden = false; });
 })();

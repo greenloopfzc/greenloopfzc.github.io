@@ -31,8 +31,17 @@
   let activeReturnCondition = "pending";
   let manualLabPartsMode = false;
   let toastTimer;
+  const pendingActions = new Set();
 
-  const getClient = () => (client ||= window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey));
+  async function runAction(key, control, targetMessage, action) {
+    if (pendingActions.has(key)) return;
+    pendingActions.add(key);
+    const label = control?.textContent;
+    try { await action(); } catch (error) { setMessage(targetMessage, error.message || "The action could not be completed. Refresh to check its status before retrying."); }
+    finally { pendingActions.delete(key); if (control?.isConnected) { control.disabled = false; control.textContent = label; } }
+  }
+
+  const getClient = () => (client ||= window.GREENLOOP_GET_CLIENT());
   const escapeHtml = (value) => String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]);
   const money = (value) => `AED ${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const dateTime = (value) => value ? new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "—";
@@ -208,7 +217,7 @@
 
   async function loadData() {
     const [requestResponse, inventoryResponse] = await Promise.all([
-      getClient().from("job_part_requests").select("id, part_name, quantity_requested, quantity_issued, request_source, requested_for_technician, notes, status, requested_at, job:jobs!inner(job_number, supplier:suppliers(supplier_code, company_name), receiving_batch:receiving_batches(planned_quantity), device:devices(device_number, imei_1, model))").in("status", ["requested", "partially_issued", "issued"]).order("requested_at", { ascending: false }).limit(500),
+      getClient().from("job_part_requests").select("id, part_name, quantity_requested, quantity_issued, request_source, requested_for_technician, notes, status, requested_at, job:jobs!inner(job_number, supplier:greenloop_suppliers(supplier_code, company_name), receiving_batch:receiving_batches(planned_quantity), device:devices(device_number, imei_1, model))").in("status", ["requested", "partially_issued", "issued"]).order("requested_at", { ascending: false }).limit(500),
       getClient().from("part_inventory").select("id, sku, part_name, stock_quantity, unit_cost, is_active, notes").order("part_name")
     ]);
     if (requestResponse.error) throw requestResponse.error;
@@ -357,19 +366,19 @@
   }
 
   queueList.addEventListener("click", (event) => {
-    const issue = event.target.closest("[data-issue-request]"); if (issue) { issueRequest(issue); return; }
-    const cancel = event.target.closest("[data-cancel-request]"); if (cancel) cancelRequest(cancel);
+    const issue = event.target.closest("[data-issue-request]"); if (issue) { runAction("request:" + issue.dataset.issueRequest, issue, issueMessage, () => issueRequest(issue)); return; }
+    const cancel = event.target.closest("[data-cancel-request]"); if (cancel) runAction("request:" + cancel.dataset.cancelRequest, cancel, issueMessage, () => cancelRequest(cancel));
   });
   partReturnReport.addEventListener("click", (event) => {
     const button = event.target.closest("[data-review-return]");
-    if (button) reviewReturn(button);
+    if (button) runAction("return:" + button.dataset.reviewReturn, button, returnReportMessage, () => reviewReturn(button));
   });
-  inventoryForm.addEventListener("submit", saveInventory);
-  document.querySelector("#add-part-name").addEventListener("click", addPartName);
-  document.querySelector("#remove-part-name").addEventListener("click", removePartName);
+  inventoryForm.addEventListener("submit", (event) => { event.preventDefault(); runAction("inventory", document.querySelector("#inventory-button"), inventoryMessage, () => saveInventory(event)); });
+  document.querySelector("#add-part-name").addEventListener("click", (event) => runAction("part-name", event.currentTarget, inventoryMessage, addPartName));
+  document.querySelector("#remove-part-name").addEventListener("click", (event) => runAction("part-name", event.currentTarget, inventoryMessage, removePartName));
   document.querySelector("#refresh-parts").addEventListener("click", () => loadData().catch((error) => toastMessage(error.message || "Parts data could not be refreshed.")));
   document.querySelector("#refresh-return-report").addEventListener("click", () => loadPartReturnReport().catch((error) => setMessage(returnReportMessage, error.message || "Part return reports could not be refreshed.")));
-  manualLabPartsToggle.addEventListener("click", () => toggleManualLabPartsMode().catch((error) => setMessage(issueMessage, error.message || "Manual Lab Parts Mode could not be changed.")));
+  manualLabPartsToggle.addEventListener("click", () => runAction("manual-mode", manualLabPartsToggle, issueMessage, toggleManualLabPartsMode).then(renderManualLabPartsMode));
   document.addEventListener("greenloop:notifications-changed", () => loadPartReturnReport().catch(() => {}));
   document.querySelectorAll("[data-return-report]").forEach((button) => button.addEventListener("click", () => {
     activeReturnCondition = button.dataset.returnReport;

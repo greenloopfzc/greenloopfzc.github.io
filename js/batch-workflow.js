@@ -5,7 +5,7 @@
   let client;
 
   function api() {
-    if (!client) client = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+    if (!client) client = window.GREENLOOP_GET_CLIENT();
     return client;
   }
 
@@ -73,7 +73,7 @@
       status.className = `batch-row-status${state ? ` ${state}` : ""}`;
     }
 
-    async function reloadOptionGroup(group, preferredValue = "") {
+    async function reloadOptionGroup(group, preferredValue = "", preferredRow = null) {
       const masterByGroup = { model: modelMaster, storage_gb: storageMaster, color: colorMaster };
       const classByGroup = { model: ".batch-row-model", storage_gb: ".batch-row-storage", color: ".batch-row-color" };
       const master = masterByGroup[group];
@@ -92,7 +92,7 @@
         if ([...select.options].some((option) => option.value === String(chosen || ""))) select.value = String(chosen);
       };
       fill(master, preferredValue || master.value);
-      rowSelects.forEach((select, index) => fill(select, preferredValue || preserved[index]));
+      rowSelects.forEach((select, index) => fill(select, select.closest("tr") === preferredRow ? preferredValue : preserved[index]));
     }
 
     async function addRowOption(button) {
@@ -101,7 +101,7 @@
       if (!value?.trim()) return;
       const { data, error } = await api().rpc("add_entry_option", { p_option_group: group, p_option_value: value.trim() });
       if (error) { window.alert(error.message || "The option could not be added."); return; }
-      await reloadOptionGroup(group, data?.[0]?.saved_value || value.trim());
+      await reloadOptionGroup(group, data?.[0]?.saved_value || value.trim(), button.closest("tr"));
     }
 
     async function removeRowOption(button) {
@@ -222,6 +222,9 @@
 
     async function saveRow(row, automatic = false) {
       if (!row || row.dataset.busy === "yes" || row.dataset.saved === "yes") return;
+      if (!currentBatch || String(currentBatch.batch_id) !== batchSelect.value || !panel.contains(row)) {
+        setRowStatus(row, "Wait for the selected supplier batch to load", "is-error"); return;
+      }
       const imei = row.querySelector(".batch-row-imei").value.trim();
       const model = row.querySelector(".batch-row-model").value;
       const storage = row.querySelector(".batch-row-storage").value;
@@ -230,7 +233,7 @@
       const button = row.querySelector(".batch-save-button");
       if (!/^\d{15}$/.test(imei)) { setRowStatus(row, "IMEI must be 15 digits", "is-error"); row.querySelector(".batch-row-imei").focus(); return; }
       if (!model || !storage || !color) { setRowStatus(row, "Select Model, GB and Color", "is-error"); return; }
-      if (battery === "" || Number(battery) < 0 || Number(battery) > 100) { setRowStatus(row, "Enter BH 0–100", "is-error"); return; }
+      if (battery === "" || !Number.isInteger(Number(battery)) || Number(battery) < 0 || Number(battery) > 100) { setRowStatus(row, "Enter BH 0–100", "is-error"); return; }
       row.dataset.busy = "yes";
       if (savedImeis.has(imei) || savingImeis.has(imei)) {
         row.dataset.busy = "";
@@ -239,6 +242,8 @@
       }
       savingImeis.add(imei);
       const batchId = currentBatch.batch_id;
+      const editableControls = [...row.querySelectorAll("input, select, button")].map((control) => [control, control.disabled]);
+      editableControls.forEach(([control]) => { control.disabled = true; });
       button.disabled = true;
       setRowStatus(row, "Saving...", "is-saving");
       try {
@@ -270,7 +275,12 @@
       const nextControl = nextRow?.querySelector(".batch-row-imei:not(:disabled)") || panel.querySelector("tr:not(.batch-saved-row) .batch-row-battery:not(:disabled)");
       nextControl?.focus();
       } catch (error) { setRowStatus(row, row.dataset.saved === "yes" ? `IMEI saved; details need checking: ${error.message}` : (error.message || "Could not save"), "is-error"); }
-      finally { row.dataset.busy = ""; savingImeis.delete(imei); button.disabled = row.dataset.saved === "yes"; }
+      finally {
+        row.dataset.busy = "";
+        savingImeis.delete(imei);
+        if (row.dataset.saved !== "yes") editableControls.forEach(([control, disabled]) => { control.disabled = disabled; });
+        button.disabled = row.dataset.saved === "yes";
+      }
     }
 
     async function loadSelectedBatch() {
@@ -308,6 +318,7 @@
     });
     function applyCableDevice(device) {
       if (!currentBatch || !panel || panel.hidden) return;
+      if (String(currentBatch.batch_id) !== batchSelect.value) return;
       if (!device) return;
       const rows = [...panel.querySelectorAll("tbody tr")];
       const connectedImei = String(device.imei || "").replace(/\D/g, "").slice(0, 15);

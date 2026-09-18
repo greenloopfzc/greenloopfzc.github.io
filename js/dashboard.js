@@ -40,7 +40,7 @@
   updateDashboardGreeting();
 
   function getClient() {
-    return (client ||= window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey));
+    return (client ||= window.GREENLOOP_GET_CLIENT());
   }
 
   function escapeHtml(value) {
@@ -51,11 +51,6 @@
     return String(value || "Pending").replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
   }
 
-  function localDate(value) {
-    const date = value instanceof Date ? value : new Date(value);
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-  }
-
   function dateInDubai(value) {
     const format = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Dubai", year: "numeric", month: "2-digit", day: "2-digit" });
     const parts = Object.fromEntries(format.formatToParts(new Date(value)).filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
@@ -63,7 +58,7 @@
   }
 
   function dateLabel(value) {
-    return new Date(`${value}T00:00:00`).toLocaleDateString("en-US", { weekday: "short", timeZone: "Asia/Dubai" });
+    return new Date(`${value}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", timeZone: "Asia/Dubai" });
   }
 
   function setMenu(isOpen) {
@@ -142,7 +137,11 @@
   async function refreshLiveHeadlines() {
     const { data, error } = await getClient().rpc("get_overview_activity_headlines", { p_limit: 12 });
     if (error) {
-      renderLiveHeadlines([]);
+      liveHeadlinesSignature = "";
+      if (liveHeadlines && liveHeadlinesItems) {
+        liveHeadlines.hidden = false;
+        liveHeadlinesItems.textContent = "Live activity is temporarily unavailable. Retrying automatically.";
+      }
       return;
     }
     renderLiveHeadlines(data || []);
@@ -185,7 +184,8 @@
     document.querySelector(".throughput-panel .panel-kicker").textContent = "Last 7 days";
     document.querySelector(".throughput-panel h2").textContent = "Final QC passes";
     document.querySelector(".throughput-panel .chart-legend").lastChild.textContent = "Passed";
-    document.querySelector(".throughput-summary").innerHTML = `<strong>${completed.length}</strong><span>phones passed Final QC in the last 7 days</span><em>${counts.get(today) || 0} passed today</em>`;
+    const displayedTotal = [...counts.values()].reduce((total, count) => total + count, 0);
+    document.querySelector(".throughput-summary").innerHTML = `<strong>${displayedTotal}</strong><span>phones passed Final QC in the last 7 days</span><em>${counts.get(today) || 0} passed today</em>`;
   }
 
   function renderPriority(rowsToRender) {
@@ -232,7 +232,7 @@
       ...(reportData.stock_received || []).map((row) => ({ time: row.received_at, title: "Stock received", text: `${row.imei || "No IMEI"} - ${row.model || "Unknown model"}`, style: "green" }))
     ].filter((item) => item.time).sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 4);
     document.querySelector(".activity-list").innerHTML = items.length ? items.map((item) => `
-      <li><i class="activity-dot ${item.style}"></i><span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.text)}</small></span><time>${escapeHtml(new Date(item.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))}</time></li>
+      <li><i class="activity-dot ${item.style}"></i><span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.text)}</small></span><time>${escapeHtml(new Date(item.time).toLocaleTimeString([], { timeZone: "Asia/Dubai", hour: "2-digit", minute: "2-digit" }))}</time></li>
     `).join("") : '<li><span><strong>No recent live activity.</strong><small>New receipts and workflow actions will appear here.</small></span></li>';
   }
 
@@ -249,12 +249,12 @@
 
   async function loadLiveDashboard() {
     const now = new Date();
-    const start = new Date(now);
-    start.setDate(start.getDate() - 6);
+    const start = new Date(`${dateInDubai(now)}T12:00:00Z`);
+    start.setUTCDate(start.getUTCDate() - 6);
     const days = Array.from({ length: 7 }, (_, index) => {
       const day = new Date(start);
-      day.setDate(start.getDate() + index);
-      return localDate(day);
+      day.setUTCDate(start.getUTCDate() + index);
+      return day.toISOString().slice(0, 10);
     });
     const [reportsResult, readyResult, partsResult, workflowResult] = await Promise.all([
       getClient().rpc("get_greenloop_reports", { p_date_from: days[0], p_date_to: days[6] }),
@@ -264,10 +264,12 @@
     ]);
     if (reportsResult.error) throw reportsResult.error;
     if (workflowResult.error) throw workflowResult.error;
+    if (readyResult.error) throw readyResult.error;
     const reportData = Array.isArray(reportsResult.data) ? reportsResult.data[0] : (reportsResult.data || {});
+    if (!reportData?.summary) throw new Error("Live overview data is unavailable. Please refresh to retry.");
     const summary = reportData.summary || {};
-    if (!partsResult.error && Number.isFinite(Number(partsResult.data))) summary.parts_pending = Number(partsResult.data);
-    const readyData = readyResult.error ? {} : (Array.isArray(readyResult.data) ? readyResult.data[0] : readyResult.data || {});
+    if (!partsResult.error && partsResult.data !== null && partsResult.data !== undefined && partsResult.data !== "" && Number.isFinite(Number(partsResult.data))) summary.parts_pending = Number(partsResult.data);
+    const readyData = Array.isArray(readyResult.data) ? readyResult.data[0] : readyResult.data || {};
     const readyTotal = Number(readyData.total_qty) || 0;
 
     const workflow = Array.isArray(workflowResult.data) ? workflowResult.data[0] : (workflowResult.data || {});
@@ -279,6 +281,15 @@
     renderParts(reportData.parts_inventory || []);
     renderLiveStatus(summary, readyTotal, reportData);
     renderActivity(reportData);
+  }
+
+  function showDashboardUnavailable(error) {
+    const text = "Live data could not be loaded. Refresh the page to try again.";
+    document.querySelectorAll(".workflow-metric-grid, .queue-list, .queue-insight p, .bar-chart, .throughput-summary, .location-grid").forEach((element) => { element.textContent = text; });
+    document.querySelector(".priority-table tbody").innerHTML = `<tr><td colspan="4">${text}</td></tr>`;
+    document.querySelectorAll(".stock-list, .activity-list").forEach((element) => { element.innerHTML = `<li>${text}</li>`; });
+    rows = [];
+    showToast(error?.message || text);
   }
 
   openMenuButton.addEventListener("click", () => setMenu(true));
@@ -296,7 +307,7 @@
 
   async function protectDashboard() {
     if (!config.supabaseUrl || !config.supabaseAnonKey || !window.supabase) {
-      showToast("Dashboard authentication is not configured.");
+      showDashboardUnavailable(new Error("Dashboard authentication is not configured."));
       return;
     }
     const { data: sessionData, error: sessionError } = await getClient().auth.getSession();
@@ -320,6 +331,6 @@
     updateDashboardGreeting(currentName);
   }, 60000);
 
-  protectDashboard().catch((error) => showToast(error.message || "Live dashboard data could not be loaded."));
+  protectDashboard().catch(showDashboardUnavailable);
   window.setInterval(() => refreshLiveHeadlines().catch(() => {}), 15000);
 })();

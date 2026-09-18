@@ -23,9 +23,11 @@
   const reworkSubmit = document.querySelector("#ready-stock-rework-submit");
   let client;
   let toastTimer;
+  let sendingForRework = false;
+  let readyGeneration = 0;
 
   function getClient() {
-    if (!client) client = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+    if (!client) client = window.GREENLOOP_GET_CLIENT();
     return client;
   }
 
@@ -134,58 +136,47 @@
       refresh.textContent = "Refresh table";
       throw new Error("Select a valid From date and To date, or clear both dates.");
     }
+    const generation = ++readyGeneration;
+    try {
     const { data, error } = await getClient().rpc("get_ready_stock_final_grade_table", {
       p_date_from: from,
       p_date_to: to
     });
-    refresh.disabled = false;
-    refresh.textContent = "Refresh table";
+    if (generation !== readyGeneration) return;
     if (error) throw error;
     render(Array.isArray(data) ? data[0] : data);
+    } finally { if (generation === readyGeneration) { refresh.disabled = false; refresh.textContent = "Refresh table"; } }
   }
 
   async function sendForRework(event) {
     event.preventDefault();
+    if (sendingForRework) return;
+    const department = reworkDepartment.value;
+    const technician = reworkTechnician.value;
     const imei = reworkImei.value.replace(/\D/g, "").slice(0, 15);
     const reason = reworkReason.value.trim();
     if (!/^\d{15}$/.test(imei)) { showToast("Enter a 15-digit Ready Stock IMEI."); reworkImei.focus(); return; }
-    const departmentName = reworkDepartment.value === "frame" ? "Frame Department" : "Laboratory";
-    if (reworkDepartment.value === "laboratory" && !reworkTechnician.value) { showToast("Select the Laboratory technician."); reworkTechnician.focus(); return; }
+    const departmentName = department === "frame" ? "Frame Department" : "Laboratory";
+    if (department === "laboratory" && !technician) { showToast("Select the Laboratory technician."); reworkTechnician.focus(); return; }
     if (!window.confirm(`Send ${imei} from Ready Stock to ${departmentName}?`)) return;
+    sendingForRework = true;
     reworkSubmit.disabled = true;
     reworkSubmit.textContent = "Sending...";
-    let error;
     try {
-      ({ error } = await getClient().rpc("send_ready_stock_for_rework", {
-        p_imei: imei, p_department: reworkDepartment.value, p_customer_reason: reason || null
-      }));
-      if (!error && reworkDepartment.value === "frame") {
-        ({ error } = await getClient().rpc("ensure_ready_stock_frame_rework_cycle", { p_imei: imei }));
+      const { error } = await getClient().rpc("send_ready_stock_for_rework_atomic", {
+        p_imei: imei, p_department: department, p_customer_reason: reason || null,
+        p_technician_id: department === "laboratory" ? technician : null
+      });
+      if (error) {
+        if (error.code === "PGRST202") throw new Error("Run the latest Greenloop database update before sending Ready Stock for rework.");
+        if (String(error.message || "").includes("not currently available in Ready Stock")) throw new Error("This mobile is not in Ready Stock.");
+        throw error;
       }
-      if (!error && reworkDepartment.value === "laboratory") {
-        ({ error } = await getClient().rpc("assign_ready_stock_rework_technician", { p_imei: imei, p_technician_id: reworkTechnician.value }));
-      }
-    } finally {
-      reworkSubmit.disabled = false;
-      reworkSubmit.textContent = "Send for rework";
-    }
-    if (error) {
-      if (reworkDepartment.value === "laboratory" && String(error.message || "").includes("not in Ready Stock")) {
-        const { error: assignError } = await getClient().rpc("assign_ready_stock_rework_technician", { p_imei: imei, p_technician_id: reworkTechnician.value });
-        if (!assignError) {
-          reworkForm.reset();
-          syncReworkTechnician();
-          showToast("Existing Lab rework phone assigned to the selected technician.");
-          await loadReadyStock();
-          return;
-        }
-      }
-      if (String(error.message || "").includes("not currently available in Ready Stock")) throw new Error("This mobile is not in Ready Stock.");
-      throw error;
-    }
-    reworkForm.reset();
-    showToast(`Phone sent to ${departmentName}. Journey updated.`);
-    await loadReadyStock();
+      reworkForm.reset();
+      showToast(`Phone sent to ${departmentName}. Journey updated.`);
+      syncReworkTechnician();
+      try { await loadReadyStock(); } catch (_) { showToast("Phone sent for rework. Refresh Ready Stock to update the table."); }
+    } finally { sendingForRework = false; reworkSubmit.disabled = false; reworkSubmit.textContent = "Send for rework"; }
   }
 
   function syncReworkTechnician() { reworkTechnicianWrap.hidden = reworkDepartment.value !== "laboratory"; }

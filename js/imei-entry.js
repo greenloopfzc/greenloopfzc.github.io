@@ -47,7 +47,7 @@
     return Promise.race([promise, timeout]).finally(() => window.clearTimeout(timeoutId));
   }
 
-  function api() { return (client ||= window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey)); }
+  function api() { return (client ||= window.GREENLOOP_GET_CLIENT()); }
   function setMenu(open) { sidebar.classList.toggle("is-open", open); backdrop.hidden = !open; document.body.classList.toggle("menu-open", open); }
   function showToast(value) { window.clearTimeout(toastTimer); toast.textContent = value; toast.hidden = false; toast.classList.add("is-visible"); toastTimer = window.setTimeout(() => { toast.hidden = true; toast.classList.remove("is-visible"); }, 3400); }
   function setMessage(value = "", type = "error") { message.textContent = value; message.classList.toggle("is-visible", Boolean(value)); message.classList.toggle("is-success", type === "success"); }
@@ -292,7 +292,7 @@
 
   function canAutoSave() {
     return Boolean(
-      entryReady && battery.dataset.estimated !== "yes" && !savedImeis.has(imei.value.trim()) &&
+      entryReady && window.GREENLOOP_PAGE_ACCESS?.canEdit === true && battery.dataset.estimated !== "yes" && !savedImeis.has(imei.value.trim()) &&
       !(cableMirror && window.GREENLOOP_BULK_CABLE_OWNER?.()) &&
       batches.some((item) => item.batch_id === batchSelect.value) &&
       /^\d{15}$/.test(imei.value.trim()) &&
@@ -312,6 +312,7 @@
     event?.preventDefault();
     window.clearTimeout(autoSaveTimer);
     if (saving) return;
+    if (!entryReady || window.GREENLOOP_PAGE_ACCESS?.canEdit !== true) { setMessage("Entry permission is required to save an IMEI."); return; }
     if (automatic && !canAutoSave()) return;
     setMessage();
     const batch = batches.find((item) => item.batch_id === batchSelect.value);
@@ -321,20 +322,16 @@
     if (!/^\d{15}$/.test(scannedImei)) { setMessage("IMEI must contain exactly 15 digits."); return; }
     if (savingImeis.has(scannedImei)) return;
     if (savedImeis.has(scannedImei)) { checkDuplicateImei(scannedImei, { force: true }).catch(() => {}); return; }
+    const receiptDetails = { p_batch_id: batch.batch_id, p_imei_1: scannedImei, p_model: model.value, p_storage_gb: Number(storage.value), p_color: color.value, p_battery_health: Number(battery.value) };
+    const cableDetails = { serial: serialNumber?.value.trim() || null, region: phoneRegion?.value.trim() || null };
+    const controls = [...form.querySelectorAll("input, select, textarea, button")].map((control) => [control, control.disabled]);
+    controls.forEach(([control]) => { control.disabled = true; });
     saving = true;
     savingImeis.add(scannedImei);
     setBusy(submit, true, automatic ? "Saving automatically..." : "Saving IMEI...");
     try {
     if (await checkDuplicateImei(scannedImei, { force: !automatic })) return;
-    const cableDetails = { serial: serialNumber?.value.trim() || null, region: phoneRegion?.value.trim() || null };
-    const { data, error } = await api().rpc("receive_stock_batch_imei_with_plan", {
-      p_batch_id: batch.batch_id,
-      p_imei_1: scannedImei,
-      p_model: model.value,
-      p_storage_gb: Number(storage.value),
-      p_color: color.value,
-      p_battery_health: Number(battery.value)
-    });
+    const { data, error } = await api().rpc("receive_stock_batch_imei_with_plan", receiptDetails);
     if (error) { setMessage(window.GREENLOOP_SHOW_IMEI_SAVE_ERROR(error, scannedImei)); return; }
     savedImeis.add(scannedImei);
     window.dispatchEvent(new CustomEvent("greenloop:imei-entry-saved", { detail: { imei: scannedImei } }));
@@ -354,11 +351,13 @@
     imei.focus();
     if (Number(result?.remaining_quantity) === 0) showToast("This stock batch is complete. All IMEIs are in Initial QC.");
     await loadBatches(Number(result?.remaining_quantity) === 0 ? "" : batch.batch_id);
-    } catch (error) { setMessage(error.message || "The IMEI could not be saved."); }
+    } catch (error) { setMessage(savedImeis.has(scannedImei) ? "IMEI saved, but the remaining details or receipt could not refresh. Check IMEI Search before continuing." : (error.message || "The IMEI could not be saved."), savedImeis.has(scannedImei) ? "success" : "error"); }
     finally {
       saving = false;
       savingImeis.delete(scannedImei);
       setBusy(submit, false, "Saving IMEI...");
+      controls.forEach(([control, disabled]) => { control.disabled = disabled; });
+      if (!detailPanel.hidden && !duplicateDialog?.open) imei.focus();
     }
   }
 
@@ -372,6 +371,8 @@
     );
     if (error) throw error;
     if (!allowed) throw new Error("Your account does not have IMEI Entry permission.");
+    await window.GREENLOOP_ACCESS_READY;
+    if (!window.GREENLOOP_PAGE_ACCESS) throw new Error("Your account does not have IMEI Entry permission.");
     const [masterResult, batchResult] = await Promise.allSettled([
       loadAllMaster(),
       loadBatches(requestedBatchId)

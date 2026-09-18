@@ -24,9 +24,11 @@
   let selectedStep;
   let isStarted = false;
   let toastTimer;
+  let selectionVersion = 0;
+  let workBusy = false;
 
   function getClient() {
-    if (!client) client = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+    if (!client) client = window.GREENLOOP_GET_CLIENT();
     return client;
   }
 
@@ -102,26 +104,37 @@
   }
 
   async function loadSelectedStep() {
-    selectedStep = queueSteps.find((step) => step.id === stepSelect.value);
-    workspace.hidden = !selectedStep;
+    const version = ++selectionVersion;
+    const step = queueSteps.find((item) => item.id === stepSelect.value);
+    selectedStep = undefined;
+    isStarted = false;
+    startButton.disabled = true;
+    completeButton.disabled = true;
+    workspace.hidden = !step;
     setMessage();
     form.reset();
-    if (!selectedStep) return;
+    if (!step) return;
 
-    const job = getJob(selectedStep) || {};
-    const device = getDevice(selectedStep) || {};
-    const workOrder = getWorkOrder(selectedStep) || {};
+    const job = getJob(step) || {};
+    const device = getDevice(step) || {};
+    const workOrder = getWorkOrder(step) || {};
     const details = [device.brand, device.model, device.original_grade ? `Grade ${device.original_grade}` : ""].filter(Boolean).join(" - ");
     deviceSummary.innerHTML = `
       <div><p class="panel-kicker">Selected device</p><h2>${escapeHtml(device.device_number || "Device")}</h2><p>${escapeHtml(details || "No model details recorded")}</p></div>
       <dl><div><dt>Job</dt><dd>${escapeHtml(job.job_number)}</dd></div><div><dt>IMEI</dt><dd>${escapeHtml(device.imei_1 || "—")}</dd></div><div><dt>Work order</dt><dd>${escapeHtml(workOrder.work_order_number || "—")}</dd></div></dl>
     `;
 
+    findingsList.textContent = "Loading Glass details...";
+    statusTitle.textContent = "Loading job";
+    statusText.textContent = "Wait for this phone’s work record to load.";
     const [findings, recordResponse] = await Promise.all([
       loadFindings(job.id),
-      getClient().from("glass_work_records").select("id, started_at, completed_at").eq("work_order_step_id", selectedStep.id).maybeSingle()
+      getClient().from("glass_work_records").select("id, started_at, completed_at").eq("work_order_step_id", step.id).maybeSingle()
     ]);
+    if (version !== selectionVersion || stepSelect.value !== step.id) return;
     if (recordResponse.error) throw recordResponse.error;
+    selectedStep = step;
+    startButton.disabled = false;
     findingsList.innerHTML = findings.length
       ? findings.map((finding) => `<li><strong>${escapeHtml(finding.check_item)}</strong><span>${escapeHtml(finding.action_required)} - ${escapeHtml(finding.priority)} priority${finding.notes ? ` - ${escapeHtml(finding.notes)}` : ""}</span></li>`).join("")
       : "<li><strong>Glass work required</strong><span>Review the work order and complete the assigned Glass repair.</span></li>";
@@ -129,7 +142,9 @@
   }
 
   async function loadQueue() {
+    if (workBusy) return;
     const selectedId = stepSelect.value;
+    const version = selectionVersion;
     const { data, error } = await getClient()
       .from("job_work_order_steps")
       .select("id, step_order, work_order:job_work_orders!inner(work_order_number, job:jobs!inner(id, job_number, device:devices(device_number, imei_1, brand, model, original_grade)))")
@@ -138,6 +153,7 @@
       .order("created_at", { ascending: true });
 
     if (error) throw error;
+    if (version !== selectionVersion || selectedId !== stepSelect.value || workBusy) return;
     queueSteps = data || [];
     queueCount.textContent = `${queueSteps.length} waiting`;
     stepSelect.replaceChildren(new Option(queueSteps.length ? "Select a Glass work order" : "No Glass jobs waiting", ""));
@@ -152,49 +168,65 @@
       await loadSelectedStep();
     } else {
       stepSelect.value = "";
+      selectionVersion += 1;
       selectedStep = undefined;
+      isStarted = false;
       workspace.hidden = true;
       setMessage();
+    }
+  }
+
+  async function runWorkAction(button, label, action) {
+    if (workBusy || button.disabled || !selectedStep) return;
+    workBusy = true;
+    stepSelect.disabled = true;
+    document.querySelector("#refresh-queue").disabled = true;
+    setSubmitting(button, true, label);
+    try { await action(selectedStep); }
+    catch (error) { setMessage(error.message || "Glass work could not be saved."); }
+    finally {
+      workBusy = false;
+      stepSelect.disabled = false;
+      document.querySelector("#refresh-queue").disabled = false;
+      setSubmitting(button, false);
+      completeButton.disabled = !isStarted;
     }
   }
 
   async function startWork() {
     if (!selectedStep || isStarted) return;
     setMessage();
-    setSubmitting(startButton, true, "Starting...");
-    const { data, error } = await getClient().rpc("start_glass_work", { p_work_order_step_id: selectedStep.id });
-    setSubmitting(startButton, false);
-    if (error) {
-      setMessage(error.message || "Glass work could not be started.");
-      return;
-    }
-    setWorkState(true, data?.[0]?.started_at);
-    showToast("Glass work started.");
+    await runWorkAction(startButton, "Starting...", async (step) => {
+      const { data, error } = await getClient().rpc("start_glass_work", { p_work_order_step_id: step.id });
+      if (error) throw error;
+      setWorkState(true, data?.[0]?.started_at);
+      showToast("Glass work started.");
+    });
   }
 
   async function completeWork(event) {
     event.preventDefault();
+    if (!selectedStep || !isStarted || workBusy) return;
     setMessage();
-    if (!selectedStep || !isStarted) return;
-    if (!form.checkValidity()) {
-      form.reportValidity();
-      return;
-    }
-    setSubmitting(completeButton, true, "Completing...");
-    const { data, error } = await getClient().rpc("complete_glass_work", {
-      p_work_order_step_id: selectedStep.id,
-      p_work_done: document.querySelector("#glass-work-done").value,
-      p_material_cost: Number.parseFloat(document.querySelector("#glass-material-cost").value || "0"),
-      p_notes: document.querySelector("#glass-notes").value
+    if (!form.checkValidity()) { form.reportValidity(); return; }
+    let completed = false;
+    await runWorkAction(completeButton, "Completing...", async (step) => {
+      const { data, error } = await getClient().rpc("complete_glass_work", {
+        p_work_order_step_id: step.id,
+        p_work_done: document.querySelector("#glass-work-done").value,
+        p_material_cost: Number.parseFloat(document.querySelector("#glass-material-cost").value || "0"),
+        p_notes: document.querySelector("#glass-notes").value
+      });
+      if (error) throw error;
+      completed = true;
+      selectedStep = undefined;
+      isStarted = false;
+      workspace.hidden = true;
+      const next = data?.[0]?.next_department || "next department";
+      showToast("Glass work completed. Next: " + String(next).replaceAll("_", " ") + ".");
+      document.dispatchEvent(new CustomEvent("greenloop:notifications-changed"));
     });
-    setSubmitting(completeButton, false);
-    if (error) {
-      setMessage(error.message || "Glass work could not be completed.");
-      return;
-    }
-    const next = data?.[0]?.next_department || "next department";
-    showToast(`Glass work completed. Next: ${String(next).replaceAll("_", " ")}.`);
-    await loadQueue();
+    if (completed) await loadQueue().catch((error) => setMessage("Glass work saved. Queue refresh failed: " + error.message));
   }
 
   async function initialize() {
