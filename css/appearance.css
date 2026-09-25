@@ -1082,14 +1082,14 @@ html[data-design="neumorphism"] .gl-appearance-dialog {background:var(--nm-raise
 @media(max-width:620px){.gl-appearance-dialog{padding:21px;}.gl-theme-options{gap:10px;}.gl-theme-option{padding:10px;}.gl-settings-footer{gap:12px;}.gl-appearance-floating{right:12px;top:10px;}}
 @media(prefers-reduced-motion:reduce){.gl-appearance-dialog *{transition:none!important;}}
 
-/* Raised shadow opacity +10% from v2; retain blur, spread, offsets and inset depth. */
+/* Defined raised edges and short directional shadows; retain standard dimensions. */
 /* Neumorphism refinement: paint only; retain every existing control dimension. */
 html[data-design="neumorphism"] {
-  --nm-raised:linear-gradient(135deg,#fafbfd 0%,#f1f5f8 55%,#e9eff4 100%);
-  --nm-control:linear-gradient(135deg,#edf2f6,#e0e8ef);
-  --nm-shadow:5px 6px 9px -2px #879cac8d,-4px -4px 8px -2px #ffffffca,inset 1px 1px 0 #ffffffc7,inset -1px -1px 0 #bdcbd666;
-  --nm-shadow-sm:3px 3px 5px -1px #8da1b186,-2px -2px 4px -1px #ffffffca,inset 1px 1px 0 #ffffffb3;
-  --nm-shadow-xs:1px 2px 3px -1px #8096a792,-1px -1px 2px #ffffff9d,inset 1px 1px 0 #ffffff8f;
+  --nm-raised:linear-gradient(135deg,#ffffff 0%,#f4f7fa 48%,#dce6ef 100%);
+  --nm-control:linear-gradient(135deg,#f7fafc,#d7e2eb);
+  --nm-shadow:7px 8px 8px -2px #738a9dc2,-3px -3px 6px -2px #ffffffaa,inset 1px 1px 0 #fff,inset -1px -2px 0 #b8c7d6b3;
+  --nm-shadow-sm:4px 5px 5px -1px #7d94a6b8,-2px -2px 3px -1px #ffffffaa,inset 1px 1px 0 #fff,inset -1px -1px 0 #b8c7d699;
+  --nm-shadow-xs:2px 3px 3px -1px #7d94a6b8,-1px -1px 2px #ffffff99,inset 1px 1px 0 #ffffffd9,inset 0 -1px 0 #aebfcd99;
   --nm-inset:inset 3px 3px 5px #aabcc980,inset -2px -2px 4px #ffffffb8;
 }
 html[data-design="neumorphism"][data-mode="dark"] {
@@ -1099,11 +1099,11 @@ html[data-design="neumorphism"][data-mode="dark"] {
   --nm-line:#4a5663;
   --nm-high:#525f6c;
   --nm-low:#1b222b;
-  --nm-raised:linear-gradient(135deg,#36404c 0%,#2e3742 48%,#29323c 100%);
-  --nm-control:linear-gradient(135deg,#3a4551,#303944);
-  --nm-shadow:5px 6px 9px -2px #121820ca,-3px -3px 6px -2px #6473836b,inset 1px 1px 0 #73829245,inset -1px -1px 0 #151c2780;
-  --nm-shadow-sm:3px 3px 5px -1px #111720c5,-2px -2px 4px -1px #6676865a,inset 1px 1px 0 #8190a03d,inset -1px -1px 0 #151c2766;
-  --nm-shadow-xs:1px 2px 3px -1px #111720ca,-1px -1px 2px #66768646,inset 1px 1px 0 #8190a038;
+  --nm-raised:linear-gradient(135deg,#404c5a 0%,#2f3a47 48%,#252e3a 100%);
+  --nm-control:linear-gradient(135deg,#465363,#2b3542);
+  --nm-shadow:7px 8px 8px -2px #0a111dde,-3px -3px 5px -2px #5d70836b,inset 1px 1px 0 #95a8bb70,inset -1px -2px 0 #111b2aee;
+  --nm-shadow-sm:4px 5px 5px -1px #0a111dd9,-2px -2px 3px -1px #657b9066,inset 1px 1px 0 #95a8bb66,inset -1px -1px 0 #111b2acc;
+  --nm-shadow-xs:2px 3px 3px -1px #0a111dd9,-1px -1px 2px #657b9059,inset 1px 1px 0 #95a8bb59,inset 0 -1px 0 #111b2acc;
   --nm-inset:inset 3px 3px 5px #111923b3,inset -2px -2px 4px #68798b52;
 }
 /* Tight shadows fit the standard 3px navigation gap without a glowing halo. */
