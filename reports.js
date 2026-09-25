@@ -60,6 +60,7 @@
   }
 
   const reports = {
+    supplier_returns: { title: "Supplier Returns", description: "Request, approve and hand over supplier returns; track parts, settlement and permanent history.", columns: [] },
     complete_device_details: {
       title: "Complete Device Details",
       description: "Read the connected iPhone. No historical phone or stock data is changed.",
@@ -772,8 +773,9 @@
       tab.classList.toggle("active", selected);
       tab.setAttribute("aria-pressed", String(selected));
     });
+    if (activeReport !== "supplier_returns") window.GREENLOOP_SUPPLIER_RETURNS?.unmount();
     const liveDetails = activeReport === "complete_device_details";
-    filterForm.hidden = liveDetails || activeReport === "restricted_data" || activeReport === "data_correction";
+    filterForm.hidden = activeReport === "supplier_returns" || liveDetails || activeReport === "restricted_data" || activeReport === "data_correction";
     if (liveDetails) {
       panelKicker.textContent = "Connected phone";
       panelTitle.textContent = "Complete Device Details";
@@ -783,7 +785,14 @@
       return;
     }
     window.GREENLOOP_COMPLETE_DEVICE_DETAILS?.unmount();
-    if (activeReport === "overview") renderOverview();
+    if (activeReport === "supplier_returns") {
+      panelKicker.textContent = "Supplier returns";
+      panelTitle.textContent = reports.supplier_returns.title;
+      panelDescription.textContent = reports.supplier_returns.description;
+      rowCount.textContent = "Loading…";
+      window.GREENLOOP_SUPPLIER_RETURNS?.mount(reportContent);
+    }
+    else if (activeReport === "overview") renderOverview();
     else if (activeReport === "supplier_progress") renderSupplierProgress();
     else if (activeReport === "export_boxes") renderExportBoxes();
     else if (activeReport === "restricted_data") renderRestrictedData();

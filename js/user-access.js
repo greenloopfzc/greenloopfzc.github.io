@@ -47,6 +47,9 @@
     ["export_boxes", "Export Boxes", "Create boxes and scan phones for export."],
     ["ready_stock_journey", "Ready Stock Journey", "View complete IMEI workflow history."],
     ["reports", "Reports", "View operational and management reports."],
+    ["supplier_returns", "Supplier Returns", "View returns; Entry Allowed can request returns, cancel holds and request unused part returns."],
+    ["supplier_return_approval", "Supplier Return Approval", "Entry Allowed can approve or reject supplier return requests."],
+    ["supplier_return_handover", "Supplier Return Handover", "Entry Allowed can record physical handover and replacement, credit or refund settlement."],
     ["user_access", "User Access", "Create users and control their page permissions."],
     ["partner_names", "Supplier & Customer Names", "Show confidential supplier and customer names. Codes remain visible to everyone with page access."]
   ];
@@ -84,7 +87,7 @@
   function pageCheckboxes(pages = pageGuideData, selectedPermissions = {}) {
     return pages.map(([key, name, scope]) => {
       const accessLevel = selectedPermissions[key] || "edit";
-      const checked = Object.hasOwn(selectedPermissions, key);
+      const checked = ["view", "edit"].includes(selectedPermissions[key]);
       return `
         <article class="role-option${checked ? " is-selected" : ""}" data-page-permission="${escapeHtml(key)}">
           <label class="permission-check"><input type="checkbox" value="${escapeHtml(key)}"${checked ? " checked" : ""}><strong>${escapeHtml(name)}</strong></label>
@@ -120,7 +123,7 @@
   }
 
   function collectPagePermissions(container) {
-    const result = {};
+    const result = { supplier_returns: "none", supplier_return_approval: "none", supplier_return_handover: "none" };
     container.querySelectorAll("[data-page-permission]").forEach((card) => {
       const checkbox = card.querySelector('input[type="checkbox"]');
       if (checkbox.checked) result[checkbox.value] = card.querySelector("[data-access-level]").value || "view";
@@ -144,7 +147,7 @@
   function renderUsers() {
     userList.innerHTML = users.length ? users.map((user) => {
       const permissions = displayPermissionsForUser(user);
-      const pages = Object.keys(permissions);
+      const pages = Object.keys(permissions).filter(key => ["view", "edit"].includes(permissions[key]));
       return `
         <button class="user-list-item${String(user.user_id) === String(selectedUserId) ? " active" : ""}${user.is_active ? "" : " inactive"}" type="button" data-user-id="${escapeHtml(user.user_id)}">
           <strong>${escapeHtml(user.full_name || user.login_username || "Unnamed user")}</strong>
@@ -228,7 +231,9 @@
     const selectedPermissions = collectPagePermissions(newRoleOptions);
     const partnerNamesAccess = selectedPermissions.partner_names || "none";
     const normalPermissions = Object.fromEntries(Object.entries(selectedPermissions).filter(([key]) => key !== "partner_names"));
-    const selectedPages = Object.keys(normalPermissions);
+    // The account-creation endpoint accepts navigation pages. Save the three
+    // return capabilities, including explicit denials, in the atomic access RPC.
+    const selectedPages = Object.keys(normalPermissions).filter(key => normalPermissions[key] !== "none" && !["supplier_returns", "supplier_return_approval", "supplier_return_handover"].includes(key));
     if (!selectedPages.length) {
       setMessage(createUserMessage, "Select at least one page for this user.");
       return;

@@ -14,12 +14,14 @@
     <link rel="stylesheet" href="css/stock-entry.css?v=20260912-simple-duplicate-2">
     <link rel="stylesheet" href="css/batch-workflow.css?v=20260822-form-only-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script defer src="js/config.js?v=20260925-layout-1"></script>
+  <script defer src="js/config.js?v=20260925-supplier-returns-1"></script>
     <script defer src="js/part-notifications.js?v=20260918-audit-2"></script>
     <script defer src="js/device-reader.js?v=20260918-audit-2"></script>
   <script defer src="js/imei-entry.js?v=20260918-audit-2"></script>
     <script defer src="js/batch-workflow.js?v=20260918-audit-2"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20260925-neumorphism-5">
+    <link rel="stylesheet" href="css/supplier-returns.css?v=20260925-supplier-returns-1">
+  <script defer src="js/supplier-returns.js?v=20260925-supplier-returns-1"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -39,7 +41,7 @@
             <form id="imei-entry-form" class="receiving-form" novalidate>
               <section class="form-panel">
                 <div class="form-panel-heading"><span class="section-number">01</span><div><h2>Select supplier receipt</h2><p>Only receipts that still have IMEIs remaining are shown.</p></div></div>
-                <div class="form-field"><label for="stock-batch">Supplier code / batch <span class="required-mark">Required</span></label><select id="stock-batch" required><option value="">Loading stock batches...</option></select></div>
+                <div class="form-field"><label for="stock-batch">Supplier code / batch <span class="required-mark">Required</span></label><select id="stock-batch" required><option value="">Loading stock batches...</option></select><button class="secondary-button" type="button" data-supplier-return-batch>Return unentered phones</button></div>
                 <div id="batch-summary" class="batch-summary" hidden></div>
               </section>
               <section id="imei-detail-panel" class="form-panel" hidden>

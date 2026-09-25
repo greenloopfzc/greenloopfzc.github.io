@@ -36,7 +36,7 @@ window.GREENLOOP_CONFIG = Object.freeze({
       sharedClient.rpc = async (name, ...args) => {
         // Capture guards also cover automatic saves and scanner callbacks that
         // never pass through a button click. The database must enforce this too.
-        const writes = /^(add_|archive_|assign_|cancel_|close_|complete_|correct_|create_|delete_|ensure_|issue_|mark_|pause_|receive_|record_|remove_|request_|reset_|resume_|return_|review_|route_|save_|scan_imei_to_export_box$|send_|set_|start_|transfer_|update_|get_or_create_open_export_box$)/;
+        const writes = /^(add_|archive_|assign_|cancel_|close_|complete_|correct_|create_|delete_|ensure_|issue_|mark_|pause_|receive_|record_|remove_|request_|reset_|resume_|return_|review_|route_|save_|scan_imei_to_export_box$|send_|set_|start_|transfer_|transition_|update_|get_or_create_open_export_box$)/;
         if (writes.test(name)) {
           await window.GREENLOOP_ACCESS_READY;
           if (!window.GREENLOOP_PAGE_ACCESS?.canEdit) return { data: null, error: { code: "42501", message: "Entry Allowed permission is required to make changes on this page." } };
@@ -324,7 +324,7 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     function isMutationControl(control) {
       if (!control) return false;
       // Report-category navigation is read-only, even "Complete Device Details".
-      if (control.matches(".report-tab")) return false;
+      if (control.matches(".report-tab,[data-sr-print]")) return false;
       const text = `${control.textContent || ""} ${control.value || ""} ${control.id || ""}`;
       return control.matches(mutationSelector) || mutationWords.test(text);
     }
