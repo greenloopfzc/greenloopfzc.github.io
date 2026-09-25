@@ -23,6 +23,13 @@
   let exportBoxImeiFilter = "";
   let correctionRecord = null;
   let canManageCorrections = false;
+  let canResetData = false;
+  let deletionPreview = null;
+  let deletionImei = "";
+  let deletionGeneration = 0;
+  let deletionBusy = false;
+  let deletionResult = "";
+  let deletionAuditDates = null;
   let auditView = "deleted";
   let selectedSupplier = "all";
   let reportGeneration = 0;
@@ -41,7 +48,7 @@
   }
 
   async function runReportMutation(control, action) {
-    if (reportMutationPending || !window.GREENLOOP_PAGE_ACCESS?.canEdit) return;
+    if (reportMutationPending || deletionBusy || !window.GREENLOOP_PAGE_ACCESS?.canEdit) return;
     reportMutationPending = true;
     const label = control?.textContent;
     try { await action(); }
@@ -101,6 +108,11 @@
     export_boxes: {
       title: "Export boxes",
       description: "Select a box number to see the phones scanned inside it.",
+      columns: []
+    },
+    restricted_data: {
+      title: "Restricted Data",
+      description: "Delete one IMEI or reset all IMEIs and their linked processes. Every deletion is saved in Deleted History.",
       columns: []
     },
     data_correction: {
@@ -348,42 +360,181 @@
       </details>`).join("")}</div>`;
   }
 
-  function renderTestDataCleanup() {
-    return `
-      <section class="test-cleanup-card">
-        <div class="test-cleanup-copy">
-          <span class="test-cleanup-icon" aria-hidden="true">!</span>
-          <div><h3>Delete one IMEI completely</h3><p>Scan or enter one IMEI to remove its full device workflow from the system. An audit record stays permanently in Deleted History. Dropdown options, users, permissions and technicians are always preserved.</p></div>
-        </div>
-        <form id="single-imei-delete-form" class="single-imei-delete-form" novalidate>
-          <label>IMEI to delete completely<input name="identifier" type="search" inputmode="numeric" autocomplete="off" placeholder="Scan exact 15-digit IMEI" required></label>
-          <label>Deletion code<input name="deletion_code" type="password" inputmode="numeric" autocomplete="off" placeholder="Enter code" required></label>
-          <button class="danger-button" type="submit">Delete this IMEI</button>
-        </form>
-        <p class="single-imei-delete-help">This button deletes the exact IMEI from every workflow step and saves its audit record in Deleted History.</p>
-        <form id="test-data-cleanup-form" class="test-cleanup-form" novalidate>
-          <label class="test-cleanup-wide">Date-range / selected-page cleanup <em>Optional</em><input name="identifier" type="search" autocomplete="off" placeholder="Optional: scan IMEI or enter DEV-000001"></label>
-          <label>From received date<input name="date_from" type="date" value="${escapeHtml(dateFrom.value || "")}"></label>
-          <label>To received date<input name="date_to" type="date" value="${escapeHtml(dateTo.value || "")}"></label>
-          <fieldset class="test-cleanup-pages test-cleanup-wide"><legend>Full device history to delete</legend>
-            ${[
-              ["stock_received", "Stock Received"], ["imei_entry", "IMEI Entry"], ["initial_qc", "Initial QC"],
-              ["lab_glass", "Lab & Glass"], ["parts", "Parts"], ["inventory", "Inventory"],
-              ["final_qc", "Final QC"], ["frame", "Frame"], ["ready_stock", "Ready Stock"],
-              ["export_boxes", "Export Boxes"], ["supplier_records", "Supplier records"]
-            ].map(([key, label]) => `<label><input name="page_keys" type="checkbox" value="${key}"${key === "inventory" || key === "supplier_records" ? "" : " checked"}>${label}</label>`).join("")}
-          </fieldset>
-          <label>Deletion code<input name="deletion_code" type="password" inputmode="numeric" autocomplete="off" placeholder="Enter code" required></label>
-          <label>Type DELETE SELECTED TEST DATA<input name="confirmation" type="text" autocomplete="off" placeholder="DELETE SELECTED TEST DATA" required></label>
-          <button class="danger-button" type="submit">Delete IMEI and save audit history</button>
-        </form>
-      </section>`;
+  function canDeleteScope(scope) {
+    return canManageCorrections && Boolean(window.GREENLOOP_PAGE_ACCESS?.canEdit)
+      && (scope === "single" || (scope === "all" && canResetData));
   }
+
+  function resetDeletionPreview() {
+    deletionGeneration += 1;
+    deletionPreview = null;
+  }
+
+  function deletionConfirmation(scope, imei) {
+    return scope === "all" ? "DELETE ALL IMEIS" : `DELETE ${imei}`;
+  }
+
+  function validDeletionCount(value) {
+    return ["number", "string"].includes(typeof value) && String(value).trim() !== ""
+      && Number.isSafeInteger(Number(value)) && Number(value) >= 0;
+  }
+
+  function deletionHistoryDate(date) {
+    const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dubai", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(date);
+    return ["year", "month", "day"].map((key) => parts.find((part) => part.type === key).value).join("-");
+  }
+
+  function deletionScopeCard(scope) {
+    const single = scope === "single";
+    const allowed = canDeleteScope(scope);
+    const preview = deletionPreview?.scope === scope ? deletionPreview : null;
+    const description = single
+      ? "Remove one phone and its receiving, repair, QC, technician work, issued parts, costs and linked process history."
+      : "Clear all phones and their operational processes, including receiving entries and IMEI-linked parts transactions, ready for a fresh start.";
+    const permissionNote = !window.GREENLOOP_PAGE_ACCESS?.canEdit
+      ? "View only: Reports edit permission is required to delete data."
+      : "Only an Owner or Super Admin can reset all IMEIs.";
+    return `<section class="restricted-card${preview ? " is-reviewed" : ""}" data-deletion-card="${scope}">
+      <div class="restricted-card-heading"><span class="restricted-step" aria-hidden="true">${single ? "01" : "02"}</span><div><h3>${single ? "Delete a single IMEI" : "Reset all IMEIs"}</h3><p>${description}</p></div></div>
+      <p class="restricted-scope-label">${single ? "One phone · all linked processes" : "Entire software · all IMEIs and processes"}</p>
+      ${allowed ? `<form class="restricted-review-form" data-deletion-review="${scope}" novalidate>
+        ${single ? `<label for="restricted-imei">Exact 15-digit IMEI<input id="restricted-imei" name="imei" type="text" inputmode="numeric" maxlength="15" autocomplete="off" placeholder="Enter or scan IMEI" value="${escapeHtml(deletionImei)}" required></label>` : `<p class="restricted-all-note">This reset covers all dates and all departments.</p>`}
+        <button class="secondary-button restricted-review-button" type="submit">${preview ? "Review again" : "Review selection"}</button>
+      </form>` : `<p class="restricted-permission" role="note">${permissionNote}</p>`}
+      ${preview ? `<div class="restricted-preview" data-deletion-preview="${scope}">
+        <div class="restricted-preview-heading"><strong>Selection reviewed</strong><span>${single ? escapeHtml(preview.imei) : "All IMEIs · no date filter"}</span></div>
+        <dl class="restricted-counts"><div><dt>Phones</dt><dd>${Number(preview.device_count).toLocaleString()}</dd></div><div><dt>Jobs</dt><dd>${Number(preview.job_count).toLocaleString()}</dd></div>${validDeletionCount(preview.record_count) ? `<div><dt>Total records</dt><dd>${Number(preview.record_count).toLocaleString()}</dd></div>` : ""}</dl>
+        <p class="restricted-audit-note">A snapshot is saved in Deleted History with your account, time and reason before data is removed.</p>
+        <form class="restricted-confirm-form" data-deletion-confirm="${scope}" novalidate>
+          <label>Reason for deletion<textarea name="reason" rows="2" maxlength="1000" placeholder="Explain why these records must be deleted" required></textarea></label>
+          <label>Deletion code<input name="deletion_code" type="password" inputmode="numeric" autocomplete="off" placeholder="Enter authorised code" required></label>
+          <label>Type <strong>${escapeHtml(deletionConfirmation(scope, preview.imei))}</strong><input name="confirmation" type="text" autocomplete="off" spellcheck="false" required></label>
+          <button class="danger-button" type="submit">${single ? "Delete this IMEI and its processes" : "Delete all IMEIs and their processes"}</button>
+        </form>
+      </div>` : ""}
+    </section>`;
+  }
+
+  function renderRestrictedData() {
+    panelKicker.textContent = "Management control";
+    panelTitle.textContent = "Restricted Data";
+    panelDescription.textContent = reports.restricted_data.description;
+    rowCount.textContent = "2 deletion options";
+    reportContent.innerHTML = `<div class="restricted-workspace">
+      ${deletionResult ? `<div class="restricted-result" role="status"><strong>Deletion completed</strong><p>${escapeHtml(deletionResult)}</p><button type="button" class="secondary-button" data-open-deleted-history>View Deleted History</button></div>` : ""}
+      <div class="restricted-preserved"><strong>Your setup, inventory stock and audit history stay</strong><p>Technician names, parts names and dropdowns, existing inventory stock, users, permissions and settings are preserved. Deleted History keeps the records of who deleted what and when.</p><p>Unused issued parts follow the existing stock-return rules.</p></div>
+      <div class="restricted-options">${deletionScopeCard("single")}${deletionScopeCard("all")}</div>
+      <p class="restricted-footer">Need to correct an IMEI or device details? Use the separate <button type="button" data-open-data-correction>IMEI Data Correction</button> report.</p>
+    </div>`;
+    setDeletionBusy(deletionBusy);
+  }
+
+  function setDeletionBusy(busy) {
+    deletionBusy = busy;
+    reportContent.querySelectorAll(".restricted-workspace input, .restricted-workspace textarea, .restricted-workspace button").forEach((control) => { control.disabled = busy; });
+    tabs.querySelectorAll("button").forEach((control) => { control.disabled = busy || reportMutationPending; });
+    reportContent.querySelector(".restricted-workspace")?.setAttribute("aria-busy", String(busy));
+  }
+
+  async function reviewDeletion(form) {
+    const scope = form.dataset.deletionReview;
+    if (deletionBusy || reportMutationPending || !canDeleteScope(scope)) return;
+    const imei = scope === "single" ? String(new FormData(form).get("imei") || "").trim() : null;
+    if (scope === "single" && !/^\d{15}$/.test(imei)) { setMessage("Enter the exact 15-digit IMEI to review."); return; }
+    if (scope === "single") deletionImei = imei;
+    resetDeletionPreview();
+    deletionResult = "";
+    const generation = deletionGeneration;
+    setDeletionBusy(true);
+    renderRestrictedData();
+    const submit = reportContent.querySelector(`[data-deletion-review="${scope}"] button`);
+    if (submit) submit.textContent = "Reviewing...";
+    setMessage();
+    try {
+      const { data, error } = await getClient().rpc("get_greenloop_deletion_preview", { p_scope: scope, p_imei: imei });
+      if (generation !== deletionGeneration || activeReport !== "restricted_data") return;
+      if (error) throw error;
+      const preview = Array.isArray(data) ? data[0] : data;
+      if (!preview || preview.scope !== scope || (scope === "single" && preview.imei !== imei)
+        || !validDeletionCount(preview.device_count) || !validDeletionCount(preview.job_count)
+        || (preview.record_count != null && !validDeletionCount(preview.record_count))
+        || typeof preview.selection_token !== "string" || !preview.selection_token) {
+        throw new Error("The deletion preview could not be verified. Review the selection again.");
+      }
+      if (scope === "single" && Number(preview.device_count) !== 1) throw new Error("No single matching phone was found. Check the IMEI and review again.");
+      if (scope === "all" && Number(preview.device_count) === 0 && !(Number(preview.record_count) > 0)) {
+        throw new Error("There are no IMEIs or operational records to delete.");
+      }
+      deletionPreview = { ...preview, scope, imei };
+      renderRestrictedData();
+      setMessage("Review the scope and counts below, then enter your reason and confirmation.", "success");
+    } catch (error) {
+      if (generation === deletionGeneration) setMessage(error.message || "The selection could not be reviewed. Try again.");
+    } finally {
+      setDeletionBusy(false);
+      const reviewButton = reportContent.querySelector(`[data-deletion-review="${scope}"] button`);
+      if (reviewButton) reviewButton.textContent = deletionPreview?.scope === scope ? "Review again" : "Review selection";
+    }
+  }
+
+  async function executeDeletion(form) {
+    const scope = form.dataset.deletionConfirm;
+    if (deletionBusy || reportMutationPending || !canDeleteScope(scope)) return;
+    const preview = deletionPreview;
+    if (!preview || preview.scope !== scope || (scope === "single" && deletionImei.trim() !== preview.imei)) {
+      setMessage("Review the selection again before deleting."); return;
+    }
+    const values = new FormData(form);
+    const reason = String(values.get("reason") || "").trim();
+    const code = String(values.get("deletion_code") || "").trim();
+    const confirmation = String(values.get("confirmation") || "").trim();
+    if (reason.length < 5 || reason.length > 1000) { setMessage("Enter a deletion reason between 5 and 1000 characters."); return; }
+    if (!code) { setMessage("Enter the authorised deletion code."); return; }
+    if (confirmation !== deletionConfirmation(scope, preview.imei)) { setMessage(`Type ${deletionConfirmation(scope, preview.imei)} exactly to confirm.`); return; }
+    const generation = ++deletionGeneration;
+    const startedDate = deletionHistoryDate(new Date());
+    setDeletionBusy(true);
+    form.querySelector('button[type="submit"]').textContent = "Deleting...";
+    setMessage();
+    try {
+      const { data, error } = await getClient().rpc("execute_greenloop_deletion", {
+        p_scope: scope, p_imei: preview.imei, p_deletion_code: code,
+        p_confirmation: confirmation, p_reason: reason, p_selection_token: preview.selection_token
+      });
+      if (generation !== deletionGeneration) return;
+      if (error) throw error;
+      const result = Array.isArray(data) ? data[0] : data;
+      if (!result || result.scope !== scope || typeof result.audit_id !== "string" || !result.audit_id.trim()
+        || !validDeletionCount(result.deleted_devices) || !validDeletionCount(result.deleted_jobs)) {
+        throw new Error("The deletion response was incomplete. Check Deleted History before reviewing again.");
+      }
+      deletionPreview = null;
+      correctionRecord = null;
+      correctionSearchGeneration += 1;
+      deletionImei = "";
+      deletionAuditDates = { from: startedDate, to: deletionHistoryDate(new Date()) };
+      deletionResult = `${Number(result.deleted_devices).toLocaleString()} phone(s) and ${Number(result.deleted_jobs).toLocaleString()} job(s) deleted with their linked processes.${validDeletionCount(result.deleted_records) ? ` ${Number(result.deleted_records).toLocaleString()} total record(s) removed.` : ""} The deleted records and your reason are saved in Deleted History. Setup lists were preserved.`;
+      renderRestrictedData();
+      // Keep the successful deletion visible even if a later report refresh fails.
+      await loadReports();
+    } catch (error) {
+      if (generation === deletionGeneration) {
+        deletionPreview = null;
+        renderRestrictedData();
+        setMessage(error.message || "Deletion could not be confirmed. Check Deleted History before reviewing again.");
+      }
+    } finally {
+      setDeletionBusy(false);
+    }
+  }
+
 
   function renderDataCorrection() {
     panelKicker.textContent = "Management control";
     panelTitle.textContent = "IMEI data correction";
-    panelDescription.textContent = "Correct authorised device data without erasing the original workflow. Correction code 1213 and a reason are required.";
+    panelDescription.textContent = window.GREENLOOP_PAGE_ACCESS?.canEdit
+      ? "Correct authorised device data without erasing the original workflow. An authorised correction code and a reason are required."
+      : "View only: Reports edit permission is required to save corrections. Search and workflow history are available below.";
     rowCount.textContent = correctionRecord ? "1 device loaded" : "Search required";
 
     const search = `
@@ -393,7 +544,7 @@
       </form>`;
 
     if (!correctionRecord) {
-      reportContent.innerHTML = `<div class="correction-workspace">${search}<div class="correction-welcome"><strong>Search one device to begin.</strong><span>IMEI, device details, supplier, receiving data, grades, notes, and the complete workflow timeline will load here.</span></div>${renderTestDataCleanup()}</div>`;
+      reportContent.innerHTML = `<div class="correction-workspace">${search}<div class="correction-welcome"><strong>Search one device to begin.</strong><span>IMEI, device details, supplier, receiving data, grades, notes, and the complete workflow timeline will load here.</span></div></div>`;
       return;
     }
 
@@ -448,8 +599,13 @@
           <div class="correction-section-title"><span>03</span><div><h3>Permanent workflow history</h3><p>Past events are never erased. Every correction is added as a new audited event.</p></div></div>
           ${renderCorrectionHistory(record)}
         </section>
-        ${renderTestDataCleanup()}
+
       </div>`;
+    if (!window.GREENLOOP_PAGE_ACCESS?.canEdit) {
+      reportContent.querySelectorAll('#correction-save-form input, #correction-save-form select, #correction-save-form textarea, #correction-save-form button').forEach((control) => { control.disabled = true; });
+      const approval = reportContent.querySelector('.correction-approval');
+      if (approval) approval.hidden = true;
+    }
   }
 
   function renderChangedFields(value) {
@@ -562,72 +718,10 @@
     setMessage(`${data?.device_number || "Device"} was corrected. ${changedCount} field${changedCount === 1 ? "" : "s"} saved in permanent Data Changes history.`, "success");
   }
 
-  async function deleteAllTestData(form) {
-    const formData = new FormData(form);
-    const confirmation = String(formData.get("confirmation") || "").trim();
-    const identifier = String(formData.get("identifier") || "").trim();
-    const pages = formData.getAll("page_keys");
-    if (confirmation !== "DELETE SELECTED TEST DATA") { setMessage("Type DELETE SELECTED TEST DATA exactly to confirm."); return; }
-    if (!identifier && (!formData.get("date_from") || !formData.get("date_to"))) { setMessage("Enter one IMEI/device number or select both received dates."); return; }
-    if (!pages.length) { setMessage("Select at least one data page."); return; }
-    const approved = window.confirm(identifier ? `Delete the complete test history for ${identifier}?` : "Delete selected test data inside this received-date range?");
-    if (!approved) return;
-
-    const submit = form.querySelector('button[type="submit"]');
-    submit.disabled = true;
-    submit.textContent = "Deleting...";
-    setMessage();
-    const { data, error } = await getClient().rpc("delete_greenloop_test_data_selectively", {
-      p_deletion_code: formData.get("deletion_code"),
-      p_confirmation: confirmation,
-      p_identifier: identifier || null,
-      p_date_from: formData.get("date_from") || null,
-      p_date_to: formData.get("date_to") || null,
-      p_page_keys: pages
-    });
-    submit.disabled = false;
-    submit.textContent = "Delete IMEI and save audit history";
-    if (error) { setMessage(error.message || "Selected test data could not be deleted."); return; }
-
-    correctionRecord = null;
-    await loadReports();
-    form.reset();
-    setMessage(`Deleted ${Number(data?.deleted_devices || 0)} phone(s) and ${Number(data?.deleted_jobs || 0)} job(s). The IMEI can now be entered again; its audit record is in Deleted History. Dropdowns, users, permissions and technicians were preserved.`, "success");
-  }
-
-  async function deleteOneImei(form) {
-    const formData = new FormData(form);
-    const identifier = String(formData.get("identifier") || "").trim();
-    const deletionCode = String(formData.get("deletion_code") || "").trim();
-    if (!identifier) { setMessage("Scan or enter the IMEI to delete."); return; }
-    if (!deletionCode) { setMessage("Enter the deletion code."); return; }
-    if (!window.confirm(`Delete the complete workflow for ${identifier}? The audit copy will remain in Deleted History.`)) return;
-
-    const submit = form.querySelector('button[type="submit"]');
-    submit.disabled = true;
-    submit.textContent = "Deleting...";
-    setMessage();
-    const { error } = await getClient().rpc("delete_greenloop_test_data_selectively", {
-      p_deletion_code: deletionCode,
-      p_confirmation: "DELETE SELECTED TEST DATA",
-      p_identifier: identifier,
-      p_date_from: null,
-      p_date_to: null,
-      p_page_keys: ["stock_received", "imei_entry", "initial_qc", "lab_glass", "parts", "inventory", "final_qc", "frame", "ready_stock", "export_boxes"]
-    });
-    submit.disabled = false;
-    submit.textContent = "Delete this IMEI";
-    if (error) { setMessage(error.message || "This IMEI could not be deleted."); return; }
-
-    correctionRecord = null;
-    await loadReports();
-    setMessage(`IMEI ${identifier} was deleted completely. Its audit record is available in Deleted History.`, "success");
-  }
-
   function renderActiveReport() {
     document.querySelectorAll(".report-tab").forEach((tab) => tab.classList.toggle("active", tab.dataset.report === activeReport));
     const liveDetails = activeReport === "complete_device_details";
-    filterForm.hidden = liveDetails;
+    filterForm.hidden = liveDetails || activeReport === "restricted_data" || activeReport === "data_correction";
     if (liveDetails) {
       panelKicker.textContent = "Connected phone";
       panelTitle.textContent = "Complete Device Details";
@@ -640,6 +734,7 @@
     if (activeReport === "overview") renderOverview();
     else if (activeReport === "supplier_progress") renderSupplierProgress();
     else if (activeReport === "export_boxes") renderExportBoxes();
+    else if (activeReport === "restricted_data") renderRestrictedData();
     else if (activeReport === "data_correction") renderDataCorrection();
     else if (activeReport === "deleted_history") renderDeletedHistory();
     else renderTable(activeReport);
@@ -709,10 +804,11 @@
     if (window.GREENLOOP_PAGE_ACCESS?.pageKey !== "reports") return;
     const { data: correctionPermission } = await getClient().rpc("has_role", { required_roles: ["super_admin", "owner", "manager"] });
     canManageCorrections = Boolean(correctionPermission);
-    const correctionTab = document.querySelector('[data-report="data_correction"]');
-    if (correctionTab) correctionTab.hidden = !canManageCorrections;
+    const { data: resetPermission } = await getClient().rpc("has_role", { required_roles: ["super_admin", "owner"] });
+    canResetData = Boolean(resetPermission);
+    document.querySelectorAll('[data-report="data_correction"], [data-report="restricted_data"]').forEach((tab) => { tab.hidden = !canManageCorrections; });
     const requestedReport = new URLSearchParams(window.location.search).get("report");
-    if (requestedReport && reports[requestedReport] && (requestedReport !== "data_correction" || canManageCorrections)) activeReport = requestedReport;
+    if (requestedReport && reports[requestedReport] && (!["data_correction", "restricted_data"].includes(requestedReport) || canManageCorrections)) activeReport = requestedReport;
     const now = new Date();
     dateFrom.value = localDate(new Date(now.getFullYear(), now.getMonth(), 1));
     dateTo.value = localDate(now);
@@ -727,11 +823,32 @@
   filterForm.addEventListener("submit", loadReports);
   tabs.addEventListener("click", (event) => {
     const tab = event.target.closest(".report-tab");
-    if (!tab || (tab.dataset.report !== "overview" && !reports[tab.dataset.report])) return;
+    if (!tab || tab.hidden || deletionBusy || reportMutationPending || (tab.dataset.report !== "overview" && !reports[tab.dataset.report])) return;
+    if (["data_correction", "restricted_data"].includes(tab.dataset.report) && !canManageCorrections) return;
+    resetDeletionPreview();
+    correctionSearchGeneration += 1;
+    setMessage();
     activeReport = tab.dataset.report;
     renderActiveReport();
   });
   reportContent.addEventListener("click", (event) => {
+    if (event.target.closest('[data-open-deleted-history], [data-open-data-correction]')) {
+      if (deletionBusy || reportMutationPending) return;
+      resetDeletionPreview();
+      const showRecentDeletion = Boolean(event.target.closest('[data-open-deleted-history]'));
+      activeReport = showRecentDeletion ? "deleted_history" : "data_correction";
+      if (showRecentDeletion) {
+        auditView = "deleted";
+        if (deletionAuditDates && (!dateFrom.value || !dateTo.value || dateFrom.value > deletionAuditDates.from || dateTo.value < deletionAuditDates.to)) {
+          dateFrom.value = deletionAuditDates.from;
+          dateTo.value = deletionAuditDates.to;
+        }
+      }
+      setMessage();
+      renderActiveReport();
+      if (showRecentDeletion) loadReports();
+      return;
+    }
     const auditButton = event.target.closest("[data-audit-view]");
     if (auditButton) {
       auditView = auditButton.dataset.auditView || "deleted";
@@ -761,17 +878,28 @@
       runReportMutation(event.target.querySelector('button[type="submit"]'), () => saveCorrection(event.target));
       return;
     }
-    if (event.target.id === "test-data-cleanup-form") {
+    if (event.target.dataset.deletionReview) {
       event.preventDefault();
-      runReportMutation(event.target.querySelector('button[type="submit"]'), () => deleteAllTestData(event.target));
+      reviewDeletion(event.target);
       return;
     }
-    if (event.target.id === "single-imei-delete-form") {
+    if (event.target.dataset.deletionConfirm) {
       event.preventDefault();
-      runReportMutation(event.target.querySelector('button[type="submit"]'), () => deleteOneImei(event.target));
+      executeDeletion(event.target);
+      return;
     }
   });
   reportContent.addEventListener("input", (event) => {
+    if (event.target.id === "restricted-imei") {
+      if (deletionBusy) return;
+      deletionImei = event.target.value;
+      resetDeletionPreview();
+      reportContent.querySelectorAll('[data-deletion-preview]').forEach((element) => { element.remove(); });
+      reportContent.querySelectorAll('.restricted-card').forEach((element) => { element.classList.remove('is-reviewed'); });
+      reportContent.querySelectorAll('.restricted-review-button').forEach((element) => { element.textContent = "Review selection"; });
+      setMessage();
+      return;
+    }
     if (event.target.id !== "export-box-imei-filter") return;
     exportBoxImeiFilter = event.target.value;
     renderExportBoxes();
