@@ -3,7 +3,7 @@
   const key='greenloop-appearance-v1';
   const root=document.documentElement;
   root.dataset.glPage=(location.pathname.split('/').pop()||'index.html').toLowerCase();
-  root.dataset.appearanceVersion='20260925-neumorphism-2';
+  root.dataset.appearanceVersion='20260925-neumorphism-3';
   const normalise=value=>({design:value?.design==='neumorphism'?'neumorphism':'classic',mode:value?.mode==='dark'?'dark':'light'});
   const read=()=>{try{return normalise(JSON.parse(localStorage.getItem(key)||'{}'));}catch{return normalise({});}};
   let choice=read(),dialog,lastTrigger;
