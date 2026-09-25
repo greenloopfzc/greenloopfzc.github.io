@@ -19,7 +19,6 @@
   const username = document.querySelector("#access-username");
   const active = document.querySelector("#access-active");
   const roleOptions = document.querySelector("#role-options");
-  const roleGuide = document.querySelector("#role-guide");
   const message = document.querySelector("#access-message");
   const sidebar = document.querySelector("#sidebar");
   const backdrop = document.querySelector("#menu-backdrop");
@@ -33,7 +32,7 @@
   // Permanent rule: every new Greenloop page must be added here with its own
   // View only and Entry Allowed access choice, plus matching config and SQL keys.
   const pageGuideData = [
-    ["overview", "Overview", "Dashboard and live operational summary."],
+    ["overview", "Dashboard", "Dashboard and live operational summary."],
     ["stock_received", "Stock Received", "Create and view received stock batches."],
     ["imei_entry", "IMEI Entry", "Enter IMEIs and the first device details."],
     ["imei_search", "IMEI Search", "Search one device and view its complete history."],
@@ -133,15 +132,6 @@
     const card = checkbox.closest("[data-page-permission]");
     card.classList.toggle("is-selected", checkbox.checked);
     card.querySelector("[data-access-level]").disabled = !checkbox.checked;
-  }
-
-  function renderPageGuide() {
-    roleGuide.innerHTML = pageGuideData.map(([, name, scope]) => `
-      <article class="role-guide-item">
-        <strong>${escapeHtml(name)}</strong>
-        <span>${escapeHtml(scope)}</span>
-      </article>
-    `).join("");
   }
 
   function renderNewUserPages() {
@@ -370,7 +360,6 @@
     currentUserIsSuperAdmin = Boolean(isSuperAdmin);
 
     app.hidden = false;
-    renderPageGuide();
     renderNewUserPages();
     await loadUsers();
   }

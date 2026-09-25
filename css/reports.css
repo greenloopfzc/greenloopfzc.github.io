@@ -9,9 +9,20 @@
 .report-metric span { display: block; color: #718077; font-size: .63rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .report-metric strong { display: block; margin: 9px 0 5px; color: #103d2c; font-family: Manrope, sans-serif; font-size: 1.72rem; line-height: 1; }
 .report-metric small { color: #7d8b83; font-size: .7rem; line-height: 1.3; }
-.report-tabs { display: flex; gap: 7px; overflow-x: auto; margin-bottom: 16px; padding-bottom: 3px; }
-.report-tab { flex: 0 0 auto; min-height: 36px; padding: 8px 12px; border: 1px solid #d8e5dc; border-radius: 8px; background: #fff; color: #607168; cursor: pointer; font: inherit; font-size: .74rem; font-weight: 800; }
-.report-tab.active { border-color: #0f7451; background: #0f7451; color: #fff; }
+/* Compact dashboard-style cards wrap into rows at every window width. */
+.report-tabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(145px, 100%), 1fr)); align-items: stretch; gap: 12px; min-width: 0; margin-bottom: 20px; }
+.report-tab { display: grid; grid-template-rows: 27px auto; align-content: start; justify-items: start; gap: 7px; min-width: 0; min-height: 84px; padding: 10px 12px; border: 1px solid #d8e5dc; border-radius: 16px; background: #fff; color: #53675c; box-shadow: 0 4px 9px rgba(36, 58, 45, .08); cursor: pointer; font: inherit; font-size: .74rem; font-weight: 700; text-align: left; transition: border-color 150ms ease, box-shadow 150ms ease; }
+.report-tab-label { min-width: 0; line-height: 1.25; white-space: normal; overflow-wrap: anywhere; }
+.report-tab-icon { display: grid; width: 27px; height: 27px; place-items: center; border-radius: 7px; background: var(--report-icon-bg, var(--nm-green-bg, #e5f4ec)); color: var(--report-icon-ink, var(--nm-green, #087451)); font-size: .9rem; font-weight: 700; line-height: 1; }
+.report-tab:is([data-report="complete_device_details"], [data-report="supplier_progress"], [data-report="parts_inventory"], [data-report="export_boxes"]) { --report-icon-bg: var(--nm-blue-bg, #eaf2fb); --report-icon-ink: var(--nm-blue, #446f9c); }
+.report-tab:is([data-report="work_in_progress"], [data-report="parts_requests"], [data-report="technicians"]) { --report-icon-bg: var(--nm-amber-bg, #fff5df); --report-icon-ink: var(--nm-amber, #8b6513); }
+.report-tab:is([data-report="restricted_data"], [data-report="deleted_history"]) { --report-icon-bg: var(--nm-red-bg, #f9e5e3); --report-icon-ink: var(--nm-red, #a23030); }
+.report-tab:hover { border-color: #8bb39d; }
+.report-tab:focus-visible { outline: 2px solid var(--nm-accent, #0f7451); outline-offset: 3px; }
+.report-tab.active { border-color: #0f7451; background: #eaf5ee; color: #0f7451; box-shadow: inset 2px 2px 5px rgba(36, 58, 45, .12); }
+html[data-mode="dark"] .report-tabs .report-tab.active { border-color: var(--nm-accent); background: var(--nm-accent-soft); color: var(--nm-accent); }
+html[data-design="neumorphism"] .report-tabs .report-tab.active { border-color: var(--nm-line); background: var(--nm-well); color: var(--nm-accent); box-shadow: var(--nm-inset); }
+html[data-design="neumorphism"] .report-tab-icon { box-shadow: var(--nm-shadow-xs); }
 .report-panel { overflow: hidden; border: 1px solid #dbe7df; border-radius: 13px; background: #fff; }
 .report-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 20px; border-bottom: 1px solid #dbe7df; }
 .report-panel-heading h2 { margin: 3px 0 0; color: #183b2d; font-size: 1.1rem; }

@@ -1,7 +1,7 @@
 .user-access-content { max-width: 1500px; }
 .access-notice { display: flex; gap: 10px; align-items: baseline; margin: 0 0 17px; padding: 13px 15px; border: 1px solid #cce6d6; border-radius: 10px; background: #f2fbf5; color: #31634a; font-size: .76rem; line-height: 1.45; }
 .access-notice strong { color: #126848; white-space: nowrap; }
-.create-user-panel { margin-bottom: 18px; }
+.create-user-panel { margin-top: 18px; }
 #create-user-form { display: grid; gap: 20px; padding: 18px; }
 .create-user-fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 13px; }
 .create-user-fields > label { display: grid; gap: 6px; color: #47584e; font-size: .7rem; font-weight: 800; }
@@ -40,12 +40,7 @@
 .role-option strong { color: #28503b; font-size: .7rem; }
 .role-option small { grid-column: 1/-1; color: #76877d; font-size: .61rem; line-height: 1.35; }
 .access-empty { margin: 0; padding: 38px 18px; color: #829087; font-size: .75rem; text-align: center; }
-.role-guide-panel { margin-top: 18px; }
-.role-guide { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; }
-.role-guide-item { min-height: 104px; padding: 15px; border-right: 1px solid #e6eee9; border-bottom: 1px solid #e6eee9; }
-.role-guide-item strong { display: block; color: #214a36; font-size: .75rem; }
-.role-guide-item span { display: block; margin-top: 5px; color: #7a8c82; font-size: .65rem; line-height: 1.45; }
 @media (max-width: 1100px) { .create-user-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 1000px) { .user-access-layout { grid-template-columns: 1fr; } .role-options, .role-guide { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 1000px) { .user-access-layout { grid-template-columns: 1fr; } .role-options { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 720px) { .access-fields { grid-template-columns: 1fr; } }
-@media (max-width: 620px) { .access-notice { align-items: flex-start; flex-direction: column; } .create-user-fields, .role-options, .role-guide { grid-template-columns: 1fr; } .role-guide-item { border-right: 0; } }
+@media (max-width: 620px) { .access-notice { align-items: flex-start; flex-direction: column; } .create-user-fields, .role-options { grid-template-columns: 1fr; } }

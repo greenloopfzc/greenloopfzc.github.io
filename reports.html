@@ -11,13 +11,13 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/reports.css?v=20260925-restricted-data-1">
+    <link rel="stylesheet" href="css/reports.css?v=20260925-layout-1">
     <link rel="stylesheet" href="css/complete-device-details.css?v=20260914-details-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script defer src="js/config.js?v=20260918-audit-2"></script>
+  <script defer src="js/config.js?v=20260925-layout-1"></script>
     <script defer src="js/part-notifications.js?v=20260918-audit-2"></script>
     <script defer src="js/complete-device-details.js?v=20260918-audit-2"></script>
-    <script defer src="js/reports.js?v=20260925-restricted-data-1"></script>
+    <script defer src="js/reports.js?v=20260925-layout-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20260925-neumorphism-5">
   </head>
   <body class="app-page">
@@ -26,7 +26,7 @@
         <div class="sidebar-top"><a class="app-brand" href="dashboard.html"><img class="brand-image" src="assets/looplogo.jpg" alt=""><span>greenloop</span></a><button id="close-menu" class="icon-button close-menu" type="button" aria-label="Close menu">×</button></div>
         <nav class="sidebar-nav">
           <p class="nav-label">Workspace</p>
-          <a class="nav-item" href="dashboard.html"><span class="nav-icon" aria-hidden="true">⌘</span>Overview</a>
+          <a class="nav-item" href="dashboard.html"><span class="nav-icon" aria-hidden="true">⌘</span>Dashboard</a>
           <a class="nav-item" href="receiving.html"><span class="nav-icon" aria-hidden="true">+</span>Stock Received</a>
           <a class="nav-item" href="imei-search.html"><span class="nav-icon" aria-hidden="true">⌕</span>IMEI Search</a>
           <p class="nav-label">Operations</p>
@@ -41,26 +41,26 @@
       </aside>
       <div id="menu-backdrop" class="menu-backdrop" hidden></div>
       <main class="app-main">
-        <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Overview</a><span aria-hidden="true">/</span><strong>Reports</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
+        <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Dashboard</a><span aria-hidden="true">/</span><strong>Reports</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
         <div class="page-content reports-content">
           <h1 class="sr-only">Reports</h1>
           <div id="permission-message" class="access-message" hidden></div>
           <section id="reports-app" hidden>
             <nav id="report-tabs" class="report-tabs" aria-label="Report categories">
-              <button class="report-tab active" type="button" data-report="overview">Overview</button>
-              <button class="report-tab" type="button" data-report="complete_device_details">Complete Device Details</button>
-              <button class="report-tab" type="button" data-report="stock_received">Stock Received</button>
-              <button class="report-tab" type="button" data-report="supplier_progress">Supplier Progress</button>
-              <button class="report-tab" type="button" data-report="work_in_progress">Work in Progress</button>
-              <button class="report-tab" type="button" data-report="parts_requests">Parts Required</button>
-              <button class="report-tab" type="button" data-report="parts_inventory">Parts Inventory</button>
-              <button class="report-tab" type="button" data-report="technicians">Technicians</button>
-              <button class="report-tab" type="button" data-report="final_qc">Final QC</button>
-              <button class="report-tab" type="button" data-report="costs">Device Cost</button>
-              <button class="report-tab" type="button" data-report="export_boxes">Export Boxes</button>
-              <button class="report-tab" type="button" data-report="restricted_data">Restricted Data</button>
-              <button class="report-tab" type="button" data-report="data_correction">IMEI Data Correction</button>
-              <button class="report-tab" type="button" data-report="deleted_history">Deleted History</button>
+              <button class="report-tab active" type="button" data-report="overview" aria-pressed="true"><span class="report-tab-icon" aria-hidden="true">⌘</span><span class="report-tab-label">Overview</span></button>
+              <button class="report-tab" type="button" data-report="complete_device_details" aria-pressed="false"><span class="report-tab-icon" aria-hidden="true">▣</span><span class="report-tab-label">Complete Device Details</span></button>
+              <button class="report-tab" type="button" data-report="stock_received" aria-pressed="false"><span class="report-tab-icon" aria-hidden="true">◫</span><span class="report-tab-label">Stock Received</span></button>
+              <button class="report-tab" type="button" data-report="supplier_progress" aria-pressed="false"><span class="report-tab-icon" aria-hidden="true">⇄</span><span class="report-tab-label">Supplier Progress</span></button>
+              <button class="report-tab" type="button" data-report="work_in_progress" aria-pressed="false"><span class="report-tab-icon" aria-hidden="true">⌁</span><span class="report-tab-label">Work in Progress</span></button>
+              <button class="report-tab" type="button" data-report="parts_requests" aria-pressed="false"><span class="report-tab-icon" aria-hidden="true">▦</span><span class="report-tab-label">Parts Required</span></button>
+              <button class="report-tab" type="button" data-report="parts_inventory" aria-pressed="false"><span class="report-tab-icon" aria-hidden="true">▧</span><span class="report-tab-label">Parts Inventory</span></button>
+              <button class="report-tab" type="button" data-report="technicians" aria-pressed="false"><span class="report-tab-icon" aria-hidden="true">⚒</span><span class="report-tab-label">Technicians</span></button>
+              <button class="report-tab" type="button" data-report="final_qc" aria-pressed="false"><span class="report-tab-icon" aria-hidden="true">◉</span><span class="report-tab-label">Final QC</span></button>
+              <button class="report-tab" type="button" data-report="costs" aria-pressed="false"><span class="report-tab-icon" aria-hidden="true">$</span><span class="report-tab-label">Device Cost</span></button>
+              <button class="report-tab" type="button" data-report="export_boxes" aria-pressed="false"><span class="report-tab-icon" aria-hidden="true">▣</span><span class="report-tab-label">Export Boxes</span></button>
+              <button class="report-tab" type="button" data-report="restricted_data" aria-pressed="false"><span class="report-tab-icon" aria-hidden="true">⊘</span><span class="report-tab-label">Restricted Data</span></button>
+              <button class="report-tab" type="button" data-report="data_correction" aria-pressed="false"><span class="report-tab-icon" aria-hidden="true">✎</span><span class="report-tab-label">IMEI Data Correction</span></button>
+              <button class="report-tab" type="button" data-report="deleted_history" aria-pressed="false"><span class="report-tab-icon" aria-hidden="true">↶</span><span class="report-tab-label">Deleted History</span></button>
             </nav>
             <form id="report-filter" class="report-filter" novalidate>
               <div class="form-field"><label for="date-from">From date</label><input id="date-from" type="date" required></div>

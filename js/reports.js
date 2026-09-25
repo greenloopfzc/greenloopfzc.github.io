@@ -719,7 +719,11 @@
   }
 
   function renderActiveReport() {
-    document.querySelectorAll(".report-tab").forEach((tab) => tab.classList.toggle("active", tab.dataset.report === activeReport));
+    document.querySelectorAll(".report-tab").forEach((tab) => {
+      const selected = tab.dataset.report === activeReport;
+      tab.classList.toggle("active", selected);
+      tab.setAttribute("aria-pressed", String(selected));
+    });
     const liveDetails = activeReport === "complete_device_details";
     filterForm.hidden = liveDetails || activeReport === "restricted_data" || activeReport === "data_correction";
     if (liveDetails) {
