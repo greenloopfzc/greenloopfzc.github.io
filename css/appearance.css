@@ -1081,3 +1081,94 @@ html[data-design="neumorphism"] .gl-appearance-dialog {background:var(--nm-raise
 .gl-appearance-dialog :focus-visible {outline:3px solid var(--nm-accent);outline-offset:3px;}
 @media(max-width:620px){.gl-appearance-dialog{padding:21px;}.gl-theme-options{gap:10px;}.gl-theme-option{padding:10px;}.gl-settings-footer{gap:12px;}.gl-appearance-floating{right:12px;top:10px;}}
 @media(prefers-reduced-motion:reduce){.gl-appearance-dialog *{transition:none!important;}}
+
+/* Neumorphism refinement: paint only; retain every existing control dimension. */
+html[data-design="neumorphism"] {
+  --nm-raised:linear-gradient(135deg,#fafbfd 0%,#f1f5f8 55%,#e9eff4 100%);
+  --nm-control:linear-gradient(135deg,#edf2f6,#e0e8ef);
+  --nm-shadow:5px 6px 9px -2px #879cac80,-4px -4px 8px -2px #ffffffb8,inset 1px 1px 0 #ffffffc7,inset -1px -1px 0 #bdcbd666;
+  --nm-shadow-sm:3px 3px 5px -1px #8da1b17a,-2px -2px 4px -1px #ffffffb8,inset 1px 1px 0 #ffffffb3;
+  --nm-shadow-xs:1px 2px 3px -1px #8096a785,-1px -1px 2px #ffffff8f,inset 1px 1px 0 #ffffff8f;
+  --nm-inset:inset 3px 3px 5px #aabcc980,inset -2px -2px 4px #ffffffb8;
+}
+html[data-design="neumorphism"][data-mode="dark"] {
+  --nm-canvas:#353d47;
+  --nm-card:#2c343e;
+  --nm-well:#2e3640;
+  --nm-line:#4a5663;
+  --nm-high:#525f6c;
+  --nm-low:#1b222b;
+  --nm-raised:linear-gradient(135deg,#36404c 0%,#2e3742 48%,#29323c 100%);
+  --nm-control:linear-gradient(135deg,#3a4551,#303944);
+  --nm-shadow:5px 6px 9px -2px #121820b8,-3px -3px 6px -2px #64738361,inset 1px 1px 0 #73829245,inset -1px -1px 0 #151c2780;
+  --nm-shadow-sm:3px 3px 5px -1px #111720b3,-2px -2px 4px -1px #66768652,inset 1px 1px 0 #8190a03d,inset -1px -1px 0 #151c2766;
+  --nm-shadow-xs:1px 2px 3px -1px #111720b8,-1px -1px 2px #66768640,inset 1px 1px 0 #8190a038;
+  --nm-inset:inset 3px 3px 5px #111923b3,inset -2px -2px 4px #68798b52;
+}
+/* Tight shadows fit the standard 3px navigation gap without a glowing halo. */
+html[data-design="neumorphism"] .sidebar .nav-item {
+  background:var(--nm-control);
+  border-color:transparent;
+  border-radius:14px;
+  box-shadow:var(--nm-shadow-xs);
+  color:var(--nm-muted);
+}
+html[data-design="neumorphism"] .sidebar .nav-item:hover {
+  background:var(--nm-control);
+  color:var(--nm-accent);
+}
+html[data-design="neumorphism"] .sidebar .nav-item:is(.active,[aria-current="page"],[aria-pressed="true"],[aria-expanded="true"],:active) {
+  background:var(--nm-well);
+  color:var(--nm-accent);
+  box-shadow:var(--nm-inset);
+}
+html[data-design="neumorphism"] .sidebar .nav-item:is(.active,[aria-current="page"],[aria-expanded="true"]) .nav-icon {color:var(--nm-accent);}
+/* The JPG's black background uses screen on dark, inverted multiply on light. */
+html[data-design="neumorphism"]:not([data-mode="dark"]) :is(.app-brand,.mobile-brand) .brand-image {
+  filter:invert(1) hue-rotate(180deg);
+  mix-blend-mode:multiply;
+}
+html[data-design="neumorphism"][data-mode="dark"] .brand-image {filter:none;mix-blend-mode:screen;}
+html[data-design="neumorphism"] :is(.brand-image,.app-brand,.nav-icon) {box-shadow:none;text-shadow:none;}
+/* Small controls use their own shadow scale instead of a card-sized glow. */
+html[data-design="neumorphism"] :is(.icon-button,.gl-settings-close,.metric-icon,.side-icon,.technician-avatar,.technician-live-avatar) {
+  box-shadow:var(--nm-shadow-xs);
+}
+html[data-design="neumorphism"] :is(button.icon-button,button.gl-settings-close):not(:disabled) {box-shadow:var(--nm-shadow-xs);}
+html[data-design="neumorphism"] :is(.icon-button,.gl-settings-close) {background:var(--nm-control);}
+html[data-design="neumorphism"] :is(.report-tab,.return-report-tab,.role-option,.user-list-item,.gl-theme-option,.gl-mode-options label) {
+  background:var(--nm-raised);
+  box-shadow:var(--nm-shadow-sm);
+}
+/* Keep the meaning/color of QC results, routing warnings and return reasons. */
+html[data-design="neumorphism"] :is(.final-result-cell label,.lab-return-reason,.frame-pass-check,.frame-fail-check,.qc-frame-route,.auto-save-control) {
+  box-shadow:var(--nm-shadow-xs);
+}
+html[data-design="neumorphism"] :is(.report-tab.active,.return-report-tab.is-active,.role-option.is-selected,.user-list-item.active,.technician-card.is-active,.lab-board-view-controls button[aria-pressed="true"]) {
+  background:var(--nm-well);
+  color:var(--nm-accent);
+  box-shadow:var(--nm-inset);
+}
+html[data-design="neumorphism"] :is(.gl-theme-option,.gl-mode-options label):has(input:checked) {
+  background:var(--nm-well);
+  box-shadow:var(--nm-inset);
+}
+html[data-design="neumorphism"] .return-report-tab.damaged.is-active {background:var(--nm-red-bg);color:var(--nm-red);border-color:var(--nm-red);}
+html[data-design="neumorphism"] .return-report-tab.faulty.is-active {background:var(--nm-amber-bg);color:var(--nm-amber);border-color:var(--nm-amber);}
+html[data-design="neumorphism"] .return-report-tab.is-active span {background:var(--nm-card);color:var(--nm-accent);}
+html[data-design="neumorphism"] .return-report-tab.damaged.is-active span {color:var(--nm-red);}
+html[data-design="neumorphism"] .return-report-tab.faulty.is-active span {color:var(--nm-amber);}
+html[data-design="neumorphism"] :is(.final-result-cell label,.lab-return-reason,.frame-pass-check,.frame-fail-check,.qc-frame-route,.auto-save-control):has(input:checked) {
+  box-shadow:var(--nm-inset);
+}
+html[data-design="neumorphism"] body button:is([aria-pressed="true"],[aria-expanded="true"],.manual-lab-parts-toggle[data-state="on"],.qc-skip-lab-button[data-state="on"]) {
+  box-shadow:var(--nm-inset);
+}
+html[data-design="neumorphism"] :is(button:not(:disabled),a.primary-button,a.secondary-button,a.receive-button):active {
+  box-shadow:var(--nm-inset);
+}
+html[data-design="neumorphism"] :is(.qc-bulk-table,.final-bulk-table,.batch-entry-table) :is(input,select) {box-shadow:var(--nm-inset);}
+html[data-design="neumorphism"] .gl-neo-swatch i {box-shadow:var(--nm-shadow-xs);}
+html[data-design="neumorphism"] .gl-neo-swatch i:last-child {box-shadow:var(--nm-inset);}
+html[data-design="neumorphism"] .gl-appearance-dialog {box-shadow:var(--nm-shadow);}
+html[data-design="neumorphism"] .sidebar-nav {scrollbar-color:var(--nm-line) transparent;}
