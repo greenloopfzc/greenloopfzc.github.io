@@ -191,8 +191,7 @@
     }
     if (type === "details") {
       if (!window.GREENLOOP_CAN_VIEW_PARTNER_NAMES) return "Saved details restricted by partner-name permission";
-      const details = value && typeof value === "object" ? JSON.stringify(value, null, 2) : String(value || "No extra details saved.");
-      return `<details class="report-deletion-details"><summary>View saved data</summary><pre>${escapeHtml(details)}</pre></details>`;
+      return window.GREENLOOP_AUDIT_DETAILS?.render(value) || "Saved details could not be displayed. Refresh this page to try again.";
     }
     if (type === "stock") return value ? '<span class="report-status low">Low</span>' : '<span class="report-status">OK</span>';
     return escapeHtml(value === null || value === undefined || value === "" ? "—" : value);
@@ -622,8 +621,8 @@
     const rows = auditView === "changes" ? changeRows : deletionRows;
     panelKicker.textContent = "Permanent audit";
     panelTitle.textContent = "Deleted history and data changes";
-    panelDescription.textContent = "Nothing is hidden: deleted records and every authorised old/new value correction are saved separately.";
-    rowCount.textContent = `${rows.length} record${rows.length === 1 ? "" : "s"}`;
+    panelDescription.textContent = "Review who deleted or corrected a record, when it happened and the saved details. One phone can have several audit entries.";
+    rowCount.textContent = `${rows.length} audit entr${rows.length === 1 ? "y" : "ies"}`;
 
     let table;
     if (auditView === "changes") {
@@ -637,11 +636,60 @@
     } else {
       const report = reports.deleted_history;
       const headers = report.columns.map(([label]) => `<th>${escapeHtml(label)}</th>`).join("");
-      const body = deletionRows.length ? deletionRows.map((row) => `<tr>${report.columns.map(([, key, type]) => `<td>${formatCell(row[key], type)}</td>`).join("")}</tr>`).join("") : `<tr><td class="report-empty" colspan="${report.columns.length}">No deleted records were found for this date range.</td></tr>`;
-      table = `<div class="report-table-wrap"><table class="report-table"><thead><tr>${headers}</tr></thead><tbody>${body}</tbody></table></div>`;
+      const body = deletionRows.length ? deletionRows.map((row, index) => {
+        const detailsId = `deleted-record-details-${index}`;
+        const cells = report.columns.map(([, key, type]) => {
+          if (type !== "details") return `<td>${formatCell(row[key], type)}</td>`;
+          if (!window.GREENLOOP_CAN_VIEW_PARTNER_NAMES) return '<td class="audit-details-restricted">Saved details restricted by partner-name permission</td>';
+          return `<td><button type="button" class="audit-details-toggle" data-audit-details-index="${index}" aria-expanded="false" aria-controls="${detailsId}" aria-label="View saved data for ${escapeHtml(row.record_label || row.record_type || "this record")}">View saved data</button></td>`;
+        }).join("");
+        return `<tr>${cells}</tr><tr id="${detailsId}" class="audit-details-row" hidden><td colspan="${report.columns.length}"><div class="audit-detail-content"></div></td></tr>`;
+      }).join("") : `<tr><td class="report-empty" colspan="${report.columns.length}">No deleted records were found for this date range.</td></tr>`;
+      table = `<div class="report-table-wrap"><table class="report-table audit-table--deleted"><thead><tr>${headers}</tr></thead><tbody>${body}</tbody></table></div>`;
     }
 
     reportContent.innerHTML = `<div class="audit-switch"><button type="button" data-audit-view="deleted" class="${auditView === "deleted" ? "active" : ""}">Deleted records <span>${deletionRows.length}</span></button><button type="button" data-audit-view="changes" class="${auditView === "changes" ? "active" : ""}">Data changes <span>${changeRows.length}</span></button></div>${table}`;
+  }
+
+  function toggleSavedAuditDetails(button) {
+    if (activeReport !== "deleted_history" || auditView !== "deleted") return;
+    if (!window.GREENLOOP_CAN_VIEW_PARTNER_NAMES) {
+      reportContent.querySelectorAll('.audit-details-row').forEach((element) => { element.hidden = true; });
+      reportContent.querySelectorAll('.audit-detail-content').forEach((element) => { element.textContent = ""; });
+      reportContent.querySelectorAll('[data-audit-details-index]').forEach((element) => {
+        element.setAttribute("aria-expanded", "false");
+        element.textContent = "View saved data";
+        element.setAttribute("aria-label", (element.getAttribute("aria-label") || "View saved data").replace(/^Hide saved data/, "View saved data"));
+      });
+      setMessage("Saved details restricted by partner-name permission");
+      return;
+    }
+    const index = Number(button.dataset.auditDetailsIndex);
+    if (!Number.isSafeInteger(index) || index < 0) return;
+    const row = reportData.deleted_history?.[index];
+    const detailRow = document.getElementById(button.getAttribute("aria-controls"));
+    if (!row || !detailRow || !reportContent.contains(detailRow)) return;
+    const opening = button.getAttribute("aria-expanded") !== "true";
+    reportContent.querySelectorAll('.audit-details-row').forEach((element) => { element.hidden = true; });
+    reportContent.querySelectorAll('[data-audit-details-index]').forEach((element) => {
+      element.setAttribute("aria-expanded", "false");
+      element.textContent = "View saved data";
+      element.setAttribute("aria-label", (element.getAttribute("aria-label") || "View saved data").replace(/^Hide saved data/, "View saved data"));
+    });
+    if (!opening) return;
+    const content = detailRow.querySelector('.audit-detail-content');
+    if (!content.hasChildNodes()) {
+      try {
+        content.innerHTML = window.GREENLOOP_AUDIT_DETAILS?.render(row.record_data, row)
+          || '<p class="audit-snapshot-empty">Saved details could not be displayed. Refresh this page to try again.</p>';
+      } catch (_) {
+        content.textContent = "Saved details could not be displayed. Refresh this page to try again.";
+      }
+    }
+    detailRow.hidden = false;
+    button.setAttribute("aria-expanded", "true");
+    button.textContent = "Hide saved data";
+    button.setAttribute("aria-label", `Hide saved data for ${row.record_label || row.record_type || "this record"}`);
   }
 
   async function deleteSelectedExportBox(boxNumber) {
@@ -836,6 +884,8 @@
     renderActiveReport();
   });
   reportContent.addEventListener("click", (event) => {
+    const savedDataButton = event.target.closest('[data-audit-details-index]');
+    if (savedDataButton) { toggleSavedAuditDetails(savedDataButton); return; }
     if (event.target.closest('[data-open-deleted-history], [data-open-data-correction]')) {
       if (deletionBusy || reportMutationPending) return;
       resetDeletionPreview();

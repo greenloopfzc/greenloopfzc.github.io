@@ -218,3 +218,37 @@ html[data-design="neumorphism"] .restricted-scope-label { box-shadow: var(--nm-i
 @media (min-width: 1051px) { .restricted-card-heading { min-height: 92px; } }
 @media (max-width: 1050px) { .restricted-review-form { grid-template-columns: 1fr; min-height: 0; } .restricted-all-note { min-height: 58px; } }
 @media (max-width: 760px) { .restricted-options { grid-template-columns: 1fr; } .restricted-workspace { padding: 14px; } .restricted-card { padding: 15px; } .restricted-all-note { min-height: 0; } }
+
+/* Saved audit records open beneath their row, using the full report width. */
+.audit-table--deleted > tbody > tr > td { vertical-align: top; }
+.audit-details-toggle { min-height: 34px; padding: 7px 11px; border: 1px solid var(--nm-line); border-radius: 8px; background: var(--nm-card); color: var(--nm-accent); font: 800 .72rem/1.3 "DM Sans", sans-serif; cursor: pointer; }
+.audit-details-toggle:focus-visible { outline: 2px solid var(--nm-accent); outline-offset: 3px; }
+.audit-details-toggle[aria-expanded="true"] { background: var(--nm-accent-soft); }
+.audit-table--deleted .audit-details-restricted { max-width: 210px; white-space: normal; }
+.audit-table--deleted > tbody > .audit-details-row > td { padding: 0; white-space: normal; }
+.audit-detail-content { padding: 20px; border-block: 1px solid var(--nm-line); background: var(--nm-well); }
+.audit-snapshot { min-width: 0; color: var(--nm-ink); font-size: .76rem; font-weight: 500; line-height: 1.5; text-align: left; }
+.audit-snapshot-summary, .audit-snapshot-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr)); gap: 12px 20px; margin: 0; }
+.audit-snapshot-summary { padding: 16px; border: 1px solid var(--nm-line); border-radius: 12px; background: var(--nm-card); }
+.audit-snapshot-field { min-width: 0; }
+.audit-snapshot dt { margin-bottom: 4px; color: var(--nm-muted); font-size: .67rem; font-weight: 700; }
+.audit-snapshot dd { margin: 0; color: var(--nm-ink); overflow-wrap: anywhere; white-space: pre-wrap; }
+.audit-snapshot-section { min-width: 0; margin-top: 18px; }
+.audit-snapshot h4 { margin: 0 0 10px; color: var(--nm-ink); font: 800 .85rem/1.35 Manrope, sans-serif; }
+.audit-snapshot h5 { margin: 0 0 12px; color: var(--nm-ink); font: 800 .77rem/1.35 "DM Sans", sans-serif; overflow-wrap: anywhere; }
+.audit-snapshot-group { margin-top: 10px; padding: 12px 14px; border: 1px solid var(--nm-line); border-radius: 10px; background: var(--nm-card); }
+.audit-snapshot-group > summary, .audit-snapshot-record > summary, .audit-snapshot-references > summary { cursor: pointer; color: var(--nm-accent); font-weight: 800; overflow-wrap: anywhere; }
+.audit-snapshot-group[open] > summary, .audit-snapshot-record[open] > summary { margin-bottom: 12px; }
+.audit-snapshot summary:focus-visible { outline: 2px solid var(--nm-accent); outline-offset: 3px; border-radius: 3px; }
+.audit-snapshot-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); align-items: start; gap: 12px; }
+.audit-snapshot-record { min-width: 0; padding: 14px; border: 1px solid var(--nm-line); border-radius: 9px; background: var(--nm-card); }
+.audit-snapshot-record .audit-snapshot-record { margin-top: 10px; }
+.audit-snapshot-references { margin-top: 14px; padding-top: 11px; border-top: 1px solid var(--nm-line); }
+.audit-snapshot-references > summary { color: var(--nm-muted); font-size: .69rem; }
+.audit-snapshot-references > dl { margin-top: 12px; }
+.audit-snapshot-empty, .audit-snapshot-note { color: var(--nm-muted); font-size: .7rem; }
+.audit-snapshot-note { margin: 6px 0 12px; }
+html[data-design="neumorphism"] .audit-details-toggle { box-shadow: var(--nm-shadow-xs); }
+html[data-design="neumorphism"] .audit-details-toggle[aria-expanded="true"] { box-shadow: var(--nm-inset); }
+html[data-design="neumorphism"] .audit-snapshot-summary { box-shadow: var(--nm-shadow-sm); }
+@media (max-width: 760px) { .audit-detail-content { padding: 12px; } .audit-snapshot-summary { padding: 12px; } }
