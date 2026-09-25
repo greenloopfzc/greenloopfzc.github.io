@@ -1173,3 +1173,12 @@ html[data-design="neumorphism"] .gl-neo-swatch i {box-shadow:var(--nm-shadow-xs)
 html[data-design="neumorphism"] .gl-neo-swatch i:last-child {box-shadow:var(--nm-inset);}
 html[data-design="neumorphism"] .gl-appearance-dialog {box-shadow:var(--nm-shadow);}
 html[data-design="neumorphism"] .sidebar-nav {scrollbar-color:var(--nm-line) transparent;}
+/* All lower technician tiles share the raised finish in board and TV views. */
+html[data-design="neumorphism"] .technician-live-stats > div {
+  background:var(--nm-raised);
+  border-color:transparent;
+  border-radius:12px;
+}
+html[data-design="neumorphism"] :is(.technician-live-stats > div,.technician-live-quality > div,.technician-live-device) {
+  box-shadow:var(--nm-shadow-sm);
+}
