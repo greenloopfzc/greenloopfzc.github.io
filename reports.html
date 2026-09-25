@@ -17,7 +17,7 @@
   <script defer src="js/config.js?v=20260918-audit-2"></script>
     <script defer src="js/part-notifications.js?v=20260918-audit-2"></script>
     <script defer src="js/complete-device-details.js?v=20260918-audit-2"></script>
-    <script defer src="js/reports.js?v=20260918-audit-2"></script>
+    <script defer src="js/reports.js?v=20260925-reports-layout-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20260925-neumorphism-5">
   </head>
   <body class="app-page">
@@ -43,16 +43,9 @@
       <main class="app-main">
         <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Overview</a><span aria-hidden="true">/</span><strong>Reports</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
         <div class="page-content reports-content">
-          <section class="page-heading reports-heading"><div><p class="eyebrow dashboard-eyebrow">Reports</p><h1>Operations and performance</h1><p class="heading-subtitle">Use one date range for stock, repairs, quality control, costs, and export reporting.</p></div></section>
+          <h1 class="sr-only">Reports</h1>
           <div id="permission-message" class="access-message" hidden></div>
           <section id="reports-app" hidden>
-            <form id="report-filter" class="report-filter" novalidate>
-              <div class="form-field"><label for="date-from">From date</label><input id="date-from" type="date" required></div>
-              <div class="form-field"><label for="date-to">To date</label><input id="date-to" type="date" required></div>
-              <button id="apply-report-filter" class="primary-button" type="submit">Apply date range</button>
-            </form>
-            <p id="report-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
-            <section id="report-summary" class="report-summary" aria-label="Operational summary"></section>
             <nav id="report-tabs" class="report-tabs" aria-label="Report categories">
               <button class="report-tab active" type="button" data-report="overview">Overview</button>
               <button class="report-tab" type="button" data-report="complete_device_details">Complete Device Details</button>
@@ -68,6 +61,12 @@
               <button class="report-tab" type="button" data-report="data_correction">IMEI Data Correction</button>
               <button class="report-tab" type="button" data-report="deleted_history">Deleted History</button>
             </nav>
+            <form id="report-filter" class="report-filter" novalidate>
+              <div class="form-field"><label for="date-from">From date</label><input id="date-from" type="date" required></div>
+              <div class="form-field"><label for="date-to">To date</label><input id="date-to" type="date" required></div>
+              <button id="apply-report-filter" class="primary-button" type="submit">Apply date range</button>
+            </form>
+            <p id="report-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
             <section class="report-panel">
               <div class="report-panel-heading"><div><p id="report-panel-kicker" class="panel-kicker">Overview</p><h2 id="report-panel-title">Live workflow overview</h2><p id="report-panel-description" class="report-panel-description"></p></div><span id="report-row-count" class="queue-count">0 records</span></div>
               <div id="report-content" class="report-content"></div>

@@ -8,7 +8,6 @@
   const dateFrom = document.querySelector("#date-from");
   const dateTo = document.querySelector("#date-to");
   const message = document.querySelector("#report-message");
-  const summary = document.querySelector("#report-summary");
   const tabs = document.querySelector("#report-tabs");
   const panelKicker = document.querySelector("#report-panel-kicker");
   const panelTitle = document.querySelector("#report-panel-title");
@@ -167,22 +166,6 @@
     if (!window.GREENLOOP_CAN_VIEW_PARTNER_NAMES && key === "customer") return "Confidential customer";
     if (!window.GREENLOOP_CAN_VIEW_PARTNER_NAMES && key === "supplier_name") return escapeHtml(row.supplier_code || "Confidential supplier");
     return formatCell(row[key], type);
-  }
-
-  function renderSummary() {
-    if (!hasReportSummary(reportData)) {
-      summary.innerHTML = '<p class="report-empty">Operational totals are unavailable. Apply the date range to retry.</p>';
-      return;
-    }
-    const data = reportData.summary || {};
-    const cards = [
-      ["Stock received", data.stock_received, "Selected date range", ""],
-      ["Initial QC pending", data.initial_qc_pending, "Waiting for inspection", ""],
-      ["Parts pending", data.parts_pending, "Open part requests", ""],
-      ["Laboratory pending", data.laboratory_pending, "Laboratory queue", ""],
-      ["Final QC pending", data.final_qc_pending, "Waiting for final inspection", ""]
-    ];
-    summary.innerHTML = cards.map(([label, value, note, style]) => `<article class="report-metric ${style}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value ?? 0)}</strong><small>${escapeHtml(note)}</small></article>`).join("");
   }
 
   function formatCell(value, type) {
@@ -645,7 +628,6 @@
     document.querySelectorAll(".report-tab").forEach((tab) => tab.classList.toggle("active", tab.dataset.report === activeReport));
     const liveDetails = activeReport === "complete_device_details";
     filterForm.hidden = liveDetails;
-    summary.hidden = liveDetails;
     if (liveDetails) {
       panelKicker.textContent = "Connected phone";
       panelTitle.textContent = "Complete Device Details";
@@ -701,13 +683,11 @@
       if (generation !== reportGeneration) return;
       reportData = next;
       selectedExportBox = ""; exportBoxImeiFilter = ""; selectedSupplier = "all";
-      renderSummary();
       renderActiveReport();
       if (warnings.length) setMessage(warnings.join(". ") + ". Do not treat an unavailable report as zero records.");
     } catch (error) {
       if (generation === reportGeneration) {
         if (!hasReportSummary(reportData)) {
-          renderSummary();
           if (activeReport === "overview") renderOverview();
         }
         setMessage(error.message || "Reports could not be loaded.");
