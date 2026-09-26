@@ -198,6 +198,21 @@
     }
 
     if (batches.length) {
+      // Receipt balances are readable with IMEI Entry permission; opening the
+      // separate Stock Return form is not required to see returned quantities.
+      let returnTotals;
+      try {
+        returnTotals = await withTimeout(api().rpc("get_simple_stock_return_receipt_totals", {
+          p_batch_ids: batches.map((batch) => batch.batch_id)
+        }), "Return Stock totals");
+      } catch (_) { returnTotals = { error: true }; }
+      const returnByBatch = new Map(!returnTotals.error && Array.isArray(returnTotals.data)
+        ? returnTotals.data.map((row) => [String(row.batch_id), row.returned_quantity]) : []);
+      batches = batches.map((batch) => {
+        const value = returnByBatch.has(String(batch.batch_id)) ? returnByBatch.get(String(batch.batch_id)) : batch.returned_quantity;
+        const valid = ["number", "string"].includes(typeof value) && String(value).trim() !== "" && Number.isInteger(Number(value)) && Number(value) >= 0;
+        return { ...batch, returned_quantity: valid ? Number(value) : null };
+      });
       const { data: invoiceRows, error: invoiceError } = await api().rpc("get_stock_receipt_invoice_numbers", {
         p_batch_ids: batches.map((batch) => batch.batch_id)
       });
@@ -227,7 +242,7 @@
     const planText = plannedLines.map((line) => `${line.model || "Any model"} - ${line.storage_gb ? `${line.storage_gb} GB` : "Any GB"} - ${line.color || "Any color"} (${line.remaining_quantity}/${line.planned_quantity} remaining)`).join(" | ");
     const summary = [
       ["Invoice number", batch.invoice_number || "Not generated for legacy receipt"], ["Supplier code", supplierLabel(batch)], ["Stock channel", batch.stock_channel],
-      ["Quantity received", `${batch.planned_quantity} devices`], ["Progress", `${batch.entered_quantity} / ${batch.planned_quantity}`],
+      ["Quantity received", `${batch.planned_quantity} devices`], ["Return Stock", batch.returned_quantity ?? "Unavailable"], ["Progress", `${batch.entered_quantity} / ${batch.planned_quantity}`],
       ["Remaining", batch.remaining_quantity]
     ].map(([label, value]) => `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("");
     batchSummary.innerHTML = summary + (planText ? `<div class="batch-plan-lines" title="${escapeHtml(planText)}"><span>Model / GB / Color plan</span><strong>${escapeHtml(planText)}</strong></div>` : "");

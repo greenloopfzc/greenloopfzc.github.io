@@ -33,6 +33,13 @@ html[data-design="neumorphism"] .report-tab-icon { box-shadow: var(--nm-shadow-x
 .report-table th { padding: 13px 16px; background: #f3f8f4; border-bottom: 1px solid #dbe7df; color: #718077; font-size: .61rem; font-weight: 800; letter-spacing: .08em; text-align: left; text-transform: uppercase; }
 .report-table td { padding: 14px 16px; border-bottom: 1px solid #edf1ee; color: #2b4638; font-size: .76rem; font-weight: 600; white-space: nowrap; }
 .report-table tr:last-child td { border-bottom: 0; }
+.stock-return-report { min-width: 1140px; }
+.stock-return-report td { vertical-align: top; }
+.stock-return-report small, .stock-return-imeis span { display: block; margin-top: 4px; line-height: 1.4; }
+.stock-return-notes { min-width: 150px; max-width: 270px; white-space: normal !important; overflow-wrap: anywhere; }
+.stock-return-quantity { font-weight: 800 !important; }
+.supplier-return-note { margin: 14px 18px; padding: 12px 14px; border: 1px solid var(--nm-line, #dbe7df); border-radius: 10px; background: var(--nm-card, #f7fbf8); color: var(--nm-ink, #294a39); font-size: .76rem; }
+.supplier-return-note p { margin: 5px 0 0; line-height: 1.5; }
 .supplier-report-tools { display: grid; grid-template-columns: minmax(240px, 420px) minmax(180px, 1fr) auto; align-items: end; gap: 14px; padding: 16px 18px; border-bottom: 1px solid #dbe7df; background: #f8fbf9; }
 .supplier-report-tools label { display: grid; gap: 6px; color: #53675c; font-size: .68rem; font-weight: 800; }
 .supplier-report-tools select { width: 100%; min-height: 40px; border: 1px solid #cedfd5; border-radius: 8px; padding: 0 11px; background: #fff; color: #1c4432; font: 700 .76rem/1 "DM Sans", sans-serif; }

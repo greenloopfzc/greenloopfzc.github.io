@@ -1,9 +1,6 @@
 (() => {
   "use strict";
 
-  // Shared page access redirects saved links to the single Stock Return page.
-  if (new URLSearchParams(window.location.search).get("report") === "supplier_returns") return;
-
   const config = window.GREENLOOP_CONFIG || {};
   const app = document.querySelector("#reports-app");
   const permissionMessage = document.querySelector("#permission-message");
@@ -63,6 +60,11 @@
   }
 
   const reports = {
+    stock_returns: {
+      title: "Stock Return",
+      description: "Returned stock by supplier receipt. The selected date range uses the return date in UAE time.",
+      columns: []
+    },
     complete_device_details: {
       title: "Complete Device Details",
       description: "Read the connected iPhone. No historical phone or stock data is changed.",
@@ -240,6 +242,35 @@
     return rows.reduce((total, row) => total + Number(row[key] || 0), 0);
   }
 
+  function renderStockReturns() {
+    panelKicker.textContent = "Stock Return";
+    panelTitle.textContent = "Stock Return";
+    panelDescription.textContent = reports.stock_returns.description;
+    const rows = reportData.stock_returns;
+    if (!Array.isArray(rows)) {
+      rowCount.textContent = rows === null ? "Unavailable" : "Loading";
+      reportContent.innerHTML = `<p class="report-empty">${rows === null ? "Stock Return could not be loaded. Apply the date range to retry." : "Loading Stock Return report…"}</p>`;
+      return;
+    }
+    const returnDate = value => {
+      const parsed = new Date(value);
+      return value && Number.isFinite(parsed.getTime()) ? new Intl.DateTimeFormat([], {day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit",timeZone:"Asia/Dubai"}).format(parsed) : "—";
+    };
+    rowCount.textContent = `${supplierTotal(rows, "returned_quantity")} returned · ${rows.length} record${rows.length === 1 ? "" : "s"}`;
+    const body = rows.length ? rows.map(row => `<tr>
+      <td><strong>${escapeHtml(row.invoice_number || row.batch_number || "Legacy receipt")}</strong><small>${escapeHtml(returnDate(row.received_at))}</small></td>
+      <td>${escapeHtml(partnerLabel(row.supplier_code, row.supplier_name))}</td>
+      <td>${escapeHtml(row.received_quantity ?? "—")}</td>
+      <td class="stock-return-quantity">${escapeHtml(row.returned_quantity ?? "—")}</td>
+      <td><strong>${escapeHtml(returnDate(row.returned_at))}</strong><small>${escapeHtml(row.return_reference || "")}${row.archived ? " · Archived audit" : ""}</small></td>
+      <td class="stock-return-notes">${escapeHtml(title(row.reason))}${row.notes ? `<small>${escapeHtml(row.notes)}</small>` : ""}</td>
+      <td>${escapeHtml(row.model || "Not recorded")}${row.storage_gb ? `<small>${escapeHtml(row.storage_gb)} GB</small>` : ""}</td>
+      <td class="stock-return-imeis">${Array.isArray(row.imeis) && row.imeis.length ? row.imeis.map(value => `<span>${escapeHtml(value)}</span>`).join("") : "Not recorded"}</td>
+      <td>${escapeHtml(row.returned_by_name || "Recorded user")}</td>
+    </tr>`).join("") : '<tr><td class="report-empty" colspan="9">No stock returns were recorded in this return-date range.</td></tr>';
+    reportContent.innerHTML = `<div class="report-table-wrap"><table class="report-table stock-return-report"><thead><tr><th>Receipt / received date</th><th>Supplier</th><th>Quantity received</th><th>Return Stock</th><th>Return date / reference</th><th>Reason</th><th>Model / GB</th><th>IMEIs</th><th>Returned by</th></tr></thead><tbody>${body}</tbody></table></div>`;
+  }
+
   function renderSupplierProgress() {
     const allRows = reportData.supplier_progress || [];
     const suppliers = [...new Map(allRows.map((row) => [String(row.supplier_id), {
@@ -254,6 +285,15 @@
     const exported = supplierTotal(rows, "exported_quantity");
     const stagePending = supplierTotal(rows, "initial_qc_pending") + supplierTotal(rows, "lab_glass_pending") + supplierTotal(rows, "parts_pending") + supplierTotal(rows, "final_qc_pending") + supplierTotal(rows, "other_quantity");
     const completedPercent = received ? Math.round(((ready + exported) / received) * 100) : 0;
+    const receiptReturns = (reportData.stock_return_receipt_totals || []).filter((receipt) => {
+      if (selectedSupplier !== "all" && String(receipt.supplier_id) !== selectedSupplier) return false;
+      const date = new Date(receipt.received_at);
+      if (!receipt.received_at || !Number.isFinite(date.getTime())) return false;
+      const parts = Object.fromEntries(new Intl.DateTimeFormat("en", {timeZone:"Asia/Dubai",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(date).map(part => [part.type, part.value]));
+      const receivedDate = `${parts.year}-${parts.month}-${parts.day}`;
+      return receivedDate >= reportData.date_from && receivedDate <= reportData.date_to && Number(receipt.unallocated_return_quantity) > 0;
+    });
+    const receiptReturnNote = receiptReturns.length ? `<aside class="supplier-return-note"><strong>Receipt-level returns: ${supplierTotal(receiptReturns, "unallocated_return_quantity")} units</strong><p>Actual IMEIs still to enter for these receipts: <strong>${supplierTotal(receiptReturns, "remaining_unentered")}</strong>. Model pending counts may include these returned units because the returns were recorded against the receipt.</p></aside>` : "";
 
     panelKicker.textContent = "Supplier progress";
     panelTitle.textContent = "Supplier stock progress";
@@ -290,6 +330,7 @@
       <article class="ready"><span>Ready Stock</span><strong>${ready}</strong></article>
       <article class="exported"><span>Exported</span><strong>${exported}</strong></article>
     </div>
+    ${receiptReturnNote}
     <div class="report-table-wrap"><table class="report-table supplier-progress-table"><thead><tr>
       <th>Supplier</th><th>Model</th><th>GB</th><th>Batch</th><th>Channel</th><th>Planned</th><th>IMEIs entered</th><th>IMEI entry pending</th><th>Initial QC</th><th>Lab &amp; Glass</th><th>Parts</th><th>Final QC</th><th>Ready Stock</th><th>Exported</th><th>Other</th>
     </tr></thead><tbody>${tableBody}</tbody></table></div>`;
@@ -787,6 +828,7 @@
     }
     window.GREENLOOP_COMPLETE_DEVICE_DETAILS?.unmount();
     if (activeReport === "overview") renderOverview();
+    else if (activeReport === "stock_returns") renderStockReturns();
     else if (activeReport === "supplier_progress") renderSupplierProgress();
     else if (activeReport === "export_boxes") renderExportBoxes();
     else if (activeReport === "restricted_data") renderRestrictedData();
@@ -806,13 +848,15 @@
     submit.textContent = "Loading...";
     try {
       const dates = { p_date_from: from, p_date_to: to };
-      const [base, boxes, suppliers, deletions, changes, parts] = await Promise.all([
+      const [base, boxes, suppliers, deletions, changes, parts, stockReturns, receiptTotals] = await Promise.all([
         getClient().rpc("get_greenloop_reports", dates),
         getClient().rpc("get_export_box_report", dates),
         getClient().rpc("get_supplier_stock_progress", dates),
         getClient().rpc("get_deletion_history", dates),
         canManageCorrections ? getClient().rpc("get_data_change_history", dates) : Promise.resolve({ data: [] }),
-        getClient().rpc("get_open_parts_pending_count")
+        getClient().rpc("get_open_parts_pending_count"),
+        getClient().rpc("list_simple_stock_returns", { p_from: from, p_to: to }),
+        getClient().rpc("get_simple_stock_return_receipt_totals", { p_batch_ids: null })
       ]);
       if (generation !== reportGeneration) return;
       if (base.error) throw base.error;
@@ -821,6 +865,10 @@
       next.date_from = from;
       next.date_to = to;
       const warnings = [];
+      next.stock_returns = !stockReturns.error && Array.isArray(stockReturns.data) ? stockReturns.data : null;
+      if (next.stock_returns === null) warnings.push("Stock Return could not be loaded");
+      next.stock_return_receipt_totals = !receiptTotals.error && Array.isArray(receiptTotals.data) ? receiptTotals.data : null;
+      if (next.stock_return_receipt_totals === null) warnings.push("Return-adjusted receipt balances could not be loaded; model pending counts may include returned units");
       for (const [key, label, response] of [["export_boxes", "Export boxes", boxes], ["supplier_progress", "Supplier progress", suppliers], ["deleted_history", "Deleted history", deletions], ["data_changes", "Data changes", changes]]) {
         next[key] = response.error ? [] : response.data || [];
         if (response.error) warnings.push(label + " could not be loaded");
@@ -862,7 +910,8 @@
     const { data: resetPermission } = await getClient().rpc("has_role", { required_roles: ["super_admin", "owner"] });
     canResetData = Boolean(resetPermission);
     document.querySelectorAll('[data-report="data_correction"], [data-report="restricted_data"]').forEach((tab) => { tab.hidden = !canManageCorrections; });
-    const requestedReport = new URLSearchParams(window.location.search).get("report");
+    const reportQuery = new URLSearchParams(window.location.search).get("report");
+    const requestedReport = reportQuery === "supplier_returns" ? "stock_returns" : reportQuery;
     if (requestedReport && reports[requestedReport] && (!["data_correction", "restricted_data"].includes(requestedReport) || canManageCorrections)) activeReport = requestedReport;
     const now = new Date();
     dateFrom.value = localDate(new Date(now.getFullYear(), now.getMonth(), 1));

@@ -387,14 +387,6 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
 
   async function applyPageAccess() {
     const currentFile = (window.location.pathname.split("/").pop() || "dashboard.html").toLowerCase();
-    // Old bookmarks use the same standalone page and its own permissions.
-    if (currentFile === "reports.html" && new URLSearchParams(window.location.search).get("report") === "supplier_returns") {
-      const target = new URL("stock-return.html", window.location.href);
-      target.search = window.location.search;
-      target.searchParams.delete("report");
-      window.location.replace(target.href);
-      return;
-    }
     const currentPageKey = currentFile === "laboratory.html" && window.location.hash.toLowerCase() === "#frame"
       ? "frame_department"
       : filePageKeys[currentFile];

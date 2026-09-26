@@ -9,7 +9,7 @@
   const rid = r => r.id || r.return_id;
   const imei = r => r.imei_1 || r.imei || "Without IMEI";
   const button = (text, attrs = "") => `<button type="button" class="secondary-button sr-button" ${attrs}>${escape(text)}</button>`;
-  let context, dialog, modalGeneration = 0, modalBusy = false, reportRoot, reportGeneration = 0, selected = new Set(), reportRows = [];
+  let context, dialog, modalGeneration = 0, modalBusy = false, reportRoot, reportGeneration = 0;
   const retries = new Map();
   async function rpc(name, args = {}) {
     await window.GREENLOOP_ACCESS_READY;
@@ -57,140 +57,6 @@
     } catch (e) { feedback(`${e.message} If the connection was interrupted, retry the same action to check its saved result.`, true); }
     finally { modalBusy = false; controls.forEach(([el, disabled]) => { if (el.isConnected) el.disabled = disabled; }); }
   }
-  async function loadRequest(preferredSupplier = "", success = "") {
-    const host = reportRoot?.querySelector("[data-sr-request-host]");
-    if (!host) return;
-    host.innerHTML = '<p>Loading suppliers and received stock…</p>';
-    try {
-      const [, suppliers] = await Promise.all([getContext(), rpc("get_supplier_return_suppliers")]);
-      if (!host.isConnected) return;
-      reportRoot.querySelector("[data-sr-create]").hidden = !allowed("request");
-      if (!allowed("request")) { host.innerHTML = ""; return; }
-      if (!Array.isArray(suppliers)) throw new Error("Supplier list could not be loaded.");
-      renderRequest(host, suppliers, preferredSupplier);
-      if (success) requestNotice(success);
-    } catch (e) {
-      if (host.isConnected) {
-        host.innerHTML = '<p class="sr-error" role="status">' + escape(success ? success + " Refresh before starting another return. " : "") + escape(e.message) + '</p>' + button("Retry loading suppliers", "data-sr-retry");
-        host.querySelector("[data-sr-retry]").onclick = () => loadRequest(preferredSupplier, success);
-      }
-    }
-  }
-  function requestNotice(message, error = false) {
-    const el = reportRoot?.querySelector("[data-sr-request-message]");
-    if (el) { el.textContent = message; el.classList.toggle("sr-error", error); }
-  }
-  function renderRequest(host, suppliers, preferredSupplier) {
-    let found = null, lookupGeneration = 0, matches = [], offset = 0, hasMore = false;
-    const pageSize = 25;
-    host.innerHTML = '<form data-sr-request class="sr-form">' +
-      '<div class="sr-request-start"><label>1. Supplier<select name="supplier" required><option value="">Select supplier</option>' + suppliers.map(s => '<option value="' + escape(s.supplier_id) + '">' + escape(supplier(s)) + '</option>').join("") + '</select></label>' +
-      '<label>2. Phone identification<select name="mode" disabled><option value="imei">Saved phone · model or IMEI</option><option value="batch">Without IMEI / not entered yet</option></select></label></div>' +
-      '<p data-sr-choose class="sr-hint">Select the supplier who supplied these phones.</p>' +
-      '<div data-sr-imei hidden><div class="sr-search-line"><label>Model or IMEI<input name="phone_search" type="search" maxlength="100" autocomplete="off" placeholder="For example: 15 or a 15-digit IMEI"></label>' + button("Search phones", "data-sr-lookup") + '</div>' +
-      '<p class="sr-hint">Search this supplier’s saved phones, then select the exact phone below.</p><div class="sr-table-wrap" data-sr-matches></div>' +
-      '<div class="sr-paging" hidden>' + button("Previous", "data-sr-prev") + button("Next", "data-sr-next") + '<span data-sr-page></span></div><div data-sr-phone></div></div>' +
-      '<div data-sr-batch hidden><div class="sr-request-start"><label>Received batch<select name="batch"><option value="">Select received batch</option></select></label><label>Model / memory / color<select name="plan"><option value="">Select planned line</option></select></label></div>' +
-      '<div data-sr-counts></div><div class="sr-request-start"><label>Quantity<input name="quantity" type="number" min="1" step="1" value="1"></label><label>Serial numbers (optional, one per unit)<textarea name="serials" rows="2" placeholder="One per line, in unit order"></textarea></label></div>' +
-      '<p class="sr-hint">Use this option for phones not yet entered in IMEI Entry. Each phone gets its own Return ID to attach to the physical phone. Already entered phones must use Saved phone.</p></div>' +
-      '<fieldset data-sr-reason disabled><legend>3. Return details</legend><div class="sr-request-start"><label>Reason<select name="reason"><option value="dead">Dead phone</option><option value="icloud_locked">iCloud locked</option><option value="other">Other</option></select></label><label>Notes<textarea name="notes" rows="2" maxlength="2000" placeholder="Explain the issue"></textarea></label></div>' +
-      '<label class="sr-check"><input name="confirm" type="checkbox" required> I confirm the selected phone(s) and supplier. These phones will be put on return hold.</label><button class="primary-button" type="submit">Request stock return</button></fieldset>' +
-      '<p data-sr-request-message role="status" aria-live="polite"></p></form>';
-    const form = host.querySelector("form"), get = name => form.elements.namedItem(name), q = selector => host.querySelector(selector);
-    const selectedBatch = () => (context.batches || []).find(b => b.supplier_id === get("supplier").value && b.batch_id === get("batch").value);
-    function clearPhone() {
-      ++lookupGeneration; found = null; matches = []; offset = 0; hasMore = false;
-      get("confirm").checked = false; q("[data-sr-phone]").innerHTML = ""; q("[data-sr-matches]").innerHTML = "";
-      q(".sr-paging").hidden = true; q("[data-sr-lookup]").disabled = false;
-    }
-    function updateMode() {
-      clearPhone();
-      const chosen = Boolean(get("supplier").value);
-      q("[data-sr-choose]").hidden = chosen;
-      q("[data-sr-imei]").hidden = !chosen || get("mode").value !== "imei";
-      q("[data-sr-batch]").hidden = !chosen || get("mode").value !== "batch";
-      q("[data-sr-batch]").querySelectorAll("input,select,textarea").forEach(el => { el.disabled = q("[data-sr-batch]").hidden; });
-      get("plan").disabled = q("[data-sr-batch]").hidden || !(selectedBatch()?.plan_lines || []).length;
-      get("phone_search").disabled = q("[data-sr-imei]").hidden;
-      q("[data-sr-reason]").disabled = !chosen;
-      requestNotice("");
-    }
-    function updateBatch() {
-      const b = selectedBatch();
-      get("plan").innerHTML = '<option value="">Select planned line</option>' + (b?.plan_lines || []).map(p => '<option value="' + escape(p.plan_line_id) + '">' + escape([p.model,p.storage_gb ? p.storage_gb + " GB" : "",p.color].filter(Boolean).join(" · ")) + ' · ' + escape(p.remaining_quantity) + ' available</option>').join("");
-      get("plan").disabled = !(b?.plan_lines || []).length;
-      get("quantity").value = "1"; get("quantity").max = String(b?.remaining_quantity || 0); get("serials").value = "";
-      q("[data-sr-counts]").innerHTML = b ? fields([["Originally received",b.received_quantity],["IMEIs entered",b.entered_quantity],["Unentered on return hold",b.unentered_reserved],["Returned to supplier",b.returned_quantity ?? b.returned_without_imei],["Retained after returns",b.required_quantity],["Unentered available",b.remaining_quantity]]) : "";
-      get("confirm").checked = false;
-    }
-    function updateSupplier() {
-      get("mode").disabled = !get("supplier").value; get("phone_search").value = "";
-      const batches = (context.batches || []).filter(b => b.supplier_id === get("supplier").value && Number(b.remaining_quantity) > 0);
-      get("batch").innerHTML = '<option value="">Select received batch</option>' + batches.map(b => '<option value="' + escape(b.batch_id) + '">' + escape(b.batch_number) + ' · ' + escape(b.remaining_quantity) + ' unentered available</option>').join("");
-      updateBatch(); updateMode();
-      if (get("mode").value === "batch" && !batches.length) requestNotice("This supplier has no unentered units available. Search saved phones if their IMEIs were already entered.");
-    }
-    function showMatches() {
-      q("[data-sr-matches]").innerHTML = matches.length ? '<table class="sr-table sr-matches"><thead><tr><th>Phone</th><th>Model</th><th>Batch</th><th>Current status</th><th>Select</th></tr></thead><tbody>' + matches.map((r,i) => '<tr class="' + (found?.job_id === r.job_id ? "sr-chosen" : "") + '"><td><strong>' + escape(r.imei_1 || "No IMEI") + '</strong><small>' + escape(r.serial_number || "") + '</small></td><td>' + escape(r.model || "—") + '<small>' + escape([r.storage_gb ? r.storage_gb + " GB" : "",r.color].filter(Boolean).join(" · ")) + '</small></td><td>' + escape(r.batch_number || "—") + '</td><td>' + escape(label(r.current_status)) + (!r.eligible ? '<small>Unavailable for a new return</small>' : "") + '</td><td>' + button(found?.job_id === r.job_id ? "Selected" : "Select phone", 'data-sr-pick="' + i + '" aria-pressed="' + (found?.job_id === r.job_id) + '" ' + (r.eligible ? "" : "disabled")) + '</td></tr>').join("") + '</tbody></table>' : '<p class="sr-empty">No saved phones match this supplier and search. For phones not entered yet, choose Without IMEI.</p>';
-      q(".sr-paging").hidden = !offset && !hasMore;
-      q("[data-sr-prev]").disabled = offset === 0; q("[data-sr-next]").disabled = !hasMore;
-      q("[data-sr-page]").textContent = matches.length ? 'Showing ' + (offset+1) + '–' + (offset+matches.length) : "";
-      host.querySelectorAll("[data-sr-pick]").forEach(el => { el.onclick = () => {
-        const result = matches[Number(el.dataset.srPick)];
-        if (!result?.eligible || result.supplier_id !== get("supplier").value) return;
-        found = result; get("confirm").checked = false; showMatches();
-        q("[data-sr-phone]").innerHTML = '<h3>Selected phone</h3>' + fields([["IMEI",result.imei_1],["Model",result.model],["Serial",result.serial_number],["Supplier",supplier(result)],["Current status",label(result.current_status)],["Unused issued parts",result.unreconciled_parts_quantity || 0]]);
-        requestNotice("Review this phone, choose the reason and confirm the return request.");
-      }; });
-    }
-    async function lookup(nextOffset = 0) {
-      const value = get("phone_search").value.trim(), supplierId = get("supplier").value;
-      clearPhone();
-      if (!supplierId || !value) { requestNotice("Select a supplier and enter a model or IMEI.", true); return; }
-      const version = lookupGeneration;
-      q("[data-sr-lookup]").disabled = true; requestNotice("Finding this supplier’s phones…");
-      try {
-        const result = await rpc("search_supplier_return_devices", { p_supplier_id: supplierId, p_query: value, p_offset: nextOffset, p_limit: pageSize });
-        if (!host.isConnected || version !== lookupGeneration || get("supplier").value !== supplierId || get("phone_search").value.trim() !== value) return;
-        if (!Array.isArray(result?.items) || result.items.some(r => r.supplier_id !== supplierId)) throw new Error("The phone search returned an invalid supplier result. Search again.");
-        matches = result.items; offset = nextOffset; hasMore = Boolean(result.has_more);
-        showMatches(); requestNotice(matches.length ? "Select the exact phone to return." : "");
-      } catch(e) { if (host.isConnected && version === lookupGeneration) requestNotice(e.message, true); }
-      finally { if (host.isConnected && version === lookupGeneration) q("[data-sr-lookup]").disabled = false; }
-    }
-    get("supplier").value = preferredSupplier || ""; updateSupplier();
-    get("supplier").onchange = updateSupplier; get("mode").onchange = updateMode; get("batch").onchange = updateBatch;
-    get("plan").onchange = () => { const b = selectedBatch(), p = b?.plan_lines?.find(p => p.plan_line_id === get("plan").value); get("quantity").max = String(p?.remaining_quantity ?? b?.remaining_quantity ?? 0); get("confirm").checked = false; };
-    ["quantity","serials"].forEach(name => { get(name).oninput = () => { get("confirm").checked = false; }; });
-    get("phone_search").oninput = () => { clearPhone(); requestNotice(""); };
-    get("phone_search").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); lookup(); } };
-    q("[data-sr-lookup]").onclick = () => lookup(); q("[data-sr-prev]").onclick = () => lookup(Math.max(0,offset-pageSize)); q("[data-sr-next]").onclick = () => lookup(offset+pageSize);
-    form.onsubmit = e => {
-      e.preventDefault(); if (modalBusy || !allowed("request")) return;
-      const supplierId = get("supplier").value, payload = { reason: get("reason").value, notes: get("notes").value.trim() };
-      if (!supplierId) { requestNotice("Select the supplier first.", true); return; }
-      if (payload.reason === "other" && !payload.notes) { requestNotice("Describe the reason for this return.", true); return; }
-      if (!get("confirm").checked) { requestNotice("Confirm the selected phones first.", true); return; }
-      if (get("mode").value === "imei") {
-        if (!found?.eligible || found.supplier_id !== supplierId) { requestNotice("Search and select an eligible phone from this supplier first.", true); return; }
-        payload.job_id = found.job_id;
-      } else {
-        const b = selectedBatch(), p = b?.plan_lines?.find(p => p.plan_line_id === get("plan").value);
-        const quantity = Number(get("quantity").value), serials = get("serials").value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
-        if (!b || !Number.isInteger(quantity) || quantity < 1 || quantity > Number(p?.remaining_quantity ?? b.remaining_quantity) || ((b.plan_lines || []).length && !p)) { requestNotice("Select a batch / planned model and a quantity within the available unentered units.", true); return; }
-        if (serials.length > quantity || new Set(serials).size !== serials.length) { requestNotice("Enter no more than one unique serial number per unit.", true); return; }
-        Object.assign(payload, { batch_id: b.batch_id, quantity, serial_numbers: serials });
-        if (p) payload.plan_line_id = p.plan_line_id;
-      }
-      mutate("create_supplier_return", { p_payload: payload }, e.submitter, async result => {
-        const ids = (result.returns || []).map(r => r.return_number).join(", ");
-        host.innerHTML = "";
-        await refreshReport();
-        await loadRequest(supplierId, "Return requested: " + ids + ". Label these phones with their Return IDs. Approval, parts reconciliation and handover are in Return history below.");
-      }, requestNotice);
-    };
-  }
-
   function recordFields(r) {
     return fields([["Return ID",r.return_number],["Status",statusLabel(r)],["IMEI",imei(r)],["Serial",r.serial_number],["Model",r.model],["Supplier",supplier(r)],["Batch",r.batch_number],["Reason",label(r.reason)],["Notes",r.notes],["Handover reference",r.slip_reference],["Settlement",r.settlement_type ? label(r.settlement_type) : "Open"],["Settlement reference",r.settlement_reference],["Amount",r.settlement_amount],...(r.archived_at ? [["Archived after authorized data deletion",date(r.archived_at)]] : [])]);
   }
@@ -236,47 +102,178 @@
       });
     };
   }
+  let simpleContext = null, simpleRows = [], simpleGeneration = 0, lastSaved = "";
+  const showDate = value => value ? new Date(value).toLocaleDateString([], {day:"2-digit",month:"short",year:"numeric"}) : "—";
+  const receiptLabel = r => [r.invoice_number || r.batch_number, showDate(r.received_at), r.received_quantity + " received"].filter(Boolean).join(" · ");
+  function simpleMessage(message, error = false) {
+    const el = reportRoot?.querySelector("[data-sr-simple-message]");
+    if (el) { el.textContent = message; el.classList.toggle("sr-error", error); }
+  }
   async function refreshReport() {
     const root = reportRoot; if (!root?.isConnected) return;
-    const generation = ++reportGeneration;
-    const status = root.querySelector('[name="status"]').value, search = root.querySelector('[name="search"]').value.trim();
-    root.querySelector("[data-sr-message]").textContent = "Loading supplier returns…";
-    root.querySelector("[data-sr-print]").disabled = true;
+    const generation = ++simpleGeneration;
+    root.querySelector("[data-sr-refresh]").disabled = true;
     try {
-      const [rows] = await Promise.all([rpc("list_supplier_returns", { p_status: status || null, p_search: search || null }), getContext()]);
-      if (generation !== reportGeneration || root !== reportRoot) return;
-      if (!Array.isArray(rows)) throw new Error("Supplier return records could not be read.");
-      reportRows = rows; selected = new Set();
-      root.querySelector("[data-sr-create]").hidden = !allowed("request");
-      const batches = (context.batches || []).filter(b => Number(b.unentered_reserved) || Number(b.held_imei_quantity) || Number(b.returned_quantity));
-      root.querySelector("[data-sr-balances]").innerHTML = batches.length ? `<details><summary>Receipt quantities · ${batches.length} batches with returns</summary><div class="sr-table-wrap"><table class="sr-table"><thead><tr><th>Supplier / batch</th><th>Originally received</th><th>Returned</th><th>Retained after returns</th><th>IMEIs entered</th><th>Unentered on hold</th><th>IMEIs still to enter</th></tr></thead><tbody>${batches.map(b => `<tr><td>${escape(supplier(b))}<small>${escape(b.batch_number)}</small></td><td>${escape(b.received_quantity)}</td><td>${escape(b.returned_quantity)}</td><td>${escape(b.required_quantity)}</td><td>${escape(b.entered_quantity)}</td><td>${escape(b.unentered_reserved)}</td><td>${escape(b.remaining_quantity)}</td></tr>`).join("")}</tbody></table></div></details>` : "";
-      root.querySelector("[data-sr-table]").innerHTML = rows.length ? `<table class="sr-table"><thead><tr><th>Select</th><th>Return / phone</th><th>Supplier / batch</th><th>Reason</th><th>Status</th><th>Requested</th><th>Settlement</th><th>Details</th></tr></thead><tbody>${rows.map(r => `<tr><td><input type="checkbox" data-sr-select="${escape(rid(r))}" aria-label="Select ${escape(r.return_number)}" ${!r.archived_at && ["approved","returned"].includes(r.status) ? "" : "disabled"}></td><td><strong>${escape(r.return_number)}</strong><small>${escape(imei(r))}</small><small>${escape(r.serial_number || "")}</small></td><td>${escape(supplier(r))}<small>${escape(r.batch_number || "")}</small></td><td>${escape(label(r.reason))}</td><td><span class="sr-status sr-${escape(r.status)}">${escape(statusLabel(r))}</span></td><td>${escape(date(r.created_at || r.requested_at))}<small>${escape(r.requested_by_name || "")}</small></td><td>${escape(r.settlement_type ? label(r.settlement_type) : "Open")}</td><td>${button("View", `data-sr-detail="${escape(rid(r))}"`)}</td></tr>`).join("")}</tbody></table>` : '<p class="sr-empty">No supplier returns match these filters.</p>';
-      root.querySelector("[data-sr-message]").textContent = `${rows.length} return records. Select Return Pending or Returned phones from one supplier to print a slip.`;
-      const count = document.querySelector("#report-row-count"); if (count) count.textContent = `${rows.length} returns`;
-      root.querySelectorAll("[data-sr-detail]").forEach(el => { el.onclick = () => detail(el.dataset.srDetail); });
-      root.querySelectorAll("[data-sr-select]").forEach(el => { el.onchange = () => { if (el.checked) selected.add(el.dataset.srSelect); else selected.delete(el.dataset.srSelect); root.querySelector("[data-sr-print]").disabled = !selected.size; }; });
-    } catch(e) { if (generation === reportGeneration && root === reportRoot) { reportRows = []; selected.clear(); root.querySelector("[data-sr-table]").innerHTML = ""; root.querySelector("[data-sr-balances]").innerHTML = ""; root.querySelector("[data-sr-create]").hidden = true; root.querySelector("[data-sr-message]").textContent = e.message; } }
+      const [next, rows] = await Promise.all([rpc("get_simple_stock_return_context"), rpc("list_simple_stock_returns", {p_from:null,p_to:null})]);
+      if (root !== reportRoot || generation !== simpleGeneration) return;
+      if (!Array.isArray(next?.receipts) || !Array.isArray(rows)) throw new Error("Stock Return data could not be loaded. Try Refresh.");
+      simpleContext = next; simpleRows = rows;
+      const canReturn = Boolean(window.GREENLOOP_PAGE_ACCESS?.canEdit && next.permissions?.can_return);
+      const host = root.querySelector("[data-sr-simple-form]");
+      root.querySelector("[data-sr-create]").hidden = !canReturn;
+      if (canReturn && !host.querySelector("form")) renderSimpleForm(host);
+      if (canReturn && host.querySelector("form")) host.querySelector("form").dispatchEvent(new CustomEvent("receipt-refresh"));
+      renderSimpleReport(); simpleMessage(lastSaved);
+      refreshLegacy(generation);
+    } catch(e) {
+      if (root === reportRoot && generation === simpleGeneration) {
+        simpleContext = null; simpleRows = [];
+        root.querySelector("[data-sr-simple-form]").innerHTML = "";
+        root.querySelector("[data-sr-simple-table]").innerHTML = "";
+        root.querySelector("[data-sr-total]").textContent = "";
+        simpleMessage((lastSaved ? lastSaved + " " : "") + e.message, true);
+      }
+    } finally { if (root === reportRoot && generation === simpleGeneration) root.querySelector("[data-sr-refresh]").disabled = false; }
   }
-  function printSlip() {
-    const rows = reportRows.filter(r => selected.has(rid(r)));
-    if (!rows.length) return;
-    if (new Set(rows.map(r => r.supplier_id || r.supplier_code)).size !== 1) { notify("Select phones from one supplier per return slip.", true); return; }
-    const popup = window.open("", "_blank"); if (!popup) { notify("Allow the print window, then try again.", true); return; }
-    popup.opener = null;
-    popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Greenloop supplier return slip</title><style>body{font:14px Arial;padding:24px;color:#182a31}table{width:100%;border-collapse:collapse}td,th{border:1px solid #aab5bb;padding:9px;text-align:left}small{display:block}footer{margin-top:45px}@media print{button{display:none}}</style></head><body><h1>Greenloop · Supplier return slip</h1><p>Supplier: ${escape(supplier(rows[0]))} · Units: ${rows.length} · Printed: ${escape(new Date().toLocaleString())}</p><p>Slip reference: __________________ &nbsp; Handover date: __________________</p><table><thead><tr><th>Return ID</th><th>IMEI / serial</th><th>Model / batch</th><th>Reason</th><th>Status / reference</th></tr></thead><tbody>${rows.map(r => `<tr><td>${escape(r.return_number)}</td><td>${escape(imei(r))}<small>${escape(r.serial_number || "")}</small></td><td>${escape(r.model || "—")}<small>${escape(r.batch_number || "")}</small></td><td>${escape(label(r.reason))}<small>${escape(r.notes || "")}</small></td><td>${escape(label(r.status))}<small>${escape(r.slip_reference || "")}</small></td></tr>`).join("")}</tbody></table><footer><p>Handed over by: __________________ &nbsp; Supplier received by: __________________</p><p>Printing does not record handover. Record physical handover in Greenloop using this slip reference.</p></footer><button id="print">Print</button></body></html>`);
-    popup.document.close(); popup.document.getElementById("print").onclick = () => popup.print(); popup.focus(); popup.print();
+  function renderSimpleReport() {
+    const root = reportRoot, value = root.querySelector("[data-sr-report-search]").value.trim().toLowerCase();
+    const rows = simpleRows.filter(r => [r.return_reference,r.supplier_code,window.GREENLOOP_CAN_VIEW_PARTNER_NAMES ? r.supplier_name : "",r.invoice_number,r.batch_number,r.reason,r.model,...(r.imeis || [])].filter(Boolean).join(" ").toLowerCase().includes(value));
+    root.querySelector("[data-sr-total]").textContent = rows.length + " returns · " + rows.reduce((n,r) => n + Number(r.returned_quantity || 0),0) + " phones";
+    root.querySelector("[data-sr-simple-table]").innerHTML = rows.length ? '<table class="sr-table sr-simple-table"><thead><tr><th>Stock received</th><th>Supplier / code</th><th>Received qty</th><th>Return Stock</th><th>Returned</th><th>Reason</th><th>Model / GB</th><th>IMEIs</th><th>Recorded by</th></tr></thead><tbody>' +
+      rows.map(r => '<tr><td>' + escape(showDate(r.received_at)) + '<small>' + escape(r.invoice_number || r.batch_number || "—") + '</small></td><td>' + escape(supplier(r)) + '</td><td>' + escape(r.received_quantity ?? "—") + '</td><td><strong>' + escape(r.returned_quantity) + '</strong></td><td>' + escape(date(r.returned_at)) + '<small>' + escape(r.return_reference || "—") + '</small>' + (r.archived ? '<small>Archived history</small>' : "") + '</td><td>' + escape(r.reason || "—") + (r.notes ? '<small>' + escape(r.notes) + '</small>' : "") + '</td><td>' + escape([r.model, r.storage_gb ? r.storage_gb + " GB" : ""].filter(Boolean).join(" · ") || "—") + '</td><td>' + ((r.imeis || []).length ? '<details><summary>' + escape(r.imeis.length) + ' IMEI(s)</summary>' + (r.imeis || []).map(v => '<small>' + escape(v) + '</small>').join("") + '</details>' : "—") + '</td><td>' + escape(r.returned_by_name || "—") + '</td></tr>').join("") + '</tbody></table>' : '<p class="sr-empty">No stock returns to show.</p>';
+  }
+  async function refreshLegacy(generation) {
+    const root = reportRoot;
+    try {
+      const results = await Promise.all(["requested","approved"].map(status => rpc("list_supplier_returns", {p_status:status,p_search:null})));
+      if (root !== reportRoot || generation !== simpleGeneration) return;
+      const rows = results.flat().filter(r => !r.archived_at);
+      const section = root.querySelector("[data-sr-legacy]");
+      section.hidden = !rows.length;
+      section.innerHTML = '<summary>Earlier pending returns · ' + rows.length + '</summary><p>Complete or cancel returns created with the previous workflow here.</p><div class="sr-table-wrap"><table class="sr-table"><thead><tr><th>Return</th><th>Supplier</th><th>Phone</th><th>Status</th><th>Details</th></tr></thead><tbody>' + rows.map(r => '<tr><td>' + escape(r.return_number) + '</td><td>' + escape(supplier(r)) + '</td><td>' + escape(imei(r)) + '</td><td>' + escape(statusLabel(r)) + '</td><td>' + button("View", 'data-sr-detail="' + escape(rid(r)) + '"') + '</td></tr>').join("") + '</tbody></table></div>';
+      section.querySelectorAll("[data-sr-detail]").forEach(el => { el.onclick = () => detail(el.dataset.srDetail); });
+    } catch(e) {
+      if (root === reportRoot && generation === simpleGeneration) {
+        const section = root.querySelector("[data-sr-legacy]");
+        section.hidden = false; section.innerHTML = '<summary>Earlier pending returns</summary><p class="sr-error">' + escape(e.message) + '</p>';
+      }
+    }
+  }
+  function renderSimpleForm(host) {
+    let scanned = [], selectedBatch = "";
+    host.innerHTML = '<form class="sr-form sr-simple-form">' +
+      '<div class="sr-request-start"><label>Supplier / supplier code<select name="supplier" required><option value="">Select supplier</option></select></label><label>Received stock<select name="batch" required disabled><option value="">Select received stock</option></select></label></div>' +
+      '<dl class="sr-receipt-summary" data-sr-receipt hidden></dl>' +
+      '<fieldset data-sr-inputs disabled><div class="sr-request-start"><label>Return quantity<input name="quantity" type="number" min="1" max="1000" step="1" required placeholder="Enter return quantity"></label><label>Reason<select name="reason" required><option value="">Select reason</option><option>Dead phone</option><option>iCloud locked</option><option>Other</option></select></label></div>' +
+      '<label data-sr-other hidden>Return reason<input name="other_reason" maxlength="500" disabled placeholder="Describe the issue"></label>' +
+      '<div class="sr-optional-fields"><label>Model <span class="sr-optional">Optional</span><input name="model" list="sr-model-options" maxlength="100" placeholder="e.g. 15 Pro"><datalist id="sr-model-options"></datalist></label><label>GB <span class="sr-optional">Optional</span><input name="storage_gb" type="number" min="1" max="16384" step="1" placeholder="e.g. 128"></label><label>Scan IMEI <span class="sr-optional">Optional</span><span class="sr-scan-line"><input name="imei" inputmode="numeric" maxlength="15" autocomplete="off" placeholder="Scan or enter IMEI">' + button("Add", 'data-sr-add-imei') + '</span></label></div>' +
+      '<div class="sr-scanned" data-sr-scanned hidden></div><p class="sr-hint" data-sr-scan-message role="status" hidden></p>' +
+      '<button type="submit" class="primary-button">Stock Return</button></fieldset></form>';
+    const form = host.querySelector("form"), get = name => form.elements.namedItem(name), q = selector => host.querySelector(selector);
+    const batch = () => simpleContext?.receipts.find(r => r.batch_id === get("batch").value && r.supplier_id === get("supplier").value);
+    function showScanned() {
+      q("[data-sr-scanned]").hidden = !scanned.length;
+      q("[data-sr-scanned]").innerHTML = scanned.map((v,i) => '<span class="sr-imei-chip">' + escape(v) + button("×", 'data-sr-remove-imei="' + i + '" aria-label="Remove IMEI ' + escape(v) + '"') + '</span>').join("");
+      host.querySelectorAll("[data-sr-remove-imei]").forEach(el => { el.onclick = () => { scanned.splice(Number(el.dataset.srRemoveImei),1); showScanned(); }; });
+    }
+    function scanNotice(message, error = false) {
+      const el = q("[data-sr-scan-message]"); el.textContent = message; el.hidden = !message; el.classList.toggle("sr-error",error);
+    }
+    function addImei() {
+      const value = get("imei").value.trim();
+      if (!/^\d{15}$/.test(value)) { scanNotice("Enter a complete 15-digit IMEI.",true); return false; }
+      if (scanned.includes(value)) { get("imei").value = ""; scanNotice("This IMEI has already been added.",true); return false; }
+      if (scanned.length >= 1000) { scanNotice("A return can contain up to 1000 phones.",true); return false; }
+      scanned.push(value); get("imei").value = ""; showScanned(); scanNotice(scanned.length + " IMEI(s) added.");
+      return true;
+    }
+    function updateReceipt() {
+      const receipt = batch(), changed = selectedBatch !== (receipt?.batch_id || "");
+      selectedBatch = receipt?.batch_id || "";
+      q("[data-sr-inputs]").disabled = !receipt;
+      q("[data-sr-receipt]").hidden = !receipt;
+      if (changed) { scanned = []; showScanned(); scanNotice(""); get("imei").value = ""; get("quantity").value = ""; get("model").value = ""; get("storage_gb").value = ""; get("reason").value = ""; get("other_reason").value = ""; updateReason(); }
+      if (!receipt) return;
+      q("[data-sr-receipt]").innerHTML = [["Received",showDate(receipt.received_at)],["Supplier code",receipt.supplier_code],["Quantity received",receipt.received_quantity],["Return Stock",receipt.returned_quantity]].map(([k,v]) => '<div><dt>' + escape(k) + '</dt><dd>' + escape(v) + '</dd></div>').join("");
+      get("quantity").max = String(Math.min(1000, Math.max(0, Number(receipt.received_quantity)-Number(receipt.returned_quantity))));
+      q("#sr-model-options").innerHTML = [...new Set((receipt.model_options || []).map(p => p.model).filter(Boolean))].map(v => '<option value="' + escape(v) + '"></option>').join("");
+    }
+    function updateSupplier(preserveBatch = "") {
+      const receipts = (simpleContext?.receipts || []).filter(r => r.supplier_id === get("supplier").value);
+      get("batch").innerHTML = '<option value="">Select received stock</option>' + receipts.map(r => '<option value="' + escape(r.batch_id) + '">' + escape(receiptLabel(r)) + '</option>').join("");
+      get("batch").disabled = !receipts.length;
+      get("batch").value = receipts.some(r => r.batch_id === preserveBatch) ? preserveBatch : receipts.length === 1 ? receipts[0].batch_id : "";
+      updateReceipt();
+    }
+    function updateSuppliers() {
+      const chosen = get("supplier").value, receiptId = get("batch").value;
+      const suppliers = [...new Map((simpleContext?.receipts || []).map(r => [r.supplier_id,r])).values()];
+      get("supplier").innerHTML = '<option value="">Select supplier</option>' + suppliers.map(r => '<option value="' + escape(r.supplier_id) + '">' + escape(supplier(r)) + '</option>').join("");
+      get("supplier").value = suppliers.some(r => r.supplier_id === chosen) ? chosen : "";
+      updateSupplier(receiptId);
+    }
+    function updateReason() {
+      const other = get("reason").value === "Other";
+      q("[data-sr-other]").hidden = !other; get("other_reason").disabled = !other; get("other_reason").required = other;
+    }
+    updateSuppliers();
+    form.addEventListener("receipt-refresh",updateSuppliers);
+    get("supplier").onchange = () => { lastSaved = ""; simpleMessage(""); updateSupplier(); };
+    get("batch").onchange = () => { lastSaved = ""; simpleMessage(""); updateReceipt(); };
+    get("reason").onchange = updateReason;
+    q("[data-sr-add-imei]").onclick = () => { if (addImei()) get("imei").focus(); };
+    get("imei").oninput = () => { get("imei").value = get("imei").value.replace(/\D/g,""); if (get("imei").value.length === 15) addImei(); };
+    get("imei").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); if (get("imei").value) addImei(); } };
+    form.onsubmit = async e => {
+      e.preventDefault();
+      if (modalBusy || !window.GREENLOOP_PAGE_ACCESS?.canEdit || !simpleContext?.permissions?.can_return) return;
+      if (get("imei").value.trim() && !addImei()) return;
+      const receipt = batch(), quantity = Number(get("quantity").value), storage = get("storage_gb").value.trim();
+      if (!receipt || !Number.isInteger(quantity) || quantity < 1 || quantity > Number(get("quantity").max)) { simpleMessage("Select the received stock and enter a valid return quantity.",true); return; }
+      if (scanned.length > quantity) { simpleMessage("Return quantity must be at least the number of added IMEIs.",true); return; }
+      const reason = (get("reason").value === "Other" ? get("other_reason").value : get("reason").value).trim();
+      if (!reason || storage && (!Number.isInteger(Number(storage)) || Number(storage)<1)) { simpleMessage("Enter the return reason and a valid GB value, or leave GB blank.",true); return; }
+      const payload = {batch_id:receipt.batch_id,quantity,reason,imeis:[...scanned]};
+      if (get("model").value.trim()) payload.model = get("model").value.trim();
+      if (storage) payload.storage_gb = Number(storage);
+      const signature = JSON.stringify(["record_simple_stock_return",payload]);
+      if (!retries.has(signature)) retries.set(signature,crypto.randomUUID());
+      const controls = [...form.querySelectorAll("button,input,select")].map(el => [el,el.disabled]);
+      modalBusy = true; controls.forEach(([el]) => { el.disabled = true; }); reportRoot.querySelector("[data-sr-refresh]").disabled = true;
+      simpleMessage("Saving stock return…");
+      try {
+        const result = await rpc("record_simple_stock_return",{p_payload:payload,p_idempotency_key:retries.get(signature)});
+        retries.delete(signature);
+        lastSaved = "Stock return saved: " + (result.return_reference || "") + " · " + quantity + " phone(s).";
+        const selectedSupplier = get("supplier").value, selectedReceipt = get("batch").value;
+        scanned = []; showScanned(); scanNotice(""); get("quantity").value = ""; get("imei").value = ""; get("model").value = ""; get("storage_gb").value = ""; get("reason").value = ""; get("other_reason").value = ""; updateReason();
+        // A completed return must never leave a filled form available to repeat.
+        simpleContext = null;
+        await refreshReport();
+        const nextForm = host.querySelector("form");
+        if (nextForm === form) { get("supplier").value = selectedSupplier; updateSupplier(selectedReceipt); }
+        document.dispatchEvent(new CustomEvent("greenloop:supplier-return-changed",{detail:result}));
+      } catch(e) { simpleMessage(e.message + " If the connection was interrupted, retry the same details to check the saved result.",true); }
+      finally {
+        modalBusy = false;
+        controls.forEach(([el,disabled]) => { if (el.isConnected) el.disabled = disabled; });
+        if (form.isConnected) { updateReason(); get("batch").disabled = !(simpleContext?.receipts || []).some(r => r.supplier_id === get("supplier").value); }
+        if (reportRoot?.isConnected) reportRoot.querySelector("[data-sr-refresh]").disabled = false;
+      }
+    };
   }
   function mount(root) {
-    reportRoot = root; ++reportGeneration;
-    root.innerHTML = '<section class="sr-card sr-report" data-sr-create><header><p class="panel-kicker">New return</p><h2>Return phones to a supplier</h2><p>Select a supplier, identify the phones and enter the reason for return.</p></header><div data-sr-request-host></div></section>' +
-      '<section class="sr-card sr-report"><header class="sr-heading"><div><p class="panel-kicker">Saved returns</p><h2>Return history &amp; handover</h2></div>' + button("Print selected return slip", "data-sr-print disabled") + '</header>' +
-      '<form class="sr-filters"><label>Status<select name="status"><option value="">All statuses</option>' + Object.keys(labels).slice(0,5).map(s => '<option value="' + s + '">' + labels[s] + '</option>').join("") + '</select></label><label>Find return / IMEI / serial / supplier code<input name="search" type="search" maxlength="100"></label><button class="secondary-button" type="submit">Search / refresh</button></form><p data-sr-message role="status" aria-live="polite"></p><div data-sr-balances></div><div class="sr-table-wrap" data-sr-table></div></section>';
-    root.querySelector(".sr-filters").onsubmit = e => { e.preventDefault(); refreshReport(); };
-    root.querySelector("[data-sr-print]").onclick = printSlip;
-    refreshReport(); loadRequest();
+    reportRoot = root;
+    root.innerHTML = '<div class="sr-simple-toolbar">' + button("Refresh", 'data-sr-refresh') + '</div><p data-sr-simple-message role="status" aria-live="polite"></p>' +
+      '<section class="sr-card sr-report" data-sr-create><header><h2>Return stock</h2><p>Select the supplier and received stock, enter quantity and reason, then save.</p></header><div data-sr-simple-form></div></section>' +
+      '<section class="sr-card sr-report"><header class="sr-heading"><div><h2>Stock Return report</h2><p data-sr-total></p></div><a class="secondary-button sr-report-link" href="reports.html?report=stock_returns">Open in Reports</a></header><label class="sr-report-search">Find return<input data-sr-report-search type="search" placeholder="Supplier, receipt, model or IMEI"></label><div class="sr-table-wrap" data-sr-simple-table></div></section>' +
+      '<details class="sr-card sr-report sr-legacy" data-sr-legacy hidden></details>';
+    root.querySelector("[data-sr-refresh]").onclick = () => { if (!modalBusy) refreshReport(); };
+    root.querySelector("[data-sr-report-search]").oninput = renderSimpleReport;
+    refreshReport();
   }
-  function unmount() { reportRoot = null; reportRows = []; selected.clear(); ++reportGeneration; }
-  window.GREENLOOP_SUPPLIER_RETURNS = { mount, unmount };
+  function unmount() { reportRoot = null; simpleContext = null; simpleRows = []; ++simpleGeneration; }
+  window.GREENLOOP_SUPPLIER_RETURNS = {mount,unmount};
   const root = document.querySelector("#stock-return-app");
   if (root) {
     const sidebar = document.querySelector("#sidebar"), backdrop = document.querySelector("#menu-backdrop");
@@ -284,13 +281,10 @@
     document.querySelector("#open-menu")?.addEventListener("click", () => setMenu(true));
     document.querySelector("#close-menu")?.addEventListener("click", () => setMenu(false));
     backdrop?.addEventListener("click", () => setMenu(false));
-    document.addEventListener("keydown", event => { if (event.key === "Escape" && !dialog?.open) setMenu(false); });
+    document.addEventListener("keydown",event => { if (event.key === "Escape" && !dialog?.open) setMenu(false); });
     Promise.resolve(window.GREENLOOP_ACCESS_READY).then(() => {
       if (window.GREENLOOP_PAGE_ACCESS?.pageKey !== "supplier_returns") return;
       root.hidden = false; mount(root);
-    }).catch(() => {
-      const message = document.querySelector("#permission-message");
-      if (message) { message.hidden = false; message.textContent = "Could not load Stock Return permissions. Refresh to try again."; }
     });
   }
 })();
