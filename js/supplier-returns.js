@@ -39,103 +39,158 @@
     if (!dialog.open) dialog.showModal();
     return dialog;
   }
-  async function mutate(name, args, control, done) {
+  async function mutate(name, args, control, done, feedback = notify) {
     if (modalBusy) return;
     const signature = JSON.stringify([name, args]);
     if (!retries.has(signature)) retries.set(signature, crypto.randomUUID());
     modalBusy = true;
-    const scope = dialog?.open ? dialog : reportRoot;
+    const scope = dialog?.open ? dialog : control?.closest("form") || reportRoot;
     const controls = [...scope.querySelectorAll("button,input,select,textarea")].map(el => [el, el.disabled]);
     controls.forEach(([el]) => { el.disabled = true; });
-    notify("Saving…");
+    feedback("Saving…");
     try {
       const result = await rpc(name, { ...args, p_idempotency_key: retries.get(signature) });
-      retries.delete(signature); context = null;
+      retries.delete(signature);
       document.dispatchEvent(new CustomEvent("greenloop:supplier-return-changed", { detail: result }));
       modalBusy = false;
       await done(result);
-    } catch (e) { notify(`${e.message} If the connection was interrupted, retry the same action to check its saved result.`, true); }
+    } catch (e) { feedback(`${e.message} If the connection was interrupted, retry the same action to check its saved result.`, true); }
     finally { modalBusy = false; controls.forEach(([el, disabled]) => { if (el.isConnected) el.disabled = disabled; }); }
   }
-  async function open(options = {}) {
-    const shell = modal("Request supplier return", '<p>Loading return permissions and received batches…</p>');
-    if (!shell) return;
-    const generation = modalGeneration;
+  async function loadRequest(preferredSupplier = "", success = "") {
+    const host = reportRoot?.querySelector("[data-sr-request-host]");
+    if (!host) return;
+    host.innerHTML = '<p>Loading suppliers and received stock…</p>';
     try {
-      await getContext();
-      if (generation !== modalGeneration || !dialog.open) return;
-      if (!allowed("request")) { notify("You need Entry Allowed on this page and Supplier Returns permission to request a return.", true); return; }
-      renderRequest(options);
-    } catch (e) { if (generation === modalGeneration) notify(e.message, true); }
+      const [, suppliers] = await Promise.all([getContext(), rpc("get_supplier_return_suppliers")]);
+      if (!host.isConnected) return;
+      reportRoot.querySelector("[data-sr-create]").hidden = !allowed("request");
+      if (!allowed("request")) { host.innerHTML = ""; return; }
+      if (!Array.isArray(suppliers)) throw new Error("Supplier list could not be loaded.");
+      renderRequest(host, suppliers, preferredSupplier);
+      if (success) requestNotice(success);
+    } catch (e) {
+      if (host.isConnected) {
+        host.innerHTML = '<p class="sr-error" role="status">' + escape(success ? success + " Refresh before starting another return. " : "") + escape(e.message) + '</p>' + button("Retry loading suppliers", "data-sr-retry");
+        host.querySelector("[data-sr-retry]").onclick = () => loadRequest(preferredSupplier, success);
+      }
+    }
   }
-  function renderRequest(options) {
-    let found = null, lookupGeneration = 0;
-    modal("Request supplier return", `<p>Request a return for a saved IMEI, or for unentered units from a received batch. The original receipt and work history remain saved.</p>
-      <form data-sr-request class="sr-form">
-        <label>Phone identification<select name="mode"><option value="imei">With IMEI</option><option value="batch">Without IMEI / not entered yet</option></select></label>
-        <div data-sr-imei><label>IMEI<input name="imei" inputmode="numeric" maxlength="15" autocomplete="off" value="${escape(options.imei || "")}"></label>${button("Find phone", "data-sr-lookup")}<div data-sr-phone></div></div>
-        <div data-sr-batch hidden><label>Received batch<select name="batch"><option value="">Select received batch</option>${(context.batches || []).map(b => `<option value="${escape(b.batch_id)}">${escape(b.batch_number)} · ${escape(supplier(b))} · ${escape(b.remaining_quantity)} unentered available</option>`).join("")}</select></label><div data-sr-counts></div><label>Planned model / memory / color<select name="plan"><option value="">No planned line</option></select></label><label>Quantity<input name="quantity" type="number" min="1" step="1" value="1"></label><label>Serial numbers (optional, one per unit)<textarea name="serials" rows="2" placeholder="One per line, in unit order"></textarea></label><p class="sr-hint">Each unit gets its own Return ID. Label the physical phone with that ID. Already entered phones must use With IMEI.</p></div>
-        <label>Reason<select name="reason"><option value="dead">Dead phone</option><option value="icloud_locked">iCloud locked</option><option value="other">Other</option></select></label>
-        <label>Notes<textarea name="notes" rows="3" maxlength="2000" placeholder="Explain the issue"></textarea></label>
-        <label class="sr-check"><input name="confirm" type="checkbox" required> These are the phones to return. Their further processing will be put on hold.</label>
-        <button class="primary-button" type="submit">Request supplier return</button>
-      </form>`);
-    const form = dialog.querySelector("form"), get = name => form.elements.namedItem(name);
+  function requestNotice(message, error = false) {
+    const el = reportRoot?.querySelector("[data-sr-request-message]");
+    if (el) { el.textContent = message; el.classList.toggle("sr-error", error); }
+  }
+  function renderRequest(host, suppliers, preferredSupplier) {
+    let found = null, lookupGeneration = 0, matches = [], offset = 0, hasMore = false;
+    const pageSize = 25;
+    host.innerHTML = '<form data-sr-request class="sr-form">' +
+      '<div class="sr-request-start"><label>1. Supplier<select name="supplier" required><option value="">Select supplier</option>' + suppliers.map(s => '<option value="' + escape(s.supplier_id) + '">' + escape(supplier(s)) + '</option>').join("") + '</select></label>' +
+      '<label>2. Phone identification<select name="mode" disabled><option value="imei">Saved phone · model or IMEI</option><option value="batch">Without IMEI / not entered yet</option></select></label></div>' +
+      '<p data-sr-choose class="sr-hint">Select the supplier who supplied these phones.</p>' +
+      '<div data-sr-imei hidden><div class="sr-search-line"><label>Model or IMEI<input name="phone_search" type="search" maxlength="100" autocomplete="off" placeholder="For example: 15 or a 15-digit IMEI"></label>' + button("Search phones", "data-sr-lookup") + '</div>' +
+      '<p class="sr-hint">Search this supplier’s saved phones, then select the exact phone below.</p><div class="sr-table-wrap" data-sr-matches></div>' +
+      '<div class="sr-paging" hidden>' + button("Previous", "data-sr-prev") + button("Next", "data-sr-next") + '<span data-sr-page></span></div><div data-sr-phone></div></div>' +
+      '<div data-sr-batch hidden><div class="sr-request-start"><label>Received batch<select name="batch"><option value="">Select received batch</option></select></label><label>Model / memory / color<select name="plan"><option value="">Select planned line</option></select></label></div>' +
+      '<div data-sr-counts></div><div class="sr-request-start"><label>Quantity<input name="quantity" type="number" min="1" step="1" value="1"></label><label>Serial numbers (optional, one per unit)<textarea name="serials" rows="2" placeholder="One per line, in unit order"></textarea></label></div>' +
+      '<p class="sr-hint">Use this option for phones not yet entered in IMEI Entry. Each phone gets its own Return ID to attach to the physical phone. Already entered phones must use Saved phone.</p></div>' +
+      '<fieldset data-sr-reason disabled><legend>3. Return details</legend><div class="sr-request-start"><label>Reason<select name="reason"><option value="dead">Dead phone</option><option value="icloud_locked">iCloud locked</option><option value="other">Other</option></select></label><label>Notes<textarea name="notes" rows="2" maxlength="2000" placeholder="Explain the issue"></textarea></label></div>' +
+      '<label class="sr-check"><input name="confirm" type="checkbox" required> I confirm the selected phone(s) and supplier. These phones will be put on return hold.</label><button class="primary-button" type="submit">Request stock return</button></fieldset>' +
+      '<p data-sr-request-message role="status" aria-live="polite"></p></form>';
+    const form = host.querySelector("form"), get = name => form.elements.namedItem(name), q = selector => host.querySelector(selector);
+    const selectedBatch = () => (context.batches || []).find(b => b.supplier_id === get("supplier").value && b.batch_id === get("batch").value);
+    function clearPhone() {
+      ++lookupGeneration; found = null; matches = []; offset = 0; hasMore = false;
+      get("confirm").checked = false; q("[data-sr-phone]").innerHTML = ""; q("[data-sr-matches]").innerHTML = "";
+      q(".sr-paging").hidden = true; q("[data-sr-lookup]").disabled = false;
+    }
     function updateMode() {
-      dialog.querySelector("[data-sr-imei]").hidden = get("mode").value !== "imei";
-      dialog.querySelector("[data-sr-batch]").hidden = get("mode").value !== "batch";
-      get("confirm").checked = false;
+      clearPhone();
+      const chosen = Boolean(get("supplier").value);
+      q("[data-sr-choose]").hidden = chosen;
+      q("[data-sr-imei]").hidden = !chosen || get("mode").value !== "imei";
+      q("[data-sr-batch]").hidden = !chosen || get("mode").value !== "batch";
+      q("[data-sr-batch]").querySelectorAll("input,select,textarea").forEach(el => { el.disabled = q("[data-sr-batch]").hidden; });
+      get("plan").disabled = q("[data-sr-batch]").hidden || !(selectedBatch()?.plan_lines || []).length;
+      get("phone_search").disabled = q("[data-sr-imei]").hidden;
+      q("[data-sr-reason]").disabled = !chosen;
+      requestNotice("");
     }
     function updateBatch() {
-      const b = context.batches.find(b => b.batch_id === get("batch").value);
-      get("plan").innerHTML = '<option value="">Select planned line</option>' + (b?.plan_lines || []).map(p => `<option value="${escape(p.plan_line_id)}">${escape([p.model,p.storage_gb ? p.storage_gb + " GB" : "",p.color].filter(Boolean).join(" · "))} · ${escape(p.remaining_quantity)} available</option>`).join("");
+      const b = selectedBatch();
+      get("plan").innerHTML = '<option value="">Select planned line</option>' + (b?.plan_lines || []).map(p => '<option value="' + escape(p.plan_line_id) + '">' + escape([p.model,p.storage_gb ? p.storage_gb + " GB" : "",p.color].filter(Boolean).join(" · ")) + ' · ' + escape(p.remaining_quantity) + ' available</option>').join("");
       get("plan").disabled = !(b?.plan_lines || []).length;
-      get("quantity").max = String(b?.remaining_quantity || 0);
-      dialog.querySelector("[data-sr-counts]").innerHTML = b ? fields([["Originally received",b.received_quantity],["IMEIs entered",b.entered_quantity],["Unentered on return hold",b.unentered_reserved],["Returned to supplier",b.returned_quantity ?? b.returned_without_imei],["Retained after returns",b.required_quantity],["Unentered available",b.remaining_quantity]]) : "";
+      get("quantity").value = "1"; get("quantity").max = String(b?.remaining_quantity || 0); get("serials").value = "";
+      q("[data-sr-counts]").innerHTML = b ? fields([["Originally received",b.received_quantity],["IMEIs entered",b.entered_quantity],["Unentered on return hold",b.unentered_reserved],["Returned to supplier",b.returned_quantity ?? b.returned_without_imei],["Retained after returns",b.required_quantity],["Unentered available",b.remaining_quantity]]) : "";
       get("confirm").checked = false;
     }
-    async function lookup() {
-      const value = get("imei").value.trim(), version = ++lookupGeneration, generation = modalGeneration;
-      found = null; dialog.querySelector("[data-sr-phone]").innerHTML = "";
-      if (!/^\d{15}$/.test(value)) { notify("Enter a 15-digit IMEI.", true); return; }
-      notify("Finding phone…");
-      try {
-        const result = await rpc("lookup_supplier_return_device", { p_imei: value });
-        if (version !== lookupGeneration || generation !== modalGeneration || get("imei").value.trim() !== value) return;
-        found = { ...result, lookup_imei: value };
-        dialog.querySelector("[data-sr-phone]").innerHTML = fields([["IMEI",result.imei_1],["Model",result.model],["Serial",result.serial_number],["Supplier",supplier(result)],["Current status",label(result.current_status)],["Unused issued parts",result.unreconciled_parts_quantity || 0]]);
-        notify(result.eligible ? "Phone found. Review the details before requesting a return." : "This phone cannot be returned now. Check its existing return or current workflow status.", !result.eligible);
-      } catch(e) { if (generation === modalGeneration && version === lookupGeneration) notify(e.message, true); }
+    function updateSupplier() {
+      get("mode").disabled = !get("supplier").value; get("phone_search").value = "";
+      const batches = (context.batches || []).filter(b => b.supplier_id === get("supplier").value && Number(b.remaining_quantity) > 0);
+      get("batch").innerHTML = '<option value="">Select received batch</option>' + batches.map(b => '<option value="' + escape(b.batch_id) + '">' + escape(b.batch_number) + ' · ' + escape(b.remaining_quantity) + ' unentered available</option>').join("");
+      updateBatch(); updateMode();
+      if (get("mode").value === "batch" && !batches.length) requestNotice("This supplier has no unentered units available. Search saved phones if their IMEIs were already entered.");
     }
-    get("mode").value = options.mode === "batch" || options.batchId ? "batch" : "imei";
-    get("batch").value = options.batchId || ""; updateBatch(); updateMode();
-    get("mode").onchange = updateMode; get("batch").onchange = updateBatch;
-    get("imei").oninput = () => { found = null; ++lookupGeneration; get("confirm").checked = false; dialog.querySelector("[data-sr-phone]").innerHTML = ""; };
-    dialog.querySelector("[data-sr-lookup]").onclick = lookup;
+    function showMatches() {
+      q("[data-sr-matches]").innerHTML = matches.length ? '<table class="sr-table sr-matches"><thead><tr><th>Phone</th><th>Model</th><th>Batch</th><th>Current status</th><th>Select</th></tr></thead><tbody>' + matches.map((r,i) => '<tr class="' + (found?.job_id === r.job_id ? "sr-chosen" : "") + '"><td><strong>' + escape(r.imei_1 || "No IMEI") + '</strong><small>' + escape(r.serial_number || "") + '</small></td><td>' + escape(r.model || "—") + '<small>' + escape([r.storage_gb ? r.storage_gb + " GB" : "",r.color].filter(Boolean).join(" · ")) + '</small></td><td>' + escape(r.batch_number || "—") + '</td><td>' + escape(label(r.current_status)) + (!r.eligible ? '<small>Unavailable for a new return</small>' : "") + '</td><td>' + button(found?.job_id === r.job_id ? "Selected" : "Select phone", 'data-sr-pick="' + i + '" aria-pressed="' + (found?.job_id === r.job_id) + '" ' + (r.eligible ? "" : "disabled")) + '</td></tr>').join("") + '</tbody></table>' : '<p class="sr-empty">No saved phones match this supplier and search. For phones not entered yet, choose Without IMEI.</p>';
+      q(".sr-paging").hidden = !offset && !hasMore;
+      q("[data-sr-prev]").disabled = offset === 0; q("[data-sr-next]").disabled = !hasMore;
+      q("[data-sr-page]").textContent = matches.length ? 'Showing ' + (offset+1) + '–' + (offset+matches.length) : "";
+      host.querySelectorAll("[data-sr-pick]").forEach(el => { el.onclick = () => {
+        const result = matches[Number(el.dataset.srPick)];
+        if (!result?.eligible || result.supplier_id !== get("supplier").value) return;
+        found = result; get("confirm").checked = false; showMatches();
+        q("[data-sr-phone]").innerHTML = '<h3>Selected phone</h3>' + fields([["IMEI",result.imei_1],["Model",result.model],["Serial",result.serial_number],["Supplier",supplier(result)],["Current status",label(result.current_status)],["Unused issued parts",result.unreconciled_parts_quantity || 0]]);
+        requestNotice("Review this phone, choose the reason and confirm the return request.");
+      }; });
+    }
+    async function lookup(nextOffset = 0) {
+      const value = get("phone_search").value.trim(), supplierId = get("supplier").value;
+      clearPhone();
+      if (!supplierId || !value) { requestNotice("Select a supplier and enter a model or IMEI.", true); return; }
+      const version = lookupGeneration;
+      q("[data-sr-lookup]").disabled = true; requestNotice("Finding this supplier’s phones…");
+      try {
+        const result = await rpc("search_supplier_return_devices", { p_supplier_id: supplierId, p_query: value, p_offset: nextOffset, p_limit: pageSize });
+        if (!host.isConnected || version !== lookupGeneration || get("supplier").value !== supplierId || get("phone_search").value.trim() !== value) return;
+        if (!Array.isArray(result?.items) || result.items.some(r => r.supplier_id !== supplierId)) throw new Error("The phone search returned an invalid supplier result. Search again.");
+        matches = result.items; offset = nextOffset; hasMore = Boolean(result.has_more);
+        showMatches(); requestNotice(matches.length ? "Select the exact phone to return." : "");
+      } catch(e) { if (host.isConnected && version === lookupGeneration) requestNotice(e.message, true); }
+      finally { if (host.isConnected && version === lookupGeneration) q("[data-sr-lookup]").disabled = false; }
+    }
+    get("supplier").value = preferredSupplier || ""; updateSupplier();
+    get("supplier").onchange = updateSupplier; get("mode").onchange = updateMode; get("batch").onchange = updateBatch;
+    get("plan").onchange = () => { const b = selectedBatch(), p = b?.plan_lines?.find(p => p.plan_line_id === get("plan").value); get("quantity").max = String(p?.remaining_quantity ?? b?.remaining_quantity ?? 0); get("confirm").checked = false; };
+    ["quantity","serials"].forEach(name => { get(name).oninput = () => { get("confirm").checked = false; }; });
+    get("phone_search").oninput = () => { clearPhone(); requestNotice(""); };
+    get("phone_search").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); lookup(); } };
+    q("[data-sr-lookup]").onclick = () => lookup(); q("[data-sr-prev]").onclick = () => lookup(Math.max(0,offset-pageSize)); q("[data-sr-next]").onclick = () => lookup(offset+pageSize);
     form.onsubmit = e => {
       e.preventDefault(); if (modalBusy || !allowed("request")) return;
-      const payload = { reason: get("reason").value, notes: get("notes").value.trim() };
-      if (payload.reason === "other" && !payload.notes) { notify("Describe the reason for this return.", true); return; }
-      if (!get("confirm").checked) { notify("Confirm the selected phones first.", true); return; }
+      const supplierId = get("supplier").value, payload = { reason: get("reason").value, notes: get("notes").value.trim() };
+      if (!supplierId) { requestNotice("Select the supplier first.", true); return; }
+      if (payload.reason === "other" && !payload.notes) { requestNotice("Describe the reason for this return.", true); return; }
+      if (!get("confirm").checked) { requestNotice("Confirm the selected phones first.", true); return; }
       if (get("mode").value === "imei") {
-        if (!found?.eligible || found.lookup_imei !== get("imei").value.trim()) { notify("Find an eligible phone first.", true); return; }
+        if (!found?.eligible || found.supplier_id !== supplierId) { requestNotice("Search and select an eligible phone from this supplier first.", true); return; }
         payload.job_id = found.job_id;
       } else {
-        const b = context.batches.find(b => b.batch_id === get("batch").value), p = b?.plan_lines?.find(p => p.plan_line_id === get("plan").value);
+        const b = selectedBatch(), p = b?.plan_lines?.find(p => p.plan_line_id === get("plan").value);
         const quantity = Number(get("quantity").value), serials = get("serials").value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
-        if (!b || !Number.isInteger(quantity) || quantity < 1 || quantity > Number(p?.remaining_quantity ?? b.remaining_quantity) || ((b.plan_lines || []).length && !p)) { notify("Select a batch / planned line and a quantity within the available unentered units.", true); return; }
-        if (serials.length > quantity || new Set(serials).size !== serials.length) { notify("Enter no more than one unique serial number per unit.", true); return; }
+        if (!b || !Number.isInteger(quantity) || quantity < 1 || quantity > Number(p?.remaining_quantity ?? b.remaining_quantity) || ((b.plan_lines || []).length && !p)) { requestNotice("Select a batch / planned model and a quantity within the available unentered units.", true); return; }
+        if (serials.length > quantity || new Set(serials).size !== serials.length) { requestNotice("Enter no more than one unique serial number per unit.", true); return; }
         Object.assign(payload, { batch_id: b.batch_id, quantity, serial_numbers: serials });
         if (p) payload.plan_line_id = p.plan_line_id;
       }
       mutate("create_supplier_return", { p_payload: payload }, e.submitter, async result => {
-        const rows = result.returns || [];
-        modal("Return requested", `<p>The selected units are now on return hold. Record these Return IDs on the phones.</p>${fields(rows.map(r => [r.return_number, imei(r) + (r.serial_number ? " · " + r.serial_number : "")]))}<p>Use Reports → Supplier Returns for approval, unused parts, handover and settlement. Refresh this page before doing more work on these units.</p><a class="primary-button" href="reports.html?report=supplier_returns">Open Supplier Returns</a>`);
-        if (reportRoot?.isConnected) await refreshReport();
-      });
+        const ids = (result.returns || []).map(r => r.return_number).join(", ");
+        host.innerHTML = "";
+        await refreshReport();
+        await loadRequest(supplierId, "Return requested: " + ids + ". Label these phones with their Return IDs. Approval, parts reconciliation and handover are in Return history below.");
+      }, requestNotice);
     };
-    if (options.imei) lookup();
   }
+
   function recordFields(r) {
     return fields([["Return ID",r.return_number],["Status",statusLabel(r)],["IMEI",imei(r)],["Serial",r.serial_number],["Model",r.model],["Supplier",supplier(r)],["Batch",r.batch_number],["Reason",label(r.reason)],["Notes",r.notes],["Handover reference",r.slip_reference],["Settlement",r.settlement_type ? label(r.settlement_type) : "Open"],["Settlement reference",r.settlement_reference],["Amount",r.settlement_amount],...(r.archived_at ? [["Archived after authorized data deletion",date(r.archived_at)]] : [])]);
   }
@@ -213,19 +268,29 @@
   }
   function mount(root) {
     reportRoot = root; ++reportGeneration;
-    root.innerHTML = `<section class="sr-report"><div class="sr-actions">${button("Request supplier return", "data-sr-create hidden")}${button("Print selected return slip", "data-sr-print disabled")}</div><form class="sr-filters"><label>Status<select name="status"><option value="">All statuses</option>${Object.keys(labels).slice(0,5).map(s => `<option value="${s}">${labels[s]}</option>`).join("")}</select></label><label>Find return / IMEI / serial / supplier code<input name="search" type="search" maxlength="100"></label><button class="secondary-button" type="submit">Search / refresh</button></form><p data-sr-message role="status" aria-live="polite"></p><div data-sr-balances></div><div class="sr-table-wrap" data-sr-table></div></section>`;
-    root.querySelector("form").onsubmit = e => { e.preventDefault(); refreshReport(); };
-    root.querySelector("[data-sr-create]").onclick = () => open(); root.querySelector("[data-sr-print]").onclick = printSlip;
-    refreshReport();
+    root.innerHTML = '<section class="sr-card sr-report" data-sr-create><header><p class="panel-kicker">New return</p><h2>Return phones to a supplier</h2><p>Select a supplier, identify the phones and enter the reason for return.</p></header><div data-sr-request-host></div></section>' +
+      '<section class="sr-card sr-report"><header class="sr-heading"><div><p class="panel-kicker">Saved returns</p><h2>Return history &amp; handover</h2></div>' + button("Print selected return slip", "data-sr-print disabled") + '</header>' +
+      '<form class="sr-filters"><label>Status<select name="status"><option value="">All statuses</option>' + Object.keys(labels).slice(0,5).map(s => '<option value="' + s + '">' + labels[s] + '</option>').join("") + '</select></label><label>Find return / IMEI / serial / supplier code<input name="search" type="search" maxlength="100"></label><button class="secondary-button" type="submit">Search / refresh</button></form><p data-sr-message role="status" aria-live="polite"></p><div data-sr-balances></div><div class="sr-table-wrap" data-sr-table></div></section>';
+    root.querySelector(".sr-filters").onsubmit = e => { e.preventDefault(); refreshReport(); };
+    root.querySelector("[data-sr-print]").onclick = printSlip;
+    refreshReport(); loadRequest();
   }
   function unmount() { reportRoot = null; reportRows = []; selected.clear(); ++reportGeneration; }
-  document.addEventListener("click", e => {
-    const el = e.target.closest("[data-supplier-return-open],[data-supplier-return-imei],[data-supplier-return-row],[data-supplier-return-batch]");
-    if (!el || el.disabled) return;
-    e.preventDefault();
-    let phone = el.dataset.supplierReturnImei || "";
-    if (el.hasAttribute("data-supplier-return-row")) phone = el.closest("tr")?.querySelector(".qc-bulk-imei,.final-row-imei")?.value.trim() || "";
-    open({ imei: phone, mode: el.dataset.supplierReturnOpen, batchId: el.hasAttribute("data-supplier-return-batch") ? document.querySelector("#stock-batch")?.value : "" });
-  });
-  window.GREENLOOP_SUPPLIER_RETURNS = { open, mount, unmount };
+  window.GREENLOOP_SUPPLIER_RETURNS = { mount, unmount };
+  const root = document.querySelector("#stock-return-app");
+  if (root) {
+    const sidebar = document.querySelector("#sidebar"), backdrop = document.querySelector("#menu-backdrop");
+    const setMenu = open => { sidebar?.classList.toggle("is-open", open); if (backdrop) backdrop.hidden = !open; document.body.classList.toggle("menu-open", open); };
+    document.querySelector("#open-menu")?.addEventListener("click", () => setMenu(true));
+    document.querySelector("#close-menu")?.addEventListener("click", () => setMenu(false));
+    backdrop?.addEventListener("click", () => setMenu(false));
+    document.addEventListener("keydown", event => { if (event.key === "Escape" && !dialog?.open) setMenu(false); });
+    Promise.resolve(window.GREENLOOP_ACCESS_READY).then(() => {
+      if (window.GREENLOOP_PAGE_ACCESS?.pageKey !== "supplier_returns") return;
+      root.hidden = false; mount(root);
+    }).catch(() => {
+      const message = document.querySelector("#permission-message");
+      if (message) { message.hidden = false; message.textContent = "Could not load Stock Return permissions. Refresh to try again."; }
+    });
+  }
 })();

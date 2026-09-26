@@ -13,12 +13,10 @@
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/ready-stock.css?v=20260822-ready-stock-rework-final-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script defer src="js/config.js?v=20260925-supplier-returns-1"></script>
+  <script defer src="js/config.js?v=20260926-stock-return-page-1"></script>
     <script defer src="js/part-notifications.js?v=20260918-audit-2"></script>
     <script defer src="js/ready-stock.js?v=20260918-audit-2"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20260925-neumorphism-5">
-    <link rel="stylesheet" href="css/supplier-returns.css?v=20260925-supplier-returns-1">
-  <script defer src="js/supplier-returns.js?v=20260925-supplier-returns-1"></script>
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -45,7 +43,7 @@
       <main class="app-main">
         <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Dashboard</a><span aria-hidden="true">/</span><strong>Ready Stock</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
         <div class="page-content ready-stock-content">
-          <section class="page-heading ready-stock-heading"><div><p class="eyebrow dashboard-eyebrow">Ready Stock</p><h1>Final QC passed stock</h1><p class="heading-subtitle">Model, memory, grade, and RMA quantities currently held by Greenloop after Final QC pass.</p></div><div class="ready-stock-heading-actions"><button class="secondary-button" type="button" data-supplier-return-open>Return phone to supplier</button><a class="primary-button" href="export-box.html">Prepare export box</a><a class="secondary-button" href="ready-stock-journey.html">View device journey</a><button id="refresh-ready-stock" class="secondary-button" type="button">Refresh table</button></div></section>
+          <section class="page-heading ready-stock-heading"><div><p class="eyebrow dashboard-eyebrow">Ready Stock</p><h1>Final QC passed stock</h1><p class="heading-subtitle">Model, memory, grade, and RMA quantities currently held by Greenloop after Final QC pass.</p></div><div class="ready-stock-heading-actions"><a class="primary-button" href="export-box.html">Prepare export box</a><a class="secondary-button" href="ready-stock-journey.html">View device journey</a><button id="refresh-ready-stock" class="secondary-button" type="button">Refresh table</button></div></section>
           <div id="permission-message" class="access-message" hidden></div>
           <section id="ready-stock-app" hidden>
             <section class="ready-stock-filters" aria-label="Ready Stock date range"><div class="ready-stock-filter-heading"><strong>Final QC pass date range</strong><span>By default, this table shows stock passed today. Clear both dates to view all current Ready Stock.</span></div><label>From<input id="ready-stock-from" type="date"></label><label>To<input id="ready-stock-to" type="date"></label><button id="apply-ready-stock-range" class="primary-button" type="button">Apply range</button><button id="clear-ready-stock-range" class="secondary-button" type="button">View all</button></section>

@@ -113,6 +113,7 @@ document.addEventListener("click", (event) => {
     // Initial QC -> Lab & Glass -> Final QC -> optional Frame -> Final QC -> Ready Stock.
     // Parts and Inventory support the repair workflow and stay beside Lab & Glass.
     item("Initial QC", "initial-qc.html", "✓", page === "initial-qc.html"),
+    item("Stock Return", "stock-return.html", "↩", page === "stock-return.html"),
     item("Lab & Glass", "laboratory.html", "⌁", (page === "laboratory.html" || page === "glass.html") && window.location.hash !== "#frame"),
     item("Lab Live Board", "lab-live-board.html", "▦", page === "lab-live-board.html"),
     item("Parts", "parts.html", "▦", page === "parts.html"),
@@ -223,6 +224,7 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     imei_entry: "imei-entry.html",
     imei_search: "imei-search.html",
     initial_qc: "initial-qc.html",
+    supplier_returns: "stock-return.html",
     lab_glass: "laboratory.html",
     lab_live_board: "lab-live-board.html",
     frame_department: "laboratory.html#frame",
@@ -243,6 +245,7 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     "imei-entry.html": "imei_entry",
     "imei-search.html": "imei_search",
     "initial-qc.html": "initial_qc",
+    "stock-return.html": "supplier_returns",
     "laboratory.html": "lab_glass",
     "lab-live-board.html": "lab_live_board",
     "glass.html": "lab_glass",
@@ -384,6 +387,14 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
 
   async function applyPageAccess() {
     const currentFile = (window.location.pathname.split("/").pop() || "dashboard.html").toLowerCase();
+    // Old bookmarks use the same standalone page and its own permissions.
+    if (currentFile === "reports.html" && new URLSearchParams(window.location.search).get("report") === "supplier_returns") {
+      const target = new URL("stock-return.html", window.location.href);
+      target.search = window.location.search;
+      target.searchParams.delete("report");
+      window.location.replace(target.href);
+      return;
+    }
     const currentPageKey = currentFile === "laboratory.html" && window.location.hash.toLowerCase() === "#frame"
       ? "frame_department"
       : filePageKeys[currentFile];
@@ -419,7 +430,20 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
       return;
     }
 
-    const accessByPage = new Map(accessRows.map((row) => [row.page_key, row.access_level || "view"]));
+    const accessByPage = new Map(accessRows
+      .map((row) => [row.page_key, row.access_level || "view"])
+      .filter(([, level]) => level === "view" || level === "edit"));
+    // Request, approval and handover staff share one screen. Each action is
+    // still authorized independently by the Supplier Returns database API.
+    const stockReturnLevels = ["supplier_returns", "supplier_return_approval", "supplier_return_handover"]
+      .map((key) => accessByPage.get(key));
+    const stockReturnAccess = stockReturnLevels.includes("edit") ? "edit"
+      : stockReturnLevels.includes("view") ? "view" : null;
+    if (stockReturnAccess) accessByPage.set("supplier_returns", stockReturnAccess);
+    window.GREENLOOP_CAN_VIEW_STOCK_RETURN = Boolean(stockReturnAccess);
+    document.querySelectorAll("[data-stock-return-link]").forEach((link) => {
+      link.hidden = !stockReturnAccess;
+    });
     const { data: partnerNameAccess, error: partnerNameError } = await client.rpc("get_my_partner_name_access");
     let partnerNameValue = partnerNameAccess;
     if (Array.isArray(partnerNameValue)) partnerNameValue = partnerNameValue[0];
@@ -546,6 +570,7 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
   installQuickImeiScanner();
 
   window.GREENLOOP_CAN_VIEW_PARTNER_NAMES = false;
+  window.GREENLOOP_CAN_VIEW_STOCK_RETURN = false;
   window.GREENLOOP_PARTNER_LABEL = (code, name, fallback = "-") => {
     const safeCode = String(code || "").trim();
     const safeName = String(name || "").trim();

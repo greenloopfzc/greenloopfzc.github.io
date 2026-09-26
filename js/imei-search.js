@@ -98,7 +98,7 @@
         <div><dt>IMEI 1</dt><dd>${escapeHtml(device.imei_1)}</dd></div><div><dt>IMEI 2</dt><dd>${escapeHtml(device.imei_2 || "-")}</dd></div>
         <div><dt>Serial number</dt><dd>${escapeHtml(device.serial_number || "-")}</dd></div><div><dt>Region</dt><dd>${escapeHtml(device.region || "-")}</dd></div>
         <div><dt>Supplier code</dt><dd>${escapeHtml(supplierLabel(device.supplier_code, device.supplier_name))}</dd></div><div><dt>Customer</dt><dd>${escapeHtml(customerLabel(device.customer_code, device.customer_name))}</dd></div>
-      </dl><button class="secondary-button" type="button" data-supplier-return-imei="${escapeHtml(device.imei_1)}">Return phone to supplier</button>`;
+      </dl>`;
     journeyDetails.innerHTML = [
       ["Date received", dateTime(journey.date_received)], ["Date completed", dateTime(journey.date_completed)], ["Stock channel", journey.stock_channel], ["Invoice number", journey.invoice_number],
       ["Supplier company", window.GREENLOOP_CAN_VIEW_PARTNER_NAMES ? journey.supplier_company : "Confidential"], ["Quantity received", journey.quantity_received ? `${journey.quantity_received} devices` : "-"],

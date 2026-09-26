@@ -149,7 +149,7 @@
       <td class="final-result-cell pass"><label><input type="checkbox" data-result="pass"><span>Pass</span></label></td>
       <td class="final-result-cell frame"><label><input type="checkbox" data-result="frame"><span>Frame</span></label></td>
       <td class="final-result-cell fail"><label><input type="checkbox" data-result="fail"><span>Fail</span></label></td>
-      <td class="final-save-cell"><button type="button" class="final-row-save" data-save-row>Save</button><button class="secondary-button" type="button" data-supplier-return-row>Supplier return</button></td>
+      <td class="final-save-cell"><button type="button" class="final-row-save" data-save-row>Save</button></td>
     </tr>`;
   }
 

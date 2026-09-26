@@ -183,7 +183,7 @@
       <td>${requirementGroup("part")}</td>
       <td>${requirementGroup("service")}</td>
       <td><div class="qc-bulk-technician"><select data-carry-field="technician">${technicianOptions()}</select><button type="button" data-add-technician title="Add technician">+</button><button type="button" class="remove" data-remove-technician title="Remove technician">−</button></div></td>
-      <td class="qc-row-save-cell"><label class="qc-frame-route" title="No-work phone: send directly to Frame Department"><input type="checkbox" data-route-frame><span>Frame</span></label><button type="button" class="qc-row-save" data-save-row>Save</button><button class="secondary-button" type="button" data-supplier-return-row>Supplier return</button></td>
+      <td class="qc-row-save-cell"><label class="qc-frame-route" title="No-work phone: send directly to Frame Department"><input type="checkbox" data-route-frame><span>Frame</span></label><button type="button" class="qc-row-save" data-save-row>Save</button></td>
     </tr>`;
   }
 

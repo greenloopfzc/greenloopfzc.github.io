@@ -1,6 +1,9 @@
 (() => {
   "use strict";
 
+  // Shared page access redirects saved links to the single Stock Return page.
+  if (new URLSearchParams(window.location.search).get("report") === "supplier_returns") return;
+
   const config = window.GREENLOOP_CONFIG || {};
   const app = document.querySelector("#reports-app");
   const permissionMessage = document.querySelector("#permission-message");
@@ -60,7 +63,6 @@
   }
 
   const reports = {
-    supplier_returns: { title: "Supplier Returns", description: "Request, approve and hand over supplier returns; track parts, settlement and permanent history.", columns: [] },
     complete_device_details: {
       title: "Complete Device Details",
       description: "Read the connected iPhone. No historical phone or stock data is changed.",
@@ -768,14 +770,13 @@
   }
 
   function renderActiveReport() {
-    document.querySelectorAll(".report-tab").forEach((tab) => {
+    document.querySelectorAll(".report-tab[data-report]").forEach((tab) => {
       const selected = tab.dataset.report === activeReport;
       tab.classList.toggle("active", selected);
       tab.setAttribute("aria-pressed", String(selected));
     });
-    if (activeReport !== "supplier_returns") window.GREENLOOP_SUPPLIER_RETURNS?.unmount();
     const liveDetails = activeReport === "complete_device_details";
-    filterForm.hidden = activeReport === "supplier_returns" || liveDetails || activeReport === "restricted_data" || activeReport === "data_correction";
+    filterForm.hidden = liveDetails || activeReport === "restricted_data" || activeReport === "data_correction";
     if (liveDetails) {
       panelKicker.textContent = "Connected phone";
       panelTitle.textContent = "Complete Device Details";
@@ -785,14 +786,7 @@
       return;
     }
     window.GREENLOOP_COMPLETE_DEVICE_DETAILS?.unmount();
-    if (activeReport === "supplier_returns") {
-      panelKicker.textContent = "Supplier returns";
-      panelTitle.textContent = reports.supplier_returns.title;
-      panelDescription.textContent = reports.supplier_returns.description;
-      rowCount.textContent = "Loading…";
-      window.GREENLOOP_SUPPLIER_RETURNS?.mount(reportContent);
-    }
-    else if (activeReport === "overview") renderOverview();
+    if (activeReport === "overview") renderOverview();
     else if (activeReport === "supplier_progress") renderSupplierProgress();
     else if (activeReport === "export_boxes") renderExportBoxes();
     else if (activeReport === "restricted_data") renderRestrictedData();
@@ -883,7 +877,7 @@
   backdrop.addEventListener("click", () => setMenu(false));
   filterForm.addEventListener("submit", loadReports);
   tabs.addEventListener("click", (event) => {
-    const tab = event.target.closest(".report-tab");
+    const tab = event.target.closest(".report-tab[data-report]");
     if (!tab || tab.hidden || deletionBusy || reportMutationPending || (tab.dataset.report !== "overview" && !reports[tab.dataset.report])) return;
     if (["data_correction", "restricted_data"].includes(tab.dataset.report) && !canManageCorrections) return;
     resetDeletionPreview();
