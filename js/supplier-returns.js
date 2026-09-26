@@ -284,8 +284,8 @@
   function mount(root) {
     reportRoot = root;
     root.innerHTML = '<div class="sr-simple-toolbar">' + button("Refresh", 'data-sr-refresh') + '</div><p data-sr-simple-message role="status" aria-live="polite"></p>' +
-      '<section class="sr-card sr-report" data-sr-create><header><h2>Return stock</h2><p>Select the supplier and received stock, enter quantity and reason, then save.</p></header><div data-sr-simple-form></div></section>' +
       '<section class="sr-card sr-report"><header class="sr-heading"><div><h2>Stock Return report</h2><p data-sr-total></p></div><a class="secondary-button sr-report-link" href="reports.html?report=stock_returns">Open in Reports</a></header><label class="sr-report-search">Find return<input data-sr-report-search type="search" placeholder="Supplier, receipt, model or IMEI"></label><div class="sr-table-wrap" data-sr-simple-table></div></section>' +
+      '<section class="sr-card sr-report" data-sr-create><header><h2>Return stock</h2><p>Select the supplier and received stock, enter quantity and reason, then save.</p></header><div data-sr-simple-form></div></section>' +
       '<details class="sr-card sr-report sr-legacy" data-sr-legacy hidden></details>';
     root.querySelector("[data-sr-refresh]").onclick = () => { if (!modalBusy) refreshReport(); };
     root.querySelector("[data-sr-report-search]").oninput = renderSimpleReport;

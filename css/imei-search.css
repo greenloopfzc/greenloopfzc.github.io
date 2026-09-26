@@ -1,11 +1,15 @@
-.history-content { max-width: 1320px; }
-.history-heading { margin-bottom: 23px; }
+.app-main:has(.history-content) { display: flex; flex-direction: column; min-height: 100svh; }
+.app-main:has(.history-content) > .topbar { flex-shrink: 0; }
+.history-content { flex: 1; width: 100%; max-width: 1440px; }
+.history-content:has(#history-app:not([hidden])):has(#history-result[hidden]) { display: flex; flex-direction: column; justify-content: center; }
+.history-heading { justify-content: center; text-align: center; margin-bottom: 30px; }
+.history-heading > div { max-width: 960px; }
 .search-panel, .device-summary, .cost-cards > div, .history-panel { border: 1px solid #e2eae4; border-radius: 13px; background: #fff; }
-.search-panel { display: grid; gap: 8px; max-width: 760px; padding: 19px; }
-.search-panel > label { color: #415147; font-size: .72rem; font-weight: 800; }
-.search-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; }
-.search-row input { min-width: 0; min-height: 45px; border: 1px solid #d7e2da; border-radius: 8px; padding: 0 13px; color: #25362b; font: inherit; }
-.search-row .primary-button { min-height: 45px; padding: 0 21px; }
+.search-panel { display: grid; gap: 12px; width: 100%; max-width: 1040px; margin-inline: auto; padding: clamp(20px, 2.4vw, 36px); }
+.search-panel > label { color: #415147; font-size: .9rem; font-weight: 800; }
+.search-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; }
+.search-row input { min-width: 0; min-height: 64px; border: 1px solid #d7e2da; border-radius: 8px; padding: 0 18px; color: #25362b; font: inherit; font-size: clamp(1rem, 1.4vw, 1.25rem); }
+.search-row .primary-button { min-height: 64px; padding: 0 26px; font-size: 1rem; }
 .history-result { display: grid; gap: 16px; margin-top: 18px; }
 .device-summary { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 19px; background: linear-gradient(115deg, #f4faf5, #fff); }
 .device-summary h2 { margin: 2px 0 5px; color: #23372b; font: 800 1.35rem/1.1 "Manrope", Arial, sans-serif; letter-spacing: -.05em; }

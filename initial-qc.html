@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-global-imei-search="off">
   <head>
     <meta charset="utf-8">
     <script src="js/appearance.js?v=20260925-neumorphism-5"></script>
@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/initial-qc.css?v=20260825-manual-lab-parts-mode-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script defer src="js/config.js?v=20260926-simple-stock-return-1"></script>
+  <script defer src="js/config.js?v=20260926-imei-search-layout-1"></script>
     <script defer src="js/part-notifications.js?v=20260918-audit-2"></script>
   <script defer src="js/initial-qc.js?v=20260926-stock-return-page-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20260925-neumorphism-5">
@@ -43,7 +43,7 @@
       </aside>
       <div id="menu-backdrop" class="menu-backdrop" hidden></div>
       <main class="app-main">
-        <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Dashboard</a><span aria-hidden="true">/</span><strong>Initial QC</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span><a class="topbar-profile" href="dashboard.html"><span class="user-avatar small">SA</span><span class="profile-name">System Admin</span></a></div></header>
+        <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Dashboard</a><span aria-hidden="true">/</span><strong>Initial QC</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
         <div class="page-content qc-content">
           <section class="page-heading qc-heading"><div><p class="eyebrow dashboard-eyebrow">Initial QC</p><h1>Bulk scan, inspect, and assign</h1><p class="heading-subtitle">Scan all phones in the work tray first, then complete their grades, parts, services, and technician assignment.</p></div><a class="quiet-link" href="imei-entry.html">&larr; IMEI Entry</a></section>
           <div id="permission-message" class="access-message" hidden></div>

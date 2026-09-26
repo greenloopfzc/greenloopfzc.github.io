@@ -15,7 +15,6 @@
   let client;
   let toastTimer;
   let rows = [];
-  let currentQueueTotal = 0;
   let liveHeadlinesSignature = "";
 
   document.querySelector("#dashboard-date").textContent = new Intl.DateTimeFormat("en-US", {
@@ -156,7 +155,6 @@
       ["Ready Stock", Number(readyTotal) || 0, "production"]
     ];
     const maximum = Math.max(...queues.map(([, count]) => count), 1);
-    currentQueueTotal = queues.reduce((total, [, count]) => total + count, 0);
     document.querySelector(".queue-list").innerHTML = queues.map(([label, count, style]) => `
       <div class="queue-row"><span class="queue-name"><i class="queue-dot ${style}"></i>${escapeHtml(label)}</span><span class="queue-bar"><b style="width: ${Math.round((count / maximum) * 100)}%"></b></span><strong>${count}</strong></div>
     `).join("");
@@ -295,7 +293,6 @@
   openMenuButton.addEventListener("click", () => setMenu(true));
   closeMenuButton.addEventListener("click", () => setMenu(false));
   backdrop.addEventListener("click", () => setMenu(false));
-  document.querySelector("#notification-button").addEventListener("click", () => showToast(`${currentQueueTotal} device${currentQueueTotal === 1 ? " is" : "s are"} currently waiting across live queues.`));
   searchInput.addEventListener("input", filterRows);
   searchInput.addEventListener("keydown", (event) => {
     if (event.key === "Escape") { searchInput.value = ""; filterRows(); searchInput.blur(); }

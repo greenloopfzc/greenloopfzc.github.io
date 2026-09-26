@@ -163,10 +163,15 @@ document.addEventListener("click", (event) => {
   });
 })();
 
-// One top-centre IMEI search is available on every application page.
+// Pages can opt out of the shared top-centre IMEI search.
 (() => {
   const topbar = document.querySelector(".topbar");
   if (!topbar) return;
+
+  if (document.documentElement.dataset.globalImeiSearch === "off") {
+    topbar.querySelectorAll(".search-box").forEach((search) => search.remove());
+    return;
+  }
 
   let search = topbar.querySelector(".search-box");
   if (!search) {
