@@ -35,6 +35,32 @@
   let reportGeneration = 0;
   let correctionSearchGeneration = 0;
   let reportMutationPending = false;
+  let externalRefreshPending = false, externalRefreshTimer;
+  function invalidatePendingReportRead() {
+    reportGeneration += 1;
+    const submit = document.querySelector("#apply-report-filter");
+    submit.disabled = false;
+    submit.textContent = "Apply date range";
+  }
+  function invalidateStockReturnData() {
+    invalidatePendingReportRead();
+    reportData.stock_returns = null;
+    reportData.stock_return_receipt_totals = null;
+    if (!app.hidden && activeReport === "stock_returns") renderStockReturns();
+  }
+  function queueExternalReportRefresh() {
+    externalRefreshPending = true;
+    window.clearTimeout(externalRefreshTimer);
+    if (app.hidden || document.visibilityState === "hidden" || deletionBusy || reportMutationPending) return;
+    externalRefreshTimer = window.setTimeout(() => {
+      if (app.hidden || document.visibilityState === "hidden" || deletionBusy || reportMutationPending) return;
+      externalRefreshPending = false;
+      resetDeletionPreview();
+      correctionRecord = null;
+      correctionSearchGeneration += 1;
+      loadReports();
+    }, 80);
+  }
   const summaryKeys = ["stock_received", "initial_qc_pending", "parts_pending", "laboratory_pending", "final_qc_pending"];
 
   function hasReportSummary(data) {
@@ -49,6 +75,7 @@
 
   async function runReportMutation(control, action) {
     if (reportMutationPending || deletionBusy || !window.GREENLOOP_PAGE_ACCESS?.canEdit) return;
+    invalidatePendingReportRead();
     reportMutationPending = true;
     const label = control?.textContent;
     try { await action(); }
@@ -56,6 +83,7 @@
     finally {
       reportMutationPending = false;
       if (control?.isConnected) { control.disabled = false; control.textContent = label; }
+      if (externalRefreshPending) queueExternalReportRefresh();
     }
   }
 
@@ -473,10 +501,12 @@
   }
 
   function setDeletionBusy(busy) {
+    if (busy && !deletionBusy) invalidatePendingReportRead();
     deletionBusy = busy;
     reportContent.querySelectorAll(".restricted-workspace input, .restricted-workspace textarea, .restricted-workspace button").forEach((control) => { control.disabled = busy; });
     tabs.querySelectorAll("button").forEach((control) => { control.disabled = busy || reportMutationPending; });
     reportContent.querySelector(".restricted-workspace")?.setAttribute("aria-busy", String(busy));
+    if (!busy && externalRefreshPending) queueExternalReportRefresh();
   }
 
   async function reviewDeletion(form) {
@@ -556,6 +586,10 @@
       correctionSearchGeneration += 1;
       deletionImei = "";
       deletionAuditDates = { from: startedDate, to: deletionHistoryDate(new Date()) };
+      invalidateStockReturnData();
+      // Notify other open pages only after a verified successful deletion.
+      // Storage may be blocked; foreground refresh remains available there.
+      try { window.localStorage.setItem("greenloop-operational-data-change", JSON.stringify({ auditId: result.audit_id, at: Date.now() })); } catch (_) { }
       deletionResult = `${Number(result.deleted_devices).toLocaleString()} phone(s) and ${Number(result.deleted_jobs).toLocaleString()} job(s) deleted with their linked processes.${validDeletionCount(result.deleted_records) ? ` ${Number(result.deleted_records).toLocaleString()} total record(s) removed.` : ""} The deleted records and your reason are saved in Deleted History. Setup lists were preserved.`;
       renderRestrictedData();
       // Keep the successful deletion visible even if a later report refresh fails.
@@ -855,7 +889,7 @@
         getClient().rpc("get_deletion_history", dates),
         canManageCorrections ? getClient().rpc("get_data_change_history", dates) : Promise.resolve({ data: [] }),
         getClient().rpc("get_open_parts_pending_count"),
-        getClient().rpc("list_simple_stock_returns", { p_from: from, p_to: to }),
+        getClient().rpc("list_active_stock_returns", { p_from: from, p_to: to }),
         getClient().rpc("get_simple_stock_return_receipt_totals", { p_batch_ids: null })
       ]);
       if (generation !== reportGeneration) return;
@@ -919,8 +953,17 @@
     app.hidden = false;
     renderActiveReport();
     await loadReports();
+    if (externalRefreshPending) queueExternalReportRefresh();
   }
 
+  window.addEventListener("storage", event => {
+    if (event.key === "greenloop-operational-data-change" && event.newValue) {
+      invalidateStockReturnData();
+      queueExternalReportRefresh();
+    }
+  });
+  window.addEventListener("focus", () => { if (!app.hidden && (activeReport === "stock_returns" || externalRefreshPending)) queueExternalReportRefresh(); });
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && !app.hidden && (activeReport === "stock_returns" || externalRefreshPending)) queueExternalReportRefresh(); });
   document.querySelector("#open-menu").addEventListener("click", () => setMenu(true));
   document.querySelector("#close-menu").addEventListener("click", () => setMenu(false));
   backdrop.addEventListener("click", () => setMenu(false));

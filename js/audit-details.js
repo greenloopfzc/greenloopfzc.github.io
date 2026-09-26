@@ -22,6 +22,8 @@
     data_change_history: "Saved data corrections", records: "Related saved records",
     supplier_returns_to_archive: "Supplier return history preserved",
     supplier_return_events: "Supplier return actions", return_number: "Supplier Return ID",
+    return_reference: "Stock Return reference", simple_return_group_id: "Stock Return group reference",
+    returned_by_name: "Returned by", received_quantity: "Quantity received", returned_quantity: "Return Stock",
     source_snapshot: "Original receipt and phone details", archived_at: "Archived at",
     counts: "Saved record counts", inventory_before: "Parts inventory before deletion",
     inventory_after: "Parts inventory after deletion", professional_lots_before: "Stock lots before deletion",
@@ -44,8 +46,8 @@
     restricted_data_deletion: "Restricted Data deletion", hard_delete: "Hard delete",
     soft_delete: "Soft delete", old_values: "Previous values", new_values: "Updated values"
   });
-  const identityKeys = ["box_number", "imei", "imei_1", "device_number", "job_number", "work_order_number", "batch_number", "part_name", "technician_name", "assigned_technician_name", "full_name", "name", "sku"];
-  const fieldPriority = ["imei", "imei_1", "imei_2", "device_number", "job_number", "box_number", "batch_number", "part_name", "technician_name", "assigned_technician_name", "full_name", "name", "model", "serial_number", "status", "current_status", "box_status", "department", "stage", "quantity_requested", "quantity_issued", "quantity_installed", "quantity_returned"];
+  const identityKeys = ["return_reference", "return_number", "box_number", "imei", "imei_1", "device_number", "job_number", "work_order_number", "batch_number", "part_name", "technician_name", "assigned_technician_name", "full_name", "name", "sku"];
+  const fieldPriority = ["return_reference", "return_number", "imei", "imei_1", "imei_2", "device_number", "job_number", "box_number", "batch_number", "part_name", "technician_name", "assigned_technician_name", "full_name", "name", "model", "serial_number", "status", "current_status", "box_status", "department", "stage", "quantity_requested", "quantity_issued", "quantity_installed", "quantity_returned"];
   const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const own = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
   const object = value => value !== null && typeof value === "object" && !Array.isArray(value);

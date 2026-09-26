@@ -44,6 +44,7 @@
     const signature = JSON.stringify([name, args]);
     if (!retries.has(signature)) retries.set(signature, crypto.randomUUID());
     modalBusy = true;
+    simpleGeneration += 1;
     const scope = dialog?.open ? dialog : control?.closest("form") || reportRoot;
     const controls = [...scope.querySelectorAll("button,input,select,textarea")].map(el => [el, el.disabled]);
     controls.forEach(([el]) => { el.disabled = true; });
@@ -55,7 +56,7 @@
       modalBusy = false;
       await done(result);
     } catch (e) { feedback(`${e.message} If the connection was interrupted, retry the same action to check its saved result.`, true); }
-    finally { modalBusy = false; controls.forEach(([el, disabled]) => { if (el.isConnected) el.disabled = disabled; }); }
+    finally { modalBusy = false; controls.forEach(([el, disabled]) => { if (el.isConnected) el.disabled = disabled; }); if (reportRoot?.isConnected) reportRoot.querySelector("[data-sr-refresh]").disabled = false; if (externalRefreshPending) queueCurrentRefresh(); }
   }
   function recordFields(r) {
     return fields([["Return ID",r.return_number],["Status",statusLabel(r)],["IMEI",imei(r)],["Serial",r.serial_number],["Model",r.model],["Supplier",supplier(r)],["Batch",r.batch_number],["Reason",label(r.reason)],["Notes",r.notes],["Handover reference",r.slip_reference],["Settlement",r.settlement_type ? label(r.settlement_type) : "Open"],["Settlement reference",r.settlement_reference],["Amount",r.settlement_amount],...(r.archived_at ? [["Archived after authorized data deletion",date(r.archived_at)]] : [])]);
@@ -103,6 +104,21 @@
     };
   }
   let simpleContext = null, simpleRows = [], simpleGeneration = 0, lastSaved = "";
+  let externalRefreshPending = false, externalRefreshTimer, closeStaleDetails = false;
+  function queueCurrentRefresh(deletion = false) {
+    externalRefreshPending = true;
+    closeStaleDetails ||= deletion;
+    window.clearTimeout(externalRefreshTimer);
+    if (!reportRoot?.isConnected || document.visibilityState === "hidden" || modalBusy) return;
+    externalRefreshTimer = window.setTimeout(() => {
+      if (!reportRoot?.isConnected || document.visibilityState === "hidden" || modalBusy) return;
+      externalRefreshPending = false;
+      lastSaved = "";
+      if (closeStaleDetails && dialog?.open) dialog.close();
+      closeStaleDetails = false;
+      refreshReport();
+    }, 80);
+  }
   const showDate = value => value ? new Date(value).toLocaleDateString([], {day:"2-digit",month:"short",year:"numeric"}) : "—";
   const receiptLabel = r => [r.invoice_number || r.batch_number, showDate(r.received_at), r.received_quantity + " received"].filter(Boolean).join(" · ");
   function simpleMessage(message, error = false) {
@@ -114,7 +130,7 @@
     const generation = ++simpleGeneration;
     root.querySelector("[data-sr-refresh]").disabled = true;
     try {
-      const [next, rows] = await Promise.all([rpc("get_simple_stock_return_context"), rpc("list_simple_stock_returns", {p_from:null,p_to:null})]);
+      const [next, rows] = await Promise.all([rpc("get_simple_stock_return_context"), rpc("list_active_stock_returns", {p_from:null,p_to:null})]);
       if (root !== reportRoot || generation !== simpleGeneration) return;
       if (!Array.isArray(next?.receipts) || !Array.isArray(rows)) throw new Error("Stock Return data could not be loaded. Try Refresh.");
       simpleContext = next; simpleRows = rows;
@@ -131,6 +147,8 @@
         root.querySelector("[data-sr-simple-form]").innerHTML = "";
         root.querySelector("[data-sr-simple-table]").innerHTML = "";
         root.querySelector("[data-sr-total]").textContent = "";
+        const legacy = root.querySelector("[data-sr-legacy]");
+        legacy.hidden = true; legacy.innerHTML = "";
         simpleMessage((lastSaved ? lastSaved + " " : "") + e.message, true);
       }
     } finally { if (root === reportRoot && generation === simpleGeneration) root.querySelector("[data-sr-refresh]").disabled = false; }
@@ -239,7 +257,7 @@
       const signature = JSON.stringify(["record_simple_stock_return",payload]);
       if (!retries.has(signature)) retries.set(signature,crypto.randomUUID());
       const controls = [...form.querySelectorAll("button,input,select")].map(el => [el,el.disabled]);
-      modalBusy = true; controls.forEach(([el]) => { el.disabled = true; }); reportRoot.querySelector("[data-sr-refresh]").disabled = true;
+      modalBusy = true; simpleGeneration += 1; controls.forEach(([el]) => { el.disabled = true; }); reportRoot.querySelector("[data-sr-refresh]").disabled = true;
       simpleMessage("Saving stock return…");
       try {
         const result = await rpc("record_simple_stock_return",{p_payload:payload,p_idempotency_key:retries.get(signature)});
@@ -259,6 +277,7 @@
         controls.forEach(([el,disabled]) => { if (el.isConnected) el.disabled = disabled; });
         if (form.isConnected) { updateReason(); get("batch").disabled = !(simpleContext?.receipts || []).some(r => r.supplier_id === get("supplier").value); }
         if (reportRoot?.isConnected) reportRoot.querySelector("[data-sr-refresh]").disabled = false;
+        if (externalRefreshPending) queueCurrentRefresh();
       }
     };
   }
@@ -272,10 +291,15 @@
     root.querySelector("[data-sr-report-search]").oninput = renderSimpleReport;
     refreshReport();
   }
-  function unmount() { reportRoot = null; simpleContext = null; simpleRows = []; ++simpleGeneration; }
+  function unmount() { reportRoot = null; simpleContext = null; simpleRows = []; ++simpleGeneration; window.clearTimeout(externalRefreshTimer); externalRefreshPending = false; closeStaleDetails = false; }
   window.GREENLOOP_SUPPLIER_RETURNS = {mount,unmount};
   const root = document.querySelector("#stock-return-app");
   if (root) {
+    window.addEventListener("storage", event => {
+      if (event.key === "greenloop-operational-data-change" && event.newValue) queueCurrentRefresh(true);
+    });
+    window.addEventListener("focus", () => { if (reportRoot) queueCurrentRefresh(); });
+    document.addEventListener("visibilitychange", () => { if (reportRoot && document.visibilityState === "visible") queueCurrentRefresh(); });
     const sidebar = document.querySelector("#sidebar"), backdrop = document.querySelector("#menu-backdrop");
     const setMenu = open => { sidebar?.classList.toggle("is-open", open); if (backdrop) backdrop.hidden = !open; document.body.classList.toggle("menu-open", open); };
     document.querySelector("#open-menu")?.addEventListener("click", () => setMenu(true));
