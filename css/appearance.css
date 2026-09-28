@@ -1106,12 +1106,19 @@ html[data-design="neumorphism"][data-mode="dark"] {
   --nm-shadow-xs:2px 3px 3px -1px #0a111dd9,-1px -1px 2px #657b9059,inset 1px 1px 0 #95a8bb59,inset 0 -1px 0 #111b2acc;
   --nm-inset:inset 3px 3px 5px #111923b3,inset -2px -2px 4px #68798b52;
 }
-/* Tight shadows fit the standard 3px navigation gap without a glowing halo. */
+/* Slightly deeper sidebar edges with a small gap; keep the shadow compact. */
+html[data-design="neumorphism"] .sidebar {
+  --nm-nav-shadow:3px 4px 3px -1px #7d94a6b8,-1px -1px 2px #ffffff99,inset 1px 1px 0 #ffffffd9,inset 0 -1px 0 #aebfcd99;
+}
+html[data-design="neumorphism"][data-mode="dark"] .sidebar {
+  --nm-nav-shadow:3px 4px 3px -1px #0a111dd9,-1px -1px 2px #657b9059,inset 1px 1px 0 #95a8bb59,inset 0 -1px 0 #111b2acc;
+}
+html[data-design="neumorphism"] .sidebar-nav {row-gap:5px;}
 html[data-design="neumorphism"] .sidebar .nav-item {
   background:var(--nm-control);
   border-color:transparent;
   border-radius:14px;
-  box-shadow:var(--nm-shadow-xs);
+  box-shadow:var(--nm-nav-shadow);
   color:var(--nm-muted);
 }
 html[data-design="neumorphism"] .sidebar .nav-item:hover {
