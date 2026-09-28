@@ -1116,7 +1116,7 @@ html[data-design="neumorphism"] .sidebar .nav-item {
 }
 html[data-design="neumorphism"] .sidebar .nav-item:hover {
   background:var(--nm-control);
-  color:var(--nm-accent);
+  color:var(--nm-green);
 }
 html[data-design="neumorphism"] .sidebar .nav-item:is(.active,[aria-current="page"],[aria-pressed="true"],[aria-expanded="true"],:active) {
   background:var(--nm-well);
@@ -1182,3 +1182,27 @@ html[data-design="neumorphism"] .technician-live-stats > div {
 html[data-design="neumorphism"] :is(.technician-live-stats > div,.technician-live-quality > div,.technician-live-device) {
   box-shadow:var(--nm-shadow-sm);
 }
+
+/* Rounded fallback for raised link controls; explicit component shapes win. */
+:where(html[data-design="neumorphism"]) button {border-radius:8px;}
+
+/* Selected navigation has its own fill while keeping the existing inset depth. */
+:root {--nm-nav-active-bg:#c1e2d2;--nm-nav-active-ink:#173f30;}
+:root[data-mode="dark"] {--nm-nav-active-bg:#245c4b;--nm-nav-active-ink:#f1fff8;}
+html[data-design] .sidebar .nav-item:is(.active,[aria-current="page"],[aria-pressed="true"],[aria-expanded="true"]) {
+  background:var(--nm-nav-active-bg);
+  color:var(--nm-nav-active-ink);
+}
+html[data-design] .sidebar .nav-item:is(.active,[aria-current="page"],[aria-pressed="true"],[aria-expanded="true"]) .nav-icon {
+  color:var(--nm-nav-active-ink);
+}
+
+/* Shared messages and semantic labels follow the current display palette. */
+:root:is([data-design="neumorphism"],[data-mode="dark"]) {--danger:var(--nm-red);}
+html:is([data-design="neumorphism"],[data-mode="dark"]) .form-field label .required-mark {color:var(--nm-red);}
+html:is([data-design="neumorphism"],[data-mode="dark"]) .live-headlines .live-headline-item :is(strong,b,em) {color:var(--nm-red);}
+html:is([data-design="neumorphism"],[data-mode="dark"]) .technician-live-alert :is(strong,span) {color:var(--nm-red) !important;}
+html:is([data-design="neumorphism"],[data-mode="dark"]) :is(.correction-grid label em,.correction-approval label em,.line-status.error) {color:var(--nm-red);}
+html:is([data-design="neumorphism"],[data-mode="dark"]) :is(.report-status.fail,.report-status.low,.report-status.pending,.manual-lab-parts-toggle[data-state="on"],.qc-skip-lab-button[data-state="on"]) {background:var(--nm-red-bg);color:var(--nm-red);border-color:var(--nm-red);}
+html:is([data-design="neumorphism"],[data-mode="dark"]) :is(.device-details dt,.event-history span,.job-meta,.movement-meta,.cost-cards small,.journey-summary small) {color:var(--nm-muted);}
+html:is([data-design="neumorphism"],[data-mode="dark"]) :is(.journey-empty,.final-pending-empty,.qc-pending-empty) {color:var(--nm-muted) !important;}
