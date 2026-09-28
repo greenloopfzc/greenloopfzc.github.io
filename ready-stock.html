@@ -11,11 +11,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/ready-stock.css?v=20260928-ready-stock-views-1">
+    <link rel="stylesheet" href="css/ready-stock.css?v=20260928-bulk-rework-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="js/config.js?v=20260926-imei-search-layout-1"></script>
     <script defer src="js/part-notifications.js?v=20260918-audit-2"></script>
-    <script defer src="js/ready-stock.js?v=20260928-ready-stock-views-1"></script>
+    <script defer src="js/ready-stock.js?v=20260928-bulk-rework-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20260928-sidebar-depth-1">
   </head>
   <body class="app-page">
@@ -59,7 +59,27 @@
             <section class="ready-stock-panel"><div class="ready-stock-table-wrap"><table class="ready-stock-table"><thead id="ready-stock-head"><tr><th>Model</th><th>RMA</th><th>Latest Final QC pass</th><th>Total Qty</th></tr></thead><tbody id="ready-stock-body"><tr><td class="ready-stock-empty" colspan="4">Loading Ready Stock...</td></tr></tbody><tfoot id="ready-stock-foot"><tr><th>Total</th><th>0</th><th>-</th><th>0 pcs</th></tr></tfoot></table></div></section>
             </section>
             <section id="ready-stock-rework-view" aria-label="Send for rework" hidden>
-              <section class="ready-stock-rework"><div><p class="panel-kicker">Customer change</p><h2>Send Ready Stock for rework</h2><p>Laboratory rework requires a technician; Frame does not. Customer demand is optional and the full rework cycle stays in the device journey.</p></div><form id="ready-stock-rework-form"><label>IMEI<input id="ready-stock-rework-imei" inputmode="numeric" maxlength="15" placeholder="Scan 15-digit IMEI" required></label><label>Department<select id="ready-stock-rework-department" required><option value="laboratory">Laboratory</option><option value="frame">Frame Department</option></select></label><label id="ready-stock-rework-technician-wrap">Laboratory technician<select id="ready-stock-rework-technician"><option value="">Loading technicians...</option></select></label><label class="ready-stock-rework-reason">Customer demand / work required <small>(optional)</small><textarea id="ready-stock-rework-reason" rows="2" placeholder="Example: Change housing to Blue"></textarea></label><button id="ready-stock-rework-submit" class="primary-button" type="submit">Send for rework</button></form></section>
+              <section class="ready-stock-rework">
+                <div><p class="panel-kicker">Customer change</p><h2>Send Ready Stock for rework</h2><p>Laboratory rework requires a technician; Frame does not. In Bulk, the selected department, technician and work required apply to every phone in the batch.</p></div>
+                <form id="ready-stock-rework-form">
+                  <div class="ready-rework-mode" role="group" aria-label="Rework entry mode"><button id="ready-rework-single-mode" class="secondary-button" type="button" aria-pressed="true">Single phone</button><button id="ready-rework-bulk-mode" class="secondary-button" type="button" aria-pressed="false">Bulk phones</button></div>
+                  <label id="ready-rework-single-field">IMEI<input id="ready-stock-rework-imei" inputmode="numeric" maxlength="15" placeholder="Scan 15-digit IMEI" required></label>
+                  <div id="ready-rework-bulk-field" class="ready-rework-bulk-field" hidden><label for="ready-rework-imeis">Scan or paste IMEIs</label><textarea id="ready-rework-imeis" rows="6" inputmode="numeric" spellcheck="false" placeholder="123456789012345&#10;123456789012346" aria-describedby="ready-rework-bulk-help ready-rework-count" disabled></textarea><p id="ready-rework-bulk-help">Scan each phone and press Enter, or paste one IMEI per line. Maximum 500 phones per batch.</p><p id="ready-rework-count" role="status">0 phones</p></div>
+                  <label>Department<select id="ready-stock-rework-department" required><option value="laboratory">Laboratory</option><option value="frame">Frame Department</option></select></label>
+                  <label id="ready-stock-rework-technician-wrap">Laboratory technician<select id="ready-stock-rework-technician" disabled><option value="">Loading technicians...</option></select></label>
+                  <label class="ready-stock-rework-reason">Customer demand / work required <small>(optional)</small><textarea id="ready-stock-rework-reason" rows="2" placeholder="Example: Change housing to Blue"></textarea></label>
+                  <button id="ready-stock-rework-submit" class="primary-button" type="submit">Send for rework</button>
+                </form>
+              </section>
+              <section id="ready-rework-unconfirmed" class="ready-stock-panel ready-rework-results" aria-label="Phones needing a status check" hidden>
+                <div class="ready-rework-results-heading"><div><h2>Check before retrying</h2><p>The reply was lost for these phones. Check their device history and current status before allowing another attempt.</p></div></div>
+                <ul id="ready-rework-unconfirmed-list" class="ready-rework-unconfirmed-list"></ul>
+              </section>
+              <section id="ready-rework-results" class="ready-stock-panel ready-rework-results" aria-label="Bulk rework phone list" hidden>
+                <div class="ready-rework-results-heading"><div><h2 id="ready-rework-results-title">Phone list</h2><p id="ready-rework-progress" role="status" aria-live="polite"></p></div><button id="ready-rework-stop" class="secondary-button" type="button" hidden>Stop after current phone</button></div>
+                <p id="ready-rework-result-note" class="ready-rework-result-note" hidden></p>
+                <div class="ready-rework-list-wrap"><table class="ready-rework-list"><thead><tr><th>IMEI</th><th>Status</th><th>Details</th></tr></thead><tbody id="ready-rework-result-rows"></tbody></table></div>
+              </section>
             </section>
           </section>
         </div>

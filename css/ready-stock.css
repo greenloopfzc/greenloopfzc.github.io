@@ -38,3 +38,29 @@
 @media (max-width: 850px) { .ready-stock-filters { display: grid; grid-template-columns: 1fr 1fr; align-items: end; } .ready-stock-filter-heading { grid-column: 1 / -1; } }
 @media (max-width: 650px) { .ready-stock-heading { align-items: flex-start; } .ready-stock-heading-actions { width: 100%; display: grid; } .ready-stock-heading-actions .secondary-button { width: 100%; } .ready-stock-filters { grid-template-columns: 1fr; } .ready-stock-filter-heading { grid-column: auto; } .ready-stock-filters .primary-button, .ready-stock-filters .secondary-button { width: 100%; } }
 @media (max-width: 650px) { .ready-stock-heading-actions { justify-content: stretch; } .ready-stock-view-switch { width: 100%; } #ready-stock-rework-form { grid-template-columns: minmax(0, 1fr); } }
+
+/* Single and bulk rework share the same destination fields. */
+.ready-rework-mode { display: flex; flex-wrap: wrap; gap: 8px; grid-column: 1 / -1; margin-bottom: 3px; }
+.ready-rework-mode button[aria-pressed="true"] { background: var(--nm-nav-active-bg, #e6f3ed); color: var(--nm-nav-active-ink, #173f30); border-color: var(--nm-accent, #147050); }
+.ready-rework-bulk-field { display: grid; grid-column: 1 / -1; gap: 6px; min-width: 0; }
+#ready-stock-rework-form #ready-rework-imeis { min-height: 150px; font-family: Consolas, monospace; line-height: 1.65; }
+#ready-rework-count { font-weight: 800; color: var(--nm-ink, #213c2e); }
+.ready-rework-results { margin-top: 20px; }
+.ready-rework-results-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; }
+.ready-rework-results-heading h2 { margin: 0 0 6px; font: 800 1rem Manrope, sans-serif; }
+.ready-rework-results-heading p { margin: 0; font-size: .78rem; color: var(--nm-muted, #52665c); }
+.ready-rework-result-note { margin: 0; padding: 0 18px 14px; font-size: .78rem; line-height: 1.5; color: var(--nm-ink, #213c2e); }
+.ready-rework-list-wrap { max-height: 440px; overflow: auto; }
+.ready-rework-list { width: 100%; min-width: 480px; border-collapse: collapse; font-size: .78rem; }
+.ready-rework-list th, .ready-rework-list td { padding: 10px 14px; border-top: 1px solid var(--nm-line, #d6e2d9); text-align: left; }
+.ready-rework-list th { background: var(--nm-well, #edf6ef); color: var(--nm-ink, #213c2e); }
+.ready-rework-list td:first-child { font-family: Consolas, monospace; white-space: nowrap; }
+.ready-rework-list td:last-child { max-width: 520px; overflow-wrap: anywhere; }
+.ready-rework-status { display: inline-block; border-radius: 8px; padding: 4px 8px; white-space: nowrap; font-weight: 700; background: var(--nm-well, #edf6ef); color: var(--nm-muted, #52665c); }
+.ready-rework-status[data-state="sent"] { color: var(--nm-green, #096244); background: var(--nm-green-bg, #e6f3ed); }
+.ready-rework-status:is([data-state="invalid"],[data-state="failed"]) { color: var(--nm-red, #a23030); background: var(--nm-red-bg, #f9e5e3); }
+.ready-rework-status:is([data-state="duplicate"],[data-state="unknown"]) { color: var(--nm-amber, #835b0c); background: var(--nm-amber-bg, #fff0cc); }
+.ready-rework-status[data-state="sending"] { color: var(--nm-blue, #225b85); background: var(--nm-blue-bg, #e5f2ff); }
+.ready-rework-unconfirmed-list { list-style: none; padding: 0 18px 16px; margin: 0; }
+.ready-rework-unconfirmed-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--nm-line, #d6e2d9); }
+.ready-rework-unconfirmed-list strong { font-family: Consolas, monospace; color: var(--nm-amber, #835b0c); }
