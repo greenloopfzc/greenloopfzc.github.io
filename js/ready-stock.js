@@ -21,6 +21,11 @@
   const reworkTechnician = document.querySelector("#ready-stock-rework-technician");
   const reworkTechnicianWrap = document.querySelector("#ready-stock-rework-technician-wrap");
   const reworkSubmit = document.querySelector("#ready-stock-rework-submit");
+  const stockView = document.querySelector("#ready-stock-view");
+  const reworkView = document.querySelector("#ready-stock-rework-view");
+  const pageTitle = document.querySelector("#ready-stock-title");
+  const pageSubtitle = document.querySelector("#ready-stock-subtitle");
+  const stockSubtitle = pageSubtitle.textContent;
   let client;
   let toastTimer;
   let sendingForRework = false;
@@ -29,6 +34,26 @@
   function getClient() {
     if (!client) client = window.GREENLOOP_GET_CLIENT();
     return client;
+  }
+
+  function showReadyStockView(moveFocus = false) {
+    if (app.hidden) return;
+    const isRework = window.location.hash === "#rework";
+    stockView.hidden = isRework;
+    reworkView.hidden = !isRework;
+    document.querySelector("#open-ready-stock-rework").hidden = isRework;
+    document.querySelector("#back-to-ready-stock").hidden = !isRework;
+    document.querySelector("#ready-stock-table-actions").hidden = isRework;
+    const stockScanner = document.querySelector("#greenloop-quick-imei-scanner");
+    if (stockScanner) stockScanner.hidden = isRework;
+    pageTitle.textContent = isRework ? "Send for rework" : "Final QC passed stock";
+    pageSubtitle.textContent = isRework ? "Send a Ready Stock phone to Laboratory or Frame Department for further work." : stockSubtitle;
+    document.querySelector("#ready-stock-breadcrumb").textContent = isRework ? "Send for rework" : "Ready Stock";
+    document.title = isRework ? "Send for rework | Greenloop" : "Ready Stock | Greenloop";
+    if (moveFocus) {
+      window.scrollTo({ top: 0, behavior: "auto" });
+      (isRework ? reworkImei : pageTitle).focus({ preventScroll: true });
+    }
   }
 
   function escapeHtml(value) {
@@ -214,6 +239,7 @@
       return;
     }
     app.hidden = false;
+    showReadyStockView();
     const today = dubaiDate();
     rangeFrom.value = today;
     rangeTo.value = today;
@@ -234,6 +260,7 @@
   reworkImei.addEventListener("input", () => { reworkImei.value = reworkImei.value.replace(/\D/g, "").slice(0, 15); });
   reworkDepartment.addEventListener("change", syncReworkTechnician);
   reworkForm.addEventListener("submit", (event) => sendForRework(event).catch((error) => showToast(error.message || "Phone could not be sent for rework.")));
+  window.addEventListener("hashchange", () => showReadyStockView(true));
   initialize().catch((error) => {
     permissionMessage.textContent = error.message || "Ready Stock could not be loaded.";
     permissionMessage.hidden = false;

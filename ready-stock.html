@@ -11,11 +11,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/ready-stock.css?v=20260822-ready-stock-rework-final-1">
+    <link rel="stylesheet" href="css/ready-stock.css?v=20260928-ready-stock-views-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="js/config.js?v=20260926-imei-search-layout-1"></script>
     <script defer src="js/part-notifications.js?v=20260918-audit-2"></script>
-    <script defer src="js/ready-stock.js?v=20260918-audit-2"></script>
+    <script defer src="js/ready-stock.js?v=20260928-ready-stock-views-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20260928-sidebar-depth-1">
   </head>
   <body class="app-page">
@@ -41,15 +41,26 @@
       </aside>
       <div id="menu-backdrop" class="menu-backdrop" hidden></div>
       <main class="app-main">
-        <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Dashboard</a><span aria-hidden="true">/</span><strong>Ready Stock</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
+        <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Dashboard</a><span aria-hidden="true">/</span><strong id="ready-stock-breadcrumb">Ready Stock</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
         <div class="page-content ready-stock-content">
-          <section class="page-heading ready-stock-heading"><div><p class="eyebrow dashboard-eyebrow">Ready Stock</p><h1>Final QC passed stock</h1><p class="heading-subtitle">Model, memory, grade, and RMA quantities currently held by Greenloop after Final QC pass.</p></div><div class="ready-stock-heading-actions"><a class="primary-button" href="export-box.html">Prepare export box</a><a class="secondary-button" href="ready-stock-journey.html">View device journey</a><button id="refresh-ready-stock" class="secondary-button" type="button">Refresh table</button></div></section>
           <div id="permission-message" class="access-message" hidden></div>
           <section id="ready-stock-app" hidden>
+            <section class="page-heading ready-stock-heading">
+              <div><p class="eyebrow dashboard-eyebrow">Ready Stock</p><h1 id="ready-stock-title" tabindex="-1">Final QC passed stock</h1><p id="ready-stock-subtitle" class="heading-subtitle">Model, memory, grade, and RMA quantities currently held by Greenloop after Final QC pass.</p></div>
+              <div class="ready-stock-heading-actions">
+                <a id="open-ready-stock-rework" class="primary-button ready-stock-view-switch" href="#rework" aria-controls="ready-stock-rework-view">Send for rework <span aria-hidden="true">→</span></a>
+                <a id="back-to-ready-stock" class="primary-button ready-stock-view-switch" href="#stock" aria-controls="ready-stock-view" hidden><span aria-hidden="true">←</span> Ready Stock</a>
+                <div id="ready-stock-table-actions" class="ready-stock-heading-actions"><a class="secondary-button" href="export-box.html">Prepare export box</a><a class="secondary-button" href="ready-stock-journey.html">View device journey</a><button id="refresh-ready-stock" class="secondary-button" type="button">Refresh table</button></div>
+              </div>
+            </section>
+            <section id="ready-stock-view" aria-label="Ready Stock data">
             <section class="ready-stock-filters" aria-label="Ready Stock date range"><div class="ready-stock-filter-heading"><strong>Final QC pass date range</strong><span>By default, this table shows stock passed today. Clear both dates to view all current Ready Stock.</span></div><label>From<input id="ready-stock-from" type="date"></label><label>To<input id="ready-stock-to" type="date"></label><button id="apply-ready-stock-range" class="primary-button" type="button">Apply range</button><button id="clear-ready-stock-range" class="secondary-button" type="button">View all</button></section>
-            <section class="ready-stock-rework"><div><p class="panel-kicker">Customer change</p><h2>Send Ready Stock for rework</h2><p>Laboratory rework requires a technician; Frame does not. Customer demand is optional and the full rework cycle stays in the device journey.</p></div><form id="ready-stock-rework-form"><label>IMEI<input id="ready-stock-rework-imei" inputmode="numeric" maxlength="15" placeholder="Scan 15-digit IMEI" required></label><label>Department<select id="ready-stock-rework-department" required><option value="laboratory">Laboratory</option><option value="frame">Frame Department</option></select></label><label id="ready-stock-rework-technician-wrap">Laboratory technician<select id="ready-stock-rework-technician"><option value="">Loading technicians...</option></select></label><label class="ready-stock-rework-reason">Customer demand / work required <small>(optional)</small><textarea id="ready-stock-rework-reason" rows="2" placeholder="Example: Change housing to Blue"></textarea></label><button id="ready-stock-rework-submit" class="primary-button" type="submit">Send for rework</button></form></section>
             <section class="ready-stock-total"><span>Ready Stock Total</span><strong id="ready-stock-total">0 pcs</strong><small id="ready-stock-range-label">Final-QC-passed devices still held by Greenloop</small></section>
             <section class="ready-stock-panel"><div class="ready-stock-table-wrap"><table class="ready-stock-table"><thead id="ready-stock-head"><tr><th>Model</th><th>RMA</th><th>Latest Final QC pass</th><th>Total Qty</th></tr></thead><tbody id="ready-stock-body"><tr><td class="ready-stock-empty" colspan="4">Loading Ready Stock...</td></tr></tbody><tfoot id="ready-stock-foot"><tr><th>Total</th><th>0</th><th>-</th><th>0 pcs</th></tr></tfoot></table></div></section>
+            </section>
+            <section id="ready-stock-rework-view" aria-label="Send for rework" hidden>
+              <section class="ready-stock-rework"><div><p class="panel-kicker">Customer change</p><h2>Send Ready Stock for rework</h2><p>Laboratory rework requires a technician; Frame does not. Customer demand is optional and the full rework cycle stays in the device journey.</p></div><form id="ready-stock-rework-form"><label>IMEI<input id="ready-stock-rework-imei" inputmode="numeric" maxlength="15" placeholder="Scan 15-digit IMEI" required></label><label>Department<select id="ready-stock-rework-department" required><option value="laboratory">Laboratory</option><option value="frame">Frame Department</option></select></label><label id="ready-stock-rework-technician-wrap">Laboratory technician<select id="ready-stock-rework-technician"><option value="">Loading technicians...</option></select></label><label class="ready-stock-rework-reason">Customer demand / work required <small>(optional)</small><textarea id="ready-stock-rework-reason" rows="2" placeholder="Example: Change housing to Blue"></textarea></label><button id="ready-stock-rework-submit" class="primary-button" type="submit">Send for rework</button></form></section>
+            </section>
           </section>
         </div>
       </main>
