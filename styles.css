@@ -84,9 +84,9 @@ button {
   overflow: hidden;
   color: #f7fff9;
   background:
-    radial-gradient(circle at 5% 80%, rgba(90, 197, 136, 0.36), transparent 34%),
-    radial-gradient(circle at 93% 2%, rgba(127, 224, 168, 0.21), transparent 31%),
-    linear-gradient(145deg, #073b2b 0%, #0d674a 58%, #167653 100%);
+    radial-gradient(circle at 5% 80%, rgba(90, 197, 136, 0.10), transparent 34%),
+    radial-gradient(circle at 93% 2%, rgba(127, 224, 168, 0.06), transparent 31%),
+    linear-gradient(145deg, #14634a 0%, #1d7557 58%, #247b5c 100%);
 }
 
 .auth-intro::before,
@@ -150,9 +150,23 @@ button {
 .auth-page .brand,
 .auth-page .mobile-brand {
   gap: .346154em;
-  font-size: clamp(2rem, calc((44vw - clamp(80px, 12vw, 208px)) / 7.2), 6.5rem);
+  font-size: clamp(2rem, calc((44vw - clamp(80px, 12vw, 208px) - 48px) / 6.8), 6.5rem);
   font-weight: 400;
   line-height: 1.2;
+  max-width: 100%;
+  padding: 22px 24px;
+  border: 1px solid var(--nm-line, #cdd7df);
+  border-radius: 30px;
+  background: var(--nm-raised, linear-gradient(135deg, #fff, #dce6ef));
+  box-shadow: 0 4px 0 rgba(3,35,24,.25),
+    9px 12px 10px -3px rgba(2,29,21,.48), -2px -2px 3px rgba(255,255,255,.25),
+    inset 1px 1px 0 rgba(255,255,255,.85), inset -1px -2px 0 rgba(78,102,116,.25);
+}
+
+html[data-mode="dark"] .auth-page :is(.brand, .mobile-brand) {
+  background: var(--nm-raised, linear-gradient(135deg, #404c5a, #252e3a));
+  box-shadow: 0 4px 0 #111b2a, 9px 12px 10px -3px #07111dc2,
+    -2px -2px 3px #94adbd2e, inset 1px 1px 0 #95a8bb70, inset -1px -2px 0 #111b2aee;
 }
 
 .auth-page .brand .brand-image,
@@ -161,6 +175,32 @@ button {
   height: auto;
   aspect-ratio: 43 / 29;
   flex-shrink: 0;
+}
+
+.login-brand-effects { position: absolute; pointer-events: none; }
+
+/* The mask removes the JPG background before adding relief to the leaves. */
+body.auth-page .auth-shell :is(.brand, .mobile-brand) img.brand-image {
+  filter: url("#login-logo-relief");
+  mix-blend-mode: normal;
+}
+
+.auth-page .auth-shell :is(.brand, .mobile-brand) > span {
+  color: #176249;
+  text-shadow: -.0096em -.0096em 0 #fff, 0 .0096em 0 #bfd9cb,
+    .0096em .0192em 0 #82a693, .0192em .0288em .0096em rgba(30,65,47,.4),
+    .035em .055em .025em rgba(30,65,47,.35);
+}
+
+html[data-mode="dark"] .auth-page .auth-shell :is(.brand, .mobile-brand) > span {
+  color: #effff5;
+  text-shadow: -.0096em -.0096em 0 #fff, 0 .0096em 0 #b4d3c3,
+    .0096em .0192em 0 #6f9180, .0192em .0288em .0096em #263d33,
+    .035em .055em .025em rgba(0,0,0,.65);
+}
+
+body.auth-page .auth-intro :is(h1, strong, .eyebrow, .intro-text, .intro-points small, .intro-footer) {
+  color: #f4fff8;
 }
 
 @media (max-width: 880px) {

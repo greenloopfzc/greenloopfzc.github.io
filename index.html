@@ -16,13 +16,25 @@
       href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@400;600;700;800&display=swap"
       rel="stylesheet"
     >
-    <link rel="stylesheet" href="css/styles.css?v=20261001-login-brand-d-1">
+    <link rel="stylesheet" href="css/styles.css?v=20261001-login-relief-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script defer src="js/config.js?v=20260926-imei-search-layout-1"></script>
     <script defer src="js/auth.js?v=20260918-audit-2"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20260928-sidebar-depth-1">
   </head>
   <body class="auth-page">
+    <svg class="login-brand-effects" width="0" height="0" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <filter id="login-logo-relief" x="-25%" y="-25%" width="160%" height="175%" color-interpolation-filters="sRGB">
+          <feColorMatrix in="SourceGraphic" type="luminanceToAlpha" result="logo-mask" />
+          <feComponentTransfer in="logo-mask" result="strong-mask"><feFuncA type="linear" slope="4" intercept="-0.08" /></feComponentTransfer>
+          <feComposite in="SourceGraphic" in2="strong-mask" operator="in" result="logo-cutout" />
+          <feDropShadow in="logo-cutout" dx="-1" dy="-1" stdDeviation="0.35" flood-color="#e7ffb6" flood-opacity="0.75" result="logo-highlight" />
+          <feDropShadow in="logo-highlight" dx="2" dy="3" stdDeviation="0.25" flood-color="#254513" flood-opacity="0.95" result="logo-edge" />
+          <feDropShadow in="logo-edge" dx="5" dy="7" stdDeviation="2.5" flood-color="#022f21" flood-opacity="0.65" />
+        </filter>
+      </defs>
+    </svg>
     <main class="auth-shell">
       <section class="auth-intro" aria-labelledby="intro-title">
         <a class="brand" href="index.html" aria-label="Greenloop home">
