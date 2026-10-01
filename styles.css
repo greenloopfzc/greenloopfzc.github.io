@@ -146,25 +146,25 @@ button {
   mix-blend-mode: screen;
 }
 
-/* Larger login branding, scaled to fit desktop and compact sign-in screens. */
+/* Selected size D: 104px regular wordmark and 224px logo, scaled to fit. */
 .auth-page .brand,
 .auth-page .mobile-brand {
-  gap: clamp(12px, 1.1vw, 16px);
-  font-size: clamp(1.75rem, 3.1vw, 2.5rem);
+  gap: .346154em;
+  font-size: clamp(2rem, calc((44vw - clamp(80px, 12vw, 208px)) / 7.2), 6.5rem);
+  font-weight: 400;
   line-height: 1.2;
 }
 
 .auth-page .brand .brand-image,
 .auth-page .mobile-brand .brand-image {
-  width: clamp(58px, 6.4vw, 86px);
+  width: 2.153846em;
   height: auto;
   aspect-ratio: 43 / 29;
   flex-shrink: 0;
 }
 
 @media (max-width: 880px) {
-  .auth-page .mobile-brand { font-size: clamp(1.65rem, 6vw, 2rem); }
-  .auth-page .mobile-brand .brand-image { width: clamp(50px, 11.5vw, 62px); }
+  .auth-page .mobile-brand { font-size: clamp(1.75rem, 7.5vw, 3rem); }
 }
 
 @media (max-width: 480px) {
