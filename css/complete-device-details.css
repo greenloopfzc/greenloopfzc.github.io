@@ -16,6 +16,7 @@
 .cdd-row { display: grid; grid-template-columns: minmax(110px, .85fr) minmax(0, 1.35fr); gap: 14px; padding: 13px 18px; border-top: 1px solid #edf1ee; align-items: start; }
 .cdd-row dt { color: #46645a; font-size: 14px; font-weight: 600; padding-top: 2px; overflow-wrap: anywhere; }
 .cdd-row dd { margin: 0; min-width: 0; }
+.complete-device-details .cdd-row[hidden], .complete-device-details .cdd-card[hidden] { display: none; }
 .cdd-value { font-size: 15px; line-height: 1.45; font-weight: 700; overflow-wrap: anywhere; }
 .cdd-badge { display: inline-block; color: #527567; font-size: 10px; border: 1px solid #d4e7dc; padding: 2px 5px; border-radius: 5px; vertical-align: middle; margin-left: 7px; }
 .cdd-source { display: block; color: #788a81; font-size: 11px; line-height: 1.5; margin-top: 4px; overflow-wrap: anywhere; }

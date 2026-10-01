@@ -325,11 +325,13 @@
     const device = result.device || {};
     const { data: batchJob } = await getClient()
       .from("jobs")
-      .select("receiving_batch:receiving_batches(planned_quantity)")
+      .select("receiving_batch:receiving_batches(planned_quantity), device:devices(device_platform, battery_health_unavailable)")
       .eq("id", job.id)
       .maybeSingle();
     if (!isCurrent()) return;
     const receivingBatch = Array.isArray(batchJob?.receiving_batch) ? batchJob.receiving_batch[0] : batchJob?.receiving_batch;
+    const deviceMetadata = Array.isArray(batchJob?.device) ? batchJob.device[0] : batchJob?.device;
+    if (deviceMetadata) Object.assign(device, deviceMetadata);
     const selectedJob = {
       ...job,
       supplierDisplay: supplierLabel(job.supplier_code, result.supplier, receivingBatch?.planned_quantity),
@@ -339,7 +341,7 @@
     row.querySelector('[data-auto="model"]').textContent = device.model || "-";
     row.querySelector('[data-auto="storage"]').textContent = device.storage_gb ? `${device.storage_gb} GB` : "-";
     row.querySelector('[data-auto="color"]').textContent = device.color || "-";
-    row.querySelector('[data-auto="battery"]').textContent = device.battery_health !== null && device.battery_health !== undefined ? `${device.battery_health}%` : "-";
+    row.querySelector('[data-auto="battery"]').textContent = device.battery_health !== null && device.battery_health !== undefined ? `${device.battery_health}%` : device.battery_health_unavailable ? "Not available" : "-";
     row.querySelector('[data-auto="supplier"]').textContent = selectedJob.supplierDisplay;
     const supplierGrade = row.querySelector('[data-carry-field="supplierGrade"]');
     const gcGrade = row.querySelector('[data-carry-field="gcGrade"]');
@@ -584,7 +586,7 @@
     setSubmitting(rowButton, true, "Saving...");
     setRowState(row, progressText, "is-loading");
     const rpcName = submission.routeToFrame
-      ? "complete_initial_qc_direct_to_frame"
+      ? "complete_initial_qc_direct_to_frame_v2"
       : (hasWork ? "complete_initial_qc_lab_first" : "complete_scanned_initial_qc_with_roster_and_grades");
     const payload = {
       p_job_id: selectedJob.id, p_overall_condition: "", p_cosmetic_condition: "", p_notes: submission.notes,

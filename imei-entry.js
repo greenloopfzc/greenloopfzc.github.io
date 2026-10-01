@@ -12,6 +12,10 @@
   const storage = document.querySelector("#storage-gb");
   const color = document.querySelector("#color");
   const battery = document.querySelector("#battery-health");
+  const platform = document.querySelector("#device-platform");
+  const brand = document.querySelector("#device-brand");
+  const batteryUnavailable = document.querySelector("#battery-health-unavailable");
+  const batteryUnavailableLabel = document.querySelector("#battery-unavailable-label");
   const serialNumber = document.querySelector("#serial-number");
   const phoneRegion = document.querySelector("#phone-region");
   const message = document.querySelector("#form-message");
@@ -35,6 +39,9 @@
   let lastDuplicateNotice = "";
   let entryReady = false;
   let cableMirror = false;
+  let boundConnection = "";
+  let ignoredConnection = "";
+  let boundImei = "";
   const savedImeis = window.GREENLOOP_SAVED_ENTRY_IMEIS ||= new Set();
   const savingImeis = window.GREENLOOP_SAVING_ENTRY_IMEIS ||= new Set();
   const duplicateChecks = new Map();
@@ -65,6 +72,26 @@
     const enabled = autoSaveEnabled();
     if (autoSaveToggle) autoSaveToggle.checked = enabled;
     if (autoSaveState) autoSaveState.textContent = enabled ? "ON" : "OFF";
+  }
+  function syncDeviceKind() {
+    const android = platform.value === "android";
+    brand.readOnly = !android;
+    if (!android) { brand.value = "Apple"; batteryUnavailable.checked = false; }
+    else if (brand.value === "Apple") brand.value = "";
+    batteryUnavailableLabel.hidden = !android;
+    const unavailable = android && batteryUnavailable.checked;
+    battery.disabled = unavailable;
+    battery.required = !unavailable;
+    if (unavailable) { battery.value = ""; battery.dataset.estimated = ""; }
+  }
+  function hasBatteryHealth() {
+    return platform.value === "android" && batteryUnavailable.checked || battery.value !== "" && Number.isInteger(Number(battery.value)) && Number(battery.value) >= 0 && Number(battery.value) <= 100;
+  }
+  function clearPhoneFields(preserveManual = false) {
+    [model, storage, color, battery, serialNumber, phoneRegion].forEach((field) => { if (field && (!preserveManual || field.dataset.cableEdited !== "yes")) { field.value = ""; delete field.dataset.cableEdited; } });
+    battery.dataset.estimated = "";
+    if (!preserveManual) batteryUnavailable.checked = false;
+    syncDeviceKind();
   }
   function ensureSelectValue(select, value) {
     const text = String(value ?? "").trim();
@@ -262,39 +289,61 @@
 
   function applyConnectedDevice(device = {}) {
     const connectedImei = String(device.imei || "").replace(/\D/g, "");
-    if (!/^\d{15}$/.test(connectedImei) || saving) return;
+    const connection = device.connectionId || (/^\d{15}$/.test(connectedImei) ? `ios:${connectedImei}` : "");
+    if (!connection || saving || ignoredConnection === connection) return;
     if (savedImeis.has(connectedImei)) { checkDuplicateImei(connectedImei).catch(() => {}); return; }
     if (!batchSelect.value) {
       if (readerStatus) readerStatus.textContent = "Phone detected — select a stock batch";
       return;
     }
-    if (imei.value !== connectedImei) {
-      [model, storage, color, battery, serialNumber, phoneRegion].forEach((field) => { if (field) field.value = ""; });
+    if (boundConnection !== connection) {
+      const matchingManualImei = !boundConnection && connectedImei && imei.value === connectedImei;
+      const manualAndroidBrand = matchingManualImei && platform.value === "android" ? brand.value : "";
+      clearPhoneFields(matchingManualImei);
+      imei.value = matchingManualImei ? connectedImei : "";
+      brand.value = "";
+      platform.value = device.platform === "android" ? "android" : "ios";
+      brand.value = device.brand || (platform.value === "ios" ? "Apple" : manualAndroidBrand);
+      boundConnection = connection;
+      ignoredConnection = "";
+      boundImei = connectedImei;
+      imei.setCustomValidity("");
+      syncDeviceKind();
     }
     cableMirror = true;
-    imei.value = connectedImei;
-    ensureSelectValue(model, device.model);
-    ensureSelectValue(storage, device.storageGb);
-    ensureSelectValue(color, device.color);
-    if (Number(device.batteryHealth) > 0 && Number(device.batteryHealth) <= 100) {
+    if (connectedImei && imei.value && imei.value !== connectedImei) {
+      boundImei = connectedImei;
+      imei.setCustomValidity("The connected phone has a different IMEI. Check the entered IMEI before saving.");
+      setMessage("The connected phone has a different IMEI. Check the entered IMEI before saving.");
+      return;
+    }
+    if (connectedImei && !imei.dataset.cableEdited) imei.value = connectedImei;
+    for (const [select, value] of [[model, device.model], [storage, device.storageGb], [color, device.color]]) if (select.dataset.cableEdited !== "yes") ensureSelectValue(select, value);
+    if (!brand.value && device.brand) brand.value = device.brand;
+    if (battery.dataset.cableEdited !== "yes" && device.batteryHealth !== "" && device.batteryHealth != null && Number.isInteger(Number(device.batteryHealth)) && Number(device.batteryHealth) >= 0 && Number(device.batteryHealth) <= 100) {
+      batteryUnavailable.checked = false;
+      syncDeviceKind();
       battery.value = Number(device.batteryHealth);
     }
-    battery.title = device.batteryHealthSource === "capacity-estimate" ? "Estimated from phone battery capacity. Verify before saving." : "Read from connected phone";
-    battery.dataset.estimated = device.batteryHealthSource === "capacity-estimate" ? "yes" : "";
+    if (battery.dataset.cableEdited !== "yes") {
+      battery.title = device.batteryHealthSource === "capacity-estimate" ? "Estimated from phone battery capacity. Verify before saving." : "Read from connected phone";
+      battery.dataset.estimated = device.batteryHealthSource === "capacity-estimate" ? "yes" : "";
+    }
     // Duplicate detection should also run when an optional color/BH read is late.
-    checkDuplicateImei(connectedImei).catch((error) => setMessage(error.message));
-    setOptionalInput(serialNumber, device.serialNumber);
-    setOptionalInput(phoneRegion, device.phoneRegion);
+    if (connectedImei) checkDuplicateImei(connectedImei).catch((error) => setMessage(error.message));
+    if (serialNumber.dataset.cableEdited !== "yes") setOptionalInput(serialNumber, device.serialNumber);
+    if (phoneRegion.dataset.cableEdited !== "yes") setOptionalInput(phoneRegion, device.phoneRegion);
     const missing = [
       [/^\d{15}$/.test(imei.value.trim()), "IMEI"],
+      [Boolean(brand.value.trim()), "Brand"],
       [Boolean(model.value), "Model"],
       [Boolean(storage.value), "GB"],
       [Boolean(color.value), "Color"],
-      [battery.value !== "" && Number.isFinite(Number(battery.value)), "Battery Health"]
+      [hasBatteryHealth(), platform.value === "android" ? "Battery Health (or select Not available)" : "Battery Health"]
     ].filter(([available]) => !available).map(([, label]) => label);
     if (missing.length) {
       if (readerStatus) readerStatus.textContent = `Cable read incomplete: ${missing.join(", ")}`;
-      setMessage(`Connected phone detected, but ${missing.join(", ")} could not be read.`, "error");
+      setMessage(`Connected phone detected. Enter ${missing.join(", ")} to complete this phone.`, "error");
       return;
     }
     const extraDetails = [serialNumber?.value ? "serial number" : "", phoneRegion?.value ? "phone region" : ""].filter(Boolean);
@@ -310,16 +359,15 @@
       entryReady && window.GREENLOOP_PAGE_ACCESS?.canEdit === true && battery.dataset.estimated !== "yes" && !savedImeis.has(imei.value.trim()) &&
       !(cableMirror && window.GREENLOOP_BULK_CABLE_OWNER?.()) &&
       batches.some((item) => item.batch_id === batchSelect.value) &&
-      /^\d{15}$/.test(imei.value.trim()) &&
-      model.value && storage.value && color.value &&
-      battery.value !== "" && Number(battery.value) >= 0 && Number(battery.value) <= 100
+      /^\d{15}$/.test(imei.value.trim()) && imei.checkValidity() &&
+      brand.value.trim() && model.value && storage.value && color.value && hasBatteryHealth()
     );
   }
 
   function scheduleAutoSave() {
     window.clearTimeout(autoSaveTimer);
     if (!autoSaveEnabled()) return;
-    if (!canAutoSave() || battery.value.length < 2) return;
+    if (!canAutoSave() || (!batteryUnavailable.checked && battery.value.length < 2)) return;
     autoSaveTimer = window.setTimeout(() => saveImei(null, true), 650);
   }
 
@@ -337,7 +385,9 @@
     if (!/^\d{15}$/.test(scannedImei)) { setMessage("IMEI must contain exactly 15 digits."); return; }
     if (savingImeis.has(scannedImei)) return;
     if (savedImeis.has(scannedImei)) { checkDuplicateImei(scannedImei, { force: true }).catch(() => {}); return; }
-    const receiptDetails = { p_batch_id: batch.batch_id, p_imei_1: scannedImei, p_model: model.value, p_storage_gb: Number(storage.value), p_color: color.value, p_battery_health: Number(battery.value) };
+    if (!hasBatteryHealth()) { setMessage("Enter battery health 0–100, or select Not available for an Android phone."); return; }
+    const unavailable = platform.value === "android" && batteryUnavailable.checked;
+    const receiptDetails = { p_batch_id: batch.batch_id, p_imei_1: scannedImei, p_model: model.value, p_storage_gb: Number(storage.value), p_color: color.value, p_battery_health: unavailable ? null : Number(battery.value), p_brand: brand.value.trim(), p_platform: platform.value, p_battery_health_unavailable: unavailable };
     const cableDetails = { serial: serialNumber?.value.trim() || null, region: phoneRegion?.value.trim() || null };
     const controls = [...form.querySelectorAll("input, select, textarea, button")].map((control) => [control, control.disabled]);
     controls.forEach(([control]) => { control.disabled = true; });
@@ -346,7 +396,7 @@
     setBusy(submit, true, automatic ? "Saving automatically..." : "Saving IMEI...");
     try {
     if (await checkDuplicateImei(scannedImei, { force: !automatic })) return;
-    const { data, error } = await api().rpc("receive_stock_batch_imei_with_plan", receiptDetails);
+    const { data, error } = await api().rpc("receive_stock_batch_imei_with_plan_v2", receiptDetails);
     if (error) { setMessage(window.GREENLOOP_SHOW_IMEI_SAVE_ERROR(error, scannedImei)); return; }
     savedImeis.add(scannedImei);
     window.dispatchEvent(new CustomEvent("greenloop:imei-entry-saved", { detail: { imei: scannedImei } }));
@@ -360,7 +410,9 @@
     if (cableDetailsError) showToast(`IMEI saved, but serial/region was not saved: ${cableDetailsError.message || "Please verify it."}`);
     sessionStorage.setItem("greenloop-next-initial-qc-imei", scannedImei);
     imei.value = "";
+    if (boundConnection) ignoredConnection = boundConnection;
     battery.value = "";
+    batteryUnavailable.checked = false;
     if (serialNumber) serialNumber.value = "";
     if (phoneRegion) phoneRegion.value = "";
     imei.focus();
@@ -372,6 +424,7 @@
       savingImeis.delete(scannedImei);
       setBusy(submit, false, "Saving IMEI...");
       controls.forEach(([control, disabled]) => { control.disabled = disabled; });
+      syncDeviceKind();
       if (!detailPanel.hidden && !duplicateDialog?.open) imei.focus();
     }
   }
@@ -410,9 +463,22 @@
   imei.addEventListener("input", () => {
     cableMirror = false;
     imei.value = imei.value.replace(/\D/g, "");
+    imei.setCustomValidity("");
+    if (boundConnection && boundImei && imei.value !== boundImei) {
+      ignoredConnection = boundConnection;
+      boundConnection = "";
+      boundImei = "";
+      clearPhoneFields();
+      setMessage("IMEI changed. Enter the details for this phone before saving.");
+    }
     window.clearTimeout(duplicateTimer);
     if (/^\d{15}$/.test(imei.value)) duplicateTimer = window.setTimeout(() => checkDuplicateImei(imei.value, { force: true }).catch(() => {}), 180);
+    scheduleAutoSave();
   });
+  for (const field of [model, storage, color, battery, serialNumber, phoneRegion]) field.addEventListener("input", () => { field.dataset.cableEdited = "yes"; });
+  for (const field of [brand, model, storage, color]) field.addEventListener("change", scheduleAutoSave);
+  platform.addEventListener("change", () => { if (boundConnection) ignoredConnection = boundConnection; boundConnection = ""; boundImei = ""; clearPhoneFields(); syncDeviceKind(); });
+  batteryUnavailable.addEventListener("change", () => { battery.dataset.cableEdited = "yes"; syncDeviceKind(); scheduleAutoSave(); });
   battery.addEventListener("input", () => { battery.dataset.estimated = ""; scheduleAutoSave(); });
   battery.addEventListener("change", scheduleAutoSave);
   battery.addEventListener("blur", scheduleAutoSave);

@@ -132,6 +132,17 @@
     syncFinalGradeRule(row);
   }
 
+  function syncBatteryAvailability(row) {
+    const android = getDevice(rowSteps.get(row.dataset.rowId))?.device_platform === "android";
+    const label = row.querySelector("[data-battery-unavailable-label]");
+    const checkbox = row.querySelector("[data-battery-unavailable]");
+    const input = row.querySelector("[data-final-battery]");
+    label.hidden = !android;
+    if (!android) checkbox.checked = false;
+    input.disabled = android && checkbox.checked;
+    if (input.disabled) input.value = "";
+  }
+
   function rowMarkup() {
     rowSequence += 1;
     const rowId = `final-qc-row-${rowSequence}`;
@@ -141,7 +152,7 @@
       <td class="final-auto-cell" data-auto="storage">-</td>
       <td class="final-auto-cell" data-auto="color">-</td>
       <td class="final-auto-cell" data-auto="battery">-</td>
-      <td class="final-battery-cell"><input type="number" min="0" max="100" step="1" inputmode="numeric" data-final-battery placeholder="BH %" aria-label="Final Battery Health"></td>
+      <td class="final-battery-cell"><input type="number" min="0" max="100" step="1" inputmode="numeric" data-final-battery placeholder="BH %" aria-label="Final Battery Health"><label class="final-battery-unavailable" data-battery-unavailable-label hidden><input type="checkbox" data-battery-unavailable><span>Not available</span></label></td>
       <td class="final-supplier-cell" data-auto="supplier">-</td>
       <td class="final-auto-cell" data-auto="supplier-grade">-</td>
       <td class="final-auto-cell" data-auto="initial-grade">-</td>
@@ -182,6 +193,8 @@
     row.querySelector("[data-final-battery]").value = "";
     row.classList.remove("is-loaded", "is-error");
     rowSteps.delete(row.dataset.rowId);
+    row.querySelector("[data-battery-unavailable]").checked = false;
+    syncBatteryAvailability(row);
     setRowState(row, `Line ${[...tableBody.rows].indexOf(row) + 1} - Waiting`);
   }
 
@@ -316,8 +329,10 @@
     row.querySelector('[data-auto="model"]').textContent = device.model || "-";
     row.querySelector('[data-auto="storage"]').textContent = device.storage_gb ? `${device.storage_gb} GB` : "-";
     row.querySelector('[data-auto="color"]').textContent = device.color || "-";
-    row.querySelector('[data-auto="battery"]').textContent = device.battery_health !== null && device.battery_health !== undefined ? `${device.battery_health}%` : "-";
+    row.querySelector('[data-auto="battery"]').textContent = device.battery_health !== null && device.battery_health !== undefined ? `${device.battery_health}%` : device.battery_health_unavailable ? "Not available" : "-";
     row.querySelector("[data-final-battery]").value = device.battery_health !== null && device.battery_health !== undefined ? String(device.battery_health) : "";
+    row.querySelector("[data-battery-unavailable]").checked = device.device_platform === "android" && device.battery_health_unavailable === true;
+    syncBatteryAvailability(row);
     row.querySelector('[data-auto="supplier"]').textContent = supplierLabel(supplier, job.receiving_batch);
     row.querySelector('[data-auto="supplier-grade"]').textContent = job.supplier_grade || "-";
     row.querySelector('[data-auto="initial-grade"]').textContent = device.gc_grade || "-";
@@ -332,7 +347,7 @@
   async function loadQueue() {
     const { data, error } = await getClient()
       .from("job_work_order_steps")
-      .select("id, work_order:job_work_orders!inner(work_order_number, job:jobs!inner(id, job_number, supplier_grade, supplier:greenloop_suppliers(supplier_code, company_name), receiving_batch:receiving_batches(planned_quantity), device:devices(device_number, imei_1, brand, model, storage_gb, color, battery_health, gc_grade)))")
+      .select("id, work_order:job_work_orders!inner(work_order_number, job:jobs!inner(id, job_number, supplier_grade, supplier:greenloop_suppliers(supplier_code, company_name), receiving_batch:receiving_batches(planned_quantity), device:devices(device_number, imei_1, brand, model, storage_gb, color, battery_health, device_platform, battery_health_unavailable, gc_grade)))")
       .eq("department", "final_qc")
       .eq("step_status", "in_progress")
       .order("created_at", { ascending: true });
@@ -402,7 +417,7 @@
       model: device.model || "-",
       storage: device.storage_gb ? `${device.storage_gb} GB` : "-",
       color: device.color || "-",
-      battery: device.battery_health !== null && device.battery_health !== undefined ? `${device.battery_health}%` : "-",
+      battery: device.battery_health !== null && device.battery_health !== undefined ? `${device.battery_health}%` : device.battery_health_unavailable ? "Not available" : "-",
       supplierGrade: job.supplier_grade || "-",
       initialGrade: device.gc_grade || "-"
     };
@@ -443,7 +458,8 @@
     const finalGrade = row.querySelector("[data-final-grade]").value;
     const finalBatteryInput = row.querySelector("[data-final-battery]");
     const finalBatteryText = finalBatteryInput.value.trim();
-    const finalBattery = finalBatteryText === "" ? null : Number(finalBatteryText);
+    const batteryUnavailable = getDevice(step)?.device_platform === "android" && row.querySelector("[data-battery-unavailable]").checked;
+    const finalBattery = batteryUnavailable || finalBatteryText === "" ? null : Number(finalBatteryText);
     if (!result) {
       const errorText = "Tick Pass, Frame, or Fail.";
       row.classList.add("is-error");
@@ -457,7 +473,7 @@
       row.querySelector("[data-final-grade]").focus();
       return { ok: false, error: errorText };
     }
-    if ((result === "pass" || result === "frame") && (!Number.isInteger(finalBattery) || finalBattery < 0 || finalBattery > 100)) {
+    if ((result === "pass" || result === "frame") && !batteryUnavailable && (!Number.isInteger(finalBattery) || finalBattery < 0 || finalBattery > 100)) {
       const errorText = "Enter Final Battery Health from 0 to 100 before passing this phone.";
       row.classList.add("is-error");
       setRowState(row, errorText, "is-error");
@@ -480,17 +496,19 @@
     setSubmitting(rowButton, true, "Saving...");
     setRowState(row, progressText, "is-loading");
     const rpcResponse = result === "frame"
-      ? await getClient().rpc("route_final_qc_pass_to_frame_v2", {
+      ? await getClient().rpc("route_final_qc_pass_to_frame_v3", {
         p_job_id: getJob(step).id,
         p_final_grade: null,
         p_final_battery_health: finalBattery,
+        p_battery_health_unavailable: batteryUnavailable,
         p_notes: "Final QC routed to Frame for required work"
       })
-      : await getClient().rpc("complete_final_qc_with_final_grade", {
+      : await getClient().rpc("complete_final_qc_with_final_grade_v2", {
         p_job_id: getJob(step).id,
         p_result: result,
         p_final_grade: result === "pass" ? finalGrade : null,
         p_final_battery_health: finalBattery,
+        p_battery_health_unavailable: batteryUnavailable,
         p_notes: result === "pass" ? "Final QC passed" : "Final QC failed",
         p_failure_department: result === "fail" ? "laboratory" : null,
         p_failure_reason: result === "fail" ? "Final QC failed - return to Laboratory" : null,
@@ -663,6 +681,10 @@
   tableBody.addEventListener("change", (event) => {
     const row = event.target.closest("tr");
     if (!row || row.dataset.completed === "yes") return;
+    if (event.target.matches("[data-battery-unavailable]")) {
+      syncBatteryAvailability(row);
+      return;
+    }
     if (event.target.matches("[data-final-grade]")) {
       row.dataset.manualGrade = "yes";
       carryGrade(row);

@@ -82,3 +82,8 @@ body.final-modal-open { overflow: hidden; }
   .final-bulk-toolbar-actions { justify-content: flex-start; }
   .final-bulk-actions .primary-button { width: 100%; }
 }
+
+/* Explicit unavailable health is offered only for Android records. */
+.final-battery-unavailable { display: flex; align-items: center; gap: 4px; margin-top: 5px; font-size: .6rem; line-height: 1.2; color: inherit; cursor: pointer; }
+.final-battery-unavailable[hidden] { display: none; }
+.final-bulk-table .final-battery-unavailable input { width: 14px; height: 14px; min-height: 14px; flex: 0 0 14px; margin: 0; padding: 0; accent-color: #087451; }

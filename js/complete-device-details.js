@@ -5,7 +5,7 @@
   const partsNote = 'Not read over this USB interface. Check Settings > General > About > Parts and Service History on the phone.';
   const groups = [
     ['01', 'Phone identity', [
-      ['phoneName', 'Phone Name'], ['model', 'Model'], ['storageGb', 'Storage / GB'], ['color', 'Colour'],
+      ['brand', 'Brand'], ['platform', 'Phone platform'], ['phoneName', 'Phone Name'], ['model', 'Model'], ['storageGb', 'Storage / GB'], ['color', 'Colour'],
       ['serialNumber', 'Serial Number'], ['region', 'Region'], ['imei1', 'IMEI 1'], ['imei2', 'IMEI 2']
     ]],
     ['02', 'Battery & power', [
@@ -56,6 +56,9 @@
   let advancedPending = false;
   const advancedKeys = ['profiles', 'supervised', 'mdm', 'panics'];
   let deviceKey = '';
+  let devicePlatform = '';
+  const appleOnly = new Set(['fmip','icloudLock','supervised','profiles','panics','parts','batteryPartsMessage','displayPartsMessage','cameraPartsMessage','frontCameraPartsMessage','logicBoardPartsMessage']);
+  const connectionHelp = () => devicePlatform === 'android' ? 'Keep the phone unlocked with USB debugging allowed. Enter unavailable details manually in IMEI Entry.' : 'iPhone: unlock and accept Trust. Android: enable USB debugging and allow this computer.';
   let lastRead = 0;
   let legacy = false;
   let manualValue = 'Not checked';
@@ -89,24 +92,28 @@
         row.querySelector('.cdd-source').textContent = readOnly ? 'View-only access. Manual entry is disabled.' : note;
         continue;
       }
+      row.hidden = devicePlatform === 'android' && appleOnly.has(key);
+      if (key === 'iosVersion') row.querySelector('dt').textContent = devicePlatform === 'android' ? 'Android Version' : 'iOS Version';
       const field = advancedFields[key] || fields[key];
       const available = field && ['read', 'calculated'].includes(field.status) && ['string', 'number', 'boolean'].includes(typeof field.value) && String(field.value).trim() !== '';
       row.dataset.available = available ? 'yes' : 'no';
       const label = row.querySelector('.cdd-badge');
       row.querySelector('.cdd-value').textContent = available
-        ? (key === 'region' ? regionName(field.value) : String(field.value))
+        ? (key === 'region' && devicePlatform !== 'android' ? regionName(field.value) : String(field.value))
         : (!connected ? 'Waiting for phone' : verificationKeys.has(key) ? 'Not verified' : 'Not available');
       label.textContent = available ? field.status === 'calculated' ? 'Calculated' : 'Read' : '—';
-      row.querySelector('.cdd-source').textContent = available ? String(field.source || 'Connected reader') : String(field?.status === 'unavailable' && field.source ? field.source : (note || unknown));
+      row.querySelector('.cdd-source').textContent = available ? String(field.source || 'Connected reader') : String(field?.status === 'unavailable' && field.source ? field.source : (devicePlatform === 'android' ? unknown : note || unknown));
       if (available) readCount++;
     }
-    host.querySelector('.cdd-count').textContent = `${readCount} / ${definitions.length - 1} automatic fields available`;
+    host.querySelectorAll('.cdd-card').forEach(card => { card.hidden = [...card.querySelectorAll('.cdd-row')].every(row => row.hidden); });
+    const total = definitions.length - 1 - (devicePlatform === 'android' ? appleOnly.size : 0);
+    host.querySelector('.cdd-count').textContent = `${readCount} / ${total} automatic fields available`;
     host.querySelector('.cdd-time').textContent = lastRead ? `Last read ${new Date(lastRead).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}` : 'No phone data retained';
-    const title = fields.model?.value || 'Connect one iPhone';
+    const title = fields.model?.value || 'Connect one phone';
     host.querySelector('.cdd-device-title').textContent = String(title);
-    host.querySelector('.cdd-device-subtitle').textContent = fields.imei1?.value ? `IMEI ${fields.imei1.value}` : 'Unlock the phone and accept Trust This Computer.';
+    host.querySelector('.cdd-device-subtitle').textContent = fields.imei1?.value ? `IMEI ${fields.imei1.value}` : connectionHelp();
   }
-  function clear() { fields = {}; advancedFields = {}; advancedRead = 0; advancedPending = false; deviceKey = ''; lastRead = 0; manualValue = 'Not checked'; paint(false); advancedStatus('Advanced checks wait for a connected phone.'); }
+  function clear() { devicePlatform = ''; fields = {}; advancedFields = {}; advancedRead = 0; advancedPending = false; deviceKey = ''; lastRead = 0; manualValue = 'Not checked'; paint(false); advancedStatus('Advanced checks wait for a connected phone.'); }
   function advancedStatus(text) { if (host) host.querySelector('.cdd-advanced-status').textContent = text; }
   async function request(path, signal, timeout = 20000) {
     const response = await fetch(`${endpoint}${path}`, { cache: 'no-store', signal: AbortSignal.any([signal, AbortSignal.timeout(timeout)]) });
@@ -118,18 +125,18 @@
   function legacyFields(payload) {
     const source = payload.device;
     if (!source || typeof source !== 'object') throw new Error('The reader returned an invalid device response.');
-    const key = source.serialNumber || source.imei;
+    const key = source.connectionId || source.serialNumber || source.imei;
     if (!key) throw new Error('The reader did not return a phone identity.');
     const output = {};
-    for (const [name, from] of Object.entries({ phoneName: 'phoneName', model: 'model', storageGb: 'storageGb', color: 'color', serialNumber: 'serialNumber', region: 'phoneRegion', imei1: 'imei', imei2: 'imei2', batteryHealth: 'batteryHealth' })) {
+    for (const [name, from] of Object.entries({ brand: 'brand', platform: 'platform', iosVersion: 'osVersion', phoneName: 'phoneName', model: 'model', storageGb: 'storageGb', color: 'color', serialNumber: 'serialNumber', region: 'phoneRegion', imei1: 'imei', imei2: 'imei2', batteryHealth: 'batteryHealth' })) {
       const value = source[from];
       if (value === null || value === undefined || String(value).trim() === '') continue;
       if (['batteryHealth', 'storageGb'].includes(name) && (!Number.isFinite(Number(value)) || Number(value) <= 0)) continue;
       const estimated = name === 'batteryHealth' && source.batteryHealthSource === 'capacity-estimate';
-      output[name] = { value: `${value}${name === 'storageGb' ? ' GB' : name === 'batteryHealth' ? '%' : ''}${estimated ? ' (estimated)' : ''}`, status: estimated ? 'calculated' : 'read', source: estimated ? 'Existing cable reader: capacity estimate, not an iOS Settings reading' : 'Existing cable reader (basic details only)' };
+      output[name] = { value: `${value}${name === 'storageGb' ? ' GB' : name === 'batteryHealth' ? '%' : ''}${estimated ? ' (estimated)' : ''}`, status: estimated ? 'calculated' : 'read', source: estimated ? 'Cable reader capacity estimate, not a verified health reading' : source.platform === 'android' ? 'Android cable reader: available device properties' : 'Cable reader (basic details only)' };
     }
     output.usbConnectionStatus = { value: 'Connected', status: 'read', source: 'Successful local cable reader response' };
-    return { deviceKey: String(key), fields: output };
+    return { deviceKey: String(key), platform: source.platform || 'ios', fields: output };
   }
   async function readAdvanced(signal, current, force) {
     if (!force && !advancedPending && Date.now() - advancedRead < 30000) return;
@@ -176,7 +183,7 @@
         legacy = probe.unsupported === true;
         if (!legacy) {
           if (typeof probe.connected !== 'boolean') throw new Error('Invalid reader connection response.');
-          if (!probe.connected) { clear(); connection('waiting', 'Waiting for a connected iPhone'); return; }
+          if (!probe.connected) { clear(); connection('waiting', 'Waiting for a connected phone'); return; }
           if (!probe.deviceKey) throw new Error('Reader connection identity is missing.');
           if (deviceKey !== probe.deviceKey) { clear(); connection('reading', 'Phone connected - reading details...'); }
           if (!force && deviceKey === probe.deviceKey && Date.now() - lastRead < 30000) {
@@ -193,15 +200,16 @@
       }
       if (legacy) { result = legacyFields(await request('/v1/device', abort.signal, 22000)); basicRead = true; }
       if (current !== generation || !host) return;
-      if (deviceKey !== result.deviceKey) manualValue = 'Not checked';
+      if (deviceKey !== result.deviceKey) { manualValue = 'Not checked'; advancedFields = {}; advancedRead = 0; advancedPending = false; }
+      devicePlatform = result.platform || 'ios';
       deviceKey = result.deviceKey;
       // Replace snapshots. Never carry missing data across phones or read failures.
       fields = result.fields;
       if (basicRead) lastRead = Date.now();
       paint(true);
-      connection('connected', legacy ? 'Connected - basic reader only; install the Details extension for more fields.' : 'Connected - automatic reading is on');
+      connection('connected', devicePlatform === 'android' ? 'Android connected — available details read; missing fields remain unavailable.' : legacy ? 'Connected — basic details available.' : 'Connected - automatic reading is on');
       if (!legacy) await readAdvanced(abort.signal, current, force);
-      else advancedStatus('Advanced checks need the updated Details extension on this PC.');
+      else advancedStatus(devicePlatform === 'android' ? 'Android: only available phone properties are shown. Battery health, locks and parts authenticity are not assumed.' : 'Advanced checks need the updated Details extension on this PC.');
     } catch (error) {
       if (current !== generation || !host) return;
       clear();
@@ -219,7 +227,7 @@
     generation++;
     clearTimeout(timer);
     controller?.abort(); controller = null;
-    host = null; fields = {}; advancedFields = {}; advancedRead = 0; advancedPending = false; deviceKey = ''; lastRead = 0; manualValue = 'Not checked'; legacy = false;
+    host = null; devicePlatform = ''; fields = {}; advancedFields = {}; advancedRead = 0; advancedPending = false; deviceKey = ''; lastRead = 0; manualValue = 'Not checked'; legacy = false;
   }
   function mount(container) {
     if (host?.isConnected && host.parentElement === container) return;
@@ -229,12 +237,12 @@
     host = element('div', 'complete-device-details');
     const toolbar = element('div', 'cdd-toolbar');
     const heading = element('div');
-    heading.append(element('p', 'cdd-eyebrow', 'LIVE USB REPORT'), element('h3', 'cdd-device-title', 'Connect one iPhone'), element('p', 'cdd-device-subtitle', 'Unlock the phone and accept Trust This Computer.'));
+    heading.append(element('p', 'cdd-eyebrow', 'LIVE USB REPORT'), element('h3', 'cdd-device-title', 'Connect one phone'), element('p', 'cdd-device-subtitle', connectionHelp()));
     const retry = element('button', 'secondary-button cdd-retry', 'Read again');
     retry.type = 'button'; retry.addEventListener('click', () => { clearTimeout(timer); poll(true); });
     toolbar.append(heading, retry);
     const status = element('div', 'cdd-status');
-    const state = element('strong', 'cdd-state', 'Waiting for a connected iPhone');
+    const state = element('strong', 'cdd-state', 'Waiting for a connected phone');
     state.setAttribute('role', 'status');
     status.append(state, element('span', 'cdd-count'), element('span', 'cdd-time'));
     host.append(toolbar, status, element('p', 'cdd-notice', 'Live connected-phone details, not historical database records. Unavailable is not Clean, Unlocked or Genuine. No phone settings or stock records are changed. Date filters do not apply to this tab.'));

@@ -32,17 +32,24 @@
   function normalise(payload) {
     const source = payload?.device || payload || {};
     const batteryRaw = source.batteryHealth ?? source.battery_health;
+    const platform = source.platform === "android" ? "android" : "ios";
+    const imei = String(source.imei || source.imei1 || "").replace(/[\s-]/g, "");
+    const serialNumber = String(source.serialNumber || source.serial_number || "").trim();
     return {
-      imei: String(source.imei || source.imei1 || "").replace(/\D/g, "").slice(0, 15),
+      imei: /^\d{15}$/.test(imei) ? imei : "",
+      platform,
+      brand: String(source.brand || (platform === "ios" ? "Apple" : "")).trim(),
+      connectionId: String(source.connectionId || (source.udid ? `ios:${source.udid}` : platform === "ios" && /^\d{15}$/.test(imei) ? `ios:${imei}` : "")),
       model: String(source.model || source.productName || "").trim(),
       storageGb: Number(source.storageGb || source.storage_gb || source.capacity || 0) || "",
       color: String(source.color || source.deviceColor || "").trim(),
       batteryHealth: batteryRaw === "" || batteryRaw === null || batteryRaw === undefined
         ? ""
-        : (Number(batteryRaw) || ""),
+        : (Number.isInteger(Number(batteryRaw)) && Number(batteryRaw) >= 0 && Number(batteryRaw) <= 100 ? Number(batteryRaw) : ""),
+      batteryHealthUnavailable: platform === "android" && source.batteryHealthUnavailable === true,
       batteryHealthSource: String(source.batteryHealthSource || "device"),
-      serialNumber: String(source.serialNumber || source.serial_number || "").trim(),
-      phoneRegion: formatPhoneRegion(source.phoneRegion || source.phone_region || source.specificationRegion || source.specification_region || source.region)
+      serialNumber,
+      phoneRegion: (platform === "ios" ? formatPhoneRegion : (value) => String(value || "").trim())(source.phoneRegion || source.phone_region || source.specificationRegion || source.specification_region || source.region)
     };
   }
 
@@ -56,7 +63,7 @@
   }
 
   async function fillMissingColorFrom3uTools(device) {
-    if (device.color || !device.imei) return device;
+    if (device.platform === "android" || device.color || !device.imei) return device;
     const now = Date.now();
     if (now < (nextThreeUToolsAttemptAt.get(device.imei) || 0)) return device;
     // 3uTools can finish reading a newly connected iPhone a moment after its IMEI.
@@ -79,15 +86,18 @@
 
   function publishDevice(device) {
     const previous = window.GREENLOOP_LAST_DEVICE;
-    if (previous?.imei !== device.imei) window.GREENLOOP_CABLE_CONNECTION_ID = (window.GREENLOOP_CABLE_CONNECTION_ID || 0) + 1;
-    if (previous?.imei === device.imei) {
+    const samePhone = previous?.connectionId && previous.connectionId === device.connectionId && (!previous.imei || !device.imei || previous.imei === device.imei);
+    if (!samePhone) window.GREENLOOP_CABLE_CONNECTION_ID = (window.GREENLOOP_CABLE_CONNECTION_ID || 0) + 1;
+    if (samePhone) {
       // Late/partial USB responses enrich the same phone, never erase good data.
       device = { ...device };
-      for (const key of ["model", "storageGb", "color", "batteryHealth", "serialNumber", "phoneRegion"]) {
+      const missingBattery = device.batteryHealth === "" || device.batteryHealth == null;
+      for (const key of ["imei", "brand", "model", "storageGb", "color", "batteryHealth", "serialNumber", "phoneRegion"]) {
         if (device[key] === "" || device[key] == null) device[key] = previous[key];
       }
-      if (!device.batteryHealth || device.batteryHealth === previous.batteryHealth) device.batteryHealthSource = previous.batteryHealthSource;
+      if (missingBattery) device.batteryHealthSource = previous.batteryHealthSource;
     }
+    if (device.batteryHealth !== "" && device.batteryHealth != null) device.batteryHealthUnavailable = false;
     const fingerprint = JSON.stringify(device);
     window.GREENLOOP_LAST_DEVICE_AT = Date.now();
     if (fingerprint === lastFingerprint) return false;
@@ -134,7 +144,7 @@
       if (!readerResponded && (!device || !/^\d{15}$/.test(device.imei))) {
         try { device = await readThreeUToolsDevice(); } catch (_) { device = null; }
       }
-      if (!device || !/^\d{15}$/.test(device.imei)) {
+      if (!device || (!/^\d{15}$/.test(device.imei) && !(device.platform === "android" && device.connectionId))) {
         failedReads += 1;
         forgetConnection();
         publishReaderState(readerResponded ? "waiting" : "offline", readerResponded ? readerMessage : "Cable reader unavailable. Start Greenloop Cable Reader; allow local-network access if your browser asks.");
@@ -143,7 +153,7 @@
       failedReads = 0;
       publishReaderState("ready");
       publishDevice(device);
-      if (!device.color) {
+      if (device.platform !== "android" && !device.color) {
         const enriched = await fillMissingColorFrom3uTools(device);
         publishDevice(enriched);
       }

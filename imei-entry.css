@@ -1,2 +1,12 @@
 /* Receipt quantities wrap without changing the standard input or icon sizes. */
 #batch-summary { grid-template-columns: repeat(auto-fit, minmax(min(128px, 100%), 1fr)); }
+.entry-device-kind { margin-bottom: 18px; }
+.entry-battery-unavailable { display: flex; align-items: flex-start; gap: 8px; margin-top: 9px; font-size: 12px; line-height: 1.4; font-weight: 500; }
+.entry-battery-unavailable[hidden] { display: none; }
+.entry-battery-unavailable input[type="checkbox"] { flex: 0 0 16px; width: 16px; min-width: 16px; min-height: 16px; height: 16px; margin: 1px 0 0; padding: 0; }
+.batch-entry-table .batch-row-kind { min-width: 150px; }
+.batch-entry-table .batch-row-kind input { margin-top: 6px; }
+.batch-entry-table .batch-row-battery-cell { min-width: 165px; }
+/* Keep the expanded bulk table inside its own scroll area. */
+#imei-entry-form { grid-template-columns: minmax(0, 1fr); }
+#imei-entry-form > *, #batch-entry-panel .batch-table-scroll { min-width: 0; max-width: 100%; }

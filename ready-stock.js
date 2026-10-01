@@ -283,7 +283,7 @@
     let timeout;
     try {
       const result = await Promise.race([
-        getClient().rpc("send_ready_stock_for_rework_atomic", { p_imei: imei, p_department: destination.department, p_customer_reason: destination.reason || null, p_technician_id: destination.department === "laboratory" ? destination.technician : null }),
+        getClient().rpc("send_ready_stock_for_rework_atomic_v2", { p_imei: imei, p_department: destination.department, p_customer_reason: destination.reason || null, p_technician_id: destination.department === "laboratory" ? destination.technician : null }),
         new Promise((_, reject) => { timeout = setTimeout(() => reject(new Error("Phone response timed out.")), 45000); })
       ]);
       if (result.error) {

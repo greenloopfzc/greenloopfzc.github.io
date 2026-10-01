@@ -16,11 +16,11 @@
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="js/config.js?v=20260926-imei-search-layout-1"></script>
     <script defer src="js/part-notifications.js?v=20260918-audit-2"></script>
-    <script defer src="js/device-reader.js?v=20260918-audit-2"></script>
-  <script defer src="js/imei-entry.js?v=20260926-simple-stock-return-1"></script>
-    <script defer src="js/batch-workflow.js?v=20260918-audit-2"></script>
+    <script defer src="js/device-reader.js?v=20261001-android-support-1"></script>
+  <script defer src="js/imei-entry.js?v=20261001-android-support-1"></script>
+    <script defer src="js/batch-workflow.js?v=20261001-android-support-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20260928-sidebar-depth-1">
-    <link rel="stylesheet" href="css/imei-entry.css?v=20260926-simple-stock-return-1">
+    <link rel="stylesheet" href="css/imei-entry.css?v=20261001-android-support-1">
   </head>
   <body class="app-page">
     <div class="app-shell">
@@ -45,12 +45,16 @@
               </section>
               <section id="imei-detail-panel" class="form-panel" hidden>
                 <div class="form-panel-heading imei-scan-heading"><span class="section-number">02</span><div><h2>Scan IMEI and enter device details</h2><p>Connected-phone data fills the active line automatically. Saving follows the switch below.</p></div><label class="auto-save-control" for="auto-save-toggle"><input id="auto-save-toggle" type="checkbox"><span>Auto Save</span><strong id="auto-save-state">OFF</strong></label></div>
+                <div class="form-grid two-columns entry-device-kind">
+                  <div class="form-field"><label for="device-platform">Phone type</label><select id="device-platform"><option value="ios">iPhone (iOS)</option><option value="android">Android</option></select></div>
+                  <div class="form-field"><label for="device-brand">Brand <span class="required-mark">Required</span></label><input id="device-brand" value="Apple" list="device-brands" maxlength="80" autocomplete="off" readonly required><datalist id="device-brands"><option value="Samsung"><option value="Google"><option value="Xiaomi"><option value="OnePlus"><option value="Motorola"><option value="OPPO"><option value="Vivo"><option value="Honor"><option value="Sony"><option value="Nokia"><option value="Realme"></datalist></div>
+                </div>
                 <div class="form-grid five-columns">
                   <div class="form-field imei-field"><label for="imei-1">IMEI <span class="required-mark">Required</span></label><input id="imei-1" type="text" inputmode="numeric" autocomplete="off" maxlength="15" placeholder="Scan 15-digit IMEI" required></div>
                   <div class="form-field"><label for="model">Model <span class="required-mark">Required</span></label><div class="master-option-control"><select id="model" required><option value="">Loading models...</option></select><button class="master-add" type="button" data-option-group="model" data-option-target="model" title="Add model">+</button><button class="master-remove" type="button" data-option-group="model" data-option-target="model" title="Remove selected model">−</button></div></div>
                   <div class="form-field"><label for="storage-gb">GB <span class="required-mark">Required</span></label><div class="master-option-control"><select id="storage-gb" required><option value="">Loading GB...</option></select><button class="master-add" type="button" data-option-group="storage_gb" data-option-target="storage-gb" title="Add GB">+</button><button class="master-remove" type="button" data-option-group="storage_gb" data-option-target="storage-gb" title="Remove selected GB">−</button></div></div>
                   <div class="form-field"><label for="color">Color <span class="required-mark">Required</span></label><div class="master-option-control"><select id="color" required><option value="">Loading colors...</option></select><button class="master-add" type="button" data-option-group="color" data-option-target="color" title="Add color">+</button><button class="master-remove" type="button" data-option-group="color" data-option-target="color" title="Remove selected color">−</button></div></div>
-                  <div class="form-field"><label for="battery-health">Battery health <span class="required-mark">Required</span></label><div class="suffix-input"><input id="battery-health" type="number" min="0" max="100" inputmode="numeric" placeholder="85" required><span>%</span></div></div>
+                  <div class="form-field"><label for="battery-health">Battery health <span class="required-mark">Required</span></label><div class="suffix-input"><input id="battery-health" type="number" min="0" max="100" inputmode="numeric" placeholder="85" required><span>%</span></div><label id="battery-unavailable-label" class="entry-battery-unavailable" hidden><input id="battery-health-unavailable" type="checkbox"> Not available on this Android phone</label></div>
                 </div>
                 <div class="form-grid two-columns cable-extra-details">
                   <div class="form-field"><label for="serial-number">Serial number <span class="optional-mark">Optional</span></label><input id="serial-number" type="text" autocomplete="off" placeholder="Auto-read from connected phone"></div>

@@ -559,7 +559,7 @@
       return;
     }
     setSubmitting(button, true, "Saving...");
-    const { error } = await getClient().rpc("record_frame_department_result_v2", {
+    const { error } = await getClient().rpc("record_frame_department_result_v3", {
       p_work_order_step_id: button.dataset.completeFrame,
       p_result: result,
       p_final_grade: result === "pass" ? finalGrade : null,
