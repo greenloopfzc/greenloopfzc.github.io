@@ -10,11 +10,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
-  <link rel="stylesheet" href="css/imei-search.css?v=20261002-imei-history-1">
+  <link rel="stylesheet" href="css/imei-search.css?v=20261002-imei-history-simple-1">
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="js/config.js?v=20260926-imei-search-layout-1"></script>
   <script defer src="js/part-notifications.js?v=20260918-audit-2"></script>
-  <script defer src="js/imei-search.js?v=20261002-imei-history-1"></script>
+  <script defer src="js/imei-search.js?v=20261002-imei-history-simple-1"></script>
     <link rel="stylesheet" href="css/appearance.css?v=20260928-sidebar-depth-1">
   </head>
 <body class="app-page">
@@ -48,7 +48,7 @@
       </header>
       <div class="page-content history-content">
         <section class="page-heading history-heading">
-          <div><p class="eyebrow dashboard-eyebrow">IMEI Search</p><h1>One phone. Its complete journey.</h1><p class="heading-subtitle">From stock received to export — every recorded step, the people involved, parts and costs in one place.</p></div>
+          <div><p class="eyebrow dashboard-eyebrow">IMEI Search</p><h1>Phone history, step by step.</h1><p class="heading-subtitle">See when the stock arrived, when the IMEI was entered, and what happened next.</p></div>
         </section>
 
         <div id="permission-message" class="access-message" hidden></div>
@@ -61,17 +61,17 @@
 
           <section id="history-result" class="history-result history-panel imei-journey" aria-labelledby="history-device-name" hidden>
             <header id="history-device" class="imei-journey-header"></header>
-            <div class="imei-journey-guide"><p><span class="journey-order-dot" aria-hidden="true"></span>Oldest first <span aria-hidden="true">·</span> UAE time (UTC+4)</p><p id="history-record-count" role="status"></p></div>
+            <div class="imei-journey-guide"><p><span class="journey-order-dot" aria-hidden="true"></span>Start at step 1 <span aria-hidden="true">·</span> All times in UAE</p><p id="history-record-count" role="status"></p></div>
             <div class="imei-journey-table-wrap">
               <table class="imei-journey-table">
                 <caption class="history-sr-only">Complete recorded device history, from stock received to export. Missing information is shown as Not recorded.</caption>
-                <colgroup><col class="journey-when-col"><col class="journey-step-col"><col class="journey-details-col"><col class="journey-person-col"><col class="journey-parts-col"><col class="journey-time-col"></colgroup>
-                <thead><tr><th scope="col">When</th><th scope="col">Step</th><th scope="col">What happened</th><th scope="col">Who</th><th scope="col">Parts &amp; cost</th><th scope="col">Time taken</th></tr></thead>
+                <colgroup><col class="journey-step-col"><col class="journey-when-col"><col class="journey-details-col"></colgroup>
+                <thead><tr><th scope="col">Step</th><th scope="col">Date &amp; time</th><th scope="col">What happened</th></tr></thead>
                 <tbody id="history-rows"></tbody>
-                <tfoot><tr><td colspan="6"><div id="history-summary" class="imei-journey-summary"></div></td></tr></tfoot>
+                <tfoot><tr><td colspan="3"><div id="history-summary" class="imei-journey-summary"></div></td></tr></tfoot>
               </table>
             </div>
-            <p class="imei-journey-note">Only saved records are shown. “Not recorded” means the detail is missing; it does not mean zero cost or no work.</p>
+            <p class="imei-journey-note">Steps follow the saved dates. Missing details are never guessed.</p>
           </section>
         </section>
       </div>
