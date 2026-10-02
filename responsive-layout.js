@@ -122,7 +122,10 @@
         const container = table.parentElement;
         const css = getComputedStyle(container);
         const available = container.clientWidth - parseFloat(css.paddingLeft || 0) - parseFloat(css.paddingRight || 0);
-        const minimum = states.get(table).minimum;
+        // Dense editable worksheets can declare a measured compact-row budget.
+        // Other tables retain the shared readable-column estimate.
+        const rowMinimum = Number.parseFloat(getComputedStyle(table).getPropertyValue('--gl-table-row-min-width'));
+        const minimum = Number.isFinite(rowMinimum) && rowMinimum > 0 ? rowMinimum : states.get(table).minimum;
         table.classList.toggle('gl-table-reflow', available > 0 && (table.scrollWidth > available + 2 || minimum > available + 2));
       }
     } finally { mutations.observe(document.body, observerOptions); }
