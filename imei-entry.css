@@ -7,6 +7,51 @@
 .batch-entry-table .batch-row-kind { min-width: 150px; }
 .batch-entry-table .batch-row-kind input { margin-top: 6px; }
 .batch-entry-table .batch-row-battery-cell { min-width: 165px; }
-/* Keep the expanded bulk table inside its own scroll area. */
+/* Working fields use the available width; the shared table layout reflows
+   complete phone rows when all columns cannot fit at their normal sizes. */
 #imei-entry-form { grid-template-columns: minmax(0, 1fr); }
 #imei-entry-form > *, #batch-entry-panel .batch-table-scroll { min-width: 0; max-width: 100%; }
+
+#imei-entry-form .five-columns {
+  grid-template-columns: repeat(auto-fit, minmax(min(225px, 100%), 1fr));
+}
+#imei-entry-form .two-columns {
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+}
+#imei-entry-form .form-field { min-width: 0; }
+#imei-entry-form .master-option-control { grid-template-columns: minmax(0, 1fr) 28px 28px; }
+#imei-entry-form .form-panel-heading { flex-wrap: wrap; }
+#imei-entry-form .form-panel-heading > div { flex: 1 1 230px; min-width: 0; }
+#imei-entry-form .batch-entry-heading { flex-direction: row; }
+#imei-entry-form .auto-save-control { max-width: 100%; }
+#batch-summary strong { overflow: visible; white-space: normal; overflow-wrap: anywhere; }
+
+/* Keep every field, including Save and Status, in the same phone row.
+   No inputs are copied or reordered, preserving scanning and auto-save. */
+@media screen {
+#batch-entry-panel .batch-entry-table.gl-table-reflow > tbody > tr {
+  grid-template-columns: repeat(auto-fit, minmax(min(225px, 100%), 1fr));
+}
+#batch-entry-panel .batch-entry-table.gl-table-reflow > tbody > tr > td:first-child {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+}
+#batch-entry-panel .batch-entry-table.gl-table-reflow :is(td, .batch-option-control, .batch-row-status) {
+  min-width: 0;
+}
+#batch-entry-panel .batch-entry-table.gl-table-reflow .batch-option-control {
+  grid-template-columns: minmax(0, 1fr) 34px 34px;
+}
+#batch-entry-panel .batch-entry-table.gl-table-reflow :is(input:not([type="checkbox"]), select) {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+#batch-entry-panel .batch-entry-table.gl-table-reflow .batch-save-button {
+  width: 100%;
+  white-space: normal;
+}
+}
