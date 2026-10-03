@@ -153,9 +153,10 @@
       }
     } finally { if (root === reportRoot && generation === simpleGeneration) root.querySelector("[data-sr-refresh]").disabled = false; }
   }
+  function returnSearchItems(){return simpleRows.map(row=>({...row,kind:"return",id:row.return_reference,identifier:row.return_reference,title:row.return_reference,imei_1:(row.imeis || []).join(" · "),search_values:[row.reason,...(row.imeis || [])]}));}
   function renderSimpleReport() {
     const root = reportRoot, value = root.querySelector("[data-sr-report-search]").value.trim().toLowerCase();
-    const rows = simpleRows.filter(r => [r.return_reference,r.supplier_code,window.GREENLOOP_CAN_VIEW_PARTNER_NAMES ? r.supplier_name : "",r.invoice_number,r.batch_number,r.reason,r.model,...(r.imeis || [])].filter(Boolean).join(" ").toLowerCase().includes(value));
+    const rows = value ? window.GREENLOOP_RECORD_SEARCH.localLookup(returnSearchItems(),value).items : simpleRows;
     root.querySelector("[data-sr-total]").textContent = rows.length + " returns · " + rows.reduce((n,r) => n + Number(r.returned_quantity || 0),0) + " phones";
     root.querySelector("[data-sr-simple-table]").innerHTML = rows.length ? '<table class="sr-table sr-simple-table"><thead><tr><th>Stock received</th><th>Supplier / code</th><th>Received qty</th><th>Return Stock</th><th>Returned</th><th>Reason</th><th>Model / GB</th><th>IMEIs</th><th>Recorded by</th></tr></thead><tbody>' +
       rows.map(r => '<tr><td>' + escape(showDate(r.received_at)) + '<small>' + escape(r.invoice_number || r.batch_number || "—") + '</small></td><td>' + escape(supplier(r)) + '</td><td>' + escape(r.received_quantity ?? "—") + '</td><td><strong>' + escape(r.returned_quantity) + '</strong></td><td>' + escape(date(r.returned_at)) + '<small>' + escape(r.return_reference || "—") + '</small>' + (r.archived ? '<small>Archived history</small>' : "") + '</td><td>' + escape(r.reason || "—") + (r.notes ? '<small>' + escape(r.notes) + '</small>' : "") + '</td><td>' + escape([r.model, r.storage_gb ? r.storage_gb + " GB" : ""].filter(Boolean).join(" · ") || "—") + '</td><td>' + ((r.imeis || []).length ? '<details><summary>' + escape(r.imeis.length) + ' IMEI(s)</summary>' + (r.imeis || []).map(v => '<small>' + escape(v) + '</small>').join("") + '</details>' : "—") + '</td><td>' + escape(r.returned_by_name || "—") + '</td></tr>').join("") + '</tbody></table>' : '<p class="sr-empty">No stock returns to show.</p>';
@@ -281,7 +282,9 @@
       }
     };
   }
+  let returnSearchWidget;
   function mount(root) {
+    returnSearchWidget?.destroy();
     reportRoot = root;
     root.innerHTML = '<div class="sr-simple-toolbar">' + button("Refresh", 'data-sr-refresh') + '</div><p data-sr-simple-message role="status" aria-live="polite"></p>' +
       '<section class="sr-card sr-report"><header class="sr-heading"><div><h2>Stock Return report</h2><p data-sr-total></p></div><a class="secondary-button sr-report-link" href="reports.html?report=stock_returns">Open in Reports</a></header><label class="sr-report-search">Find return<input data-sr-report-search type="search" placeholder="Supplier, receipt, model or IMEI"></label><div class="sr-table-wrap" data-sr-simple-table></div></section>' +
@@ -289,9 +292,14 @@
       '<details class="sr-card sr-report sr-legacy" data-sr-legacy hidden></details>';
     root.querySelector("[data-sr-refresh]").onclick = () => { if (!modalBusy) refreshReport(); };
     root.querySelector("[data-sr-report-search]").oninput = renderSimpleReport;
+    const input=root.querySelector("[data-sr-report-search]");
+    returnSearchWidget=window.GREENLOOP_RECORD_SEARCH.attach(input,{
+      lookup:term=>window.GREENLOOP_RECORD_SEARCH.localLookup(returnSearchItems(),term),
+      onSelect:item=>{input.value=item.identifier;renderSimpleReport();root.querySelectorAll('[data-sr-simple-table] details').forEach(detail=>{detail.open=true;});}
+    });
     refreshReport();
   }
-  function unmount() { reportRoot = null; simpleContext = null; simpleRows = []; ++simpleGeneration; window.clearTimeout(externalRefreshTimer); externalRefreshPending = false; closeStaleDetails = false; }
+  function unmount() { returnSearchWidget?.destroy();returnSearchWidget=null; reportRoot = null; simpleContext = null; simpleRows = []; ++simpleGeneration; window.clearTimeout(externalRefreshTimer); externalRefreshPending = false; closeStaleDetails = false; }
   window.GREENLOOP_SUPPLIER_RETURNS = {mount,unmount};
   const root = document.querySelector("#stock-return-app");
   if (root) {

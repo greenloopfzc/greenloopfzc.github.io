@@ -73,6 +73,7 @@ document.addEventListener("click", (event) => {
     "IMEI Search": "imei-search.html",
     "Parts": "parts.html",
     "Inventory": "inventory.html",
+    "Parts Inventory": "inventory.html",
     "Laboratory": "laboratory.html",
     "Lab & Glass": "laboratory.html",
     "Lab, Glass & Frame": "laboratory.html",
@@ -82,6 +83,7 @@ document.addEventListener("click", (event) => {
     "Ready Stock": "ready-stock.html",
     "Export Boxes": "export-box.html",
     "Ready Stock Journey": "ready-stock-journey.html",
+    "Stock Journey": "ready-stock-journey.html",
     "Reports": "reports.html",
     "User Access": "user-access.html"
   };
@@ -106,22 +108,19 @@ document.addEventListener("click", (event) => {
     '<p class="nav-label">Workspace</p>',
     item("IMEI Search", "imei-search.html", "⌕", page === "imei-search.html"),
     item("Dashboard", "dashboard.html", "⌘", page === "dashboard.html"),
+    item("Lab Live Board", "lab-live-board.html", "▦", page === "lab-live-board.html"),
+    '<p class="nav-label">Operations</p>',
     item("Stock Received", "stock-entry.html", "+", page === "stock-entry.html" || page === "receiving.html"),
     item("IMEI Entry", "imei-entry.html", "⌕", page === "imei-entry.html"),
-    '<p class="nav-label">Operations</p>',
-    // Permanent production workflow order:
-    // Initial QC -> Lab & Glass -> Final QC -> optional Frame -> Final QC -> Ready Stock.
-    // Parts and Inventory support the repair workflow and stay beside Lab & Glass.
     item("Initial QC", "initial-qc.html", "✓", page === "initial-qc.html"),
     item("Stock Return", "stock-return.html", "↩", page === "stock-return.html"),
     item("Lab & Glass", "laboratory.html", "⌁", (page === "laboratory.html" || page === "glass.html") && window.location.hash !== "#frame"),
-    item("Lab Live Board", "lab-live-board.html", "▦", page === "lab-live-board.html"),
     item("Parts", "parts.html", "▦", page === "parts.html"),
-    item("Inventory", "inventory.html", "▧", page === "inventory.html"),
+    item("Parts Inventory", "inventory.html", "▧", page === "inventory.html"),
     item("Final QC", "final-qc.html", "◉", page === "final-qc.html"),
     item("Frame Department", "laboratory.html#frame", "□", page === "laboratory.html" && window.location.hash === "#frame"),
     item("Ready Stock", "ready-stock.html", "▤", page === "ready-stock.html"),
-    item("Ready Stock Journey", "ready-stock-journey.html", "≡", page === "ready-stock-journey.html"),
+    item("Stock Journey", "ready-stock-journey.html", "≡", page === "ready-stock-journey.html"),
     '<p class="nav-label">Control</p>',
     item("Reports", "reports.html", "▤", page === "reports.html"),
     item("User Access", "user-access.html", "☷", page === "user-access.html")
@@ -188,28 +187,18 @@ document.addEventListener("click", (event) => {
 
   const input = search.querySelector("input");
   if (!input) return;
-  const goToSearch = () => {
-    const value = input.value.trim();
-    if (!value) return;
-    window.location.assign(`imei-search.html?q=${encodeURIComponent(value)}`);
+  input.placeholder = "Search IMEI, invoice, device, model…";
+  input.maxLength = 120;
+  input.setAttribute("aria-label", "Search devices and stock receipts");
+  const connect = async () => {
+    await window.GREENLOOP_ACCESS_READY;
+    if (!window.GREENLOOP_CAN_SEARCH) { search.hidden = true; return; }
+    const widget = window.GREENLOOP_RECORD_SEARCH.attach(input);
+    if (search.tagName === "FORM") search.addEventListener("submit", event => { event.preventDefault(); widget.search({selectExact:true}); });
   };
+  if (window.GREENLOOP_RECORD_SEARCH) connect();
+  else window.addEventListener("greenloop:record-search-ready", connect, {once:true});
 
-  let automaticSearchTimer;
-  input.addEventListener("input", () => {
-    window.clearTimeout(automaticSearchTimer);
-    const value = input.value.trim();
-    if (/^\d{15}$/.test(value) || /^DEV-\d+$/i.test(value)) {
-      automaticSearchTimer = window.setTimeout(goToSearch, 260);
-    }
-  });
-
-  if (search.tagName === "FORM") {
-    search.addEventListener("submit", (event) => { event.preventDefault(); goToSearch(); });
-  } else {
-    input.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") { event.preventDefault(); goToSearch(); }
-    });
-  }
 })();
 
 document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
@@ -332,7 +321,7 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     function isMutationControl(control) {
       if (!control) return false;
       // Report-category navigation is read-only, even "Complete Device Details".
-      if (control.matches(".report-tab,[data-sr-print]")) return false;
+      if (control.matches(".report-tab,[data-sr-print],[data-search-read-only]")) return false;
       const text = `${control.textContent || ""} ${control.value || ""} ${control.id || ""}`;
       return control.matches(mutationSelector) || mutationWords.test(text);
     }
@@ -467,6 +456,7 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
         : (receiptCode || fallback);
     };
     const allowedPages = new Set(accessByPage.keys());
+    window.GREENLOOP_CAN_SEARCH = allowedPages.has("imei_search");
     if (navigation) {
       navigation.querySelectorAll("a.nav-item").forEach((link) => {
         const pageKey = pageKeyForLink(link);
@@ -514,7 +504,7 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     const scanner = document.createElement("form");
     scanner.id = "greenloop-quick-imei-scanner";
     scanner.className = "greenloop-quick-scan";
-    scanner.innerHTML = '<strong>⌁ Scan IMEI</strong><input inputmode="numeric" autocomplete="off" maxlength="15" placeholder="Scan phone barcode / IMEI"><button type="button" hidden>Show all lines</button><small>Scans the current phone without loading the full queue.</small>';
+    scanner.innerHTML = '<strong>⌕ Find record</strong><input type="search" autocomplete="off" maxlength="120" aria-label="Search IMEI, invoice, device number or phone details" placeholder="IMEI, invoice, device number or details"><button type="button" data-search-read-only hidden>Show all lines</button><small>Type any part of a number or name, then choose a matching record.</small>';
     anchor.prepend(scanner);
     const input = scanner.querySelector("input");
     const clearFilter = scanner.querySelector("button");
@@ -526,12 +516,7 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
       const textMatches = (row.textContent.match(/\d{15}/g) || []).some((value) => value === imei);
       return inputMatch || textMatches;
     });
-    window.addEventListener("greenloop:imei-scan", (event) => {
-      const imei = normalizeImei(event.detail?.imei);
-      if (!/^\d{15}$/.test(imei)) return;
-      const row = findLoadedImeiRow(imei);
-      if (!row) return;
-      event.preventDefault();
+    const showLoadedRow = (row, label) => {
       const table = row.closest("table");
       table?.querySelectorAll("tbody tr").forEach((item) => { item.hidden = item !== row; });
       filteredTable = table;
@@ -542,7 +527,15 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
       row.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
       row.setAttribute("tabindex", "-1");
       row.focus({ preventScroll: true });
-      scannerStatus.textContent = `Showing only IMEI ${imei} in this page.`;
+      scannerStatus.textContent = `Showing ${label} in this page.`;
+    };
+    window.addEventListener("greenloop:imei-scan", (event) => {
+      const imei = normalizeImei(event.detail?.imei);
+      if (!/^\d{15}$/.test(imei)) return;
+      const row = findLoadedImeiRow(imei);
+      if (!row) return;
+      event.preventDefault();
+      showLoadedRow(row, `IMEI ${imei}`);
     });
     clearFilter.addEventListener("click", () => {
       filteredTable?.querySelectorAll("tbody tr").forEach((row) => { row.hidden = false; });
@@ -550,17 +543,48 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
       clearFilter.hidden = true;
       scannerStatus.textContent = "All current page lines are shown.";
     });
-    input.addEventListener("input", () => {
-      input.value = input.value.replace(/\D/g, "").slice(0, 15);
-      if (input.value.length === 15) scanner.requestSubmit();
-    });
+    let searchWidget;
+    const connectSearch = () => {
+      const search = window.GREENLOOP_RECORD_SEARCH;
+      if (!search || searchWidget) return;
+      searchWidget = search.attach(input, {
+        lookup: async (term, offset = 0) => {
+          await window.GREENLOOP_ACCESS_READY;
+          if (window.GREENLOOP_CAN_SEARCH) return search.lookup(term, offset);
+          // A page-only user can search only records already visible to that
+          // page. Never call the cross-page lookup without its permission.
+          const records = [...anchor.querySelectorAll("tbody tr")].map((row, index) => {
+            const fields = [...row.querySelectorAll("input, select")].map(field => field.value.trim()).filter(Boolean);
+            const text = [...row.cells].map(cell => cell.textContent.trim()).join(" ").replace(/\s+/g, " ").trim();
+            const imei = fields.find(value => /^\d{15}$/.test(value)) || (text.match(/(?:^|\D)(\d{15})(?!\d)/) || [])[1] || "";
+            const device = (text.match(/\bDEV-[A-Z0-9-]+\b/i) || [])[0] || "";
+            const invoice = (text.match(/\bINV-[A-Z0-9-]+\b/i) || [])[0] || "";
+            return { kind: "device", id: `loaded-row-${index}`, identifier: imei || device || invoice,
+              imei_1: imei, device_number: device, invoice_number: invoice,
+              title: imei || device || invoice || text.slice(0, 100), search_values: [text, ...fields], _loadedRow: row };
+          }).filter(record => record.identifier);
+          return search.localLookup(records, term);
+        },
+        onSelect: (record) => {
+          input.value = record.identifier || record.imei_1 || "";
+          if (record._loadedRow?.isConnected) {
+            showLoadedRow(record._loadedRow, input.value);
+            return;
+          }
+          const imei = String(record.imei_1 || "");
+          if (record.kind === "device" && /^\d{15}$/.test(imei)) {
+            const notHandled = window.dispatchEvent(new CustomEvent("greenloop:imei-scan", { cancelable: true, detail: { imei } }));
+            if (!notHandled) return;
+          }
+          search.openRecord(record);
+        }
+      });
+    };
+    if (window.GREENLOOP_RECORD_SEARCH) connectSearch();
+    else window.addEventListener("greenloop:record-search-ready", connectSearch, { once: true });
     scanner.addEventListener("submit", (event) => {
       event.preventDefault();
-      const imei = input.value.trim();
-      if (!/^\d{15}$/.test(imei)) return;
-      const notHandled = window.dispatchEvent(new CustomEvent("greenloop:imei-scan", { cancelable: true, detail: { imei } }));
-      if (notHandled) scannerStatus.textContent = "This IMEI is not in the current page's loaded lines.";
-      input.value = "";
+      searchWidget?.search({ selectExact: true });
     });
   }
 

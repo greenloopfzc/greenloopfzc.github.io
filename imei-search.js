@@ -33,7 +33,13 @@
   let client;
   let allowed = false;
   let toastTimer;
-  let autoSearchTimer;
+  let searchWidget;
+  let receiptItems=[];
+  let receiptId="";
+  let receiptOffset=0;
+  const receiptResult=document.createElement("section");
+  receiptResult.id="history-receipt"; receiptResult.className="history-receipt"; receiptResult.hidden=true;
+  result.before(receiptResult);
   let searchVersion = 0;
 
   function getClient() { return (client ||= window.GREENLOOP_GET_CLIENT()); }
@@ -361,40 +367,74 @@ function buildStageSections(sortedRows) {
   }
 
   function setMessage(text = "") { message.textContent = text; message.classList.toggle("is-visible", Boolean(text)); }
-  function setSubmitting(busy) { searchButton.disabled = busy; searchButton.textContent = busy ? "Searching..." : "Search device"; form.setAttribute("aria-busy", String(busy)); }
+  function setSubmitting(busy) { searchButton.disabled = busy; searchButton.textContent = busy ? "Searching..." : "Search"; form.setAttribute("aria-busy", String(busy)); }
   function setMenu(open) { sidebar.classList.toggle("is-open", open); backdrop.hidden = !open; document.body.classList.toggle("menu-open", open); }
   function showToast(text) { clearTimeout(toastTimer); toast.textContent = text; toast.hidden = false; toast.classList.add("is-visible"); toastTimer = setTimeout(() => { toast.hidden = true; toast.classList.remove("is-visible"); }, 3400); }
   function withTimeout(promise) {
     let timer;
     return Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error("History is taking too long to load. Please search again.")), 25000); })]).finally(() => clearTimeout(timer));
   }
-  async function search(event) {
-    event?.preventDefault();
-    if (!allowed) return;
-    window.clearTimeout(autoSearchTimer);
-    setMessage(); result.hidden = true;
-    const version = ++searchVersion;
-    const identifier = query.value.trim();
-    const current = () => version === searchVersion && query.value.trim() === identifier;
-    if (!identifier) { setSubmitting(false); setMessage("Enter an IMEI, device number, or serial number first."); return; }
-    setSubmitting(true);
+  async function openDevice(item) {
+    if(!allowed)return;
+    const identifier=scalar(item.identifier || item.device_number || item.imei_1);
+    if(!identifier)return;
+    query.value=identifier; searchWidget?.close();
+    const version=++searchVersion;
+    result.hidden=true;receiptResult.hidden=true;setMessage();setSubmitting(true);
     try {
-      const response = await withTimeout(getClient().rpc("search_imei_journey_v1", { p_imei: identifier }));
-      if (!current()) return;
-      if (response.error) {
-        if (response.error.code === "PGRST202" || response.error.code === "42883") throw new Error("The complete history update is not installed yet. Ask your administrator to install the IMEI History update.");
-        throw response.error;
-      }
-      const raw = response.data;
-      const history = Array.isArray(raw) ? raw[0]?.search_imei_journey_v1 || raw[0] : raw;
-      if (!history?.found) { setMessage("No active device was found for this IMEI, device number, or serial number."); return; }
+      const response=await withTimeout(getClient().rpc("search_imei_journey_v1",{p_imei:identifier}));
+      if(version!==searchVersion)return;
+      if(response.error)throw response.error;
+      const raw=response.data;
+      const history=Array.isArray(raw)?raw[0]?.search_imei_journey_v1 || raw[0]:raw;
+      if(!history?.found){setMessage("This device is no longer available. Search again.");return;}
       renderHistory(history);
-      showToast("Complete device journey loaded.");
-    } catch (error) {
-      if (current()) setMessage(error.message || "Device history could not be loaded. Please try again.");
-    } finally {
-      if (version === searchVersion) setSubmitting(false);
-    }
+      window.history.replaceState(null,"",`?q=${encodeURIComponent(identifier)}`);
+    } catch(error) {if(version===searchVersion)setMessage(error.message || "Device history could not be loaded.");}
+    finally {if(version===searchVersion)setSubmitting(false);}
+  }
+  function receiptButtons() {
+    const container=receiptResult.querySelector(".history-receipt-devices");
+    container.replaceChildren();
+    receiptItems.forEach(item=>{
+      const info=window.GREENLOOP_RECORD_SEARCH.describe(item);
+      const button=document.createElement("button");button.type="button";button.className="history-receipt-device";button.dataset.searchReadOnly="true";
+      const title=document.createElement("strong");title.textContent=info.title;
+      const detail=document.createElement("small");detail.textContent=info.meta;
+      button.append(title,detail);button.addEventListener("click",()=>openDevice(item));container.append(button);
+    });
+    if(!receiptItems.length)container.textContent="No phones have been entered for this stock receipt yet.";
+  }
+  async function openReceipt(item,append=false) {
+    if(!allowed)return;
+    searchWidget?.close();const version=++searchVersion;
+    if(!append){receiptId=item.id;receiptOffset=0;receiptItems=[];result.hidden=true;receiptResult.hidden=true;query.value=item.invoice_number || item.identifier || "";}
+    setMessage();setSubmitting(true);
+    try {
+      const data=await window.GREENLOOP_RECORD_SEARCH.rpc("get_search_receipt_v1",{p_receipt_id:receiptId,p_offset:receiptOffset,p_limit:25});
+      if(version!==searchVersion)return;
+      if(!data.found){setMessage("This stock receipt is no longer available.");return;}
+      const receipt=data.receipt || {};
+      if(!append){
+        query.value=receipt.invoice_number || receipt.batch_number || query.value;
+        const values=[["Invoice",receipt.invoice_number],["Batch",receipt.batch_number],["Stock received",moment(receipt.received_at)],
+          ["Received by",receipt.received_by],["Supplier code",receipt.supplier_code],
+          ...(window.GREENLOOP_CAN_VIEW_PARTNER_NAMES?[["Supplier",receipt.supplier_name]]:[]),
+          ["Quantity received",receipt.planned_quantity],["Phones entered",receipt.entered_quantity],["Stock channel",receipt.stock_channel]];
+        receiptResult.innerHTML='<h2>Stock received details</h2><dl>'+values.map(([name,value])=>'<div><dt>'+escapeHtml(name)+'</dt><dd>'+safe(value)+'</dd></div>').join('')+'</dl><h3>Phones in this receipt</h3><div class="history-receipt-devices"></div><button type="button" class="secondary-button" data-search-read-only data-receipt-more hidden>Show more phones</button>';
+        receiptResult.querySelector('[data-receipt-more]').addEventListener('click',()=>openReceipt({id:receiptId},true));
+      }
+      receiptItems.push(...(Array.isArray(data.items)?data.items:[]));receiptOffset=data.next_offset ?? receiptItems.length;
+      receiptButtons();receiptResult.querySelector('[data-receipt-more]').hidden=!data.has_more;
+      receiptResult.hidden=false;
+      window.history.replaceState(null,"",`?receipt=${encodeURIComponent(receiptId)}`);
+    } catch(error){if(version===searchVersion)setMessage(error.message || "Stock receipt could not be loaded.");}
+    finally{if(version===searchVersion)setSubmitting(false);}
+  }
+  async function search(event) {
+    event?.preventDefault();if(!allowed)return;
+    if(!query.value.trim()){setMessage("Enter an IMEI, invoice, device number, serial number, or model.");return;}
+    await searchWidget.search({selectExact:true});
   }
   async function initialize() {
     if (!config.supabaseUrl || !config.supabaseAnonKey || !window.supabase) { permissionMessage.textContent = "Supabase authentication is not configured."; permissionMessage.hidden = false; return; }
@@ -404,9 +444,12 @@ function buildStageSections(sortedRows) {
     await window.GREENLOOP_ACCESS_READY;
     if (!window.GREENLOOP_PAGE_ACCESS || window.GREENLOOP_PAGE_ACCESS.pageKey !== "imei_search") { permissionMessage.textContent = "Your account does not have IMEI Search permission."; permissionMessage.hidden = false; return; }
     allowed = true; app.hidden = false;
+    searchWidget=window.GREENLOOP_RECORD_SEARCH.attach(query,{onSelect:item=>item.kind==="receipt"?openReceipt(item):openDevice(item)});
+    const requestedReceipt=new URLSearchParams(window.location.search).get("receipt");
+    if(requestedReceipt){await openReceipt({id:requestedReceipt});return;}
     if (requestedQuery.trim()) { query.value = requestedQuery.trim(); await search(); }
   }
-  query.addEventListener("input", () => { ++searchVersion; window.clearTimeout(autoSearchTimer); setSubmitting(false); result.hidden = true; setMessage(); const value = query.value.trim(); if (/^\d{15}$/.test(value) || /^DEV-\d+$/i.test(value)) autoSearchTimer = window.setTimeout(() => search(), 300); });
+  query.addEventListener("input", () => { ++searchVersion; setSubmitting(false); result.hidden = true; receiptResult.hidden=true; setMessage(); });
   form.addEventListener("submit", search);
   document.querySelector("#open-menu").addEventListener("click", () => setMenu(true));
   document.querySelector("#close-menu").addEventListener("click", () => setMenu(false));

@@ -87,7 +87,7 @@
     removeTechnicianButton.disabled = !selected;
     technicianImeiScan.disabled = !selected;
     checkTechnicianImei.disabled = !selected;
-    technicianImeiScan.placeholder = selected ? `Scan IMEI assigned to ${selected.full_name}` : "Select technician first";
+    technicianImeiScan.placeholder = selected ? `Search phones assigned to ${selected.full_name}` : "Select technician first";
   }
 
   function optionsMarkup(options, placeholder) { return `<option value="">${escapeHtml(placeholder)}</option>${options.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("")}`; }
@@ -326,14 +326,15 @@
     const rows = rowResponse.data || [];
     const jobIds = [...new Set(rows.map((row) => row.job_id).filter(Boolean))];
     const { data: batchJobs } = jobIds.length
-      ? await getClient().from("jobs").select("id, receiving_batch:receiving_batches(planned_quantity)").in("id", jobIds)
+      ? await getClient().from("jobs").select("id, job_number, device:devices(device_number, serial_number, imei_2), receiving_batch:receiving_batches(planned_quantity, invoice_number, batch_number)").in("id", jobIds)
       : { data: [] };
     const quantityByJob = new Map((batchJobs || []).map((job) => {
       const batch = Array.isArray(job.receiving_batch) ? job.receiving_batch[0] : job.receiving_batch;
-      return [String(job.id), batch?.planned_quantity];
+      const device=Array.isArray(job.device)?job.device[0]:job.device;
+      return [String(job.id), {...batch,...device,job_number:job.job_number}];
     }));
     if (!isCurrent()) return;
-    technicianRows = rows.map((row) => ({ ...row, planned_quantity: quantityByJob.get(String(row.job_id)), pending_part_returns: pendingByStep.get(String(row.step_id)) || [] }));
+    technicianRows = rows.map((row) => ({ ...row, ...quantityByJob.get(String(row.job_id)), pending_part_returns: pendingByStep.get(String(row.step_id)) || [] }));
     renderTechnicianLines();
     technicianWorkRows.querySelectorAll("tr[data-step-id]").forEach((row) => {
       if (lineDrafts.has(String(row.dataset.stepId))) markLineChanged(row);
@@ -526,10 +527,10 @@
     await refreshAll();
   }
   async function scanTechnicianImei() {
-    const imei = technicianImeiScan.value.replace(/\D/g, "");
+    const imei = technicianImeiScan.value.trim();
     const technicianId = activeTechnicianId;
     if (!technicianId) { setBoardMessage("Select a technician first."); return; }
-    if (imei.length !== 15) { setBoardMessage("Scan a valid 15-digit IMEI."); return; }
+    if (!/^\d{15}$/.test(imei)) { setBoardMessage("Scan a valid 15-digit IMEI."); return; }
     const { data, error } = await getClient().rpc("resolve_lab_imei_for_technician", {
       p_technician_id: technicianId,
       p_imei: imei
@@ -605,13 +606,13 @@
   refreshFrameButton.addEventListener("click", () => refreshAll().catch((error) => setBoardMessage(error.message)));
   addTechnicianButton.addEventListener("click", () => addTechnician().catch((error) => setBoardMessage(error.message)));
   removeTechnicianButton.addEventListener("click", () => removeTechnician().catch((error) => setBoardMessage(error.message)));
-  technicianCards.addEventListener("click", (event) => { const card = event.target.closest("[data-technician-id]"); if (!card) return; activeTechnicianId = card.dataset.technicianId; technicianRows = []; renderTechnicianCards(); renderTechnicianLines(); loadTechnicianRows().catch((error) => setBoardMessage(error.message)); });
-  technicianImeiScan.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter") return;
-    event.preventDefault();
-    scanTechnicianImei().catch((error) => setBoardMessage(error.message));
+  technicianCards.addEventListener("click", (event) => { const card = event.target.closest("[data-technician-id]"); if (!card) return; technicianWidget.close(); technicianImeiScan.value=""; activeTechnicianId = card.dataset.technicianId; technicianRows = []; renderTechnicianCards(); renderTechnicianLines(); loadTechnicianRows().catch((error) => setBoardMessage(error.message)); });
+  technicianImeiScan.maxLength=120;technicianImeiScan.removeAttribute("inputmode");
+  const technicianWidget=window.GREENLOOP_RECORD_SEARCH.attach(technicianImeiScan,{
+    lookup:term=>window.GREENLOOP_RECORD_SEARCH.localLookup(technicianRows.map(row=>({...row,kind:"device",id:row.step_id,identifier:row.imei,imei_1:row.imei})),term),
+    onSelect:item=>{technicianImeiScan.value=item.imei_1;scanTechnicianImei().catch(error=>setBoardMessage(error.message));}
   });
-  checkTechnicianImei.addEventListener("click", () => scanTechnicianImei().catch((error) => setBoardMessage(error.message)));
+  checkTechnicianImei.addEventListener("click",()=>technicianWidget.search({selectExact:true}));
   technicianWorkRows.addEventListener("click", (event) => {
     const add = event.target.closest("[data-add-choice]"); if (add) { addChoice(add); return; }
     const remove = event.target.closest("[data-remove-choice]"); if (remove) {

@@ -347,7 +347,7 @@
   async function loadQueue() {
     const { data, error } = await getClient()
       .from("job_work_order_steps")
-      .select("id, work_order:job_work_orders!inner(work_order_number, job:jobs!inner(id, job_number, supplier_grade, supplier:greenloop_suppliers(supplier_code, company_name), receiving_batch:receiving_batches(planned_quantity), device:devices(device_number, imei_1, brand, model, storage_gb, color, battery_health, device_platform, battery_health_unavailable, gc_grade)))")
+      .select("id, work_order:job_work_orders!inner(work_order_number, job:jobs!inner(id, job_number, supplier_grade, supplier:greenloop_suppliers(supplier_code, company_name), receiving_batch:receiving_batches(planned_quantity, invoice_number, batch_number), device:devices(device_number, imei_1, imei_2, serial_number, brand, model, storage_gb, color, battery_health, device_platform, battery_health_unavailable, gc_grade)))")
       .eq("department", "final_qc")
       .eq("step_status", "in_progress")
       .order("created_at", { ascending: true });
@@ -413,6 +413,9 @@
     const device = getDevice(step) || {};
     return {
       imei: device.imei_1 || "-",
+      device_number: device?.device_number, serial_number: device?.serial_number, imei_2: device?.imei_2, brand: device?.brand,
+      invoice_number: (Array.isArray(job.receiving_batch)?job.receiving_batch[0]:job.receiving_batch)?.invoice_number,
+      batch_number: (Array.isArray(job.receiving_batch)?job.receiving_batch[0]:job.receiving_batch)?.batch_number, job_number:job.job_number,
       supplier: supplierLabel(getSupplier(job) || {}, job.receiving_batch),
       model: device.model || "-",
       storage: device.storage_gb ? `${device.storage_gb} GB` : "-",
@@ -423,9 +426,14 @@
     };
   }
 
+  function pendingSearchItems(){return queueSteps.map(pendingData).map(row=>({...row,kind:"device",id:row.imei,identifier:row.imei,imei_1:row.imei,storage_gb:parseInt(row.storage,10) || null,supplier_code:row.supplier}));}
+  const pendingWidget=window.GREENLOOP_RECORD_SEARCH.attach(pendingSearch,{
+    lookup:term=>window.GREENLOOP_RECORD_SEARCH.localLookup(pendingSearchItems(),term),
+    onSelect:item=>{pendingSearch.value=item.imei_1;renderPendingJobs(item.imei_1);}
+  });
   function renderPendingJobs(filter = "") {
     const search = String(filter || "").trim().toLocaleLowerCase();
-    const rows = queueSteps.map(pendingData).filter((row) => !search || Object.values(row).some((value) => String(value).toLocaleLowerCase().includes(search)));
+    const rows = search ? window.GREENLOOP_RECORD_SEARCH.localLookup(pendingSearchItems(),search).items : pendingSearchItems();
     pendingListBody.innerHTML = rows.length
       ? rows.map((row, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(row.imei)}</td><td>${escapeHtml(row.supplier)}</td><td>${escapeHtml(row.model)}</td><td>${escapeHtml(row.storage)}</td><td>${escapeHtml(row.color)}</td><td>${escapeHtml(row.battery)}</td><td>${escapeHtml(row.supplierGrade)}</td><td>${escapeHtml(row.initialGrade)}</td></tr>`).join("")
       : '<tr><td colspan="9" class="final-pending-empty">No pending phones match this search.</td></tr>';
@@ -440,6 +448,7 @@
   }
 
   function closePendingModal() {
+    pendingWidget?.close();
     pendingModal.hidden = true;
     document.body.classList.remove("final-modal-open");
     queueCount.focus();

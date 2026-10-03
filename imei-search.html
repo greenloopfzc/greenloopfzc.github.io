@@ -12,9 +12,11 @@
   <link rel="stylesheet" href="css/styles.css">
   <link rel="stylesheet" href="css/imei-search.css?v=20261002-imei-history-bullets-1">
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script defer src="js/config.js?v=20260926-imei-search-layout-1"></script>
+  <script defer src="js/config.js?v=20261003-navigation-search-1"></script>
+  <link rel="stylesheet" href="css/record-search.css?v=20261003-navigation-search-1">
+  <script defer src="js/record-search.js?v=20261003-navigation-search-1"></script>
   <script defer src="js/part-notifications.js?v=20260918-audit-2"></script>
-  <script defer src="js/imei-search.js?v=20261002-imei-history-bullets-1"></script>
+  <script defer src="js/imei-search.js?v=20261003-navigation-search-1"></script>
     <link rel="stylesheet" href="css/appearance.css?v=20260928-sidebar-depth-1">
   </head>
 <body class="app-page">
@@ -48,14 +50,14 @@
       </header>
       <div class="page-content history-content">
         <section class="page-heading history-heading">
-          <div><p class="eyebrow dashboard-eyebrow">IMEI Search</p><h1>IMEI Search</h1><p class="heading-subtitle">Scan or enter an IMEI to see device details and its process history.</p></div>
+          <div><p class="eyebrow dashboard-eyebrow">IMEI Search</p><h1>IMEI Search</h1><p class="heading-subtitle">Type part of an IMEI, invoice, device number, serial number, or model, then choose a matching record.</p></div>
         </section>
 
         <div id="permission-message" class="access-message" hidden></div>
         <section id="history-app" hidden>
           <form id="imei-search-form" class="search-panel" novalidate>
-            <label for="imei-query">IMEI, device number, or serial number</label>
-            <div class="search-row"><input id="imei-query" autocomplete="off" maxlength="60" placeholder="Example: 123456789012345 or DEV-000001" required><button id="search-button" class="primary-button" type="submit">Search device</button></div>
+            <label for="imei-query">IMEI, invoice, device number, serial number, or model</label>
+            <div class="search-row"><input id="imei-query" autocomplete="off" maxlength="120" placeholder="Example: 3451, DEV, INV, or a model" required><button id="search-button" class="primary-button" type="submit">Search</button></div>
             <p id="search-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
           </form>
 

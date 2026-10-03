@@ -325,7 +325,7 @@
     const device = result.device || {};
     const { data: batchJob } = await getClient()
       .from("jobs")
-      .select("receiving_batch:receiving_batches(planned_quantity), device:devices(device_platform, battery_health_unavailable)")
+      .select("receiving_batch:receiving_batches(planned_quantity, invoice_number, batch_number), device:devices(device_platform, battery_health_unavailable)")
       .eq("id", job.id)
       .maybeSingle();
     if (!isCurrent()) return;
@@ -403,6 +403,9 @@
     const supplier = Array.isArray(job.supplier) ? job.supplier[0] : job.supplier;
     return {
       imei: device?.imei_1 || "-",
+      device_number: device?.device_number, serial_number: device?.serial_number, imei_2: device?.imei_2, brand: device?.brand,
+      invoice_number: (Array.isArray(job.receiving_batch)?job.receiving_batch[0]:job.receiving_batch)?.invoice_number,
+      batch_number: (Array.isArray(job.receiving_batch)?job.receiving_batch[0]:job.receiving_batch)?.batch_number, job_number:job.job_number,
       supplier: supplierLabel(supplier?.supplier_code, supplier?.company_name, job?.receiving_batch?.planned_quantity),
       model: device?.model || "-",
       storage: device?.storage_gb ? `${device.storage_gb} GB` : "-",
@@ -410,9 +413,14 @@
     };
   }
 
+  function pendingSearchItems(){return pendingJobs.map(pendingJobData).map(row=>({...row,kind:"device",id:row.imei,identifier:row.imei,imei_1:row.imei,storage_gb:parseInt(row.storage,10) || null,supplier_code:row.supplier}));}
+  const pendingWidget=window.GREENLOOP_RECORD_SEARCH.attach(pendingSearch,{
+    lookup:term=>window.GREENLOOP_RECORD_SEARCH.localLookup(pendingSearchItems(),term),
+    onSelect:item=>{pendingSearch.value=item.imei_1;renderPendingJobs(item.imei_1);}
+  });
   function renderPendingJobs(filter = "") {
     const search = String(filter || "").trim().toLocaleLowerCase();
-    const rows = pendingJobs.map(pendingJobData).filter((job) => !search || [job.imei, job.supplier, job.model, job.storage, job.color].some((value) => String(value).toLocaleLowerCase().includes(search)));
+    const rows = search ? window.GREENLOOP_RECORD_SEARCH.localLookup(pendingSearchItems(),search).items : pendingSearchItems();
     pendingListBody.innerHTML = rows.length
       ? rows.map((job, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(job.imei)}</td><td>${escapeHtml(job.supplier)}</td><td>${escapeHtml(job.model)}</td><td>${escapeHtml(job.storage)}</td><td>${escapeHtml(job.color)}</td></tr>`).join("")
       : '<tr><td colspan="6" class="qc-pending-empty">No pending phones match this search.</td></tr>';
@@ -427,6 +435,7 @@
   }
 
   function closePendingModal() {
+    pendingWidget?.close();
     pendingModal.hidden = true;
     document.body.classList.remove("qc-modal-open");
     queueCount.focus();
@@ -435,7 +444,7 @@
   async function loadPendingCount() {
     const { data, error } = await getClient()
       .from("jobs")
-      .select("job_number, received_at, supplier:greenloop_suppliers(supplier_code, company_name), receiving_batch:receiving_batches(planned_quantity), device:devices!inner(imei_1, model, storage_gb, color)")
+      .select("job_number, received_at, supplier:greenloop_suppliers(supplier_code, company_name), receiving_batch:receiving_batches(planned_quantity, invoice_number, batch_number), device:devices!inner(imei_1, imei_2, device_number, serial_number, brand, model, storage_gb, color)")
       .eq("current_status", "initial_qc_pending")
       .is("deleted_at", null)
       .order("received_at", { ascending: true });

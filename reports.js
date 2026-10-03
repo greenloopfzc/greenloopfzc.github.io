@@ -171,7 +171,7 @@
     const identityByImei = new Map();
     for (let start = 0; start < imeis.length; start += 200) {
       const { data, error } = await getClient().from("devices")
-        .select("imei_1, serial_number, specification_region")
+        .select("imei_1, imei_2, device_number, brand, serial_number, specification_region")
         .in("imei_1", imeis.slice(start, start + 200));
       if (error) return;
       (data || []).forEach((device) => identityByImei.set(String(device.imei_1 || ""), device));
@@ -183,6 +183,9 @@
         if (!identity) return;
         row.serial_number = identity.serial_number || row.serial_number || "";
         row.specification_region = identity.specification_region || row.specification_region || "";
+        row.device_number = identity.device_number || row.device_number || "";
+        row.imei_2 = identity.imei_2 || row.imei_2 || "";
+        row.brand = identity.brand || row.brand || "";
       });
     });
   }
@@ -376,7 +379,30 @@
       .sort((left, right) => new Date(right.rows[0]?.opened_at || 0) - new Date(left.rows[0]?.opened_at || 0));
   }
 
+  let exportFilterWidget;
+  function exportSearchItems(rows){return rows.map(row=>({...row,kind:"device",id:row.imei,identifier:row.imei,imei_1:row.imei,storage_gb:row.memory}));}
   function renderExportBoxes() {
+    exportFilterWidget?.destroy();exportFilterWidget=null;
+    renderExportBoxesMarkup();
+    const input=reportContent.querySelector("#export-box-imei-filter");
+    if(input)exportFilterWidget=window.GREENLOOP_RECORD_SEARCH.attach(input,{
+      lookup:term=>window.GREENLOOP_RECORD_SEARCH.localLookup(exportSearchItems(getExportBoxGroups().find(box=>box.boxNumber===selectedExportBox)?.rows || []),term),
+      onSelect:item=>{input.value=item.imei_1;exportBoxImeiFilter=item.imei_1;updateExportSearchRows();}
+    });
+    updateExportSearchRows();
+  }
+  function updateExportSearchRows(){
+    const group=getExportBoxGroups().find(box=>box.boxNumber===selectedExportBox);
+    if(!group)return;
+    const matches=exportBoxImeiFilter.trim()?window.GREENLOOP_RECORD_SEARCH.localLookup(exportSearchItems(group.rows),exportBoxImeiFilter).items:exportSearchItems(group.rows);
+    const visible=new Set(matches.map(item=>String(item.imei_1)));
+    reportContent.querySelectorAll(".export-box-lines tbody tr").forEach(row=>{row.hidden=!visible.has(row.cells[1]?.textContent.trim());});
+    const tableBody=reportContent.querySelector(".export-box-lines tbody");
+    let empty=tableBody?.querySelector("[data-export-search-empty]");
+    if(tableBody && !empty){empty=document.createElement("tr");empty.dataset.exportSearchEmpty="true";const cell=document.createElement("td");cell.colSpan=9;cell.textContent="No phones in this box match your search.";empty.append(cell);tableBody.append(empty);}
+    if(empty)empty.hidden=matches.length>0;
+  }
+  function renderExportBoxesMarkup() {
     const boxes = getExportBoxGroups();
     const selected = boxes.find((box) => box.boxNumber === selectedExportBox);
     panelKicker.textContent = "Export boxes";
@@ -391,14 +417,14 @@
     let detail = '<div class="export-box-detail-empty">Select a box number to view its phones.</div>';
     if (selected) {
       const filter = exportBoxImeiFilter.trim().toLowerCase();
-      const rows = selected.rows.filter((row) => !filter || String(row.imei || "").toLowerCase().includes(filter));
+      const rows = selected.rows;
       const body = rows.length
         ? rows.map((row) => `<tr><td>${escapeHtml(row.serial_no)}</td><td>${escapeHtml(row.imei)}</td><td>${formatCell(row.serial_number)}</td><td>${formatCell(row.specification_region)}</td><td>${formatCell(row.model)}</td><td>${formatCell(row.memory)}</td><td>${formatCell(row.final_grade)}</td><td>${formatCell(row.color)}</td><td>${formatCell(row.scanned_at, "date")}</td></tr>`).join("")
         : '<tr><td class="report-empty" colspan="9">No IMEI in this box matches your search.</td></tr>';
       detail = `
         <section class="export-box-detail">
           <div class="export-box-detail-heading"><div><p class="panel-kicker">Selected export box</p><h3>${escapeHtml(selected.boxNumber)}</h3></div><div class="export-box-detail-actions"><span>${selected.rows.length} phone${selected.rows.length === 1 ? "" : "s"}</span><button class="report-delete-box" type="button" data-delete-export-box="${escapeHtml(selected.boxNumber)}">Delete box</button></div></div>
-          <label class="export-box-imei-search" for="export-box-imei-filter">Search IMEI in this box<input id="export-box-imei-filter" type="search" autocomplete="off" value="${escapeHtml(exportBoxImeiFilter)}" placeholder="Type or scan an IMEI"></label>
+          <label class="export-box-imei-search" for="export-box-imei-filter">Search phones in this box<input id="export-box-imei-filter" type="search" autocomplete="off" value="${escapeHtml(exportBoxImeiFilter)}" placeholder="IMEI, serial number, model, GB, or color"></label>
           <div class="report-table-wrap"><table class="report-table export-box-lines"><thead><tr><th>S.No</th><th>IMEI</th><th>Serial number</th><th>Region</th><th>Model</th><th>GB</th><th>Grade</th><th>Color</th><th>Scanned</th></tr></thead><tbody>${body}</tbody></table></div>
         </section>`;
     }
@@ -606,7 +632,21 @@
   }
 
 
+  let correctionWidget;
   function renderDataCorrection() {
+    correctionWidget?.destroy();correctionWidget=null;
+    renderDataCorrectionMarkup();
+    const input=reportContent.querySelector("#correction-identifier");
+    if(input && window.GREENLOOP_CAN_SEARCH){
+      input.placeholder="IMEI, invoice, device number, serial, or model";input.maxLength=120;
+      correctionWidget=window.GREENLOOP_RECORD_SEARCH.attach(input,{onSelect:item=>{
+        if(item.kind==="receipt"){window.GREENLOOP_RECORD_SEARCH.openRecord(item);return;}
+        input.value=item.identifier;searchCorrectionRecord(item.identifier).catch(error=>setMessage(error.message));
+      }});
+      input.addEventListener("input",()=>{++correctionSearchGeneration;});
+    }
+  }
+  function renderDataCorrectionMarkup() {
     panelKicker.textContent = "Management control";
     panelTitle.textContent = "IMEI data correction";
     panelDescription.textContent = window.GREENLOOP_PAGE_ACCESS?.canEdit
@@ -1018,6 +1058,7 @@
   reportContent.addEventListener("submit", (event) => {
     if (event.target.id === "correction-search-form") {
       event.preventDefault();
+      if(correctionWidget){correctionWidget.search({selectExact:true});return;}
       const formData = new FormData(event.target);
       searchCorrectionRecord(formData.get("identifier")).catch((error) => setMessage(error.message || "The device record could not be loaded."));
       return;
@@ -1051,7 +1092,7 @@
     }
     if (event.target.id !== "export-box-imei-filter") return;
     exportBoxImeiFilter = event.target.value;
-    renderExportBoxes();
+    updateExportSearchRows();
     const filter = document.querySelector("#export-box-imei-filter");
     if (filter) {
       filter.focus();
