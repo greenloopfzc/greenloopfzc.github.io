@@ -296,6 +296,19 @@
     if (typeof callback === "function") callback(null, { authenticated: false });
     if (oldToken) request("POST", "/auth/v1/logout?scope=local", {}, oldToken, noop, true);
   };
+  function array(value) { return Object.prototype.toString.call(value) === "[object Array]"; }
+  function count(value) { return typeof value === "number" && isFinite(value) && value >= 0 && value % 1 === 0; }
+  function timestamp(value) {
+    // PostgreSQL includes microseconds; older TV Date.parse implementations
+    // reject them. Check ISO calendar fields without relying on that parser.
+    if (typeof value !== "string") return false;
+    var p = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|[+-]\d{2}(?::?\d{2})?)$/.exec(value);
+    if (!p || Number(p[4]) > 23 || Number(p[5]) > 59 || Number(p[6]) > 59) return false;
+    var date = new Date(0), zone = p[7].slice(1).replace(":", "");
+    date.setUTCFullYear(Number(p[1]), Number(p[2]) - 1, Number(p[3]));
+    return date.getUTCFullYear() === Number(p[1]) && date.getUTCMonth() + 1 === Number(p[2]) && date.getUTCDate() === Number(p[3]) &&
+      (p[7] === "Z" || Number(zone.slice(0, 2)) <= 23 && Number(zone.slice(2) || 0) <= 59);
+  }
   api.loadDamages = function (offset, limit, callback) {
     callback = typeof callback === "function" ? callback : noop;
     if (typeof offset !== "number" || offset < 0 || offset > 1000000 || offset % 1 || typeof limit !== "number" || limit < 1 || limit > 100 || limit % 1) {
@@ -311,19 +324,6 @@
           }
           callback(reportError);
           return;
-        }
-        function array(value) { return Object.prototype.toString.call(value) === "[object Array]"; }
-        function count(value) { return typeof value === "number" && isFinite(value) && value >= 0 && value % 1 === 0; }
-        function timestamp(value) {
-          // PostgreSQL includes microseconds; older TV Date.parse implementations
-          // reject them. Check ISO calendar fields without relying on that parser.
-          if (typeof value !== "string") return false;
-          var p = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|[+-]\d{2}(?::?\d{2})?)$/.exec(value);
-          if (!p || Number(p[4]) > 23 || Number(p[5]) > 59 || Number(p[6]) > 59) return false;
-          var date = new Date(0), zone = p[7].slice(1).replace(":", "");
-          date.setUTCFullYear(Number(p[1]), Number(p[2]) - 1, Number(p[3]));
-          return date.getUTCFullYear() === Number(p[1]) && date.getUTCMonth() + 1 === Number(p[2]) && date.getUTCDate() === Number(p[3]) &&
-            (p[7] === "Z" || Number(zone.slice(0, 2)) <= 23 && Number(zone.slice(2) || 0) <= 59);
         }
         var valid = report && count(report.today_count) && count(report.month_count) && count(report.total_count) &&
           array(report.rows) && report.rows.length <= limit && array(report.technicians) && typeof report.has_more === "boolean";
@@ -341,6 +341,78 @@
         if (!valid) { callback(error("INVALID_RESPONSE", "The Damage Report response could not be read. Select Refresh to retry.")); return; }
         callback(null, report);
       });
+    });
+  };
+  function pageArguments(offset, limit) {
+    return count(offset) && offset <= 1000000 && count(limit) && limit >= 1 && limit <= 100;
+  }
+  function damageRows(rows, limit) {
+    if (!array(rows) || rows.length > limit) return false;
+    var index, row, seen = {};
+    for (index = 0; index < rows.length; index += 1) {
+      row = rows[index];
+      if (!row || typeof row.id !== "string" || !row.id || seen["id:" + row.id] ||
+        typeof row.model !== "string" || typeof row.reason !== "string" || typeof row.reported_by !== "string" ||
+        (row.part_name !== null && typeof row.part_name !== "string") ||
+        (row.identifier !== null && typeof row.identifier !== "string") ||
+        !timestamp(row.occurred_at) || !timestamp(row.created_at)) return false;
+      seen["id:" + row.id] = true;
+    }
+    return true;
+  }
+  function damageCardsRequest(name, args, callback) {
+    checkAccess(function (problem) {
+      if (problem) { callback(problem); return; }
+      authorised("POST", "/rest/v1/rpc/" + name, args, function (reportError, report) {
+        if (reportError && reportError.status === 404 && reportError.serverCode === "PGRST202") {
+          reportError.message = "The Damage Cards database update is not installed yet. Ask your administrator to finish the update.";
+        }
+        if (reportError && name === "get_manual_damage_employee_rows_v1" && reportError.serverCode === "22023") {
+          reportError = error("EMPLOYEE_NOT_FOUND", "This employee is no longer on the Damage Report. Refresh the employee cards.");
+        }
+        callback(reportError, report);
+      });
+    });
+  }
+  api.loadDamageCards = function (offset, limit, rowLimit, callback) {
+    callback = typeof callback === "function" ? callback : noop;
+    if (!pageArguments(offset, limit) || !pageArguments(0, rowLimit)) {
+      callback(error("VALIDATION", "Choose a valid employee card page."));
+      return;
+    }
+    damageCardsRequest("get_manual_damage_cards_v1", { p_offset: offset, p_limit: limit, p_row_limit: rowLimit }, function (problem, report) {
+      if (problem) { callback(problem); return; }
+      var valid = report && count(report.employee_count) && count(report.today_count) && count(report.month_count) && count(report.total_count) &&
+        report.today_count <= report.month_count && report.month_count <= report.total_count &&
+        array(report.employees) && report.employees.length <= limit && report.employees.length <= report.employee_count && typeof report.has_more === "boolean";
+      var index, employee, seen = {};
+      if (valid) for (index = 0; index < report.employees.length; index += 1) {
+        employee = report.employees[index];
+        if (!employee || typeof employee.id !== "string" || !employee.id || seen["id:" + employee.id] || typeof employee.name !== "string" || !employee.name ||
+          !count(employee.total_damage) || !damageRows(employee.rows, rowLimit) || employee.rows.length > employee.total_damage || typeof employee.has_more !== "boolean") {
+          valid = false; break;
+        }
+        seen["id:" + employee.id] = true;
+      }
+      if (!valid) { callback(error("INVALID_RESPONSE", "The employee cards could not be read. Select Refresh to retry.")); return; }
+      callback(null, report);
+    });
+  };
+  api.loadEmployeeDamageRows = function (employeeId, offset, limit, callback) {
+    callback = typeof callback === "function" ? callback : noop;
+    if (typeof employeeId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(employeeId) || !pageArguments(offset, limit)) {
+      callback(error("VALIDATION", "Choose a valid employee history page."));
+      return;
+    }
+    employeeId = employeeId.toLowerCase();
+    damageCardsRequest("get_manual_damage_employee_rows_v1", { p_employee_id: employeeId, p_offset: offset, p_limit: limit }, function (problem, report) {
+      if (problem) { callback(problem); return; }
+      if (!report || report.employee_id !== employeeId || !count(report.total_damage) || !damageRows(report.rows, limit) ||
+        report.rows.length > report.total_damage || typeof report.has_more !== "boolean") {
+        callback(error("INVALID_RESPONSE", "This employee's damage history could not be read. Select Refresh to retry."));
+        return;
+      }
+      callback(null, report);
     });
   };
   api.onSessionInvalidated = null;

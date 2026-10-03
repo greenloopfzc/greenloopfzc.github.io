@@ -4,13 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#eaf0f4">
-  <meta name="description" content="Greenloop Lab Live Board: manual damage incidents, monthly technician counts and the latest reports.">
+  <meta name="description" content="Greenloop Lab Live Board: employee damage cards, all-time counts and complete damage history.">
   <title>Damage Report | Greenloop Lab Live Board</title>
   <link rel="stylesheet" href="css/tv.css?v=20261003-tv-browser-1">
-  <link rel="stylesheet" href="css/damage-tv.css?v=20261003-manual-damage-1">
+  <link rel="stylesheet" href="css/damage-tv.css?v=20261003-damage-cards-1">
   <script>window.GREENLOOP_TV_CONFIG = {"supabaseUrl":"https://prypklagfznpdlleldll.supabase.co","supabaseAnonKey":"sb_publishable_hMIRbfKmh4vhGvEgVcPjow_F21WmwXt"};</script>
-  <script defer src="js/tv-api.js?v=20261003-manual-damage-1"></script>
-  <script defer src="js/damage-tv.js?v=20261003-manual-damage-1"></script>
+  <script defer src="js/tv-api.js?v=20261003-damage-cards-1"></script>
+  <script defer src="js/damage-tv.js?v=20261003-damage-cards-1"></script>
 </head>
 <body class="tv-page damage-tv-page">
   <div class="tv-wrap">
@@ -33,11 +33,11 @@
         <div class="tv-login-intro">
           <p class="tv-eyebrow">LAB LIVE BOARD / DAMAGE REPORT</p>
           <h1 id="tv-login-title">Damage reports.<br>A clear record.</h1>
-          <p class="tv-intro-text">Keep manually reported damage, reasons and technician counts in view throughout the day.</p>
+          <p class="tv-intro-text">Keep every employee’s damage history, part names and reasons in view throughout the day.</p>
           <div class="tv-login-features">
-            <p><span>01</span> Today, this month and total incidents</p>
-            <p><span>02</span> Monthly counts by technician</p>
-            <p><span>03</span> Every manually reported incident</p>
+            <p><span>01</span> An individual card for every employee</p>
+            <p><span>02</span> All-time damage counts at a glance</p>
+            <p><span>03</span> Complete history with simple page controls</p>
           </div>
           <p class="tv-company">Greenloop FZC &middot; Operations system</p>
         </div>
@@ -69,11 +69,11 @@
 
       <section id="tv-board" class="tv-board" style="display:none" aria-labelledby="tv-board-title">
         <div class="tv-board-heading tv-clear">
-          <div class="tv-heading-copy"><p class="tv-eyebrow">LAB LIVE BOARD / MANUAL INCIDENTS</p><h1 id="tv-board-title">Damage Report</h1></div>
+          <div class="tv-heading-copy"><p class="tv-eyebrow">LAB LIVE BOARD / EMPLOYEE RECORDS</p><h1 id="tv-board-title">Damage Report</h1></div>
           <div class="tv-update-status"><span class="tv-live-label"><i></i>Refresh every 30 sec</span><span id="tv-last-updated">Waiting for the first update</span></div>
         </div>
         <div class="tv-toolbar tv-clear" aria-label="Board controls">
-          <div class="tv-view-buttons" role="group" aria-label="Incident pages">
+          <div class="tv-view-buttons" role="group" aria-label="Employee card pages">
             <button id="damage-prev" class="tv-button" type="button" disabled>Previous</button>
             <span id="damage-page" class="damage-page-number" aria-live="polite">Page 1</span>
             <button id="damage-next" class="tv-button" type="button" disabled>Next</button>
@@ -87,20 +87,15 @@
         </div>
         <p id="tv-board-message" class="tv-message tv-board-message" role="status" aria-live="polite"></p>
 
-        <section class="tv-summary damage-summary" aria-label="Manual damage incident totals">
-          <div class="tv-summary-cell"><article class="tv-summary-card"><span>Today</span><strong id="damage-today">0</strong><small>Manual incidents &middot; UAE day</small></article></div>
-          <div class="tv-summary-cell"><article class="tv-summary-card"><span>This month</span><strong id="damage-month">0</strong><small>Manual incidents &middot; UAE month</small></article></div>
-          <div class="tv-summary-cell"><article class="tv-summary-card"><span>Total</span><strong id="damage-total">0</strong><small>All manually reported incidents</small></article></div>
-        </section>
-
-        <section class="damage-monthly" aria-labelledby="damage-monthly-title">
-          <div class="tv-section-heading tv-clear"><h2 id="damage-monthly-title">Technician counts this month</h2></div>
-          <div id="damage-technicians" class="damage-technicians" aria-live="polite"></div>
-        </section>
-        <section aria-labelledby="damage-incidents-title">
-          <div class="tv-section-heading tv-clear"><h2 id="damage-incidents-title">Reported incidents</h2><span id="damage-range" class="damage-range">Waiting for records</span></div>
-          <p class="damage-view-help">Latest incident first &middot; All dates in UAE time &middot; Use the remote arrows to move through cards and controls.</p>
-          <div id="damage-incidents" class="damage-incidents tv-clear" aria-live="polite"></div>
+        <div class="damage-summary" aria-label="Manual damage incident totals">
+          <span>Today <strong id="damage-today">0</strong></span>
+          <span>This month <strong id="damage-month">0</strong></span>
+          <span>All time <strong id="damage-total">0</strong></span>
+          <span id="damage-range" class="damage-range">Waiting for employees</span>
+        </div>
+        <section aria-label="Employee damage cards">
+          <p class="damage-view-help">Newest first &middot; UAE dates &middot; Each employee’s total includes all recorded damage.</p>
+          <div id="damage-employees" class="damage-employees tv-clear" aria-live="polite"></div>
         </section>
       </section>
     </main>

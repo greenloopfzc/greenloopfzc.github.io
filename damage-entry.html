@@ -12,10 +12,10 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/appearance.css?v=20260928-sidebar-depth-1">
-    <link rel="stylesheet" href="css/manual-damage.css?v=20261003-manual-damage-1">
+    <link rel="stylesheet" href="css/manual-damage.css?v=20261003-damage-cards-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script defer src="js/config.js?v=20261003-manual-damage-1"></script>
-    <script defer src="js/manual-damage.js?v=20261003-manual-damage-1"></script>
+    <script defer src="js/manual-damage.js?v=20261003-damage-cards-1"></script>
   </head>
   <body class="app-page manual-damage-page">
     <div class="app-shell">
@@ -39,21 +39,23 @@
             <section class="manual-damage-panel" aria-labelledby="manual-damage-form-title">
               <div class="manual-damage-panel-heading"><div><p class="panel-kicker">NEW INCIDENT</p><h2 id="manual-damage-form-title">Damage details</h2></div><span class="manual-damage-required-note">All fields required except identifier</span></div>
               <p id="manual-damage-view-only" class="manual-damage-access-note" hidden>View-only access. You can read recent reports below. Ask an administrator for Entry Allowed access to Lab Live Board to record damage.</p>
+              <div class="manual-damage-catalog-status"><p id="manual-damage-options-message" role="status" aria-live="polite">Loading dropdown choices…</p><button id="refresh-damage-options" class="secondary-button" type="button">Refresh choices</button></div>
               <form id="manual-damage-form">
                 <fieldset id="manual-damage-fields" disabled>
                   <legend class="sr-only">Damage details</legend>
                   <div class="manual-damage-form-grid">
-                    <div class="manual-damage-field"><label for="damage-person">Damaged by</label><input id="damage-person" name="damaged_by" type="text" maxlength="120" autocomplete="off" placeholder="Person’s name" required></div>
-                    <div class="manual-damage-field"><label for="damage-model">Phone model</label><input id="damage-model" name="model" type="text" maxlength="160" autocomplete="off" placeholder="e.g. iPhone 14 Pro" required></div>
+                    <div class="manual-damage-field"><label for="damage-person">Damaged by · Employee</label><div class="manual-damage-choice"><select id="damage-person" name="employee_id" required><option value="">Select employee</option></select><button class="manual-damage-option-button" type="button" data-option-action="add" data-option-kind="employee" aria-label="Add employee"><span aria-hidden="true">＋</span> Add</button><button class="manual-damage-option-button is-delete" type="button" data-option-action="delete" data-option-kind="employee" aria-label="Delete selected employee" disabled>Delete</button></div></div>
+                    <div class="manual-damage-field"><label for="damage-model">Model</label><div class="manual-damage-choice"><select id="damage-model" name="model_id" required><option value="">Select model</option></select><button class="manual-damage-option-button" type="button" data-option-action="add" data-option-kind="model" aria-label="Add model"><span aria-hidden="true">＋</span> Add</button><button class="manual-damage-option-button is-delete" type="button" data-option-action="delete" data-option-kind="model" aria-label="Delete selected model" disabled>Delete</button></div></div>
+                    <div class="manual-damage-field"><label for="damage-part">Part Name</label><div class="manual-damage-choice"><select id="damage-part" name="part_id" required><option value="">Select part name</option></select><button class="manual-damage-option-button" type="button" data-option-action="add" data-option-kind="part" aria-label="Add part name"><span aria-hidden="true">＋</span> Add</button><button class="manual-damage-option-button is-delete" type="button" data-option-action="delete" data-option-kind="part" aria-label="Delete selected part name" disabled>Delete</button></div><small id="damage-part-help">Use + Add to create a part name if it is missing.</small></div>
+                    <div class="manual-damage-field"><label for="damage-reason">Reason</label><div class="manual-damage-choice"><select id="damage-reason" name="reason_id" required><option value="">Select reason</option></select><button class="manual-damage-option-button" type="button" data-option-action="add" data-option-kind="reason" aria-label="Add reason"><span aria-hidden="true">＋</span> Add</button><button class="manual-damage-option-button is-delete" type="button" data-option-action="delete" data-option-kind="reason" aria-label="Delete selected reason" disabled>Delete</button></div></div>
                     <div class="manual-damage-field"><label for="damage-identifier">IMEI / serial / device number <span>(optional)</span></label><input id="damage-identifier" name="identifier" type="text" maxlength="120" autocomplete="off" aria-describedby="damage-identifier-help" placeholder="Enter any available identifier"><small id="damage-identifier-help">Leave blank if the phone is dead or the identifier cannot be read.</small></div>
                     <div class="manual-damage-field"><label for="damage-occurred-at">When did it happen?</label><input id="damage-occurred-at" name="occurred_at" type="datetime-local" step="60" aria-describedby="damage-time-help" required><small id="damage-time-help">UAE time (UTC+4).</small></div>
-                    <div class="manual-damage-field"><label for="damage-description">Damage description</label><textarea id="damage-description" name="damage" rows="3" maxlength="300" placeholder="Describe the damage to the phone" required></textarea></div>
-                    <div class="manual-damage-field"><label for="damage-reason">Reason / what happened</label><textarea id="damage-reason" name="reason" rows="3" maxlength="2000" placeholder="Explain how or why the damage happened" required></textarea></div>
                   </div>
                   <div class="manual-damage-form-footer"><p>Your account and the reporting time are recorded automatically.</p><button id="save-manual-damage" class="primary-button" type="submit">Save damage report</button></div>
                 </fieldset>
                 <p id="manual-damage-message" class="manual-damage-message" role="status" aria-live="polite" hidden></p>
               </form>
+              <div id="manual-damage-pending" class="manual-damage-pending" hidden><p id="manual-damage-pending-summary"></p><button id="retry-manual-damage" class="secondary-button" type="button">Retry original report</button></div>
             </section>
             <section class="manual-damage-panel manual-damage-history" aria-labelledby="manual-damage-history-title">
               <div class="manual-damage-panel-heading"><div><p class="panel-kicker">MANUAL REPORTS</p><h2 id="manual-damage-history-title">Recent reports</h2><p>Incident and reporting times shown in UAE time.</p></div><button id="refresh-manual-damage" class="secondary-button" type="button">Refresh</button></div>
@@ -65,5 +67,14 @@
         </div>
       </main>
     </div>
+    <dialog id="damage-option-dialog" class="manual-damage-dialog" aria-labelledby="damage-option-title" aria-describedby="damage-option-description">
+      <form id="damage-option-form">
+        <h2 id="damage-option-title">Add choice</h2>
+        <p id="damage-option-description"></p>
+        <div id="damage-option-label-field" class="manual-damage-field"><label id="damage-option-label-title" for="damage-option-label">Name</label><textarea id="damage-option-label" rows="2" autocomplete="off" required></textarea><small id="damage-option-limit"></small></div>
+        <p id="damage-option-message" class="manual-damage-message" role="status" aria-live="polite" hidden></p>
+        <div class="manual-damage-dialog-actions"><button id="damage-option-cancel" class="secondary-button" type="button">Cancel</button><button id="damage-option-confirm" class="primary-button" type="submit">Add</button></div>
+      </form>
+    </dialog>
   </body>
 </html>

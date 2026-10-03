@@ -1,4 +1,4 @@
-/* Manual damage TV report, 20261003-manual-damage-1. ES5, no external runtime. */
+/* Manual damage TV report, 20261003-damage-cards-1. ES5, no external runtime. */
 (function () {
   "use strict";
   function start() {
@@ -7,7 +7,10 @@
     var login = get("tv-login"), board = get("tv-board"), form = get("tv-login-form");
     var username = get("tv-username"), password = get("tv-password"), submit = get("tv-sign-in");
     var active = false, loading = false, busy = false, generation = 0, theme = "light";
-    var pageSize = 4, offset = 0, total = 0, hasMore = false, autoPages = false;
+    // Keep this size stable until reload: changing it mid-session would skip employees.
+    var pageSize = (window.innerWidth || document.documentElement.clientWidth) >= 1600 ? 4 : 2;
+    var rowSize = 6, offset = 0, total = 0, hasMore = false, autoPages = false;
+    var employees = [], rosterRequest = 0;
     function text(id, value) { get(id).textContent = String(value === null || value === undefined ? "" : value); }
     function message(id, value) { text(id, value); get(id).style.display = value ? "block" : "none"; }
     function escape(value) {
@@ -34,11 +37,21 @@
       var date = new Date(new Date().getTime() + 4 * 60 * 60 * 1000);
       return "Updated " + two(date.getUTCHours()) + ":" + two(date.getUTCMinutes()) + ":" + two(date.getUTCSeconds()) + " (UAE)";
     }
+    function pendingHistory() {
+      for (var i = 0; i < employees.length; i++) if (employees[i].loading) return true;
+      return false;
+    }
     function controls() {
-      get("tv-refresh").disabled = loading;
-      get("damage-prev").disabled = loading || offset === 0;
-      get("damage-next").disabled = loading || !hasMore;
+      var pending = loading || pendingHistory(), i, employee, previous, next;
+      get("tv-refresh").disabled = pending;
+      get("damage-prev").disabled = pending || offset === 0;
+      get("damage-next").disabled = pending || !hasMore;
       text("damage-page", "Page " + (Math.floor(offset / pageSize) + 1) + " of " + Math.max(1, Math.ceil(total / pageSize)));
+      for (i = 0; i < employees.length; i++) {
+        employee = employees[i]; previous = get("damage-history-prev-" + i); next = get("damage-history-next-" + i);
+        if (previous) previous.disabled = loading || employee.loading || employee.offset === 0;
+        if (next) next.disabled = loading || employee.loading || !employee.has_more;
+      }
     }
     function setAuto(value) {
       autoPages = !!value;
@@ -46,10 +59,10 @@
       text("tv-auto-toggle", autoPages ? "Auto pages: on \u00b7 15 sec" : "Auto pages: off");
     }
     function clear() {
-      offset = 0; total = 0; hasMore = false; setAuto(false);
+      offset = 0; total = 0; hasMore = false; employees = []; rosterRequest++; setAuto(false);
       text("damage-today", 0); text("damage-month", 0); text("damage-total", 0);
-      get("damage-technicians").innerHTML = ""; get("damage-incidents").innerHTML = "";
-      text("damage-range", "Waiting for records"); controls();
+      get("damage-employees").innerHTML = "";
+      text("damage-range", "Waiting for employees"); controls();
     }
     function loginBusy(value) {
       busy = value;
@@ -70,57 +83,157 @@
     function expired(error) {
       return error && (error.clearSession || /^(NO_SESSION|SESSION_EXPIRED|PERMISSION_DENIED)$/.test(error.code || ""));
     }
-    function field(label, value, className) {
-      return '<div class="damage-detail ' + (className || "") + '"><dt>' + label + '</dt><dd>' + escape(value || "Not recorded") + '</dd></div>';
+    function inactiveEmployee(error) {
+      return error && /^(EMPLOYEE_NOT_FOUND|EMPLOYEE_INACTIVE)$/.test(error.code || "");
+    }
+    function findEmployee(id) {
+      for (var i = 0; i < employees.length; i++) if (employees[i].id === id) return employees[i];
+      return null;
+    }
+    function cell(value, className) {
+      return '<td class="' + (className || "") + '">' + escape(value || "Not recorded") + '</td>';
+    }
+    function cardMarkup(employee, index) {
+      var rows = employee.rows || [], html = '', i, row, date;
+      html += '<header class="damage-employee-header tv-clear"><h2>' + escape(employee.name) + '</h2>' +
+        '<p class="damage-employee-total"><span>TOTAL DAMAGE</span><strong>' + count(employee.total_damage) + '</strong></p></header>' +
+        '<div class="damage-table-shell"><table class="damage-table" aria-label="Damage history for ' + escape(employee.name) + '">' +
+        '<colgroup><col class="damage-date-column"><col class="damage-model-column"><col class="damage-part-column"><col class="damage-reason-column"></colgroup>' +
+        '<thead><tr><th scope="col">DATE</th><th scope="col">MODEL</th><th scope="col">PART NAME</th><th scope="col">REASON</th></tr></thead><tbody>';
+      for (i = 0; i < rows.length; i++) {
+        row = rows[i]; date = uaeDate(row.occurred_at).split(" \u00b7 ");
+        html += '<tr><td class="damage-date" title="' + escape(uaeDate(row.occurred_at)) + ' UAE" aria-label="' + escape(uaeDate(row.occurred_at)) + ' UAE">' + escape(date[0]) + '</td>' +
+          cell(row.model, "damage-model") + cell(row.part_name, "damage-part") + cell(row.reason, "damage-reason") + '</tr>';
+      }
+      if (!rows.length) html += '<tr><td colspan="4" class="damage-empty-history">' + (employee.total_damage ? 'History unavailable. Select Refresh now to retry.' : 'No damages recorded') + '</td></tr>';
+      html += '</tbody></table></div><div class="damage-history-controls tv-clear">' +
+        '<button id="damage-history-prev-' + index + '" class="tv-button damage-history-prev" type="button" data-employee="' + escape(employee.id) + '" aria-label="Previous damage records for ' + escape(employee.name) + '">Previous</button>' +
+        '<span class="damage-history-range">' + (rows.length ? (employee.offset + 1) + '\u2013' + (employee.offset + rows.length) + ' of ' + count(employee.total_damage) : '0 records') +
+        '<small>Page ' + (Math.floor(employee.offset / rowSize) + 1) + ' of ' + Math.max(1, Math.ceil(employee.total_damage / rowSize)) + '</small></span>' +
+        '<button id="damage-history-next-' + index + '" class="tv-button damage-history-next" type="button" data-employee="' + escape(employee.id) + '" aria-label="Next damage records for ' + escape(employee.name) + '">Next</button></div>' +
+        '<p class="damage-history-message" role="status"' + (employee.error || employee.loading ? '' : ' style="display:none"') + '>' + escape(employee.loading ? 'Loading history...' : employee.error || '') + '</p>';
+      return html;
+    }
+    function restoreFocus(id) {
+      var target = id && get(id), card;
+      if (target && target.disabled) {
+        card = /^damage-history-(?:prev|next)-(\d+)$/.exec(id);
+        if (card) target = get("damage-employee-" + card[1]);
+      }
+      if (target && !target.disabled && target.getClientRects().length) target.focus();
+    }
+    function renderCard(employee) {
+      var index, element, focused = document.activeElement && document.activeElement.id;
+      for (index = 0; index < employees.length; index++) if (employees[index] === employee) break;
+      element = get("damage-employee-" + index);
+      if (!element) return;
+      element.innerHTML = cardMarkup(employee, index); controls(); restoreFocus(focused);
     }
     function render(data) {
-      var technicians = data.technicians || [], rows = data.rows || [], html = "", i, row;
-      text("damage-today", count(data.today_count)); text("damage-month", count(data.month_count)); text("damage-total", total);
-      for (i = 0; i < technicians.length; i++) {
-        html += '<span class="damage-technician"><span>' + escape(technicians[i].damaged_by || "Not recorded") + '</span><strong>' + count(technicians[i].count) + '</strong></span>';
+      var html = '', i, focused = document.activeElement && document.activeElement.id;
+      text("damage-today", count(data.today_count)); text("damage-month", count(data.month_count)); text("damage-total", count(data.total_count));
+      for (i = 0; i < employees.length; i++) {
+        html += '<div class="damage-employee-cell"><article id="damage-employee-' + i + '" class="damage-employee" tabindex="0" aria-label="' + escape(employees[i].name) + ' damage card">' + cardMarkup(employees[i], i) + '</article></div>';
       }
-      get("damage-technicians").innerHTML = html || '<p class="damage-empty-month">No manual damage incidents this month.</p>';
-      html = "";
-      for (i = 0; i < rows.length; i++) {
-        row = rows[i];
-        html += '<div class="damage-incident-cell"><article class="damage-incident" tabindex="0" aria-label="Incident ' + (offset + i + 1) + '">' +
-          '<p class="damage-incident-date">' + escape(uaeDate(row.occurred_at)) + ' UAE</p>' +
-          '<p class="damage-person-label">Damaged by</p><h3>' + escape(row.damaged_by || "Not recorded") + '</h3><dl>' +
-          field("Model", row.model) + field("IMEI / Serial number", row.identifier, "damage-identifier") +
-          field("Damage", row.damage) + field("Reason", row.reason) + '</dl>' +
-          '<p class="damage-reporter"><span>Reported by</span> ' + escape(row.reported_by || "Not recorded") +
-          '<small>Recorded ' + escape(uaeDate(row.created_at)) + ' UAE</small></p></article></div>';
-      }
-      get("damage-incidents").innerHTML = html || '<p class="tv-empty">No manual damage incidents have been reported. Use Manual Entry to record an incident.</p>';
-      text("damage-range", rows.length ? (offset + 1) + "\u2013" + (offset + rows.length) + " of " + total + " incidents" : "0 incidents");
-      controls();
+      get("damage-employees").innerHTML = html || '<p class="tv-empty">No active employees are available.</p>';
+      text("damage-range", employees.length ? (offset + 1) + "\u2013" + (offset + employees.length) + " of " + total + " employees" : "0 employees");
+      controls(); restoreFocus(focused);
     }
-    function refresh(nextOffset) {
-      if (!active || loading) return;
+    function refresh(nextOffset, rosterRetried) {
+      if (!active || loading || pendingHistory()) return;
       var requested = typeof nextOffset === "number" ? Math.max(0, nextOffset) : offset;
+      var changingPage = requested !== offset, ticket = generation, request = ++rosterRequest;
       loading = true; controls();
-      var ticket = generation;
-      api.loadDamages(requested, pageSize, function (error, data) {
-        if (ticket !== generation || !active) return;
-        loading = false;
+      function current() { return ticket === generation && request === rosterRequest && active; }
+      function fail(error) {
+        if (!current()) return;
+        loading = false; controls();
+        if (expired(error)) { showLogin(error.message || "Please sign in again."); username.focus(); }
+        else message("tv-board-message", (error.message || "The report could not be refreshed.") + " Last shown figures have not been updated. Select Refresh now to retry.");
+      }
+      api.loadDamageCards(requested, pageSize, rowSize, function (error, data) {
+        if (!current()) return;
+        if (error) { fail(error); return; }
+        var employeeTotal = count(data.employee_count), nextEmployees = [], remaining = 0, stale = false, rosterChanged = false, finished = false, i, previous, incoming, state;
+        if (requested > 0 && requested >= employeeTotal) {
+          loading = false;
+          refresh(employeeTotal ? Math.floor((employeeTotal - 1) / pageSize) * pageSize : 0, rosterRetried);
+          return;
+        }
+        for (i = 0; i < data.employees.length; i++) {
+          incoming = data.employees[i]; previous = changingPage ? null : findEmployee(incoming.id);
+          state = { id: incoming.id, name: incoming.name, total_damage: count(incoming.total_damage), rows: incoming.rows, has_more: incoming.has_more, offset: 0, loading: false, request: 0, error: '' };
+          // Re-fetch selected history pages: never show the first six rows under
+          // a page-two label when the 30-second roster refresh arrives.
+          if (previous && previous.offset) {
+            state.offset = Math.min(previous.offset, Math.max(0, Math.floor((state.total_damage - 1) / rowSize) * rowSize));
+            if (state.offset) remaining++;
+          }
+          nextEmployees.push(state);
+        }
+        function finish() {
+          if (!current() || remaining || finished) return;
+          finished = true; loading = false;
+          if (rosterChanged && !rosterRetried) { refresh(requested, true); return; }
+          employees = nextEmployees; offset = requested; total = employeeTotal; hasMore = !!data.has_more;
+          render(data); text("tv-last-updated", stamp());
+          message("tv-board-message", rosterChanged ? "The employee roster changed. Select Refresh now to reload it." : stale ? "Some employee histories could not be refreshed. Their previous rows remain visible." : "");
+        }
+        function updateHistory(employee) {
+          api.loadEmployeeDamageRows(employee.id, employee.offset, rowSize, function (rowError, history) {
+            if (!current()) return;
+            if (rowError && expired(rowError)) { fail(rowError); return; }
+            if (rowError) {
+              if (inactiveEmployee(rowError)) {
+                rosterChanged = true;
+                for (var j = nextEmployees.length - 1; j >= 0; j--) if (nextEmployees[j] === employee) nextEmployees.splice(j, 1);
+              } else {
+                var old = findEmployee(employee.id);
+                if (old) { employee.rows = old.rows; employee.offset = old.offset; employee.has_more = old.has_more; }
+                employee.error = "History not updated. Select Refresh now to retry."; stale = true;
+              }
+            } else {
+              employee.rows = history.rows; employee.total_damage = count(history.total_damage); employee.has_more = !!history.has_more;
+              // An incident can disappear between the summary and history calls.
+              // Move to the last remaining page, keeping rows and page labels aligned.
+              if (!employee.rows.length && employee.offset && employee.offset >= employee.total_damage) {
+                employee.offset = Math.max(0, Math.floor((employee.total_damage - 1) / rowSize) * rowSize);
+                updateHistory(employee); return;
+              }
+            }
+            remaining--; finish();
+          });
+        }
+        // Populate the whole list before callbacks, including synchronous APIs.
+        var details = nextEmployees.slice(0);
+        for (i = 0; i < details.length; i++) if (details[i].offset) updateHistory(details[i]);
+        finish();
+      });
+    }
+    function historyPage(id, direction) {
+      var employee = findEmployee(id);
+      if (!active || loading || !employee || employee.loading) return;
+      var requested = Math.max(0, employee.offset + direction * rowSize);
+      if (requested === employee.offset || direction > 0 && !employee.has_more) return;
+      setAuto(false); employee.loading = true; employee.error = '';
+      var ticket = generation, roster = rosterRequest, request = ++employee.request;
+      controls();
+      api.loadEmployeeDamageRows(id, requested, rowSize, function (error, data) {
+        if (!active || ticket !== generation || roster !== rosterRequest || findEmployee(id) !== employee || request !== employee.request) return;
+        employee.loading = false;
         if (error) {
-          controls();
-          if (expired(error)) { showLogin(error.message || "Please sign in again."); username.focus(); }
-          else message("tv-board-message", (error.message || "The report could not be refreshed.") + " Last shown figures have not been updated. Select Refresh now to retry.");
-          return;
+          if (expired(error)) { showLogin(error.message || "Please sign in again."); username.focus(); return; }
+          if (inactiveEmployee(error)) {
+            employee.rows = []; employee.error = "Employee roster changed. Refreshing..."; renderCard(employee); refresh(); return;
+          }
+          employee.error = (error.message || "History could not be loaded.") + " Select Next or Previous to retry.";
+          renderCard(employee); return;
         }
-        total = count(data.total_count);
-        // A page can disappear if records change while the report is open.
-        if (requested > 0 && requested >= total) {
-          refresh(total ? Math.floor((total - 1) / pageSize) * pageSize : 0);
-          return;
+        employee.total_damage = count(data.total_damage); employee.rows = data.rows; employee.has_more = !!data.has_more; employee.offset = requested;
+        if (!employee.rows.length && requested >= employee.total_damage) {
+          employee.offset = 0; refresh(); return;
         }
-        var focused = document.activeElement, cardIndex = -1, cards = get("damage-incidents").getElementsByTagName("article"), i;
-        for (i = 0; i < cards.length; i++) if (cards[i] === focused) cardIndex = i;
-        offset = requested; hasMore = !!data.has_more;
-        render(data); message("tv-board-message", ""); text("tv-last-updated", stamp());
-        cards = get("damage-incidents").getElementsByTagName("article");
-        if (cardIndex >= 0 && cards.length) cards[Math.min(cardIndex, cards.length - 1)].focus();
+        renderCard(employee);
       });
     }
     function openBoard() {
@@ -136,7 +249,7 @@
       get("tv-theme-toggle").setAttribute("aria-pressed", theme === "dark" ? "true" : "false");
       try { window.localStorage.setItem("greenloop-tv-theme", theme); } catch (ignore) {}
     }
-    if (!api || typeof api.loadDamages !== "function") {
+    if (!api || typeof api.loadDamageCards !== "function" || typeof api.loadEmployeeDamageRows !== "function") {
       message("tv-login-message", "This page did not finish loading. Reload the page and check the TV internet connection.");
       submit.disabled = true; return;
     }
@@ -162,6 +275,13 @@
         openBoard();
       });
       return false;
+    };
+    get("damage-employees").onclick = function (event) {
+      var target = (event || window.event).target || (event || window.event).srcElement;
+      while (target && target !== this && target.tagName !== "BUTTON") target = target.parentNode;
+      if (!target || target === this || target.disabled) return;
+      var employeeId = target.getAttribute("data-employee");
+      if (employeeId) historyPage(employeeId, target.className.indexOf("damage-history-prev") >= 0 ? -1 : 1);
     };
     get("tv-refresh").onclick = function () { refresh(); };
     get("damage-prev").onclick = function () { setAuto(false); refresh(Math.max(0, offset - pageSize)); };

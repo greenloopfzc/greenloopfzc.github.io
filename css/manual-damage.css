@@ -58,3 +58,36 @@ html[data-design="neumorphism"] .manual-damage-field :is(input,textarea) {backgr
 html[data-design="neumorphism"] .manual-damage-report {background:var(--nm-card);}
 @media (max-width:760px) {.lab-board-navigation {gap:8px;}.lab-board-navigation a {gap:8px;padding:12px;font-size:.78rem;}.lab-board-navigation a small {font-size:.64rem;}.lab-board-navigation-icon {font-size:1.1rem;}.manual-damage-heading {align-items:flex-start;}.manual-damage-panel {padding:20px;}.manual-damage-panel-heading {align-items:flex-start;}.manual-damage-required-note {max-width:130px;text-align:right;}}
 @media (max-width:590px) {.lab-board-navigation {grid-template-columns:1fr;gap:8px;}.lab-board-navigation a {min-height:54px;gap:13px;font-size:.85rem;}.lab-board-navigation a small {display:inline;margin-left:10px;}.manual-damage-heading {flex-direction:column;}.manual-damage-form-grid,.manual-damage-report dl {grid-template-columns:1fr;}.manual-damage-panel {padding:18px;}.manual-damage-form-footer {align-items:stretch;flex-direction:column;gap:14px;}.manual-damage-form-footer .primary-button {width:100%;}.manual-damage-report-heading {flex-direction:column;}.manual-damage-pagination {align-items:flex-start;flex-direction:column;}.manual-damage-pagination > div {width:100%;}.manual-damage-pagination button {flex:1;}.manual-damage-report {padding:15px;}}
+
+/* Shared choice controls keep long model/reason labels inside the form. */
+.manual-damage-choice {display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:8px;min-width:0;}
+.manual-damage-field select {display:block;width:100%;min-width:0;max-width:100%;min-height:46px;padding:12px 32px 12px 13px;border:1px solid var(--line);border-radius:12px;background-color:var(--surface);color:var(--ink);font:400 .86rem/1.45 "DM Sans",Arial,sans-serif;text-overflow:ellipsis;}
+.manual-damage-field select:focus-visible,.manual-damage-option-button:focus-visible {outline:2px solid var(--green-700);outline-offset:3px;}
+.manual-damage-field select:disabled {opacity:.7;cursor:not-allowed;}
+.manual-damage-option-button {display:inline-flex;align-items:center;justify-content:center;gap:3px;min-height:42px;padding:9px 11px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);font:700 .74rem/1.2 "DM Sans",Arial,sans-serif;cursor:pointer;}
+.manual-damage-option-button span {font-size:1rem;}
+.manual-damage-option-button:hover:not(:disabled) {border-color:var(--green-700);}
+.manual-damage-option-button.is-delete {color:var(--danger);}
+.manual-damage-catalog-status {display:flex;align-items:center;justify-content:space-between;gap:16px;margin:-2px 0 20px;min-width:0;}
+.manual-damage-catalog-status p {margin:0;color:var(--muted);font-size:.76rem;line-height:1.6;overflow-wrap:anywhere;}
+.manual-damage-catalog-status button {flex-shrink:0;}
+.manual-damage-pending {display:flex;align-items:center;justify-content:space-between;gap:18px;margin-top:16px;padding:16px;border:1px solid var(--line);border-radius:14px;background:var(--canvas);}
+.manual-damage-pending[hidden] {display:none;}
+.manual-damage-pending p {margin:0;font-size:.8rem;line-height:1.6;overflow-wrap:anywhere;min-width:0;}
+.manual-damage-pending button {flex-shrink:0;}
+.manual-damage-dialog {box-sizing:border-box;width:calc(100% - 32px);max-width:520px;max-height:calc(100dvh - 32px);margin:auto;padding:26px;border:1px solid var(--line);border-radius:22px;background:var(--surface);color:var(--ink);overflow:auto;box-shadow:0 20px 80px #0004;}
+.manual-damage-dialog::backdrop {background:#102b2470;backdrop-filter:blur(4px);}
+.manual-damage-dialog h2 {margin:0;font-family:"Manrope",Arial,sans-serif;font-size:1.2rem;}
+.manual-damage-dialog > form > p:not(.manual-damage-message) {margin:12px 0 22px;font-size:.85rem;line-height:1.65;color:var(--muted);overflow-wrap:anywhere;}
+.manual-damage-dialog .manual-damage-field[hidden] {display:none;}
+.manual-damage-dialog-actions {display:flex;justify-content:flex-end;gap:10px;margin-top:24px;}
+.manual-damage-dialog-actions .primary-button {width:auto;min-width:100px;margin:0;}
+.manual-damage-dialog-actions .primary-button.is-delete {background:var(--danger);color:#fff;}
+html[data-design="neumorphism"] .manual-damage-page .manual-damage-field select {background:var(--nm-raised);box-shadow:var(--nm-shadow-sm);border-color:transparent;}
+html[data-design="neumorphism"] .manual-damage-option-button {background:var(--nm-raised);box-shadow:var(--nm-shadow-sm);border-color:transparent;}
+html[data-design="neumorphism"] .manual-damage-option-button:active:not(:disabled) {box-shadow:var(--nm-inset);}
+html[data-design="neumorphism"] .manual-damage-dialog {background:var(--nm-raised);border-color:var(--nm-line);box-shadow:var(--nm-shadow);}
+html[data-mode="dark"] .manual-damage-dialog::backdrop {background:#020b0ca8;}
+@media (max-width:1050px) and (min-width:591px) {.manual-damage-choice {grid-template-columns:minmax(0,1fr) auto;}.manual-damage-choice select {grid-column:1 / -1;}.manual-damage-option-button {justify-self:start;}.manual-damage-option-button.is-delete {justify-self:end;}}
+@media (max-width:590px) {.manual-damage-catalog-status {align-items:flex-start;flex-direction:column;gap:10px;}.manual-damage-pending {align-items:stretch;flex-direction:column;}.manual-damage-choice {gap:6px;}.manual-damage-option-button {padding:9px 8px;font-size:.7rem;}.manual-damage-field select {padding-left:10px;font-size:.8rem;}.manual-damage-dialog {padding:22px;}.manual-damage-panel-heading {flex-wrap:wrap;}.manual-damage-required-note {max-width:none;text-align:left;}}
+@media (max-width:360px) {.manual-damage-choice {grid-template-columns:minmax(0,1fr) auto;}.manual-damage-choice select {grid-column:1 / -1;}.manual-damage-option-button {justify-self:start;}.manual-damage-option-button.is-delete {justify-self:end;}}
