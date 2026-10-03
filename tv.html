@@ -4,34 +4,40 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#eaf0f4">
-  <meta name="description" content="Sign in to Greenloop's workshop TV display and view the live Lab and Glass board.">
-  <title>Workshop TV | Greenloop</title>
+  <meta name="description" content="Greenloop Lab Live Board: manual damage incidents, monthly technician counts and the latest reports.">
+  <title>Damage Report | Greenloop Lab Live Board</title>
   <link rel="stylesheet" href="css/tv.css?v=20261003-tv-browser-1">
+  <link rel="stylesheet" href="css/damage-tv.css?v=20261003-manual-damage-1">
   <script>window.GREENLOOP_TV_CONFIG = {"supabaseUrl":"https://prypklagfznpdlleldll.supabase.co","supabaseAnonKey":"sb_publishable_hMIRbfKmh4vhGvEgVcPjow_F21WmwXt"};</script>
-  <script defer src="js/tv-api.js?v=20261003-tv-browser-1"></script>
-  <script defer src="js/tv-render.js?v=20261003-tv-browser-1"></script>
-  <script defer src="js/tv.js?v=20261003-tv-browser-1"></script>
+  <script defer src="js/tv-api.js?v=20261003-manual-damage-1"></script>
+  <script defer src="js/damage-tv.js?v=20261003-manual-damage-1"></script>
 </head>
-<body class="tv-page">
+<body class="tv-page damage-tv-page">
   <div class="tv-wrap">
     <header class="tv-masthead tv-clear">
-      <a class="tv-brand" href="tv.html" aria-label="Greenloop workshop TV home">
+      <a class="tv-brand" href="lab-live-board.html" aria-label="Greenloop Lab Live Board home">
         <img class="tv-logo" src="assets/looplogo.jpg" width="76" height="76" alt="">
-        <span class="tv-brand-copy"><span class="tv-wordmark">greenloop</span><span class="tv-brand-caption">WORKSHOP DISPLAY</span></span>
+        <span class="tv-brand-copy"><span class="tv-wordmark">greenloop</span><span class="tv-brand-caption">LAB LIVE BOARD</span></span>
       </a>
       <button id="tv-theme-toggle" class="tv-button tv-theme-button" type="button" aria-pressed="false">Dark mode</button>
     </header>
+    <nav class="damage-board-nav" aria-label="Lab Live Board">
+      <a class="damage-board-back" href="lab-live-board.html">&larr; Lab Live Board</a>
+      <a class="tv-button" href="live-tv.html">Live TV</a>
+      <a class="tv-button damage-nav-active" href="tv.html" aria-current="page">Damage Report</a>
+      <a class="tv-button" href="damage-entry.html">Manual Entry</a>
+    </nav>
 
     <main>
       <section id="tv-login" class="tv-login tv-clear" aria-labelledby="tv-login-title">
         <div class="tv-login-intro">
-          <p class="tv-eyebrow">LAB &amp; GLASS</p>
-          <h1 id="tv-login-title">Your workshop.<br>One clear view.</h1>
-          <p class="tv-intro-text">Keep technician workloads, repairs and quality in view throughout the day.</p>
+          <p class="tv-eyebrow">LAB LIVE BOARD / DAMAGE REPORT</p>
+          <h1 id="tv-login-title">Damage reports.<br>A clear record.</h1>
+          <p class="tv-intro-text">Keep manually reported damage, reasons and technician counts in view throughout the day.</p>
           <div class="tv-login-features">
-            <p><span>01</span> Live technician status</p>
-            <p><span>02</span> Daily and monthly completion</p>
-            <p><span>03</span> Quality and overdue alerts</p>
+            <p><span>01</span> Today, this month and total incidents</p>
+            <p><span>02</span> Monthly counts by technician</p>
+            <p><span>03</span> Every manually reported incident</p>
           </div>
           <p class="tv-company">Greenloop FZC &middot; Operations system</p>
         </div>
@@ -54,7 +60,7 @@
             </div>
             <label class="tv-check" for="tv-remember"><input id="tv-remember" type="checkbox" checked> <span>Keep me signed in on this device</span></label>
             <p id="tv-login-message" class="tv-message" role="status" aria-live="polite"></p>
-            <button id="tv-sign-in" class="tv-button tv-primary tv-sign-in" type="submit">Sign in to live board</button>
+            <button id="tv-sign-in" class="tv-button tv-primary tv-sign-in" type="submit">Sign in to damage report</button>
           </form>
           <p id="tv-login-help" class="tv-login-help">Use the remote to select a field, then enter your details with the TV keyboard. For account or password help, contact your administrator.</p>
           <a class="tv-standard-link" href="index.html?tv=0">Open the standard sign-in page</a>
@@ -63,13 +69,15 @@
 
       <section id="tv-board" class="tv-board" style="display:none" aria-labelledby="tv-board-title">
         <div class="tv-board-heading tv-clear">
-          <div class="tv-heading-copy"><p class="tv-eyebrow">LAB &amp; GLASS PERFORMANCE</p><h1 id="tv-board-title">Lab Live Board</h1></div>
+          <div class="tv-heading-copy"><p class="tv-eyebrow">LAB LIVE BOARD / MANUAL INCIDENTS</p><h1 id="tv-board-title">Damage Report</h1></div>
           <div class="tv-update-status"><span class="tv-live-label"><i></i>Refresh every 30 sec</span><span id="tv-last-updated">Waiting for the first update</span></div>
         </div>
         <div class="tv-toolbar tv-clear" aria-label="Board controls">
-          <div class="tv-view-buttons" role="group" aria-label="Board view">
-            <button id="tv-full-view" class="tv-button" type="button" aria-pressed="true">Full board</button>
-            <button id="tv-auto-toggle" class="tv-button" type="button" aria-pressed="false">Technician auto view &middot; 5 sec</button>
+          <div class="tv-view-buttons" role="group" aria-label="Incident pages">
+            <button id="damage-prev" class="tv-button" type="button" disabled>Previous</button>
+            <span id="damage-page" class="damage-page-number" aria-live="polite">Page 1</span>
+            <button id="damage-next" class="tv-button" type="button" disabled>Next</button>
+            <button id="tv-auto-toggle" class="tv-button" type="button" aria-pressed="false">Auto pages: off</button>
           </div>
           <div class="tv-action-buttons">
             <button id="tv-refresh" class="tv-button" type="button">Refresh now</button>
@@ -79,21 +87,24 @@
         </div>
         <p id="tv-board-message" class="tv-message tv-board-message" role="status" aria-live="polite"></p>
 
-        <section class="tv-summary" aria-label="Laboratory work summary">
-          <div class="tv-summary-cell"><article class="tv-summary-card"><span>Active technicians</span><strong id="tv-summary-technicians">0</strong><small>Lab &amp; Glass roster</small></article></div>
-          <div class="tv-summary-cell"><article class="tv-summary-card"><span>Phones pending</span><strong id="tv-summary-pending">0</strong><small>Assigned work in queue</small></article></div>
-          <div class="tv-summary-cell"><article class="tv-summary-card"><span>Working now</span><strong id="tv-summary-working">0</strong><small>Active repair sessions</small></article></div>
-          <div class="tv-summary-cell"><article class="tv-summary-card"><span>Completed today</span><strong id="tv-summary-completed">0</strong><small>Lab &amp; Glass completions</small></article></div>
-          <div class="tv-summary-cell"><article class="tv-summary-card tv-summary-alert"><span>Overdue phones</span><strong id="tv-summary-overdue">0</strong><small>Pending over 2 days</small></article></div>
-          <div class="tv-summary-cell"><article class="tv-summary-card"><span>Completed month</span><strong id="tv-summary-month">0</strong><small>This month's completions</small></article></div>
+        <section class="tv-summary damage-summary" aria-label="Manual damage incident totals">
+          <div class="tv-summary-cell"><article class="tv-summary-card"><span>Today</span><strong id="damage-today">0</strong><small>Manual incidents &middot; UAE day</small></article></div>
+          <div class="tv-summary-cell"><article class="tv-summary-card"><span>This month</span><strong id="damage-month">0</strong><small>Manual incidents &middot; UAE month</small></article></div>
+          <div class="tv-summary-cell"><article class="tv-summary-card"><span>Total</span><strong id="damage-total">0</strong><small>All manually reported incidents</small></article></div>
         </section>
 
-        <div class="tv-section-heading tv-clear"><h2 id="tv-technician-name">Workshop performance at a glance</h2><span id="tv-board-count">0 technicians</span></div>
-        <div id="tv-technicians" class="tv-technicians tv-clear" aria-live="polite"><p class="tv-empty">The live board will appear here after the first update.</p></div>
-        <div class="tv-score-help"><button id="tv-score-help-toggle" class="tv-text-button" type="button" aria-expanded="false" aria-controls="tv-score-help-content">How performance is calculated</button><div id="tv-score-help-content" style="display:none"><p>Higher is better. 80 points come from this month's completed repairs and quality: completed / (completed + 2 &times; QC returns + 3 &times; technician damage incidents). The other 20 points come from the share of the current pending queue within 2 days. An empty queue earns these 20 points only when there are completed repairs this month.</p><p>No monthly repairs or quality records: N/A. Quality incidents with no completed repairs: 0%. This is a workload indicator based on recorded QC returns and damaged-part incidents, not a customer-return rate. Repair difficulty and reasons for delays are not recorded in this score. Compare the counts alongside the percentage.</p></div></div>
+        <section class="damage-monthly" aria-labelledby="damage-monthly-title">
+          <div class="tv-section-heading tv-clear"><h2 id="damage-monthly-title">Technician counts this month</h2></div>
+          <div id="damage-technicians" class="damage-technicians" aria-live="polite"></div>
+        </section>
+        <section aria-labelledby="damage-incidents-title">
+          <div class="tv-section-heading tv-clear"><h2 id="damage-incidents-title">Reported incidents</h2><span id="damage-range" class="damage-range">Waiting for records</span></div>
+          <p class="damage-view-help">Latest incident first &middot; All dates in UAE time &middot; Use the remote arrows to move through cards and controls.</p>
+          <div id="damage-incidents" class="damage-incidents tv-clear" aria-live="polite"></div>
+        </section>
       </section>
     </main>
-    <noscript><p class="tv-noscript">JavaScript is turned off. Enable JavaScript in the TV browser to sign in and load the live board.</p></noscript>
+    <noscript><p class="tv-noscript">JavaScript is turned off. Enable JavaScript in the TV browser to sign in and load the damage report.</p></noscript>
   </div>
 </body>
 </html>

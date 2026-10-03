@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en" data-global-imei-search="off">
+  <head>
+    <meta charset="utf-8">
+    <script src="js/appearance.js?v=20260928-sidebar-depth-1"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0d5c43">
+    <meta name="description" content="Manually record workshop damage, including phones with unreadable identifiers.">
+    <title>Manual Damage Entry | Greenloop</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/appearance.css?v=20260928-sidebar-depth-1">
+    <link rel="stylesheet" href="css/manual-damage.css?v=20261003-manual-damage-1">
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="js/config.js?v=20261003-manual-damage-1"></script>
+    <script defer src="js/manual-damage.js?v=20261003-manual-damage-1"></script>
+  </head>
+  <body class="app-page manual-damage-page">
+    <div class="app-shell">
+      <aside id="sidebar" class="sidebar" aria-label="Main navigation">
+        <div class="sidebar-top"><a class="app-brand" href="dashboard.html"><img class="brand-image" src="assets/looplogo.jpg" alt=""><span>greenloop</span></a><button id="close-menu" class="icon-button close-menu" type="button" aria-label="Close menu">×</button></div>
+        <nav class="sidebar-nav"></nav>
+        <div class="sidebar-user"><span class="user-avatar">GL</span><span><strong>Greenloop</strong><small>Damage reporting</small></span></div>
+      </aside>
+      <div id="menu-backdrop" class="menu-backdrop" hidden></div>
+      <main class="app-main">
+        <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Dashboard</a><span>/</span><a href="lab-live-board.html">Lab Live Board</a><span>/</span><strong>Manual Entry</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
+        <div class="page-content manual-damage-content">
+          <nav class="lab-board-navigation" aria-label="Lab Live Board views">
+            <a href="lab-live-board.html"><span class="lab-board-navigation-icon" aria-hidden="true">▦</span><span>Live TV<small>Workshop performance</small></span></a>
+            <a href="tv.html"><span class="lab-board-navigation-icon" aria-hidden="true">▤</span><span>Damage Report<small>Reported damage</small></span></a>
+            <a href="damage-entry.html" aria-current="page"><span class="lab-board-navigation-icon" aria-hidden="true">＋</span><span>Manual Entry<small>Record an incident</small></span></a>
+          </nav>
+          <section class="page-heading manual-damage-heading"><div><p class="eyebrow dashboard-eyebrow">LAB LIVE BOARD</p><h1>Manual damage entry</h1><p class="heading-subtitle">Record who damaged the phone, what happened, and why.</p></div><a class="quiet-link" href="lab-live-board.html">← Back to Live TV</a></section>
+          <p id="permission-message" class="access-message" role="status" hidden></p>
+          <div id="manual-damage-app" hidden>
+            <section class="manual-damage-panel" aria-labelledby="manual-damage-form-title">
+              <div class="manual-damage-panel-heading"><div><p class="panel-kicker">NEW INCIDENT</p><h2 id="manual-damage-form-title">Damage details</h2></div><span class="manual-damage-required-note">All fields required except identifier</span></div>
+              <p id="manual-damage-view-only" class="manual-damage-access-note" hidden>View-only access. You can read recent reports below. Ask an administrator for Entry Allowed access to Lab Live Board to record damage.</p>
+              <form id="manual-damage-form">
+                <fieldset id="manual-damage-fields" disabled>
+                  <legend class="sr-only">Damage details</legend>
+                  <div class="manual-damage-form-grid">
+                    <div class="manual-damage-field"><label for="damage-person">Damaged by</label><input id="damage-person" name="damaged_by" type="text" maxlength="120" autocomplete="off" placeholder="Person’s name" required></div>
+                    <div class="manual-damage-field"><label for="damage-model">Phone model</label><input id="damage-model" name="model" type="text" maxlength="160" autocomplete="off" placeholder="e.g. iPhone 14 Pro" required></div>
+                    <div class="manual-damage-field"><label for="damage-identifier">IMEI / serial / device number <span>(optional)</span></label><input id="damage-identifier" name="identifier" type="text" maxlength="120" autocomplete="off" aria-describedby="damage-identifier-help" placeholder="Enter any available identifier"><small id="damage-identifier-help">Leave blank if the phone is dead or the identifier cannot be read.</small></div>
+                    <div class="manual-damage-field"><label for="damage-occurred-at">When did it happen?</label><input id="damage-occurred-at" name="occurred_at" type="datetime-local" step="60" aria-describedby="damage-time-help" required><small id="damage-time-help">UAE time (UTC+4).</small></div>
+                    <div class="manual-damage-field"><label for="damage-description">Damage description</label><textarea id="damage-description" name="damage" rows="3" maxlength="300" placeholder="Describe the damage to the phone" required></textarea></div>
+                    <div class="manual-damage-field"><label for="damage-reason">Reason / what happened</label><textarea id="damage-reason" name="reason" rows="3" maxlength="2000" placeholder="Explain how or why the damage happened" required></textarea></div>
+                  </div>
+                  <div class="manual-damage-form-footer"><p>Your account and the reporting time are recorded automatically.</p><button id="save-manual-damage" class="primary-button" type="submit">Save damage report</button></div>
+                </fieldset>
+                <p id="manual-damage-message" class="manual-damage-message" role="status" aria-live="polite" hidden></p>
+              </form>
+            </section>
+            <section class="manual-damage-panel manual-damage-history" aria-labelledby="manual-damage-history-title">
+              <div class="manual-damage-panel-heading"><div><p class="panel-kicker">MANUAL REPORTS</p><h2 id="manual-damage-history-title">Recent reports</h2><p>Incident and reporting times shown in UAE time.</p></div><button id="refresh-manual-damage" class="secondary-button" type="button">Refresh</button></div>
+              <p id="manual-damage-history-message" class="manual-damage-message" role="status" aria-live="polite" hidden></p>
+              <div id="manual-damage-recent" class="manual-damage-recent" aria-busy="true"><p class="manual-damage-empty">Loading recent reports…</p></div>
+              <div class="manual-damage-pagination"><span id="manual-damage-page-label" role="status" aria-live="polite">Loading…</span><div><button id="manual-damage-previous" class="secondary-button" type="button" disabled>Previous</button><button id="manual-damage-next" class="secondary-button" type="button" disabled>Next</button></div></div>
+            </section>
+          </div>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>
