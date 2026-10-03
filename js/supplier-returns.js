@@ -14,7 +14,7 @@
   async function rpc(name, args = {}) {
     await window.GREENLOOP_ACCESS_READY;
     const { data, error } = await window.GREENLOOP_GET_CLIENT().rpc(name, args);
-    if (error) throw new Error(error.code === "PGRST202" ? "Install the Supplier Returns database update first." : error.message || "The request could not be completed.");
+    if (error) throw Object.assign(new Error(error.code === "PGRST202" ? "Install the Supplier Returns database update first." : error.message || "The request could not be completed."), { code: error.code });
     return data;
   }
   async function getContext() { return context = await rpc("get_supplier_return_context"); }
@@ -201,7 +201,15 @@
     function addImei() {
       const value = get("imei").value.trim();
       if (!/^\d{15}$/.test(value)) { scanNotice("Enter a complete 15-digit IMEI.",true); return false; }
-      if (scanned.includes(value)) { get("imei").value = ""; scanNotice("This IMEI has already been added.",true); return false; }
+      if (scanned.includes(value)) {
+        get("imei").value = ""; scanNotice("This IMEI has already been added.",true);
+        const generation = simpleGeneration, receiptId = selectedBatch;
+        window.GREENLOOP_IMEI_STAGE_NOTICE?.show({
+          imei: value, title: "Duplicate phone", message: "This IMEI has already been added to this Stock Return.", onlyIfFound: false,
+          isCurrent: () => form.isConnected && simpleGeneration === generation && selectedBatch === receiptId && scanned.includes(value)
+        });
+        return false;
+      }
       if (scanned.length >= 1000) { scanNotice("A return can contain up to 1000 phones.",true); return false; }
       scanned.push(value); get("imei").value = ""; showScanned(); scanNotice(scanned.length + " IMEI(s) added.");
       return true;
@@ -272,7 +280,17 @@
         const nextForm = host.querySelector("form");
         if (nextForm === form) { get("supplier").value = selectedSupplier; updateSupplier(selectedReceipt); }
         document.dispatchEvent(new CustomEvent("greenloop:supplier-return-changed",{detail:result}));
-      } catch(e) { simpleMessage(e.message + " If the connection was interrupted, retry the same details to check the saved result.",true); }
+      } catch(e) {
+        simpleMessage(e.message + " If the connection was interrupted, retry the same details to check the saved result.",true);
+        const rejectedImei = String(e.message || "").match(/\bIMEI\s+(\d{15})\b/i)?.[1];
+        if (["22023", "55000", "23505"].includes(e.code) && rejectedImei && payload.imeis.includes(rejectedImei)) {
+          const generation = simpleGeneration;
+          window.GREENLOOP_IMEI_STAGE_NOTICE?.show({
+            imei: rejectedImei, title: "Phone unavailable here", message: e.message, onlyIfFound: true,
+            isCurrent: () => form.isConnected && simpleGeneration === generation && selectedBatch === payload.batch_id && scanned.includes(rejectedImei)
+          });
+        }
+      }
       finally {
         modalBusy = false;
         controls.forEach(([el,disabled]) => { if (el.isConnected) el.disabled = disabled; });

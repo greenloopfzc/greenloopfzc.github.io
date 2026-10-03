@@ -147,7 +147,7 @@
     rowSequence += 1;
     const rowId = `final-qc-row-${rowSequence}`;
     return `<tr data-row-id="${rowId}">
-      <td class="final-imei-cell"><input class="final-row-imei" inputmode="numeric" autocomplete="off" maxlength="15" placeholder="Scan IMEI"><small data-row-state>Line ${rowSequence} - Waiting</small></td>
+      <td class="final-imei-cell"><input class="final-row-imei" inputmode="numeric" autocomplete="off" maxlength="15" placeholder="Scan IMEI"><small data-row-state aria-live="polite" hidden></small></td>
       <td class="final-auto-cell" data-auto="model">-</td>
       <td class="final-auto-cell" data-auto="storage">-</td>
       <td class="final-auto-cell" data-auto="color">-</td>
@@ -181,6 +181,7 @@
     const element = row.querySelector("[data-row-state]");
     element.textContent = text;
     element.className = state;
+    element.hidden = !text;
   }
 
   function clearRowData(row) {
@@ -195,7 +196,7 @@
     rowSteps.delete(row.dataset.rowId);
     row.querySelector("[data-battery-unavailable]").checked = false;
     syncBatteryAvailability(row);
-    setRowState(row, `Line ${[...tableBody.rows].indexOf(row) + 1} - Waiting`);
+    setRowState(row, "");
   }
 
   function focusNextScan(row) {
@@ -297,6 +298,7 @@
     if (duplicate) {
       row.classList.add("is-error");
       setRowState(row, "Duplicate IMEI in this tray", "is-error");
+      void window.GREENLOOP_IMEI_STAGE_NOTICE?.show({ imei, message: "This IMEI is already in this QC tray.", isCurrent: () => row.isConnected && input.value.trim() === imei });
       input.focus();
       return;
     }
@@ -315,6 +317,7 @@
     if (!step) {
       row.classList.add("is-error");
       setRowState(row, "Not waiting in Final QC", "is-error");
+      void window.GREENLOOP_IMEI_STAGE_NOTICE?.show({ imei, title: "Phone unavailable here", message: "This phone is not waiting in Final QC (QC 2).", onlyIfFound: true, isCurrent });
       input.focus();
       return;
     }
@@ -338,7 +341,7 @@
     row.querySelector('[data-auto="initial-grade"]').textContent = device.gc_grade || "-";
     row.classList.remove("is-error");
     row.classList.add("is-loaded");
-    setRowState(row, "Loaded", "is-loaded");
+    setRowState(row, "");
     } catch (error) {
       if (isCurrent()) { rowSteps.delete(row.dataset.rowId); setRowState(row, error.message || "Could not load IMEI", "is-error"); }
     } finally { if (isCurrent()) row.dataset.loading = ""; }

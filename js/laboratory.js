@@ -536,7 +536,17 @@
       p_imei: imei
     });
     if (technicianId !== activeTechnicianId) return;
-    if (error) { setBoardMessage(error.message); technicianImeiScan.select(); return; }
+    if (error) {
+      setBoardMessage(error.message);
+      technicianImeiScan.select();
+      if (/this imei is (?:not pending|assigned to)/i.test(error.message || "")) {
+        window.GREENLOOP_IMEI_STAGE_NOTICE?.show({
+          imei, title: "Phone unavailable here", message: error.message, onlyIfFound: true,
+          isCurrent: () => activeTechnicianId === technicianId && technicianImeiScan.value.trim() === imei && technicianImeiScan.isConnected
+        });
+      }
+      return;
+    }
     const row = technicianWorkRows.querySelector(`tr[data-step-id="${CSS.escape(String(data.step_id))}"]`);
     if (!row) { await loadTechnicianRows(); }
     if (technicianId !== activeTechnicianId) return;

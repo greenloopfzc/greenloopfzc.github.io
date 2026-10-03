@@ -221,7 +221,7 @@
   const bulkStateLabels = { pending: "Pending", sending: "Sending", sent: "Sent", failed: "Failed", unknown: "Not confirmed", "not-sent": "Not sent", invalid: "Invalid", duplicate: "Duplicate" };
 
   function renderBulkRows(rows) {
-    bulkRows.innerHTML = rows.map((row) => `<tr><td>${escapeHtml(row.imei.length > 80 ? row.imei.slice(0, 80) + "…" : row.imei)}</td><td><span class="ready-rework-status" data-state="${row.state}">${bulkStateLabels[row.state]}</span></td><td>${escapeHtml(row.detail)}</td></tr>`).join("");
+    bulkRows.innerHTML = rows.map((row, index) => `<tr><td>${escapeHtml(row.imei.length > 80 ? row.imei.slice(0, 80) + "…" : row.imei)}</td><td><span class="ready-rework-status" data-state="${row.state}">${bulkStateLabels[row.state]}</span></td><td>${escapeHtml(row.detail)}${["duplicate", "failed"].includes(row.state) && /^\d{15}$/.test(row.imei) ? ` <button type="button" class="secondary-button" data-view-imei-stage="${index}" data-search-read-only>View current stage</button>` : ""}</td></tr>`).join("");
   }
 
   function updateBatchProgress() {
@@ -289,7 +289,7 @@
       if (result.error) {
         // A missing response may hide a committed change. Do not automatically retry.
         if (!result.error.code || result.status >= 500) return unconfirmedResult(imei);
-        return { state: "failed", detail: reworkErrorMessage(result.error), stop: ["42501", "PGRST202", "PGRST301", "PGRST302"].includes(result.error.code) };
+        return { state: "failed", detail: reworkErrorMessage(result.error), stageUnavailable: /not currently available in Ready Stock/i.test(result.error.message || ""), stop: ["42501", "PGRST202", "PGRST301", "PGRST302"].includes(result.error.code) };
       }
       return { state: "sent", detail: `Sent to ${destination.name}. Journey updated.` };
     } catch (_) {
@@ -359,6 +359,12 @@
       } else {
         const result = await requestRework(imei, destination);
         if (result.state === "unknown") reworkImei.value = "";
+        if (result.state === "failed" && result.stageUnavailable) {
+          window.GREENLOOP_IMEI_STAGE_NOTICE?.show({
+            imei, title: "Phone unavailable here", message: result.detail, onlyIfFound: true,
+            isCurrent: () => reworkMode === "single" && !reworkView.hidden && reworkImei.value.trim() === imei
+          });
+        }
         if (result.state !== "sent") throw new Error(result.detail);
         const bulkText = bulkInput.value;
         reworkForm.reset();
@@ -436,6 +442,17 @@
   singleModeButton.addEventListener("click", () => setReworkMode("single"));
   bulkModeButton.addEventListener("click", () => setReworkMode("bulk"));
   bulkInput.addEventListener("input", () => updateBulkDraft());
+  bulkRows.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-view-imei-stage]");
+    if (!button || sendingForRework) return;
+    const rows = bulkBatch?.rows || bulkDraft.rows;
+    const row = rows[Number(button.dataset.viewImeiStage)];
+    if (!row || !["duplicate", "failed"].includes(row.state) || !/^\d{15}$/.test(row.imei)) return;
+    window.GREENLOOP_IMEI_STAGE_NOTICE?.show({
+      imei: row.imei, title: row.state === "duplicate" ? "Duplicate phone" : "Phone unavailable here", message: row.detail, onlyIfFound: row.state !== "duplicate",
+      isCurrent: () => button.isConnected && reworkMode === "bulk" && !reworkView.hidden && (bulkBatch?.rows || bulkDraft.rows) === rows
+    });
+  });
   document.querySelector("#ready-rework-unconfirmed-list").addEventListener("click", (event) => {
     const button = event.target.closest("button[data-checked-imei]");
     if (!button || sendingForRework) return;

@@ -165,6 +165,14 @@
     } catch (error) {
       setMessage(error.message || "This IMEI could not be added to the export box.");
       imeiInput.select();
+      const duplicate = /this imei has already been placed in an export box/i.test(error.message || "");
+      const wrongStage = /this imei is not currently available in ready stock/i.test(error.message || "");
+      if (["22023", "23505", "P0001"].includes(error.code) && (duplicate || wrongStage)) {
+        window.GREENLOOP_IMEI_STAGE_NOTICE?.show({
+          imei, title: duplicate ? "Duplicate phone" : "Phone unavailable here", message: error.message, onlyIfFound: !duplicate,
+          isCurrent: () => imeiInput.isConnected && imeiInput.value.trim() === imei
+        });
+      }
     } finally {
       scanning = false;
       render();

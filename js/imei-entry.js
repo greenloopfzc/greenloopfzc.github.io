@@ -107,11 +107,22 @@
   function displayStage(value) { return String(value || "Unknown stage").replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()); }
   function displayDate(value) { return value ? new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "Not recorded"; }
   function closeDuplicateDialog() { if (duplicateDialog?.open) duplicateDialog.close(); }
-  function showDuplicateDialog(record, { kind = "duplicate", text = "", force = false } = {}) {
-    if (!duplicateDialog) return;
+  function duplicateNoticeGuard(value) {
+    // Keep manual, bulk and cable checks tied to the fields that requested them.
+    const fields = [...document.querySelectorAll("#imei-1, .batch-row-imei")].filter((field) => field.value.trim() === value);
+    const connection = window.GREENLOOP_CABLE_CONNECTION_ID || 0;
+    return () => connection === (window.GREENLOOP_CABLE_CONNECTION_ID || 0) && (!fields.length || fields.some((field) => field.isConnected && field.value.trim() === value));
+  }
+  function showDuplicateDialog(record, { kind = "duplicate", text = "", force = false, isCurrent = () => true } = {}) {
+    if (!duplicateDialog || !isCurrent()) return;
     const notice = `${record.imei}:${window.GREENLOOP_CABLE_CONNECTION_ID || 0}:${kind}`;
     if (!force && lastDuplicateNotice === notice) return;
     lastDuplicateNotice = notice;
+    if (kind === "duplicate" && window.GREENLOOP_IMEI_STAGE_NOTICE) {
+      void window.GREENLOOP_IMEI_STAGE_NOTICE.show({ imei: record.imei, isCurrent });
+      return;
+    }
+    window.GREENLOOP_IMEI_STAGE_NOTICE?.clear();
     document.querySelector("#duplicate-imei-title").textContent = kind === "error" ? "IMEI check unavailable" : "Duplicate phone";
     duplicateDialog.querySelector(":scope > p").textContent = kind === "error" ? text : "This phone is a duplicate. It already exists in the system.";
     duplicateDialog.dataset.imei = record.imei || "";
@@ -120,6 +131,7 @@
   async function checkDuplicateImei(value, { show = true, force = false } = {}) {
     const scannedImei = String(value || "").replace(/\D/g, "").slice(0, 15);
     if (!/^\d{15}$/.test(scannedImei)) return false;
+    const isCurrent = duplicateNoticeGuard(scannedImei);
     if (!duplicateChecks.has(scannedImei)) {
       duplicateChecks.set(scannedImei, withTimeout(api().rpc("get_imei_entry_duplicate_status", { p_imei: scannedImei }), "Duplicate check")
         .finally(() => duplicateChecks.delete(scannedImei)));
@@ -131,14 +143,14 @@
       data = response.data;
       if (!Array.isArray(data) || data.length > 1 || (data.length === 1 && typeof data[0]?.found !== "boolean")) throw new Error("Invalid duplicate-check response.");
     } catch (error) {
-      if (show) showDuplicateDialog({ imei: scannedImei }, { kind: "error", force, text: "The duplicate check could not be completed. Please try again. Nothing was saved." });
-      setMessage("IMEI check failed - saving is blocked. See popup.");
+      if (show) showDuplicateDialog({ imei: scannedImei }, { kind: "error", force, isCurrent, text: "The duplicate check could not be completed. Please try again. Nothing was saved." });
+      if (isCurrent()) setMessage("IMEI check failed - saving is blocked. See popup.");
       throw new Error("IMEI check failed - saving is blocked. See popup.");
     }
     const record = data[0];
     if (!record?.found) return false;
-    if (show) showDuplicateDialog({ ...record, imei: scannedImei }, { force });
-    setMessage("Duplicate IMEI - see popup.");
+    if (show) showDuplicateDialog({ ...record, imei: scannedImei }, { force, isCurrent });
+    if (isCurrent()) setMessage("Duplicate IMEI - see popup.");
     return true;
   }
   window.GREENLOOP_CHECK_IMEI_DUPLICATE = checkDuplicateImei;
