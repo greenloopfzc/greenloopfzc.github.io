@@ -1,4 +1,4 @@
-/* Manual damage TV views, 20261005-damage-tv-views-1. ES5, no external runtime. */
+/* Manual damage TV views, 20261005-manual-damage-management-1. ES5, no external runtime. */
 (function () {
   "use strict";
   function start() {
@@ -152,9 +152,9 @@
     function renderEmployees() {
       var html = '', i, focused = document.activeElement && document.activeElement.id;
       board.className = "tv-board damage-" + view;
-      if (view === "detail" && detail) html = '<article id="damage-detail" class="damage-employee" tabindex="0">' + cardMarkup(detail) + '</article>';
+      if (view === "detail" && detail) html = '<article id="damage-detail" class="damage-employee' + (count(detail.total_damage) > 0 ? ' damage-has-damage' : '') + '" tabindex="0">' + cardMarkup(detail) + '</article>';
       else for (i = 0; i < employees.length; i++) {
-        html += '<div class="damage-employee-cell"><button id="damage-employee-' + i + '" class="damage-compact-card" type="button" data-employee="' + escape(employees[i].id) + '" aria-label="' + escape(employees[i].name) + ', ' + count(employees[i].total_damage) + ' total damage. Open history.">' +
+        html += '<div class="damage-employee-cell"><button id="damage-employee-' + i + '" class="damage-compact-card' + (count(employees[i].total_damage) > 0 ? ' damage-has-damage' : '') + '" type="button" data-employee="' + escape(employees[i].id) + '" aria-label="' + escape(employees[i].name) + ', ' + count(employees[i].total_damage) + ' total damage. Open history.">' +
           '<span class="damage-compact-name">' + escape(employees[i].name) + '</span><span class="damage-compact-total"><small>TOTAL DAMAGE</small><strong>' + count(employees[i].total_damage) + '</strong></span></button></div>';
       }
       get("damage-employees").innerHTML = html || '<p class="tv-empty">No active employees are available.</p>';

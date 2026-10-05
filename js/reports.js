@@ -88,6 +88,11 @@
   }
 
   const reports = {
+    manual_damage: {
+      title: "Manual Damage Report",
+      description: "Correct a damage entry or delete manual damage history. Every change is permanently audited.",
+      columns: []
+    },
     stock_returns: {
       title: "Stock Return",
       description: "Returned stock by supplier receipt. The selected date range uses the return date in UAE time.",
@@ -891,7 +896,18 @@
       tab.setAttribute("aria-pressed", String(selected));
     });
     const liveDetails = activeReport === "complete_device_details";
-    filterForm.hidden = liveDetails || activeReport === "restricted_data" || activeReport === "data_correction";
+    filterForm.hidden = liveDetails || activeReport === "restricted_data" || activeReport === "data_correction" || activeReport === "manual_damage";
+    if (activeReport === "manual_damage") {
+      window.GREENLOOP_COMPLETE_DEVICE_DETAILS?.unmount();
+      panelKicker.textContent = "Manual damage";
+      panelTitle.textContent = reports.manual_damage.title;
+      panelDescription.textContent = reports.manual_damage.description;
+      rowCount.textContent = "Separate report history";
+      if (window.GREENLOOP_DAMAGE_MANAGEMENT) window.GREENLOOP_DAMAGE_MANAGEMENT.mount(reportContent);
+      else reportContent.textContent = "Manual Damage Report could not be loaded. Reload this page to try again.";
+      return;
+    }
+    window.GREENLOOP_DAMAGE_MANAGEMENT?.unmount();
     if (liveDetails) {
       panelKicker.textContent = "Connected phone";
       panelTitle.textContent = "Complete Device Details";
@@ -913,6 +929,10 @@
 
   async function loadReports(event) {
     event?.preventDefault();
+    if (activeReport === "manual_damage") {
+      await window.GREENLOOP_DAMAGE_MANAGEMENT?.refresh();
+      return;
+    }
     setMessage();
     const from = dateFrom.value, to = dateTo.value;
     if (!from || !to || from > to) { setMessage("Select a valid From date and To date."); return; }
@@ -992,7 +1012,7 @@
     dateTo.value = localDate(now);
     app.hidden = false;
     renderActiveReport();
-    await loadReports();
+    if (activeReport !== "manual_damage") await loadReports();
     if (externalRefreshPending) queueExternalReportRefresh();
   }
 
@@ -1010,13 +1030,15 @@
   filterForm.addEventListener("submit", loadReports);
   tabs.addEventListener("click", (event) => {
     const tab = event.target.closest(".report-tab[data-report]");
-    if (!tab || tab.hidden || deletionBusy || reportMutationPending || (tab.dataset.report !== "overview" && !reports[tab.dataset.report])) return;
+    if (!tab || tab.hidden || deletionBusy || reportMutationPending || window.GREENLOOP_DAMAGE_MANAGEMENT?.isBusy() || (tab.dataset.report !== "overview" && !reports[tab.dataset.report])) return;
     if (["data_correction", "restricted_data"].includes(tab.dataset.report) && !canManageCorrections) return;
     resetDeletionPreview();
     correctionSearchGeneration += 1;
     setMessage();
     activeReport = tab.dataset.report;
+    if (activeReport === "manual_damage") invalidatePendingReportRead();
     renderActiveReport();
+    if (activeReport !== "manual_damage" && !hasReportSummary(reportData)) loadReports();
   });
   reportContent.addEventListener("click", (event) => {
     const savedDataButton = event.target.closest('[data-audit-details-index]');

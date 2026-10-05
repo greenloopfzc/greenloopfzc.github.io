@@ -1,4 +1,4 @@
-/* Employee damage cards, 20261005-tv-damage-access-1. Literal colors and ES5-era layout. */
+/* Employee damage cards, 20261005-manual-damage-management-1. Literal colors and ES5-era layout. */
 .damage-tv-page .tv-wrap { padding-top: 18px; }
 .damage-tv-page .tv-masthead { margin-bottom: 15px; }
 .damage-tv-page .tv-logo { width: 54px; height: 54px; border-radius: 15px; }
@@ -179,6 +179,51 @@
 .tv-dark .damage-compact-card:hover { border-color: #90b99f; background: #425865; }
 .tv-dark .damage-compact-total { color: #b0c8b7; }
 .tv-dark .damage-compact-total strong { color: #cbe9d7; }
+/* Background-only pulse keeps text and raised shadows visible at every phase.
+   The literal red background remains on TVs without animation support. */
+.damage-compact-card.damage-has-damage, .damage-employee.damage-has-damage {
+  border-color: #e6b6b0;
+  background: #fae9e7;
+  background-image: linear-gradient(140deg, rgba(255,255,255,.28), rgba(255,255,255,0));
+  -webkit-animation: damage-card-light-pulse 4s ease-in-out infinite;
+  animation: damage-card-light-pulse 4s ease-in-out infinite;
+}
+.tv-dark .damage-compact-card.damage-has-damage, .tv-dark .damage-employee.damage-has-damage {
+  border-color: #886267;
+  background: #493b42;
+  background-image: linear-gradient(140deg, rgba(255,255,255,.04), rgba(0,0,0,.08));
+  -webkit-animation-name: damage-card-dark-pulse;
+  animation-name: damage-card-dark-pulse;
+}
+.damage-has-damage .damage-compact-total, .damage-has-damage .damage-employee-total span,
+.damage-has-damage .damage-history-range, .damage-has-damage .damage-history-range small,
+.damage-has-damage .damage-history-message { color: #654b4a; }
+.tv-dark .damage-has-damage .damage-compact-total, .tv-dark .damage-has-damage .damage-employee-total span,
+.tv-dark .damage-has-damage .damage-history-range, .tv-dark .damage-has-damage .damage-history-range small,
+.tv-dark .damage-has-damage .damage-history-message { color: #e0c3c5; }
+@-webkit-keyframes damage-card-light-pulse {
+  0%, 100% { background-color: #fae9e7; }
+  50% { background-color: #f2d2ce; }
+}
+@keyframes damage-card-light-pulse {
+  0%, 100% { background-color: #fae9e7; }
+  50% { background-color: #f2d2ce; }
+}
+@-webkit-keyframes damage-card-dark-pulse {
+  0%, 100% { background-color: #493b42; }
+  50% { background-color: #60434a; }
+}
+@keyframes damage-card-dark-pulse {
+  0%, 100% { background-color: #493b42; }
+  50% { background-color: #60434a; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .damage-compact-card.damage-has-damage, .damage-employee.damage-has-damage,
+  .tv-dark .damage-compact-card.damage-has-damage, .tv-dark .damage-employee.damage-has-damage {
+    -webkit-animation: none;
+    animation: none;
+  }
+}
 .damage-detail-nav { margin: 0 0 9px; text-align: center; }
 .damage-detail-nav .tv-button { min-height: 34px; padding: 6px 12px; font-size: 13px; }
 .damage-detail-nav #damage-prev { float: left; }
