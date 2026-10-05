@@ -11,13 +11,45 @@ window.GREENLOOP_CONFIG = Object.freeze({
   const modeKey = "greenloop-session-mode";
   const authKey = `sb-${new URL(window.GREENLOOP_CONFIG.supabaseUrl).hostname.split(".")[0]}-auth-token`;
   const authKeys = [authKey, `${authKey}-code-verifier`, `${authKey}-user`];
-  const storage = () => window.sessionStorage.getItem(modeKey) === "session" ? window.sessionStorage : window.localStorage;
+  const tvKey = "greenloop-tv-session-v1";
+  const changeKey = "greenloop-app-session-change-v1";
+  const epochKey = "greenloop-app-session-epoch-v1";
+  const currentEpoch = () => { try { return window.localStorage.getItem(changeKey); } catch (_) { return null; } };
+  let clientEpoch = currentEpoch();
+  // A token-free signal also reaches TV tabs using sessionStorage. Credentials
+  // remain solely in the storage chosen for the application session.
+  const clearTvSession = () => {
+    [window.localStorage, window.sessionStorage].forEach((store) => {
+      try { store.removeItem(tvKey); store.removeItem(`${tvKey}-refresh`); } catch (_) {}
+    });
+    try { window.localStorage.setItem(changeKey, `${Date.now()}-${Math.random()}`); } catch (_) {}
+    clientEpoch = currentEpoch();
+    try {
+      if (clientEpoch === null) window.sessionStorage.removeItem(epochKey);
+      else window.sessionStorage.setItem(epochKey, clientEpoch);
+    } catch (_) {}
+  };
+  const sessionUser = (value) => {
+    try { return JSON.parse(value)?.user?.id || null; } catch (_) { return null; }
+  };
+  const storage = () => {
+    if (window.sessionStorage.getItem(modeKey) !== "session") return window.localStorage;
+    // sessionStorage is cloned when a tab is opened. A shared logout/account
+    // change must also expire that copied session when the old tab reloads.
+    if (window.sessionStorage.getItem(epochKey) !== currentEpoch()) {
+      authKeys.forEach((key) => window.sessionStorage.removeItem(key));
+      window.sessionStorage.removeItem(tvKey);
+    }
+    return window.sessionStorage;
+  };
   window.GREENLOOP_SET_REMEMBER_SESSION = (remember) => {
+    clearTvSession();
     window.sessionStorage.setItem(modeKey, remember ? "local" : "session");
     const otherStorage = remember ? window.sessionStorage : window.localStorage;
     authKeys.forEach((key) => otherStorage.removeItem(key));
   };
   window.GREENLOOP_CLEAR_SESSION = () => {
+    clearTvSession();
     authKeys.forEach((key) => {
       window.localStorage.removeItem(key);
       window.sessionStorage.removeItem(key);
@@ -27,9 +59,19 @@ window.GREENLOOP_CONFIG = Object.freeze({
     if (!sharedClient) {
       sharedClient = window.supabase.createClient(window.GREENLOOP_CONFIG.supabaseUrl, window.GREENLOOP_CONFIG.supabaseAnonKey, {
         auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storage: {
-          getItem: (key) => storage().getItem(key),
-          setItem: (key, value) => storage().setItem(key, value),
-          removeItem: (key) => { window.localStorage.removeItem(key); window.sessionStorage.removeItem(key); }
+          getItem: (key) => authKeys.includes(key) && clientEpoch !== currentEpoch() ? null : storage().getItem(key),
+          setItem: (key, value) => {
+            // A refresh already running in an externally signed-out app tab
+            // cannot repopulate shared credentials when its response arrives.
+            if (authKeys.includes(key) && clientEpoch !== currentEpoch()) return;
+            if (key === authKey && sessionUser(storage().getItem(key)) !== sessionUser(value)) clearTvSession();
+            storage().setItem(key, value);
+          },
+          removeItem: (key) => {
+            if (authKeys.includes(key) && clientEpoch !== currentEpoch()) return;
+            if (key === authKey) clearTvSession();
+            window.localStorage.removeItem(key); window.sessionStorage.removeItem(key);
+          }
         } }
       });
       const rpc = sharedClient.rpc.bind(sharedClient);

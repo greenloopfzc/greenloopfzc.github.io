@@ -7,9 +7,17 @@
   var base = String(config.supabaseUrl || "").replace(/\/$/, "");
   var key = String(config.supabaseAnonKey || "");
   var storageKey = "greenloop-tv-session-v1";
+  var projectHost = /^https:\/\/([^\/:]+)/.exec(base);
+  var authKey = "sb-" + (projectHost ? projectHost[1].split(".")[0] : "") + "-auth-token";
+  var modeKey = "greenloop-session-mode";
+  var changeKey = "greenloop-app-session-change-v1";
+  var epochKey = "greenloop-app-session-epoch-v1";
   var lockKey = storageKey + "-refresh";
   var owner = String(new Date().getTime()) + "-" + String(Math.random()).slice(2);
   var session = null, persistent = false, generation = 0;
+  var borrowed = false, appRecord = null, appKind = null;
+  var appChange = read("localStorage", changeKey), webLockRelease = null, webLockTimer = null;
+  var nativeSignIn = false, refreshId = 0;
   var refreshing = false, refreshWaiters = [], refreshTimer = null;
   var api = {};
 
@@ -41,14 +49,60 @@
   }
   function stored(kind) {
     var value = parse(read(kind, storageKey));
+    if (kind === "sessionStorage" && value && (value.epoch || null) !== read("localStorage", changeKey)) {
+      remove(kind, storageKey);
+      return null;
+    }
     return value && value.project === base && validSession(value.session) ? value.session : null;
+  }
+  function discardStaleTabSession() {
+    if (read("sessionStorage", epochKey) !== read("localStorage", changeKey)) {
+      remove("sessionStorage", authKey);
+      remove("sessionStorage", authKey + "-user");
+      remove("sessionStorage", authKey + "-code-verifier");
+      remove("sessionStorage", storageKey);
+    }
+  }
+  function applicationSession() {
+    var kind = read("sessionStorage", modeKey) === "session" ? "sessionStorage" : "localStorage";
+    if (kind === "sessionStorage") discardStaleTabSession();
+    var text = read(kind, authKey), record = parse(text), value = normaliseSession(record);
+    return { kind: kind, record: record, session: value, present: text !== null };
+  }
+  function acceptApplication(value) {
+    session = value.session;
+    appRecord = value.record;
+    appKind = value.kind;
+    persistent = appKind === "localStorage";
+    borrowed = true;
+    lockKey = authKey + "-tv-refresh";
+  }
+  function syncSession() {
+    // Storage is checked again at response delivery: a delayed response from a
+    // previous account must never refill the board after logout or user switch.
+    if (read("localStorage", changeKey) !== appChange) {
+      discardStaleTabSession();
+      clear(error("NO_SESSION", "Your Greenloop sign-in changed. Please reopen the report.", true), true, true);
+      return false;
+    }
+    if (!borrowed || !session) return true;
+    var latest = applicationSession();
+    if (!latest.session || latest.kind !== appKind || latest.session.user.id !== session.user.id) {
+      clear(error("NO_SESSION", "Your Greenloop session changed. Please sign in again.", true), true, true);
+      return false;
+    }
+    acceptApplication(latest);
+    return true;
   }
   function persist() {
     if (!session) return;
+    // Borrowed credentials have one authoritative home. Never create a second
+    // TV copy that could survive application logout or override another user.
+    if (borrowed) return;
     var kind = persistent ? "localStorage" : "sessionStorage";
     var other = persistent ? "sessionStorage" : "localStorage";
     remove(other, storageKey);
-    if (!write(kind, storageKey, JSON.stringify({ project: base, session: session }))) {
+    if (!write(kind, storageKey, JSON.stringify({ project: base, session: session, epoch: appChange }))) {
       // A browser with blocked storage can still sign in for this open page.
       remove(kind, storageKey);
     }
@@ -56,6 +110,9 @@
   function releaseLock() {
     var lease = parse(read("localStorage", lockKey));
     if (lease && lease.owner === owner) remove("localStorage", lockKey);
+    if (webLockTimer !== null) window.clearTimeout(webLockTimer);
+    webLockTimer = null;
+    if (webLockRelease) { var release = webLockRelease; webLockRelease = null; release(); }
   }
   function clear(reason, notify, keepStorage) {
     generation += 1;
@@ -65,6 +122,10 @@
     if (refreshTimer !== null) window.clearTimeout(refreshTimer);
     refreshTimer = null;
     releaseLock();
+    borrowed = false;
+    appRecord = null;
+    appKind = null;
+    nativeSignIn = false;
     if (!keepStorage) {
       remove("localStorage", storageKey);
       remove("sessionStorage", storageKey);
@@ -82,7 +143,7 @@
       if (settled) return;
       settled = true;
       if (timer) window.clearTimeout(timer);
-      if (!independent && stamp !== generation) return;
+      if (!independent && (stamp !== generation || !syncSession())) return;
       callback(problem, data);
     }
     if (!/^https:\/\/[^\/]+/.test(base) || !key) {
@@ -127,7 +188,7 @@
       access_token: reply.access_token,
       refresh_token: reply.refresh_token,
       expires_at: expiry,
-      user: { id: reply.user.id, displayName: typeof meta.full_name === "string" ? meta.full_name : "Greenloop user" }
+      user: { id: reply.user.id, displayName: typeof meta.full_name === "string" ? meta.full_name : (typeof reply.user.displayName === "string" ? reply.user.displayName : "Greenloop user") }
     };
     return validSession(result) ? result : null;
   }
@@ -140,18 +201,21 @@
     for (index = 0; index < callbacks.length; index += 1) callbacks[index](problem);
   }
   function refresh(callback) {
+    if (!syncSession()) return;
     if (!session) { callback(error("NO_SESSION", "Please sign in to open the " + pageName + ".", true)); return; }
     refreshWaiters.push(callback);
     if (refreshing) return;
     refreshing = true;
-    var stamp = generation, startingToken = session.access_token;
+    var stamp = generation, startingToken = session.access_token, refreshRun = ++refreshId;
     function acquireAndRefresh() {
       if (stamp !== generation || !session) return;
       refreshTimer = null;
+      if (!syncSession()) return;
+      if (borrowed && session.access_token !== startingToken) { finishRefresh(null); return; }
       // Remembered sessions may be open in two TV tabs: reuse the other tab's
       // rotated token, or wait for its short lease before refreshing ourselves.
-      if (persistent) {
-        var latest = stored("localStorage");
+      if (persistent || borrowed) {
+        var latest = borrowed ? applicationSession().session : stored("localStorage");
         if (latest && latest.user.id === session.user.id && latest.access_token !== startingToken) {
           session = latest;
           finishRefresh(null);
@@ -169,7 +233,11 @@
           return;
         }
       }
+      var sentToken = session.access_token;
       request("POST", "/auth/v1/token?grant_type=refresh_token", { refresh_token: session.refresh_token }, null, function (problem, reply) {
+        // An SDK refresh may have completed while this request was in flight.
+        // Its canonical result wins, including when our older refresh fails.
+        if (borrowed && session.access_token !== sentToken) { finishRefresh(null); return; }
         if (problem) {
           if (problem.status === 400 || problem.status === 401 || problem.status === 403 || problem.code === "INVALID_RESPONSE") {
             finishRefresh(error("SESSION_EXPIRED", "Your TV session has expired. Please sign in again.", true));
@@ -178,14 +246,47 @@
         }
         var renewed = normaliseSession(reply);
         if (!renewed || renewed.user.id !== session.user.id) { finishRefresh(error("SESSION_EXPIRED", "Your TV session could not be verified. Please sign in again.", true)); return; }
+        if (borrowed) {
+          var record = {}, property;
+          for (property in appRecord) if (Object.prototype.hasOwnProperty.call(appRecord, property)) record[property] = appRecord[property];
+          for (property in reply) if (Object.prototype.hasOwnProperty.call(reply, property)) record[property] = reply[property];
+          record.expires_at = renewed.expires_at;
+          // Keep the complete Supabase user and token metadata, not the TV's
+          // display-only projection, so the main app can reuse rotated tokens.
+          if (!write(appKind, authKey, JSON.stringify(record))) {
+            finishRefresh(error("SESSION_EXPIRED", "Your renewed session could not be saved. Please sign in again.", true));
+            return;
+          }
+          appRecord = record;
+        }
         session = renewed;
         persist();
         finishRefresh(null);
       });
     }
-    acquireAndRefresh();
+    // Supabase uses this Web Lock name. Modern app and TV tabs therefore share
+    // its refresh lock; older TVs retain the short storage lease above.
+    if (borrowed && window.navigator && window.navigator.locks && window.Promise) {
+      webLockTimer = window.setTimeout(function () {
+        if (stamp === generation && refreshRun === refreshId && refreshing && !webLockRelease) {
+          finishRefresh(error("NETWORK", "Another tab is renewing your session. Please refresh to try again."));
+        }
+      }, 15000);
+      window.navigator.locks.request("lock:" + authKey, function () {
+        return new window.Promise(function (resolve) {
+          if (stamp !== generation || refreshRun !== refreshId || !refreshing || !session) { resolve(); return; }
+          if (webLockTimer !== null) window.clearTimeout(webLockTimer);
+          webLockTimer = null;
+          webLockRelease = resolve;
+          acquireAndRefresh();
+        });
+      }).catch(function () {
+        if (stamp === generation && refreshRun === refreshId && refreshing) finishRefresh(error("NETWORK", "Your session could not be renewed. Please refresh to try again."));
+      });
+    } else acquireAndRefresh();
   }
   function ensureSession(callback) {
+    if (!syncSession()) return;
     if (!session) { callback(error("NO_SESSION", "Please sign in to open the " + pageName + ".", true)); return; }
     if (session.expires_at <= now() + 60) refresh(callback);
     else callback(null);
@@ -237,6 +338,14 @@
   function signedIn(callback) {
     checkAccess(function (problem) {
       if (problem) { callback(problem); return; }
+      if (nativeSignIn) {
+        // An explicitly authenticated TV account becomes the selected identity.
+        // Clear the former app identity only after credentials AND page access
+        // succeed, so reload cannot silently switch back to a different user.
+        endApplicationSession();
+        appChange = read("localStorage", changeKey);
+        nativeSignIn = false;
+      }
       persist();
       callback(null, { authenticated: true, user: { id: session.user.id, displayName: session.user.displayName } });
     }, pageKey);
@@ -246,6 +355,9 @@
     username = String(username || "").replace(/^\s+|\s+$/g, "");
     if (!username || typeof password !== "string" || !password) { callback(error("VALIDATION", "Enter your username and password.")); return; }
     clear(null, false);
+    appChange = read("localStorage", changeKey);
+    lockKey = storageKey + "-refresh";
+    nativeSignIn = true;
     persistent = !!remember;
     request("POST", "/rest/v1/rpc/resolve_login_username", { p_username: username }, null, function (problem, reply) {
       if (problem) { callback(problem); return; }
@@ -266,9 +378,22 @@
   };
   api.restore = function (callback) {
     callback = typeof callback === "function" ? callback : noop;
+    clear(null, false, true);
+    appChange = read("localStorage", changeKey);
+    lockKey = storageKey + "-refresh";
+    var application = applicationSession();
     var temporary = stored("sessionStorage"), remembered = stored("localStorage");
-    session = temporary || remembered;
-    persistent = !temporary && !!remembered;
+    if (application.session) {
+      acceptApplication(application);
+      remove("localStorage", storageKey);
+      remove("sessionStorage", storageKey);
+    } else if (!application.present) {
+      session = temporary || remembered;
+      persistent = !temporary && !!remembered;
+    } else {
+      remove("localStorage", storageKey);
+      remove("sessionStorage", storageKey);
+    }
     if (!session) { callback(error("NO_SESSION", "Sign in with your Greenloop account.", true)); return; }
     authorised("GET", "/auth/v1/user", null, function (problem, user) {
       if (problem) { callback(problem); return; }
@@ -293,8 +418,24 @@
       });
     }, "lab_live_board");
   };
+  function endApplicationSession() {
+      remove("localStorage", authKey);
+      remove("sessionStorage", authKey);
+      remove("localStorage", authKey + "-user");
+      remove("sessionStorage", authKey + "-user");
+      remove("localStorage", authKey + "-code-verifier");
+      remove("sessionStorage", authKey + "-code-verifier");
+      write("localStorage", changeKey, owner + "-" + String(new Date().getTime()));
+      var epoch = read("localStorage", changeKey);
+      if (epoch === null) remove("sessionStorage", epochKey);
+      else write("sessionStorage", epochKey, epoch);
+  }
   api.logout = function (callback) {
     var oldToken = session && session.access_token;
+    if (borrowed && syncSession()) {
+      oldToken = session && session.access_token;
+      endApplicationSession();
+    }
     clear(error("NO_SESSION", "You have signed out.", true), true);
     if (typeof callback === "function") callback(null, { authenticated: false });
     if (oldToken) request("POST", "/auth/v1/logout?scope=local", {}, oldToken, noop, true);
@@ -427,7 +568,19 @@
   };
   api.onSessionInvalidated = null;
   if (window.addEventListener) window.addEventListener("storage", function (event) {
+    if (event.key === changeKey || event.key === authKey || event.key === modeKey || event.key === null) {
+      if (!syncSession()) return;
+      if (borrowed) return;
+      // A new application identity takes priority on the next restore, even
+      // when an older TV-native account is currently displayed.
+      var app = applicationSession();
+      if (session && app.session && (event.key === authKey || event.key === null)) {
+        clear(error("NO_SESSION", "Your Greenloop sign-in changed. Please reopen the report.", true), true, true);
+        return;
+      }
+    }
     if (!persistent || !session || (event.key !== storageKey && event.key !== null)) return;
+    if (borrowed) return;
     if (event.storageArea && event.storageArea !== storage("localStorage")) return;
     var latest = stored("localStorage");
     if (!latest || latest.user.id !== session.user.id) {

@@ -6,11 +6,11 @@
   <meta name="theme-color" content="#eaf0f4">
   <meta name="description" content="Greenloop Manual Damage Report: employee damage cards, all-time counts and complete damage history.">
   <title>Manual Damage Report | Greenloop</title>
-  <link rel="stylesheet" href="css/tv.css?v=20261005-manual-damage-module-1">
-  <link rel="stylesheet" href="css/damage-tv.css?v=20261005-manual-damage-module-1">
+  <link rel="stylesheet" href="css/tv.css?v=20261005-damage-tv-views-1">
+  <link rel="stylesheet" href="css/damage-tv.css?v=20261005-damage-tv-views-1">
   <script>window.GREENLOOP_TV_CONFIG = {"pageKey":"damage_report","supabaseUrl":"https://prypklagfznpdlleldll.supabase.co","supabaseAnonKey":"sb_publishable_hMIRbfKmh4vhGvEgVcPjow_F21WmwXt"};</script>
-  <script defer src="js/tv-api.js?v=20261005-manual-damage-module-1"></script>
-  <script defer src="js/damage-tv.js?v=20261005-manual-damage-module-1"></script>
+  <script defer src="js/tv-api.js?v=20261005-damage-tv-views-1"></script>
+  <script defer src="js/damage-tv.js?v=20261005-damage-tv-views-1"></script>
 </head>
 <body class="tv-page damage-tv-page">
   <div class="tv-wrap">
@@ -23,15 +23,16 @@
     </header>
 
     <main>
-      <section id="tv-login" class="tv-login tv-clear" aria-labelledby="tv-login-title">
+      <p id="tv-restoring" class="tv-restoring" role="status">Opening your damage report...</p>
+      <section id="tv-login" class="tv-login tv-clear" style="display:none" aria-labelledby="tv-login-title">
         <div class="tv-login-intro">
           <p class="tv-eyebrow">MANUAL DAMAGE REPORT</p>
           <h1 id="tv-login-title">Damage reports.<br>A clear record.</h1>
           <p class="tv-intro-text">Keep every employee’s damage history, part names and reasons in view throughout the day.</p>
           <div class="tv-login-features">
-            <p><span>01</span> An individual card for every employee</p>
+            <p><span>01</span> All employees together on one screen</p>
             <p><span>02</span> All-time damage counts at a glance</p>
-            <p><span>03</span> Complete history with simple page controls</p>
+            <p><span>03</span> Auto View changes employee every 5 seconds</p>
           </div>
           <p class="tv-company">Greenloop FZC &middot; Operations system</p>
         </div>
@@ -66,11 +67,9 @@
           <div class="tv-update-status"><span class="tv-live-label"><i></i>Refresh every 30 sec</span><span id="tv-last-updated">Waiting for the first update</span></div>
         </div>
         <div class="tv-toolbar tv-clear" aria-label="Board controls">
-          <div class="tv-view-buttons" role="group" aria-label="Employee card pages">
-            <button id="damage-prev" class="tv-button" type="button" disabled>Previous</button>
-            <span id="damage-page" class="damage-page-number" aria-live="polite">Page 1</span>
-            <button id="damage-next" class="tv-button" type="button" disabled>Next</button>
-            <button id="tv-auto-toggle" class="tv-button" type="button" aria-pressed="false">Auto pages: off</button>
+          <div class="tv-view-buttons" role="group" aria-label="Employee views">
+            <button id="damage-all" class="tv-button damage-view-button" type="button" aria-pressed="true">All Employees</button>
+            <button id="tv-auto-toggle" class="tv-button damage-view-button" type="button" aria-pressed="false" disabled>Auto View &middot; 5 sec</button>
           </div>
           <div class="tv-action-buttons">
             <button id="tv-refresh" class="tv-button" type="button">Refresh now</button>
@@ -92,7 +91,12 @@
           <span id="damage-range" class="damage-range">Waiting for employees</span>
         </div>
         <section aria-label="Employee damage cards">
-          <p class="damage-view-help">Newest first &middot; UAE dates &middot; Each employee’s total includes all recorded damage.</p>
+          <div id="damage-detail-nav" class="damage-detail-nav tv-clear" style="display:none" aria-label="Employee navigation">
+            <button id="damage-prev" class="tv-button" type="button" disabled>Previous employee</button>
+            <span id="damage-page" class="damage-page-number" aria-live="polite"></span>
+            <button id="damage-next" class="tv-button" type="button" disabled>Next employee</button>
+          </div>
+          <p id="damage-view-help" class="damage-view-help">Select an employee to read their complete history. Totals include all recorded damage.</p>
           <div id="damage-employees" class="damage-employees tv-clear" aria-live="polite"></div>
         </section>
       </section>
