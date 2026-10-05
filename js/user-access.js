@@ -39,8 +39,8 @@
     ["initial_qc", "Initial QC", "Inspect, grade, identify work, and assign technicians."],
     ["lab_glass", "Lab & Glass", "Laboratory and glass repair work."],
     ["lab_live_board", "Lab Live Board", "TV display of live technician workload and performance."],
-    ["damage_report", "Damage Report", "View employee damage cards and Live Updates on the TV screen."],
-    ["tv_manual_entry", "TV Manual Entry", "View manual damage history; Entry Allowed records damage and manages employees and dropdown choices."],
+    ["damage_report", "Damage Report", "Manual Damage Report: view employee damage cards and Live Updates."],
+    ["tv_manual_entry", "TV Manual Entry", "Manual Damage Report: view manual history; Entry Allowed records damage and manages employees and dropdown choices."],
     ["frame_department", "Frame Department", "Frame work, final grade, pass and fail decisions."],
     ["parts", "Parts", "View requests and issue required parts."],
     ["inventory", "Inventory", "Receive and control parts inventory."],
@@ -87,7 +87,10 @@
   }
 
   function pageCheckboxes(pages = pageGuideData, selectedPermissions = {}) {
-    return pages.map(([key, name, scope]) => {
+    const manualKeys = new Set(["damage_report", "tv_manual_entry"]);
+    const generalPages = pages.filter(([key]) => !manualKeys.has(key));
+    const manualPages = pages.filter(([key]) => manualKeys.has(key));
+    const cards = (items) => items.map(([key, name, scope]) => {
       const accessLevel = key === "damage_report" ? "view" : (selectedPermissions[key] || "edit");
       const checked = ["view", "edit"].includes(selectedPermissions[key]);
       return `
@@ -101,6 +104,7 @@
         </article>
       `;
     }).join("");
+    return cards(generalPages) + (manualPages.length ? '<div class="permission-module-heading"><strong>Manual Damage Report</strong><small>Separate manual records. Assign each window independently.</small></div>' + cards(manualPages) : "");
   }
 
   function permissionsForUser(user) {

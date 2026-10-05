@@ -4,20 +4,20 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#eaf0f4">
-  <meta name="description" content="Greenloop Lab Live Board: employee damage cards, all-time counts and complete damage history.">
-  <title>Damage Report | Greenloop Lab Live Board</title>
-  <link rel="stylesheet" href="css/tv.css?v=20261003-tv-browser-1">
-  <link rel="stylesheet" href="css/damage-tv.css?v=20261005-tv-damage-access-1">
-  <script>window.GREENLOOP_TV_CONFIG = {"supabaseUrl":"https://prypklagfznpdlleldll.supabase.co","supabaseAnonKey":"sb_publishable_hMIRbfKmh4vhGvEgVcPjow_F21WmwXt"};</script>
-  <script defer src="js/tv-api.js?v=20261005-tv-damage-access-1"></script>
-  <script defer src="js/damage-tv.js?v=20261005-tv-damage-access-1"></script>
+  <meta name="description" content="Greenloop Manual Damage Report: employee damage cards, all-time counts and complete damage history.">
+  <title>Manual Damage Report | Greenloop</title>
+  <link rel="stylesheet" href="css/tv.css?v=20261005-manual-damage-module-1">
+  <link rel="stylesheet" href="css/damage-tv.css?v=20261005-manual-damage-module-1">
+  <script>window.GREENLOOP_TV_CONFIG = {"pageKey":"damage_report","supabaseUrl":"https://prypklagfznpdlleldll.supabase.co","supabaseAnonKey":"sb_publishable_hMIRbfKmh4vhGvEgVcPjow_F21WmwXt"};</script>
+  <script defer src="js/tv-api.js?v=20261005-manual-damage-module-1"></script>
+  <script defer src="js/damage-tv.js?v=20261005-manual-damage-module-1"></script>
 </head>
 <body class="tv-page damage-tv-page">
   <div class="tv-wrap">
     <header class="tv-masthead tv-clear">
-      <div class="tv-brand" aria-label="Greenloop Damage Report">
+      <div class="tv-brand" aria-label="Greenloop Manual Damage Report">
         <img class="tv-logo" src="assets/looplogo.jpg" width="76" height="76" alt="">
-        <span class="tv-brand-copy"><span class="tv-wordmark">greenloop</span><span class="tv-brand-caption">LAB LIVE BOARD</span></span>
+        <span class="tv-brand-copy"><span class="tv-wordmark">greenloop</span><span class="tv-brand-caption">MANUAL DAMAGE REPORT</span></span>
       </div>
       <button id="tv-theme-toggle" class="tv-button tv-theme-button" type="button" aria-pressed="false">Dark mode</button>
     </header>
@@ -25,7 +25,7 @@
     <main>
       <section id="tv-login" class="tv-login tv-clear" aria-labelledby="tv-login-title">
         <div class="tv-login-intro">
-          <p class="tv-eyebrow">LAB LIVE BOARD / DAMAGE REPORT</p>
+          <p class="tv-eyebrow">MANUAL DAMAGE REPORT</p>
           <h1 id="tv-login-title">Damage reports.<br>A clear record.</h1>
           <p class="tv-intro-text">Keep every employee’s damage history, part names and reasons in view throughout the day.</p>
           <div class="tv-login-features">
@@ -62,7 +62,7 @@
 
       <section id="tv-board" class="tv-board" style="display:none" aria-labelledby="tv-board-title">
         <div class="tv-board-heading tv-clear">
-          <div class="tv-heading-copy"><p class="tv-eyebrow">LAB LIVE BOARD / EMPLOYEE RECORDS</p><h1 id="tv-board-title">Damage Report</h1></div>
+          <div class="tv-heading-copy"><p class="tv-eyebrow">MANUAL DAMAGE REPORT / EMPLOYEE RECORDS</p><h1 id="tv-board-title">Manual Damage Report</h1></div>
           <div class="tv-update-status"><span class="tv-live-label"><i></i>Refresh every 30 sec</span><span id="tv-last-updated">Waiting for the first update</span></div>
         </div>
         <div class="tv-toolbar tv-clear" aria-label="Board controls">

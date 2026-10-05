@@ -108,7 +108,8 @@ document.addEventListener("click", (event) => {
     '<p class="nav-label">Workspace</p>',
     item("IMEI Search", "imei-search.html", "⌕", page === "imei-search.html"),
     item("Dashboard", "dashboard.html", "⌘", page === "dashboard.html"),
-    item("Lab Live Board", "lab-live-board.html", "▦", page === "lab-live-board.html" || page === "damage-entry.html"),
+    item("Lab Live Board", "lab-live-board.html", "▦", page === "lab-live-board.html"),
+    item("Manual Damage Report", "manual-damage-report.html", "▤", page === "manual-damage-report.html" || page === "damage-entry.html"),
     '<p class="nav-label">Operations</p>',
     item("Stock Received", "stock-entry.html", "+", page === "stock-entry.html" || page === "receiving.html"),
     item("IMEI Entry", "imei-entry.html", "⌕", page === "imei-entry.html"),
@@ -221,6 +222,7 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     supplier_returns: "stock-return.html",
     lab_glass: "laboratory.html",
     lab_live_board: "lab-live-board.html",
+    manual_damage_report: "manual-damage-report.html",
     tv_manual_entry: "damage-entry.html",
     damage_report: "tv.html",
     frame_department: "laboratory.html#frame",
@@ -244,9 +246,10 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     "stock-return.html": "supplier_returns",
     "laboratory.html": "lab_glass",
     "lab-live-board.html": "lab_live_board",
+    "manual-damage-report.html": "manual_damage_report",
     "damage-entry.html": "tv_manual_entry",
     "tv.html": "damage_report",
-    "live-tv.html": "damage_report",
+    "live-tv.html": "lab_live_board",
     "glass.html": "lab_glass",
     "parts.html": "parts",
     "inventory.html": "inventory",
@@ -460,16 +463,14 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
         ? [receiptCode, safeName].filter(Boolean).join(" ")
         : (receiptCode || fallback);
     };
-    const allowedPages = new Set(accessByPage.keys());
-    // Keep the Lab Live Board sidebar group reachable when only one of its
-    // independent child views is assigned. Each destination keeps its own gate.
-    const labNavigation = navigation?.querySelector('a[href="lab-live-board.html"]');
-    if (labNavigation) {
-      const labDestination = ["lab_live_board", "tv_manual_entry", "damage_report"].find((key) => allowedPages.has(key));
-      if (labDestination) labNavigation.href = pageRoutes[labDestination];
+    // This is a navigation hub, not another saved permission. Either manual
+    // damage capability opens it; each destination still enforces its own key.
+    if (["damage_report", "tv_manual_entry"].some((key) => accessByPage.has(key))) {
+      accessByPage.set("manual_damage_report", "view");
     }
-    document.querySelectorAll("[data-lab-access]").forEach((link) => {
-      link.hidden = !allowedPages.has(link.dataset.labAccess);
+    const allowedPages = new Set(accessByPage.keys());
+    document.querySelectorAll("a[data-page-access]").forEach((link) => {
+      link.hidden = !allowedPages.has(link.dataset.pageAccess);
     });
     window.GREENLOOP_CAN_SEARCH = allowedPages.has("imei_search");
     if (navigation) {
@@ -484,7 +485,7 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
       const accessLevel = accessByPage.get(currentPageKey) || "view";
       window.GREENLOOP_PAGE_ACCESS = { pageKey: currentPageKey, accessLevel, canEdit: accessLevel === "edit" };
       document.documentElement.dataset.pageAccess = accessLevel;
-      if (accessLevel !== "edit") makePageViewOnly(main, currentPageKey);
+      if (accessLevel !== "edit" && currentPageKey !== "manual_damage_report") makePageViewOnly(main, currentPageKey);
       unlockApplication(main);
       return;
     }

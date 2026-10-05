@@ -6,15 +6,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#0d5c43">
     <meta name="description" content="Manually record workshop damage, including phones with unreadable identifiers.">
-    <title>Manual Damage Entry | Greenloop</title>
+    <title>TV Manual Entry | Manual Damage Report | Greenloop</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/appearance.css?v=20260928-sidebar-depth-1">
-    <link rel="stylesheet" href="css/manual-damage.css?v=20261005-tv-damage-access-1">
+    <link rel="stylesheet" href="css/manual-damage.css?v=20261005-manual-damage-module-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script defer src="js/config.js?v=20261005-tv-damage-access-1"></script>
+    <script defer src="js/config.js?v=20261005-manual-damage-module-1"></script>
     <script defer src="js/manual-damage.js?v=20261005-tv-damage-access-1"></script>
   </head>
   <body class="app-page manual-damage-page">
@@ -26,14 +26,13 @@
       </aside>
       <div id="menu-backdrop" class="menu-backdrop" hidden></div>
       <main class="app-main">
-        <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a data-lab-access="overview" href="dashboard.html">Dashboard</a><span>/</span><a data-lab-access="lab_live_board" href="lab-live-board.html">Lab Live Board</a><span>/</span><strong>TV Manual Entry</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
+        <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a data-page-access="overview" href="dashboard.html" hidden>Dashboard</a><span>/</span><a data-page-access="manual_damage_report" href="manual-damage-report.html" hidden>Manual Damage Report</a><span>/</span><strong>TV Manual Entry</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
         <div class="page-content manual-damage-content">
-          <nav class="lab-board-navigation" aria-label="Lab Live Board views">
-            <a data-lab-access="lab_live_board" href="lab-live-board.html"><span class="lab-board-navigation-icon" aria-hidden="true">▦</span><span>Live TV<small>Workshop performance</small></span></a>
-            <a data-lab-access="damage_report" href="tv.html"><span class="lab-board-navigation-icon" aria-hidden="true">▤</span><span>Damage Report<small>Reported damage</small></span></a>
-            <a data-lab-access="tv_manual_entry" href="damage-entry.html" aria-current="page"><span class="lab-board-navigation-icon" aria-hidden="true">＋</span><span>TV Manual Entry<small>Record an incident</small></span></a>
+          <nav class="manual-damage-navigation" aria-label="Manual Damage Report windows">
+            <a data-page-access="damage_report" href="tv.html" hidden><span class="manual-damage-navigation-icon" aria-hidden="true">▤</span><span>Damage Report<small>Reported damage</small></span></a>
+            <a data-page-access="tv_manual_entry" href="damage-entry.html" aria-current="page" hidden><span class="manual-damage-navigation-icon" aria-hidden="true">＋</span><span>TV Manual Entry<small>Record an incident</small></span></a>
           </nav>
-          <section class="page-heading manual-damage-heading"><div><p class="eyebrow dashboard-eyebrow">LAB LIVE BOARD</p><h1>Manual damage entry</h1><p class="heading-subtitle">Record who damaged the phone, what happened, and why.</p></div><a data-lab-access="lab_live_board" class="quiet-link" href="lab-live-board.html">← Back to Live TV</a></section>
+          <section class="page-heading manual-damage-heading"><div><p class="eyebrow dashboard-eyebrow">MANUAL DAMAGE REPORT</p><h1>TV Manual Entry</h1><p class="heading-subtitle">Record who damaged the phone, what happened, and why.</p></div><a data-page-access="manual_damage_report" class="quiet-link" href="manual-damage-report.html" hidden>← Manual Damage Report</a></section>
           <p id="permission-message" class="access-message" role="status" hidden></p>
           <div id="manual-damage-app" hidden>
             <section class="manual-damage-panel" aria-labelledby="manual-damage-form-title">

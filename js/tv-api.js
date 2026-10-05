@@ -2,6 +2,8 @@
 (function (window) {
   "use strict";
   var config = window.GREENLOOP_TV_CONFIG || {};
+  var pageKey = config.pageKey === "lab_live_board" ? "lab_live_board" : "damage_report";
+  var pageName = pageKey === "lab_live_board" ? "Lab Live Board" : "Manual Damage Report";
   var base = String(config.supabaseUrl || "").replace(/\/$/, "");
   var key = String(config.supabaseAnonKey || "");
   var storageKey = "greenloop-tv-session-v1";
@@ -138,7 +140,7 @@
     for (index = 0; index < callbacks.length; index += 1) callbacks[index](problem);
   }
   function refresh(callback) {
-    if (!session) { callback(error("NO_SESSION", "Please sign in to open the Damage Report.", true)); return; }
+    if (!session) { callback(error("NO_SESSION", "Please sign in to open the " + pageName + ".", true)); return; }
     refreshWaiters.push(callback);
     if (refreshing) return;
     refreshing = true;
@@ -184,7 +186,7 @@
     acquireAndRefresh();
   }
   function ensureSession(callback) {
-    if (!session) { callback(error("NO_SESSION", "Please sign in to open the Damage Report.", true)); return; }
+    if (!session) { callback(error("NO_SESSION", "Please sign in to open the " + pageName + ".", true)); return; }
     if (session.expires_at <= now() + 60) refresh(callback);
     else callback(null);
   }
@@ -237,7 +239,7 @@
       if (problem) { callback(problem); return; }
       persist();
       callback(null, { authenticated: true, user: { id: session.user.id, displayName: session.user.displayName } });
-    });
+    }, pageKey);
   }
   api.login = function (username, password, remember, callback) {
     callback = typeof callback === "function" ? callback : noop;

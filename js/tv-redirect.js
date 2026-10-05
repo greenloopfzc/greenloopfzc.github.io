@@ -8,6 +8,7 @@
   var modernLayout = window.CSS && typeof window.CSS.supports === "function" && window.CSS.supports("display", "grid") && window.CSS.supports("width", "min(100%, 430px)");
   var modernRuntime = window.Promise && window.fetch && window.Map && Object.assign && String.prototype.replaceAll;
   if (television || choice && choice[1] === "1" || !modernLayout || !modernRuntime) {
-    window.location.replace("tv.html");
+    var page = (window.location.pathname || "").split("/").pop();
+    window.location.replace(page === "lab-live-board.html" ? "live-tv.html" : "tv.html");
   }
 }());
