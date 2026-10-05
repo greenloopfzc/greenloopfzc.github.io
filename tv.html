@@ -7,26 +7,20 @@
   <meta name="description" content="Greenloop Lab Live Board: employee damage cards, all-time counts and complete damage history.">
   <title>Damage Report | Greenloop Lab Live Board</title>
   <link rel="stylesheet" href="css/tv.css?v=20261003-tv-browser-1">
-  <link rel="stylesheet" href="css/damage-tv.css?v=20261003-damage-cards-1">
+  <link rel="stylesheet" href="css/damage-tv.css?v=20261005-tv-damage-access-1">
   <script>window.GREENLOOP_TV_CONFIG = {"supabaseUrl":"https://prypklagfznpdlleldll.supabase.co","supabaseAnonKey":"sb_publishable_hMIRbfKmh4vhGvEgVcPjow_F21WmwXt"};</script>
-  <script defer src="js/tv-api.js?v=20261003-damage-cards-1"></script>
-  <script defer src="js/damage-tv.js?v=20261003-damage-cards-1"></script>
+  <script defer src="js/tv-api.js?v=20261005-tv-damage-access-1"></script>
+  <script defer src="js/damage-tv.js?v=20261005-tv-damage-access-1"></script>
 </head>
 <body class="tv-page damage-tv-page">
   <div class="tv-wrap">
     <header class="tv-masthead tv-clear">
-      <a class="tv-brand" href="lab-live-board.html" aria-label="Greenloop Lab Live Board home">
+      <div class="tv-brand" aria-label="Greenloop Damage Report">
         <img class="tv-logo" src="assets/looplogo.jpg" width="76" height="76" alt="">
         <span class="tv-brand-copy"><span class="tv-wordmark">greenloop</span><span class="tv-brand-caption">LAB LIVE BOARD</span></span>
-      </a>
+      </div>
       <button id="tv-theme-toggle" class="tv-button tv-theme-button" type="button" aria-pressed="false">Dark mode</button>
     </header>
-    <nav class="damage-board-nav" aria-label="Lab Live Board">
-      <a class="damage-board-back" href="lab-live-board.html">&larr; Lab Live Board</a>
-      <a class="tv-button" href="live-tv.html">Live TV</a>
-      <a class="tv-button damage-nav-active" href="tv.html" aria-current="page">Damage Report</a>
-      <a class="tv-button" href="damage-entry.html">Manual Entry</a>
-    </nav>
 
     <main>
       <section id="tv-login" class="tv-login tv-clear" aria-labelledby="tv-login-title">
@@ -63,7 +57,6 @@
             <button id="tv-sign-in" class="tv-button tv-primary tv-sign-in" type="submit">Sign in to damage report</button>
           </form>
           <p id="tv-login-help" class="tv-login-help">Use the remote to select a field, then enter your details with the TV keyboard. For account or password help, contact your administrator.</p>
-          <a class="tv-standard-link" href="index.html?tv=0">Open the standard sign-in page</a>
         </div>
       </section>
 
@@ -87,6 +80,11 @@
         </div>
         <p id="tv-board-message" class="tv-message tv-board-message" role="status" aria-live="polite"></p>
 
+        <section class="damage-live-updates" aria-label="Latest saved damage entries">
+          <strong class="damage-live-title"><i></i>LIVE UPDATES</strong>
+          <button id="damage-updates-toggle" class="tv-button damage-updates-toggle" type="button" aria-pressed="false" disabled>Pause updates</button>
+          <p id="damage-live-text" role="status" aria-live="polite">No damage entries yet.</p>
+        </section>
         <div class="damage-summary" aria-label="Manual damage incident totals">
           <span>Today <strong id="damage-today">0</strong></span>
           <span>This month <strong id="damage-month">0</strong></span>

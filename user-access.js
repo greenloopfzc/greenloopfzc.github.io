@@ -39,6 +39,8 @@
     ["initial_qc", "Initial QC", "Inspect, grade, identify work, and assign technicians."],
     ["lab_glass", "Lab & Glass", "Laboratory and glass repair work."],
     ["lab_live_board", "Lab Live Board", "TV display of live technician workload and performance."],
+    ["damage_report", "Damage Report", "View employee damage cards and Live Updates on the TV screen."],
+    ["tv_manual_entry", "TV Manual Entry", "View manual damage history; Entry Allowed records damage and manages employees and dropdown choices."],
     ["frame_department", "Frame Department", "Frame work, final grade, pass and fail decisions."],
     ["parts", "Parts", "View requests and issue required parts."],
     ["inventory", "Inventory", "Receive and control parts inventory."],
@@ -86,14 +88,14 @@
 
   function pageCheckboxes(pages = pageGuideData, selectedPermissions = {}) {
     return pages.map(([key, name, scope]) => {
-      const accessLevel = selectedPermissions[key] || "edit";
+      const accessLevel = key === "damage_report" ? "view" : (selectedPermissions[key] || "edit");
       const checked = ["view", "edit"].includes(selectedPermissions[key]);
       return `
         <article class="role-option${checked ? " is-selected" : ""}" data-page-permission="${escapeHtml(key)}">
           <label class="permission-check"><input type="checkbox" value="${escapeHtml(key)}"${checked ? " checked" : ""}><strong>${escapeHtml(name)}</strong></label>
           <select data-access-level aria-label="${escapeHtml(name)} access level"${checked ? "" : " disabled"}>
             <option value="view"${accessLevel === "view" ? " selected" : ""}>Only View</option>
-            <option value="edit"${accessLevel !== "view" ? " selected" : ""}>Entry Allowed</option>
+            ${key === "damage_report" ? "" : `<option value="edit"${accessLevel !== "view" ? " selected" : ""}>Entry Allowed</option>`}
           </select>
           <small>${escapeHtml(scope)}</small>
         </article>
@@ -117,13 +119,14 @@
 
   function displayPermissionsForUser(user) {
     const permissions = { ...permissionsForUser(user) };
+    if (["view", "edit"].includes(permissions.damage_report)) permissions.damage_report = "view";
     if (["view", "edit"].includes(user?.partner_names_access)) permissions.partner_names = user.partner_names_access;
     else delete permissions.partner_names;
     return permissions;
   }
 
   function collectPagePermissions(container) {
-    const result = { supplier_returns: "none", supplier_return_approval: "none", supplier_return_handover: "none" };
+    const result = { supplier_returns: "none", supplier_return_approval: "none", supplier_return_handover: "none", damage_report: "none", tv_manual_entry: "none" };
     container.querySelectorAll("[data-page-permission]").forEach((card) => {
       const checkbox = card.querySelector('input[type="checkbox"]');
       if (checkbox.checked) result[checkbox.value] = card.querySelector("[data-access-level]").value || "view";

@@ -1,4 +1,4 @@
-/* Employee damage cards, 20261003-damage-cards-1. Literal colors and ES5-era layout. */
+/* Employee damage cards, 20261005-tv-damage-access-1. Literal colors and ES5-era layout. */
 .damage-tv-page .tv-wrap { padding-top: 18px; }
 .damage-tv-page .tv-masthead { margin-bottom: 15px; }
 .damage-tv-page .tv-logo { width: 54px; height: 54px; border-radius: 15px; }
@@ -134,4 +134,29 @@
 }
 @media (min-width: 1600px) {
   .damage-table .damage-empty-history { height: 214px; }
+}
+
+/* One readable live line, with the same raised surface in both themes. */
+.damage-live-updates { margin: 8px 0 14px; padding: 12px 15px; border: 1px solid #fff; border-radius: 16px; background: #edf2f5; box-shadow: 4px 5px 9px #c6d1d9, -3px -3px 8px #fff; color: #334b40; }
+.damage-live-title { float: left; padding: 7px 16px 6px 0; font-size: 12px; letter-spacing: 1px; color: #9c3029; }
+.damage-live-title i { display: inline-block; width: 8px; height: 8px; margin-right: 7px; border-radius: 50%; background: #ce493c; }
+.damage-live-updates p { margin: 0 120px 0 151px; min-height: 30px; line-height: 1.5; font-size: 14px; word-wrap: break-word; overflow-wrap: break-word; }
+.damage-live-updates .damage-updates-toggle { float: right; min-height: 30px; padding: 6px 9px; font-size: 11px; }
+.damage-live-updates:after { content: ""; display: block; clear: both; }
+.tv-dark .damage-live-updates { border-color: #425561; background: #2e3f4b; color: #e0efe6; box-shadow: 4px 5px 10px #13232e, -3px -3px 8px #415462; }
+.tv-dark .damage-live-title { color: #ffb4a9; }
+.tv-dark .damage-live-title i { background: #ff8a7a; }
+@media (max-width: 1100px) { .damage-live-updates p { clear: both; margin: 0; padding-top: 5px; } }
+@media (min-width: 1101px) and (max-width: 1599px) {
+  .damage-employee { padding-top: 16px; }
+  .damage-employee-header { margin-bottom: 12px; }
+  .damage-table td { padding-top: 7px; padding-bottom: 7px; }
+  .damage-table .damage-empty-history { height: 207px; }
+  .damage-history-controls { margin-top: 10px; }
+}
+@media (min-width: 1600px) {
+  .damage-employee-cell { padding-bottom: 18px; }
+  .damage-employee { padding-top: 13px; padding-bottom: 10px; }
+  .damage-table td { padding-top: 5px; padding-bottom: 5px; }
+  .damage-table .damage-empty-history { height: 189px; }
 }

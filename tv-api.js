@@ -138,7 +138,7 @@
     for (index = 0; index < callbacks.length; index += 1) callbacks[index](problem);
   }
   function refresh(callback) {
-    if (!session) { callback(error("NO_SESSION", "Please sign in to open the Live Board.", true)); return; }
+    if (!session) { callback(error("NO_SESSION", "Please sign in to open the Damage Report.", true)); return; }
     refreshWaiters.push(callback);
     if (refreshing) return;
     refreshing = true;
@@ -184,7 +184,7 @@
     acquireAndRefresh();
   }
   function ensureSession(callback) {
-    if (!session) { callback(error("NO_SESSION", "Please sign in to open the Live Board.", true)); return; }
+    if (!session) { callback(error("NO_SESSION", "Please sign in to open the Damage Report.", true)); return; }
     if (session.expires_at <= now() + 60) refresh(callback);
     else callback(null);
   }
@@ -202,7 +202,7 @@
             return;
           }
           if (requestError && (requestError.status === 403 || requestError.serverCode === "42501")) {
-            failSession("PERMISSION_DENIED", "Your account does not have access to Lab Live Board. Ask an administrator to enable it in User Access.", callback);
+            failSession("PERMISSION_DENIED", "Your account does not have permission to open this report. Ask an administrator to check User Access.", callback);
             return;
           }
           callback(requestError, reply);
@@ -211,7 +211,8 @@
       send(false);
     });
   }
-  function checkAccess(callback) {
+  function checkAccess(callback, pageKey) {
+    pageKey = pageKey || "damage_report";
     authorised("POST", "/rest/v1/rpc/get_my_page_access_v2", {}, function (problem, rows) {
       if (problem) {
         if (problem.code === "INVALID_RESPONSE") { failSession("INVALID_RESPONSE", "Page permissions could not be verified. Please sign in again.", callback); return; }
@@ -225,9 +226,9 @@
           failSession("INVALID_RESPONSE", "Page permissions could not be verified. Please sign in again.", callback);
           return;
         }
-        if (rows[index].page_key === "lab_live_board" && /^(view|edit)$/.test(rows[index].access_level)) allowed = true;
+        if (rows[index].page_key === pageKey && /^(view|edit)$/.test(rows[index].access_level)) allowed = true;
       }
-      if (!allowed) { failSession("PERMISSION_DENIED", "Your account does not have access to Lab Live Board. Ask an administrator to enable it in User Access.", callback); return; }
+      if (!allowed) { failSession("PERMISSION_DENIED", "Your account does not have permission to open this report. Ask an administrator to check User Access.", callback); return; }
       callback(null);
     });
   }
@@ -288,7 +289,7 @@
         }
         callback(null, rows);
       });
-    });
+    }, "lab_live_board");
   };
   api.logout = function (callback) {
     var oldToken = session && session.access_token;
@@ -341,7 +342,7 @@
         if (!valid) { callback(error("INVALID_RESPONSE", "The Damage Report response could not be read. Select Refresh to retry.")); return; }
         callback(null, report);
       });
-    });
+    }, "tv_manual_entry");
   };
   function pageArguments(offset, limit) {
     return count(offset) && offset <= 1000000 && count(limit) && limit >= 1 && limit <= 100;
@@ -384,7 +385,7 @@
       if (problem) { callback(problem); return; }
       var valid = report && count(report.employee_count) && count(report.today_count) && count(report.month_count) && count(report.total_count) &&
         report.today_count <= report.month_count && report.month_count <= report.total_count &&
-        array(report.employees) && report.employees.length <= limit && report.employees.length <= report.employee_count && typeof report.has_more === "boolean";
+        array(report.activity) && report.activity.length <= 5 && array(report.employees) && report.employees.length <= limit && report.employees.length <= report.employee_count && typeof report.has_more === "boolean";
       var index, employee, seen = {};
       if (valid) for (index = 0; index < report.employees.length; index += 1) {
         employee = report.employees[index];
@@ -393,6 +394,13 @@
           valid = false; break;
         }
         seen["id:" + employee.id] = true;
+      }
+      if (valid) for (index = 0; index < report.activity.length; index += 1) {
+        var entry = report.activity[index];
+        if (!entry || typeof entry.id !== "string" || !entry.id || typeof entry.damaged_by !== "string" ||
+          typeof entry.model !== "string" || typeof entry.reason !== "string" ||
+          (entry.part_name !== null && typeof entry.part_name !== "string") ||
+          !timestamp(entry.created_at) || !timestamp(entry.occurred_at)) { valid = false; break; }
       }
       if (!valid) { callback(error("INVALID_RESPONSE", "The employee cards could not be read. Select Refresh to retry.")); return; }
       callback(null, report);

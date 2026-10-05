@@ -8,6 +8,6 @@
   var modernLayout = window.CSS && typeof window.CSS.supports === "function" && window.CSS.supports("display", "grid") && window.CSS.supports("width", "min(100%, 430px)");
   var modernRuntime = window.Promise && window.fetch && window.Map && Object.assign && String.prototype.replaceAll;
   if (television || choice && choice[1] === "1" || !modernLayout || !modernRuntime) {
-    window.location.replace("live-tv.html");
+    window.location.replace("tv.html");
   }
 }());

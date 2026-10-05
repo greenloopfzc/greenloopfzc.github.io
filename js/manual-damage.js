@@ -133,7 +133,7 @@
     message("manual-damage-message");
     message("manual-damage-history-message");
     message("manual-damage-options-message");
-    message("permission-message", "Your session or Lab Live Board access has changed. Sign in again or ask an administrator to restore access, then reload this page.");
+    message("permission-message", "Your session or TV Manual Entry access has changed. Sign in again or ask an administrator to restore access, then reload this page.");
   }
   function requestId() {
     if (window.crypto?.randomUUID) return window.crypto.randomUUID();
@@ -381,7 +381,7 @@
     }
     await window.GREENLOOP_ACCESS_READY;
     const access = window.GREENLOOP_PAGE_ACCESS;
-    if (!access || access.pageKey !== "lab_live_board") return;
+    if (!access || access.pageKey !== "tv_manual_entry") return;
     canEdit = access.canEdit === true;
     byId("manual-damage-app").hidden = false;
     byId("manual-damage-view-only").hidden = canEdit;

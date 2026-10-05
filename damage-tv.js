@@ -1,4 +1,4 @@
-/* Manual damage TV report, 20261003-damage-cards-1. ES5, no external runtime. */
+/* Manual damage TV report, 20261005-tv-damage-access-1. ES5, no external runtime. */
 (function () {
   "use strict";
   function start() {
@@ -11,6 +11,7 @@
     var pageSize = (window.innerWidth || document.documentElement.clientWidth) >= 1600 ? 4 : 2;
     var rowSize = 6, offset = 0, total = 0, hasMore = false, autoPages = false;
     var employees = [], rosterRequest = 0;
+    var activity = [], activityIndex = 0, updatesPaused = false;
     function text(id, value) { get(id).textContent = String(value === null || value === undefined ? "" : value); }
     function message(id, value) { text(id, value); get(id).style.display = value ? "block" : "none"; }
     function escape(value) {
@@ -58,7 +59,25 @@
       get("tv-auto-toggle").setAttribute("aria-pressed", autoPages ? "true" : "false");
       text("tv-auto-toggle", autoPages ? "Auto pages: on \u00b7 15 sec" : "Auto pages: off");
     }
+    function showActivity() {
+      var entry = activity[activityIndex];
+      text("damage-live-text", entry ? entry.damaged_by + " \u00b7 " + entry.model + " \u00b7 Part: " +
+        (entry.part_name || "Not recorded") + " \u00b7 Reason: " + entry.reason +
+        " \u00b7 Saved " + uaeDate(entry.created_at) + " UAE" : "No damage entries yet.");
+      get("damage-updates-toggle").disabled = activity.length < 2;
+      get("damage-updates-toggle").setAttribute("aria-pressed", updatesPaused ? "true" : "false");
+      text("damage-updates-toggle", updatesPaused ? "Resume updates" : "Pause updates");
+    }
+    function renderActivity(entries) {
+      var previous = activity[activityIndex], newest = activity[0], i;
+      activity = entries || []; activityIndex = 0;
+      if (previous && newest && activity[0] && newest.id === activity[0].id) {
+        for (i = 0; i < activity.length; i++) if (activity[i].id === previous.id) activityIndex = i;
+      }
+      showActivity();
+    }
     function clear() {
+      activity = []; activityIndex = 0; updatesPaused = false; showActivity();
       offset = 0; total = 0; hasMore = false; employees = []; rosterRequest++; setAuto(false);
       text("damage-today", 0); text("damage-month", 0); text("damage-total", 0);
       get("damage-employees").innerHTML = "";
@@ -130,6 +149,7 @@
       element.innerHTML = cardMarkup(employee, index); controls(); restoreFocus(focused);
     }
     function render(data) {
+      renderActivity(data.activity);
       var html = '', i, focused = document.activeElement && document.activeElement.id;
       text("damage-today", count(data.today_count)); text("damage-month", count(data.month_count)); text("damage-total", count(data.total_count));
       for (i = 0; i < employees.length; i++) {
@@ -312,6 +332,12 @@
       var next = index < 0 ? 0 : (index + (key === 37 || key === 38 ? -1 : 1) + controlsList.length) % controlsList.length;
       event.preventDefault(); controlsList[next].focus();
     });
+    get("damage-updates-toggle").onclick = function () { updatesPaused = !updatesPaused; showActivity(); };
+    window.setInterval(function () {
+      if (active && !document.hidden && !updatesPaused && activity.length > 1) {
+        activityIndex = (activityIndex + 1) % activity.length; showActivity();
+      }
+    }, 8000);
     window.setInterval(function () { if (!document.hidden) refresh(); }, 30000);
     window.setInterval(function () { if (active && autoPages && !document.hidden && !loading && total > pageSize) refresh(hasMore ? offset + pageSize : 0); }, 15000);
     document.addEventListener("visibilitychange", function () { if (!document.hidden) refresh(); });

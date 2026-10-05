@@ -221,6 +221,8 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     supplier_returns: "stock-return.html",
     lab_glass: "laboratory.html",
     lab_live_board: "lab-live-board.html",
+    tv_manual_entry: "damage-entry.html",
+    damage_report: "tv.html",
     frame_department: "laboratory.html#frame",
     parts: "parts.html",
     inventory: "inventory.html",
@@ -242,7 +244,9 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     "stock-return.html": "supplier_returns",
     "laboratory.html": "lab_glass",
     "lab-live-board.html": "lab_live_board",
-    "damage-entry.html": "lab_live_board",
+    "damage-entry.html": "tv_manual_entry",
+    "tv.html": "damage_report",
+    "live-tv.html": "damage_report",
     "glass.html": "lab_glass",
     "parts.html": "parts",
     "inventory.html": "inventory",
@@ -457,6 +461,16 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
         : (receiptCode || fallback);
     };
     const allowedPages = new Set(accessByPage.keys());
+    // Keep the Lab Live Board sidebar group reachable when only one of its
+    // independent child views is assigned. Each destination keeps its own gate.
+    const labNavigation = navigation?.querySelector('a[href="lab-live-board.html"]');
+    if (labNavigation) {
+      const labDestination = ["lab_live_board", "tv_manual_entry", "damage_report"].find((key) => allowedPages.has(key));
+      if (labDestination) labNavigation.href = pageRoutes[labDestination];
+    }
+    document.querySelectorAll("[data-lab-access]").forEach((link) => {
+      link.hidden = !allowedPages.has(link.dataset.labAccess);
+    });
     window.GREENLOOP_CAN_SEARCH = allowedPages.has("imei_search");
     if (navigation) {
       navigation.querySelectorAll("a.nav-item").forEach((link) => {

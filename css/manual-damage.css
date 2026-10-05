@@ -2,6 +2,8 @@
 .lab-board-navigation {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 24px;}
 .lab-board-navigation a {display:flex;align-items:center;gap:12px;min-height:72px;padding:14px 18px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);text-decoration:none;font-weight:700;font-size:.9rem;transition:border-color .15s,background .15s;}
 .lab-board-navigation a:hover {border-color:var(--green-700);}
+.lab-board-navigation a[hidden] {display:none;}
+.manual-damage-page .breadcrumb [hidden] + span {display:none;}
 .lab-board-navigation a[aria-current="page"] {border-color:var(--green-700);background:var(--green-100);color:var(--green-950);}
 .lab-board-navigation a small {display:block;margin-top:4px;color:var(--muted);font-size:.71rem;font-weight:400;}
 .lab-board-navigation-icon {font-size:1.45rem;color:var(--green-700);}
