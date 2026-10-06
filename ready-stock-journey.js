@@ -22,14 +22,19 @@
   let connectedDevice = null;
   let savingCableDetails = false;
   let journeyGeneration = 0;
+  let offset = 0, rowCount = 0, loading = false, selectedDevice = null, detailGeneration = 0, refreshTimer;
+  const pageSize = 50;
+  const search = document.querySelector('#journey-search');
+  const liveStatus = document.querySelector('#journey-live-status');
+  const previous = document.querySelector('#journey-prev'), next = document.querySelector('#journey-next');
+  const pageLabel = document.querySelector('#journey-page-label');
+  const detail = document.querySelector('#journey-detail'), detailBody = document.querySelector('#journey-detail-body');
+  let loadedRows = [];
+  const pending = '<span class="journey-pending">Not yet</span>';
+  const dateCell = value => value ? escapeHtml(formatDateTime(value)) : pending;
 
   function getClient() { if (!client) client = window.GREENLOOP_GET_CLIENT(); return client; }
   function escapeHtml(value) { return String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]); }
-  function dubaiDate() {
-    const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dubai", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
-    const value = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
-    return `${value.year}-${value.month}-${value.day}`;
-  }
   function formatDateTime(value) {
     if (!value) return "—";
     const date = new Date(value);
@@ -47,13 +52,14 @@
 
 
   function render(rows) {
-    total.textContent = String(rows.length);
+    loadedRows = rows;
+    total.textContent = String(rowCount);
     rangeLabel.textContent = rangeFrom.value && rangeTo.value
-      ? `Final QC passed from ${rangeFrom.value} to ${rangeTo.value}. Latest pass appears first.`
-      : "All current Ready Stock devices. Latest Final QC pass appears first.";
+      ? `IMEI entered from ${rangeFrom.value} to ${rangeTo.value}. All stages included.`
+      : "All saved phones, at every stage. Latest IMEI entry first.";
     body.innerHTML = rows.length
-      ? rows.map((row) => `<tr><td class="journey-imei">${escapeHtml(row.imei)}</td><td>${escapeHtml(row.device_details || "—")}</td><td>${escapeHtml(formatDateTime(row.date_received))}</td><td>${escapeHtml(formatDateTime(row.date_completed))}</td><td>${escapeHtml(row.stock_channel)}</td><td>${escapeHtml(row.invoice_number)}</td><td>${escapeHtml(window.GREENLOOP_CAN_VIEW_PARTNER_NAMES ? row.supplier_company : "Confidential supplier")}</td><td>${escapeHtml(row.quantity_received)}</td><td>${escapeHtml(row.supplier_code)}</td><td>${escapeHtml(row.battery_health || "—")}</td><td>${escapeHtml(row.supplier_grade)}</td><td>${escapeHtml(row.company_initial_grade)}</td><td>${escapeHtml(row.company_final_grade)}</td><td class="journey-parts">${escapeHtml(row.parts_issued)}</td><td class="journey-money">${escapeHtml(formatMoney(row.parts_cost))}</td><td>${escapeHtml(row.service_done)}</td><td>${escapeHtml(row.technician_name)}</td><td>${escapeHtml(row.box_number)}</td><td>${escapeHtml(formatDateTime(row.export_date))}</td><td>${escapeHtml(window.GREENLOOP_CAN_VIEW_PARTNER_NAMES ? row.customer_name : "Confidential customer")}</td></tr>`).join("")
-      : '<tr><td class="journey-empty" colspan="20">No completed device is available for this date range.</td></tr>';
+      ? rows.map((row) => `<tr><td class="journey-imei">${escapeHtml(row.imei || row.device_number)}<small>${escapeHtml(row.device_number || "")}</small><button type="button" class="secondary-button journey-open" data-device-id="${escapeHtml(row.device_id)}">View journey</button></td><td><span class="journey-current-stage">${escapeHtml(row.current_stage || "Not recorded")}</span></td><td>${dateCell(row.date_entered)}</td><td>${escapeHtml(row.device_details || "—")}</td><td>${escapeHtml(formatDateTime(row.date_received))}</td><td>${dateCell(row.date_completed)}</td><td>${escapeHtml(row.stock_channel)}</td><td>${escapeHtml(row.invoice_number)}</td><td>${escapeHtml(window.GREENLOOP_CAN_VIEW_PARTNER_NAMES ? row.supplier_company : "Confidential supplier")}</td><td>${escapeHtml(row.quantity_received)}</td><td>${escapeHtml(row.supplier_code)}</td><td>${escapeHtml(row.battery_health || "—")}</td><td>${escapeHtml(row.supplier_grade)}</td><td>${escapeHtml(row.company_initial_grade)}</td><td>${escapeHtml(row.company_final_grade)}</td><td class="journey-parts">${escapeHtml(row.parts_issued)}</td><td class="journey-money">${escapeHtml(formatMoney(row.parts_cost))}</td><td>${escapeHtml(row.service_done)}</td><td>${escapeHtml(row.technician_name)}</td><td>${escapeHtml(row.box_number)}</td><td>${dateCell(row.export_date)}</td><td>${escapeHtml(window.GREENLOOP_CAN_VIEW_PARTNER_NAMES ? row.customer_name : "Confidential customer")}</td></tr>`).join("")
+      : '<tr><td class="journey-empty" colspan="22">No saved phone matches these filters.</td></tr>';
   }
 
   function applyConnectedDevice(device = {}) {
@@ -100,38 +106,105 @@
     }
   }
 
-  async function loadJourney() {
-    const refresh = document.querySelector("#refresh-journey");
+  function updatePager() {
+    previous.disabled = loading || offset === 0;
+    next.disabled = loading || offset + loadedRows.length >= rowCount;
+    pageLabel.textContent = rowCount ? `${offset + 1}–${offset + loadedRows.length} of ${rowCount} phones` : '0 phones';
+  }
+
+  async function loadJourney(quiet = false) {
+    const refresh = document.querySelector('#refresh-journey');
     const from = rangeFrom.value || null, to = rangeTo.value || null;
-    if ((from && !to) || (!from && to) || (from && to && from > to)) throw new Error("Select a valid From date and To date, or clear both dates.");
+    if ((from && !to) || (!from && to) || (from && to && from > to)) throw new Error('Select a valid From date and To date, or clear both dates.');
     const generation = ++journeyGeneration;
+    loading = true;
     refresh.disabled = true;
-    refresh.textContent = "Loading...";
+    if (!quiet) refresh.textContent = 'Loading...';
+    updatePager();
     try {
-      const { data, error } = await getClient().rpc("get_ready_stock_journey", { p_date_from: from, p_date_to: to });
+      const {data, error} = await getClient().rpc('get_stock_journey_v1', {p_date_from: from, p_date_to: to, p_query: search.value.trim(), p_offset: offset, p_limit: pageSize});
       if (generation !== journeyGeneration) return;
       if (error) throw error;
-      render(Array.isArray(data) ? data : []);
-      rangeLabel.textContent = from && to ? "Final QC passed from " + from + " to " + to + ". Latest pass appears first." : "All completed devices, including exported phones. Latest Final QC pass appears first.";
+      if (!data || !Array.isArray(data.rows) || !Number.isSafeInteger(Number(data.total)) || Number(data.total) < 0) throw new Error('Stock Journey returned an invalid response.');
+      rowCount = Number(data.total);
+      if (offset && offset >= rowCount) { offset = Math.max(0, Math.floor((rowCount - 1) / pageSize) * pageSize); return await loadJourney(quiet); }
+      render(data.rows);
+      liveStatus.textContent = `Updated ${formatDateTime(new Date())} · Refreshes every 30 seconds.`;
+      liveStatus.removeAttribute('data-error');
+      if (detail.open && selectedDevice) await loadDetail(selectedDevice);
+    } catch (error) {
+      if (generation !== journeyGeneration) return;
+      liveStatus.textContent = 'Could not refresh Stock Journey. ' + (error.message || 'Try Refresh table.');
+      liveStatus.dataset.error = 'true';
+      if (error.code === '42501' || error.code === 'PGRST301') { rowCount = 0; offset = 0; render([]); detail.close(); }
+      throw error;
     } finally {
-      if (generation === journeyGeneration) { refresh.disabled = false; refresh.textContent = "Refresh table"; }
+      if (generation === journeyGeneration) { loading = false; refresh.disabled = false; refresh.textContent = 'Refresh table'; updatePager(); }
     }
+  }
+
+  function displayValue(value) {
+    if (value === null || value === undefined || value === '') return 'Not recorded';
+    if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+    return typeof value === 'object' ? 'Not recorded' : String(value);
+  }
+
+  function renderDetail(data) {
+    const device = data.device || {};
+    document.querySelector('#journey-detail-title').textContent = device.imei_1 || device.device_number || 'Device history';
+    const row = loadedRows.find(item => item.device_id === selectedDevice);
+    const current = row?.current_stage || displayValue(device.current_status).replace(/_/g, ' ');
+    document.querySelector('#journey-detail-stage').textContent = [device.model, device.storage_gb ? `${device.storage_gb} GB` : '', device.color, `Current stage: ${current}`].filter(Boolean).join(' · ');
+    const records = Array.isArray(data.rows) ? data.rows : [];
+    detailBody.innerHTML = records.length ? '<ol class="stock-journey-steps">' + records.map(item => {
+      const details = (Array.isArray(item.details) ? item.details : []).map(value => `<li><strong>${escapeHtml(value.label)}:</strong> ${escapeHtml(displayValue(value.value))}</li>`);
+      details.unshift(`<li><strong>Date & time:</strong> ${escapeHtml(formatDateTime(item.occurred_at))}</li>`);
+      details.push(`<li><strong>${item.stage === 'assignment' ? 'Assigned technician' : 'By'}:</strong> ${escapeHtml(item.actor || 'Not recorded')}</li>`);
+      if (item.job_number) details.push(`<li><strong>Job:</strong> ${escapeHtml(item.job_number)}</li>`);
+      if (item.status) details.push(`<li><strong>Status:</strong> ${escapeHtml(displayValue(item.status).replace(/_/g, ' '))}</li>`);
+      for (const part of Array.isArray(item.parts) ? item.parts : []) details.push(`<li><strong>Part:</strong> ${escapeHtml(part.name || 'Not recorded')} · Qty ${escapeHtml(displayValue(part.quantity))}${part.unit_cost != null ? ' · Unit price AED ' + escapeHtml(formatMoney(part.unit_cost)) : ' · Price not recorded'}</li>`);
+      if (item.cost != null) details.push(`<li><strong>Recorded cost:</strong> AED ${escapeHtml(formatMoney(item.cost))}</li>`);
+      if (item.duration_seconds != null && Number.isFinite(Number(item.duration_seconds))) {
+        const seconds = Math.max(0, Math.round(Number(item.duration_seconds)));
+        details.push(`<li><strong>${escapeHtml(item.duration_label || 'Duration')}:</strong> ${Math.floor(seconds / 3600)}h ${Math.floor(seconds % 3600 / 60)}m ${seconds % 60}s</li>`);
+      }
+      return `<li class="stock-journey-step"><h3>${escapeHtml(item.title || 'Recorded step')}</h3><ul>${details.join('')}</ul></li>`;
+    }).join('') + '</ol>' : '<p>No recorded steps are available for this phone yet.</p>';
+  }
+
+  async function loadDetail(deviceId) {
+    const generation = ++detailGeneration;
+    try {
+      const {data, error} = await getClient().rpc('get_stock_journey_details_v1', {p_device_id: deviceId});
+      if (generation !== detailGeneration || selectedDevice !== deviceId || !detail.open) return;
+      if (error) throw error;
+      if (!data?.found) { detailBody.textContent = 'This phone is no longer available in Stock Journey.'; return; }
+      renderDetail(data);
+    } catch (error) {
+      if (generation === detailGeneration && selectedDevice === deviceId && detail.open) detailBody.textContent = 'Could not load this journey. ' + (error.message || 'Close and try again.');
+    }
+  }
+
+  function openJourney(deviceId) {
+    selectedDevice = deviceId;
+    document.querySelector('#journey-detail-title').textContent = 'Device history';
+    document.querySelector('#journey-detail-stage').textContent = '';
+    detailBody.textContent = 'Loading recorded steps...';
+    if (!detail.open) detail.showModal();
+    loadDetail(deviceId);
   }
 
   async function initialize() {
     if (!config.supabaseUrl || !config.supabaseAnonKey || !window.supabase) { permissionMessage.textContent = "Supabase authentication is not configured."; permissionMessage.hidden = false; return; }
     const { data: sessionData } = await getClient().auth.getSession();
     if (!sessionData.session) { window.location.replace("index.html"); return; }
-    const { data: canView, error } = await getClient().rpc("has_role", { required_roles: ["super_admin", "owner", "manager", "production", "final_qc", "shop_staff"] });
-    if (error) throw error;
-    if (!canView) { permissionMessage.textContent = "Your account does not have Ready Stock permission."; permissionMessage.hidden = false; return; }
     await window.GREENLOOP_ACCESS_READY;
-    if (window.GREENLOOP_PAGE_ACCESS?.pageKey !== "ready_stock_journey") return;
+    if (window.GREENLOOP_PAGE_ACCESS?.pageKey !== "ready_stock_journey" || !["view", "edit"].includes(window.GREENLOOP_PAGE_ACCESS?.accessLevel)) return;
     app.hidden = false;
-    const today = dubaiDate();
-    rangeFrom.value = today;
-    rangeTo.value = today;
+    rangeFrom.value = "";
+    rangeTo.value = "";
     await loadJourney();
+    refreshTimer = window.setInterval(() => { if (!document.hidden && !loading) loadJourney(true).catch(() => {}); }, 30000);
     const currentDevice = window.GREENLOOP_GET_CONNECTED_DEVICE?.();
     if (currentDevice) applyConnectedDevice(currentDevice);
   }
@@ -140,10 +213,18 @@
   document.querySelector("#close-menu").addEventListener("click", () => setMenu(false));
   backdrop.addEventListener("click", () => setMenu(false));
   document.querySelector("#refresh-journey").addEventListener("click", () => loadJourney().catch((error) => showToast(error.message || "Device journey could not be loaded.")));
-  document.querySelector("#apply-journey-range").addEventListener("click", () => loadJourney().catch((error) => showToast(error.message || "Device journey could not be loaded.")));
-  document.querySelector("#clear-journey-range").addEventListener("click", () => { rangeFrom.value = ""; rangeTo.value = ""; loadJourney().catch((error) => showToast(error.message || "Device journey could not be loaded.")); });
+  document.querySelector("#apply-journey-range").addEventListener("click", () => { offset = 0; loadJourney().catch((error) => showToast(error.message)); });
+  document.querySelector("#clear-journey-range").addEventListener("click", () => { rangeFrom.value = ""; rangeTo.value = ""; offset = 0; loadJourney().catch((error) => showToast(error.message || "Device journey could not be loaded.")); });
   window.addEventListener("greenloop:device-reader-status", (event) => { if (["offline", "waiting"].includes(event.detail?.state)) clearConnectedDevice(); });
   window.addEventListener("greenloop:device", (event) => applyConnectedDevice(event.detail));
   saveCableDetails.addEventListener("click", () => saveConnectedDeviceDetails().catch((error) => showToast(error.message || "Connected phone details could not be saved.")));
+  document.querySelector('#journey-search-form').addEventListener('submit', event => { event.preventDefault(); offset = 0; loadJourney().catch(error => showToast(error.message)); });
+  previous.addEventListener('click', () => { offset = Math.max(0, offset - pageSize); loadJourney().catch(error => showToast(error.message)); });
+  next.addEventListener('click', () => { offset += pageSize; loadJourney().catch(error => showToast(error.message)); });
+  body.addEventListener('click', event => { const button = event.target.closest('[data-device-id]'); if (button) openJourney(button.dataset.deviceId); });
+  document.querySelector('#journey-detail-close').addEventListener('click', () => detail.close());
+  detail.addEventListener('close', () => { selectedDevice = null; detailGeneration++; detailBody.replaceChildren(); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && !app.hidden && !loading) loadJourney(true).catch(() => {}); });
+  window.addEventListener('pagehide', () => window.clearInterval(refreshTimer));
   initialize().catch((error) => { permissionMessage.textContent = error.message || "Device journey could not be loaded."; permissionMessage.hidden = false; });
 })();

@@ -30,3 +30,30 @@
 .journey-parts { color: #145d43 !important; }
 .journey-money { color: #0b6a4b !important; font-variant-numeric: tabular-nums; font-weight: 800 !important; text-align: right !important; }
 .journey-empty { padding: 30px !important; color: #78877e !important; font-weight: 600 !important; text-align: center !important; }
+
+/* Stock Journey changes stay scoped to this page. */
+.journey-search-form { display: grid; gap: 8px; margin: 0 0 14px; }
+.journey-search-form label { font-weight: 700; color: var(--ink, #243d34); }
+.journey-search-form > div { display: flex; flex-wrap: wrap; gap: 10px; }
+.journey-search-form input { flex: 1 1 280px; min-width: 0; max-width: 620px; border: 1px solid var(--line, #d6e2d9); border-radius: 12px; padding: 12px 15px; font: inherit; }
+.journey-live-status { color: var(--muted, #687d70); font-size: .8rem; }
+.journey-live-status[data-error] { color: var(--nm-red, #a72f35); }
+.journey-pagination { display: flex; align-items: center; justify-content: center; gap: 16px; margin: 20px 0; }
+.journey-current-stage { display: inline-block; border-radius: 12px; padding: 8px 12px; background: var(--nm-accent-soft, #def2e7); color: var(--nm-ink, #174c36); white-space: normal; }
+.journey-imei small { display: block; margin-top: 5px; color: var(--muted, #687d70); }
+.journey-open { display: block; margin-top: 10px; padding: 7px 12px; font-size: .75rem; }
+.journey-pending { color: var(--muted, #687d70); font-weight: 400; }
+.journey-table th:nth-child(2), .journey-table td:nth-child(2) { min-width: 190px; }
+.journey-table th:nth-child(4), .journey-table td:nth-child(4) { min-width: 230px; white-space: normal; }
+.stock-journey-detail { width: min(940px, calc(100vw - 32px)); max-height: 88vh; box-sizing: border-box; padding: 26px; border-radius: 26px; border: 1px solid var(--nm-line, #d6e2d9); background: var(--nm-card, #f7faf8); color: var(--nm-ink, #243d34); box-shadow: 12px 12px 26px #0005, -3px -3px 10px #ffffff20; }
+.stock-journey-detail::backdrop { background: #071d2bb0; }
+.stock-journey-detail > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+.stock-journey-detail h2 { margin: 4px 0; font-size: 1.4rem; overflow-wrap: anywhere; }
+.stock-journey-detail header p { color: var(--nm-muted, #687d70); }
+.stock-journey-steps { margin: 0; padding-left: 28px; }
+.stock-journey-step { margin: 0 0 18px; padding: 18px; border: 1px solid var(--nm-line, #d6e2d9); border-radius: 18px; background: var(--nm-well, #fff); overflow-wrap: anywhere; }
+.stock-journey-step::marker { color: var(--nm-accent, #087859); font-weight: 800; }
+.stock-journey-step h3 { margin: 0 0 10px; color: inherit; font-size: 1rem; }
+.stock-journey-step ul { padding-left: 20px; }
+.stock-journey-step ul li { margin: 7px 0; line-height: 1.5; }
+@media (max-width: 620px) { .stock-journey-detail { padding: 18px; } .stock-journey-detail > header { flex-wrap: wrap; } .stock-journey-step { padding: 12px; } }
