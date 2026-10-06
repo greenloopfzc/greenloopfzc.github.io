@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#0d5c43">
     <meta name="description" content="Manually record workshop damage, including phones with unreadable identifiers.">
-    <title>Damage Entry | Manual Damage Report | Greenloop</title>
+    <title>Damage Entry | Live Damage Report | Greenloop</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="css/appearance.css?v=20260928-sidebar-depth-1">
     <link rel="stylesheet" href="css/manual-damage.css?v=20261006-damage-entry-pdf-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script defer src="js/config.js?v=20261005-damage-tv-views-1"></script>
+    <script defer src="js/config.js?v=20261006-live-damage-motion-1"></script>
     <link rel="stylesheet" href="css/damage-report-export.css?v=20261006-damage-entry-pdf-1">
     <script defer src="js/damage-report-export.js?v=20261006-damage-entry-pdf-1"></script>
     <script defer src="js/manual-damage.js?v=20261006-damage-entry-pdf-1"></script>
@@ -28,13 +28,13 @@
       </aside>
       <div id="menu-backdrop" class="menu-backdrop" hidden></div>
       <main class="app-main">
-        <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a data-page-access="overview" href="dashboard.html" hidden>Dashboard</a><span>/</span><a data-page-access="manual_damage_report" href="manual-damage-report.html" hidden>Manual Damage Report</a><span>/</span><strong>Damage Entry</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
+        <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a data-page-access="overview" href="dashboard.html" hidden>Dashboard</a><span>/</span><a data-page-access="manual_damage_report" href="manual-damage-report.html" hidden>Live Damage Report</a><span>/</span><strong>Damage Entry</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
         <div class="page-content manual-damage-content">
-          <nav class="manual-damage-navigation" aria-label="Manual Damage Report windows">
+          <nav class="manual-damage-navigation" aria-label="Live Damage Report windows">
             <a data-page-access="damage_report" href="tv.html" hidden><span class="manual-damage-navigation-icon" aria-hidden="true">▤</span><span>Damage Report<small>Reported damage</small></span></a>
             <a data-page-access="tv_manual_entry" href="damage-entry.html" aria-current="page" hidden><span class="manual-damage-navigation-icon" aria-hidden="true">＋</span><span>Damage Entry<small>Record an incident</small></span></a>
           </nav>
-          <section class="page-heading manual-damage-heading"><div><p class="eyebrow dashboard-eyebrow">MANUAL DAMAGE REPORT</p><h1>Damage Entry</h1><p class="heading-subtitle">Record who damaged the phone, what happened, and why.</p></div><a data-page-access="manual_damage_report" class="quiet-link" href="manual-damage-report.html" hidden>← Manual Damage Report</a></section>
+          <section class="page-heading manual-damage-heading"><div><p class="eyebrow dashboard-eyebrow">LIVE DAMAGE REPORT</p><h1>Damage Entry</h1><p class="heading-subtitle">Record who damaged the phone, what happened, and why.</p></div><a data-page-access="manual_damage_report" class="quiet-link" href="manual-damage-report.html" hidden>← Live Damage Report</a></section>
           <p id="permission-message" class="access-message" role="status" hidden></p>
           <div id="manual-damage-app" hidden>
             <section class="manual-damage-panel" aria-labelledby="manual-damage-form-title">

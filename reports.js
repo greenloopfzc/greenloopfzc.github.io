@@ -89,7 +89,7 @@
 
   const reports = {
     manual_damage: {
-      title: "Manual Damage Report",
+      title: "Live Damage Report",
       description: "Correct a damage entry or delete manual damage history. Every change is permanently audited.",
       columns: []
     },
@@ -904,7 +904,7 @@
       panelDescription.textContent = reports.manual_damage.description;
       rowCount.textContent = "Separate report history";
       if (window.GREENLOOP_DAMAGE_MANAGEMENT) window.GREENLOOP_DAMAGE_MANAGEMENT.mount(reportContent);
-      else reportContent.textContent = "Manual Damage Report could not be loaded. Reload this page to try again.";
+      else reportContent.textContent = "Live Damage Report could not be loaded. Reload this page to try again.";
       return;
     }
     window.GREENLOOP_DAMAGE_MANAGEMENT?.unmount();

@@ -9,7 +9,7 @@
     var active = false, loading = false, busy = false, generation = 0, theme = "light";
     var rowSize = 6, employees = [], rosterRequest = 0, selection = 0, detail = null;
     var autoView = false, autoTimer = null, view = "all";
-    var activity = [], activityIndex = 0, updatesPaused = false;
+    var activity = [], updatesPaused = false;
     function text(id, value) { get(id).textContent = String(value === null || value === undefined ? "" : value); }
     function message(id, value) { text(id, value); get(id).style.display = value ? "block" : "none"; }
     function escape(value) {
@@ -85,25 +85,48 @@
       if (automatic) scheduleAuto();
     }
     function showAll() { pauseAuto(); selection++; detail = null; view = "all"; renderEmployees(); }
-    function showActivity() {
-      var entry = activity[activityIndex];
-      text("damage-live-text", entry ? entry.damaged_by + " \u00b7 " + entry.model + " \u00b7 Part: " +
-        (entry.part_name || "Not recorded") + " \u00b7 Qty: " + count(entry.quantity) + " \u00b7 Reason: " + entry.reason +
-        " \u00b7 Saved " + uaeDate(entry.created_at) + " UAE" : "No damage entries yet.");
-      get("damage-updates-toggle").disabled = activity.length < 2;
+    function sizeTicker() {
+      var track = get("damage-live-track"), first = get("damage-live-text"), copy = get("damage-live-copy");
+      var viewport = first.parentNode.parentNode;
+      first.style.minWidth = copy.style.minWidth = viewport.clientWidth + "px";
+      var seconds = Math.max(20, first.offsetWidth / 45);
+      track.style.animationDuration = track.style.webkitAnimationDuration = seconds + "s";
+    }
+    function tickerState() {
+      var state = updatesPaused || !active || document.hidden ? "paused" : "running";
+      var track = get("damage-live-track");
+      track.style.animationPlayState = track.style.webkitAnimationPlayState = state;
+      get("damage-updates-toggle").disabled = !active;
       get("damage-updates-toggle").setAttribute("aria-pressed", updatesPaused ? "true" : "false");
       text("damage-updates-toggle", updatesPaused ? "Resume updates" : "Pause updates");
     }
-    function renderActivity(entries) {
-      var previous = activity[activityIndex], newest = activity[0], i;
-      activity = (entries || []).slice(0, 5); activityIndex = 0;
-      if (previous && newest && activity[0] && newest.id === activity[0].id) {
-        for (i = 0; i < activity.length; i++) if (activity[i].id === previous.id) activityIndex = i;
+    function showActivity() {
+      var messages = [], i, entry;
+      for (i = 0; i < activity.length; i++) {
+        entry = activity[i];
+        messages.push(entry.damaged_by + " \u00b7 " + entry.model + " \u00b7 Part: " +
+          (entry.part_name || "Not recorded") + " \u00b7 Qty: " + count(entry.quantity) + " \u00b7 Reason: " + entry.reason +
+          " \u00b7 Saved " + uaeDate(entry.created_at) + " UAE");
       }
+      var line = messages.length ? messages.join("     |     ") : "No damage entries yet. New damage reports will appear here automatically.";
+      // Text-only rendering, with an aria-hidden duplicate for the seamless loop.
+      // Unchanged refreshes do not restart or jump the running line.
+      if (get("damage-live-text").textContent !== line) {
+        text("damage-live-text", line); text("damage-live-copy", line);
+        var track = get("damage-live-track");
+        track.style.animationName = track.style.webkitAnimationName = "none";
+        sizeTicker();
+        void track.offsetWidth;
+        track.style.animationName = track.style.webkitAnimationName = "";
+      }
+      sizeTicker(); tickerState();
+    }
+    function renderActivity(entries) {
+      activity = (entries || []).slice(0, 5);
       showActivity();
     }
     function clear() {
-      activity = []; activityIndex = 0; updatesPaused = false; showActivity();
+      activity = []; updatesPaused = false; showActivity();
       employees = []; detail = null; selection++; rosterRequest++; view = "all"; pauseAuto();
       text("damage-today", 0); text("damage-month", 0); text("damage-total", 0);
       get("damage-employees").innerHTML = "";
@@ -352,12 +375,10 @@
       var next = index < 0 ? 0 : (index + (key === 37 || key === 38 ? -1 : 1) + controlsList.length) % controlsList.length;
       event.preventDefault(); controlsList[next].focus();
     });
-    get("damage-updates-toggle").onclick = function () { updatesPaused = !updatesPaused; showActivity(); };
-    window.setInterval(function () {
-      if (active && !document.hidden && !updatesPaused && activity.length > 1) { activityIndex = (activityIndex + 1) % activity.length; showActivity(); }
-    }, 8000);
+    get("damage-updates-toggle").onclick = function () { updatesPaused = !updatesPaused; tickerState(); };
+    window.addEventListener("resize", sizeTicker);
     window.setInterval(function () { if (!document.hidden) refresh(); }, 30000);
-    document.addEventListener("visibilitychange", function () { stopTimer(); if (!document.hidden) { scheduleAuto(); refresh(); } });
+    document.addEventListener("visibilitychange", function () { stopTimer(); tickerState(); if (!document.hidden) { scheduleAuto(); refresh(); } });
     window.addEventListener("online", function () { refresh(); });
     var restoreTicket = generation;
     api.restore(function (error, result) {

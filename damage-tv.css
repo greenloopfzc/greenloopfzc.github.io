@@ -191,14 +191,14 @@
 .damage-compact-card.damage-has-damage, .damage-employee.damage-has-damage {
   border-color: #e6b6b0;
   background: #fae9e7;
-  background-image: linear-gradient(140deg, rgba(255,255,255,.28), rgba(255,255,255,0));
-  -webkit-animation: damage-card-light-pulse 4s ease-in-out infinite;
-  animation: damage-card-light-pulse 4s ease-in-out infinite;
+  background-image: none;
+  -webkit-animation: damage-card-light-pulse 6s ease-in-out infinite;
+  animation: damage-card-light-pulse 6s ease-in-out infinite;
 }
 .tv-dark .damage-compact-card.damage-has-damage, .tv-dark .damage-employee.damage-has-damage {
   border-color: #886267;
-  background: #493b42;
-  background-image: linear-gradient(140deg, rgba(255,255,255,.04), rgba(0,0,0,.08));
+  background: #f0d3cf;
+  background-image: none;
   -webkit-animation-name: damage-card-dark-pulse;
   animation-name: damage-card-dark-pulse;
 }
@@ -210,19 +210,19 @@
 .tv-dark .damage-has-damage .damage-history-message { color: #e0c3c5; }
 @-webkit-keyframes damage-card-light-pulse {
   0%, 100% { background-color: #fae9e7; }
-  50% { background-color: #f2d2ce; }
+  50% { background-color: #ff3333; }
 }
 @keyframes damage-card-light-pulse {
   0%, 100% { background-color: #fae9e7; }
-  50% { background-color: #f2d2ce; }
+  50% { background-color: #ff3333; }
 }
 @-webkit-keyframes damage-card-dark-pulse {
-  0%, 100% { background-color: #493b42; }
-  50% { background-color: #60434a; }
+  0%, 100% { background-color: #f0d3cf; }
+  50% { background-color: #ff3333; }
 }
 @keyframes damage-card-dark-pulse {
-  0%, 100% { background-color: #493b42; }
-  50% { background-color: #60434a; }
+  0%, 100% { background-color: #f0d3cf; }
+  50% { background-color: #ff3333; }
 }
 @media (prefers-reduced-motion: reduce) {
   .damage-compact-card.damage-has-damage, .damage-employee.damage-has-damage,
@@ -415,3 +415,31 @@
 .damage-tv-page .damage-employee-header h2 {display:table-cell;float:none;width:65%;max-width:none;padding-top:0;text-align:center;vertical-align:middle;}
 .damage-tv-page .damage-employee-total {display:table-cell;float:none;width:35%;text-align:center;vertical-align:middle;}
 .damage-tv-page .damage-employee-total span {max-width:none;text-align:center;}
+
+/* Seamless right-to-left damage headlines; TV-compatible inline layout. */
+.damage-live-updates {border-color:#efb7b1;background:#fff8f7;}
+.damage-live-viewport {margin:0 120px 0 151px;min-height:30px;overflow:hidden;line-height:30px;}
+.damage-live-track {display:inline-block;white-space:nowrap;-webkit-animation:damage-headline-scroll 30s linear infinite;animation:damage-headline-scroll 30s linear infinite;}
+.damage-live-group {display:inline-block;box-sizing:border-box;padding:0 30px;white-space:pre;font-size:16px;color:#74443e;vertical-align:middle;}
+.damage-live-viewport:hover .damage-live-track,.damage-live-viewport:focus .damage-live-track {-webkit-animation-play-state:paused !important;animation-play-state:paused !important;}
+.tv-dark .damage-live-updates {background:#402f34;border-color:#865256;}
+.tv-dark .damage-live-group {color:#f8d9d5;}
+@-webkit-keyframes damage-headline-scroll {from {-webkit-transform:translateX(0);}to {-webkit-transform:translateX(-50%);}}
+@keyframes damage-headline-scroll {from {transform:translateX(0);}to {transform:translateX(-50%);}}
+.damage-tv-page .damage-has-damage .damage-compact-name,
+.damage-tv-page .damage-has-damage .damage-compact-total,
+.damage-tv-page .damage-has-damage .damage-compact-total strong,
+.damage-tv-page .damage-has-damage .damage-employee-header h2,
+.damage-tv-page .damage-has-damage .damage-employee-total span,
+.damage-tv-page .damage-has-damage .damage-employee-total strong,
+.damage-tv-page .damage-has-damage .damage-history-range,
+.damage-tv-page .damage-has-damage .damage-history-range small,
+.damage-tv-page .damage-has-damage .damage-history-message {color:#241010;}
+@media (min-width:1600px) {.damage-live-group {font-size:18px;}}
+@media (min-width:651px) and (max-width:1100px) {.damage-live-viewport {margin-left:128px;margin-right:109px;}.damage-live-group {font-size:13px;padding:0 22px;}}
+@media (max-width:650px) {.damage-live-viewport {clear:both;margin:0;}.damage-live-group {font-size:14px;padding:0 20px;}}
+@media (prefers-reduced-motion:reduce) {
+ .damage-live-viewport {overflow-x:auto;}
+ .damage-live-track {-webkit-animation:none;animation:none;}
+ #damage-live-copy {display:none;}
+}

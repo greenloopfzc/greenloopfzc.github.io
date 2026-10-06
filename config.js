@@ -151,7 +151,7 @@ document.addEventListener("click", (event) => {
     item("IMEI Search", "imei-search.html", "⌕", page === "imei-search.html"),
     item("Dashboard", "dashboard.html", "⌘", page === "dashboard.html"),
     item("Lab Live Board", "lab-live-board.html", "▦", page === "lab-live-board.html"),
-    item("Manual Damage Report", "manual-damage-report.html", "▤", page === "manual-damage-report.html" || page === "damage-entry.html"),
+    item("Live Damage Report", "manual-damage-report.html", "▤", page === "manual-damage-report.html" || page === "damage-entry.html"),
     '<p class="nav-label">Operations</p>',
     item("Stock Received", "stock-entry.html", "+", page === "stock-entry.html" || page === "receiving.html"),
     item("IMEI Entry", "imei-entry.html", "⌕", page === "imei-entry.html"),

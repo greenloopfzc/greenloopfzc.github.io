@@ -3,7 +3,7 @@
   "use strict";
   var config = window.GREENLOOP_TV_CONFIG || {};
   var pageKey = config.pageKey === "lab_live_board" ? "lab_live_board" : "damage_report";
-  var pageName = pageKey === "lab_live_board" ? "Lab Live Board" : "Manual Damage Report";
+  var pageName = pageKey === "lab_live_board" ? "Lab Live Board" : "Live Damage Report";
   var base = String(config.supabaseUrl || "").replace(/\/$/, "");
   var key = String(config.supabaseAnonKey || "");
   var storageKey = "greenloop-tv-session-v1";

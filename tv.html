@@ -7,10 +7,10 @@
   <meta name="description" content="Greenloop Live Damage Report: employee damage cards, all-time counts and complete damage history.">
   <title>Live Damage Report | Greenloop</title>
   <link rel="stylesheet" href="css/tv.css?v=20261005-damage-tv-views-1">
-  <link rel="stylesheet" href="css/damage-tv.css?v=20261006-damage-entry-pdf-1">
+  <link rel="stylesheet" href="css/damage-tv.css?v=20261006-live-damage-motion-1">
   <script>window.GREENLOOP_TV_CONFIG = {"pageKey":"damage_report","supabaseUrl":"https://prypklagfznpdlleldll.supabase.co","supabaseAnonKey":"sb_publishable_hMIRbfKmh4vhGvEgVcPjow_F21WmwXt"};</script>
-  <script defer src="js/tv-api.js?v=20261006-damage-report-pdf-1"></script>
-  <script defer src="js/damage-tv.js?v=20261006-damage-entry-pdf-1"></script>
+  <script defer src="js/tv-api.js?v=20261006-live-damage-motion-1"></script>
+  <script defer src="js/damage-tv.js?v=20261006-live-damage-motion-1"></script>
 </head>
 <body class="tv-page damage-tv-page">
   <div class="tv-wrap">
@@ -82,7 +82,9 @@
         <section class="damage-live-updates" aria-label="Latest saved damage entries">
           <strong class="damage-live-title"><i></i>LIVE UPDATES</strong>
           <button id="damage-updates-toggle" class="tv-button damage-updates-toggle" type="button" aria-pressed="false" disabled>Pause updates</button>
-          <p id="damage-live-text" role="status" aria-live="polite">No damage entries yet.</p>
+          <div class="damage-live-viewport" tabindex="0" aria-label="Latest damage updates">
+            <div id="damage-live-track" class="damage-live-track"><span id="damage-live-text" class="damage-live-group" role="status" aria-live="polite">No damage entries yet.</span><span id="damage-live-copy" class="damage-live-group" aria-hidden="true">No damage entries yet.</span></div>
+          </div>
         </section>
         <div class="damage-summary" aria-label="Manual damage incident totals">
           <span>Today <strong id="damage-today">0</strong></span>
