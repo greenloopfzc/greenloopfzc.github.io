@@ -98,6 +98,7 @@
         throw error;
       }
 
+      if (window.GREENLOOP_LOGIN_TRACKER) await Promise.race([window.GREENLOOP_LOGIN_TRACKER.touch(), new Promise(resolve => setTimeout(resolve, 1200))]);
       showMessage("Sign-in successful. Loading your workspace...", "success");
       window.location.assign("dashboard.html");
     } catch (error) {

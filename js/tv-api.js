@@ -335,6 +335,15 @@
       callback(null);
     });
   }
+  // Best-effort presence uses the authenticated session; never delays or fails TV login.
+  function loginPresence(end, token) {
+    if (config.loginActivity !== true || (!token && !session)) return;
+    request("POST", "/rest/v1/rpc/touch_login_activity_v1", {p_surface: pageKey === "lab_live_board" ? "Lab TV" : "Damage TV", p_page: pageKey === "lab_live_board" ? "live-tv.html" : "tv.html", p_end: !!end}, token || session.access_token, noop, true);
+  }
+  if (config.loginActivity === true) {
+    window.setInterval(function () { if (!window.document.hidden && syncSession()) loginPresence(false); }, 30000);
+    window.document.addEventListener("visibilitychange", function () { if (!window.document.hidden && syncSession()) loginPresence(false); });
+  }
   function signedIn(callback) {
     checkAccess(function (problem) {
       if (problem) { callback(problem); return; }
@@ -347,6 +356,7 @@
         nativeSignIn = false;
       }
       persist();
+      loginPresence(false);
       callback(null, { authenticated: true, user: { id: session.user.id, displayName: session.user.displayName } });
     }, pageKey);
   }
@@ -436,6 +446,7 @@
       oldToken = session && session.access_token;
       endApplicationSession();
     }
+    loginPresence(true, oldToken);
     clear(error("NO_SESSION", "You have signed out.", true), true);
     if (typeof callback === "function") callback(null, { authenticated: false });
     if (oldToken) request("POST", "/auth/v1/logout?scope=local", {}, oldToken, noop, true);
