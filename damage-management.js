@@ -5,6 +5,20 @@
   const escape = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
   const formatDate = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Dubai", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true });
   const dateLabel = value => value && Number.isFinite(new Date(value).getTime()) ? formatDate.format(new Date(value)) : "Time unavailable";
+  // Keep money as a decimal string: reject excess precision before any rounding.
+  function priceValue(value) {
+    const text = String(value ?? "").trim();
+    if (!text) return null;
+    if (!/^(?:\d+|\d*\.\d{1,2})$/.test(text)) return undefined;
+    const [integer, fraction = ""] = text.split(".");
+    const whole = (integer || "0").replace(/^0+(?=\d)/, "");
+    if (whole.length > 8) return undefined;
+    return whole + "." + fraction.padEnd(2, "0");
+  }
+  const priceLabel = value => {
+    const price = priceValue(value);
+    return price == null ? "Not recorded" : price;
+  };
   const localTime = value => value && Number.isFinite(new Date(value).getTime()) ? new Date(new Date(value).getTime() + 14400000).toISOString().slice(0, 16) : "";
   const asObject = data => Array.isArray(data) ? data[0] : data;
   const accessError = error => [error?.code, error?.status, error?.statusCode].some(value => ["42501", "401", "403", "PGRST301", "PGRST302"].includes(String(value)));
@@ -23,6 +37,8 @@
     { key: "employee", group: "employees", label: "Employee", saved: "damaged_by" },
     { key: "model", group: "models", label: "Model", saved: "model" },
     { key: "part", group: "parts", label: "Part name", saved: "part_name" },
+    { key: "part_source", group: "part_sources", label: "Part source", saved: "part_source", optional: true },
+    { key: "currency", group: "currencies", label: "Currency", saved: "currency", optional: true },
     { key: "reason", group: "reasons", label: "Damage reason", saved: "reason" }
   ];
 
@@ -48,7 +64,7 @@
     announce(error?.message || fallback, "error");
   }
   function recordFacts(row, includeId = true) {
-    return `<dl class="dm-facts"><div><dt>Employee</dt><dd>${escape(row.damaged_by || "—")}</dd></div><div><dt>Model</dt><dd>${escape(row.model || "—")}</dd></div><div><dt>${row.part_name ? "Part name" : "Damage description"}</dt><dd>${escape(row.part_name || row.damage || "—")}</dd></div><div><dt>Damage reason</dt><dd>${escape(row.reason || "—")}</dd></div><div><dt>IMEI / serial</dt><dd>${escape(row.identifier || "Not recorded")}</dd></div><div><dt>Damage time · UAE</dt><dd>${escape(dateLabel(row.occurred_at))}</dd></div>${includeId ? `<div class="dm-wide"><dt>Entry ID</dt><dd class="dm-id">${escape(row.id || "—")}</dd></div>` : ""}</dl>`;
+    return `<dl class="dm-facts"><div><dt>Employee</dt><dd>${escape(row.damaged_by || "—")}</dd></div><div><dt>Model</dt><dd>${escape(row.model || "—")}</dd></div><div><dt>${row.part_name ? "Part name" : "Damage description"}</dt><dd>${escape(row.part_name || row.damage || "—")}</dd></div><div><dt>Price</dt><dd>${escape(priceLabel(row.price_amount))}</dd></div><div><dt>Currency</dt><dd>${escape(row.currency || "Not recorded")}</dd></div><div><dt>Part source</dt><dd>${escape(row.part_source || "Not recorded")}</dd></div><div><dt>Damage reason</dt><dd>${escape(row.reason || "—")}</dd></div><div><dt>IMEI / serial</dt><dd>${escape(row.identifier || "Not recorded")}</dd></div><div><dt>Damage time · UAE</dt><dd>${escape(dateLabel(row.occurred_at))}</dd></div>${includeId ? `<div class="dm-wide"><dt>Entry ID</dt><dd class="dm-id">${escape(row.id || "—")}</dd></div>` : ""}</dl>`;
   }
   function homeMarkup() {
     return `<div class="dm-modes" aria-label="Manual damage actions"><button class="dm-mode" data-dm-mode="correct" data-search-read-only type="button"><span class="dm-mode-icon" aria-hidden="true">✎</span><strong>Data Correction</strong><span>Find an entry and correct its details.</span><span class="dm-mode-link">Open correction <span aria-hidden="true">→</span></span></button><button class="dm-mode" data-dm-mode="remove" data-search-read-only type="button"><span class="dm-mode-icon is-danger" aria-hidden="true">⊘</span><strong>Delete / Reset</strong><span>Delete one entry or reset the entire manual damage history.</span><span class="dm-mode-link">Open delete / reset <span aria-hidden="true">→</span></span></button></div><p class="dm-note">Manual damage entries are separate from stock and workflow records. Employee and dropdown choices are kept when history is deleted.</p>`;
@@ -58,18 +74,21 @@
     return `<div class="dm-pager"><span>${count === null ? "Records unavailable" : count === 0 ? "No entries" : `Entries ${currentOffset + 1}–${end} of ${Number(count).toLocaleString()}`}</span><div><button type="button" data-dm-page="${prefix}-previous" ${isLoading || blocked() || currentOffset === 0 ? "disabled" : ""}>Previous</button><button type="button" data-dm-page="${prefix}-next" ${isLoading || blocked() || !hasMore ? "disabled" : ""}>Next</button></div></div>`;
   }
   function listMarkup() {
-    return `<section aria-labelledby="dm-list-title"><div class="dm-section-heading"><h3 id="dm-list-title">${mode === "correct" ? "Select an entry to correct" : "Select one entry to delete"}</h3><span class="dm-muted">${total === null ? "" : `${total.toLocaleString()} ${search ? "matching" : "total"} entries`}</span></div><form id="dm-search-form" class="dm-search"><div class="dm-field"><label for="dm-search">Search manual damage entries</label><input id="dm-search" name="search" type="search" maxlength="200" placeholder="Employee, model, part, IMEI or entry ID" value="${escape(search)}" ${blocked() ? "disabled" : ""}></div><button type="submit" ${blocked() || loading ? "disabled" : ""}>Search</button><button type="button" data-dm-refresh ${blocked() || loading ? "disabled" : ""}>Refresh</button></form><div class="dm-list" aria-busy="${loading}">${loading ? '<p class="dm-empty">Loading damage entries…</p>' : !loaded ? '<p class="dm-empty">Entries could not be loaded. Select Refresh to try again.</p>' : rows.length ? rows.map(row => `<article class="dm-record ${selected?.id === row.id ? "is-selected" : ""}"><div class="dm-record-top"><strong>${escape(row.damaged_by || "Employee unavailable")}</strong><span>${escape(dateLabel(row.occurred_at))} · UAE</span></div><div class="dm-record-values"><span><small>Model</small>${escape(row.model || "—")}</span><span><small>${row.part_name ? "Part name" : "Damage description"}</small>${escape(row.part_name || row.damage || "—")}</span><span><small>IMEI / serial</small>${escape(row.identifier || "Not recorded")}</span><span><small>Reason</small>${escape(row.reason || "—")}</span></div><div class="dm-record-bottom"><span class="dm-id">Entry ${escape(row.id)}</span><button type="button" data-dm-select="${escape(row.id)}" ${blocked() || !editable() ? "disabled" : ""}>${mode === "correct" ? "Correct entry" : "Review deletion"}</button></div></article>`).join("") : '<p class="dm-empty">No damage entries match this search.</p>'}</div>${pager("records", offset, total, more, loading)}</section>`;
+    return `<section aria-labelledby="dm-list-title"><div class="dm-section-heading"><h3 id="dm-list-title">${mode === "correct" ? "Select an entry to correct" : "Select one entry to delete"}</h3><span class="dm-muted">${total === null ? "" : `${total.toLocaleString()} ${search ? "matching" : "total"} entries`}</span></div><form id="dm-search-form" class="dm-search"><div class="dm-field"><label for="dm-search">Search manual damage entries</label><input id="dm-search" name="search" type="search" maxlength="200" placeholder="Employee, model, part, IMEI or entry ID" value="${escape(search)}" ${blocked() ? "disabled" : ""}></div><button type="submit" ${blocked() || loading ? "disabled" : ""}>Search</button><button type="button" data-dm-refresh ${blocked() || loading ? "disabled" : ""}>Refresh</button></form><div class="dm-list" aria-busy="${loading}">${loading ? '<p class="dm-empty">Loading damage entries…</p>' : !loaded ? '<p class="dm-empty">Entries could not be loaded. Select Refresh to try again.</p>' : rows.length ? rows.map(row => `<article class="dm-record ${selected?.id === row.id ? "is-selected" : ""}"><div class="dm-record-top"><strong>${escape(row.damaged_by || "Employee unavailable")}</strong><span>${escape(dateLabel(row.occurred_at))} · UAE</span></div><div class="dm-record-values"><span><small>Model</small>${escape(row.model || "—")}</span><span><small>${row.part_name ? "Part name" : "Damage description"}</small>${escape(row.part_name || row.damage || "—")}</span><span><small>Price</small>${escape(priceLabel(row.price_amount))}</span><span><small>Currency</small>${escape(row.currency || "Not recorded")}</span><span><small>Part source</small>${escape(row.part_source || "Not recorded")}</span><span><small>IMEI / serial</small>${escape(row.identifier || "Not recorded")}</span><span><small>Reason</small>${escape(row.reason || "—")}</span></div><div class="dm-record-bottom"><span class="dm-id">Entry ${escape(row.id)}</span><button type="button" data-dm-select="${escape(row.id)}" ${blocked() || !editable() ? "disabled" : ""}>${mode === "correct" ? "Correct entry" : "Review deletion"}</button></div></article>`).join("") : '<p class="dm-empty">No damage entries match this search.</p>'}</div>${pager("records", offset, total, more, loading)}</section>`;
   }
   function optionMarkup(kind) {
     const choices = options?.[kind.group] || [];
     const exact = choices.filter(item => item.label.trim().toLowerCase() === String(selected[kind.saved] || "").trim().toLowerCase());
-    const savedId = selected[`${kind.key}_id`];
-    const value = savedId ? (choices.some(item => item.id === savedId) ? savedId : "") : exact.length === 1 ? exact[0].id : "";
-    return `<div class="dm-field"><label for="dm-${kind.key}">${kind.label}</label><select id="dm-${kind.key}" name="${kind.key}_id" required><option value="">Select ${kind.label.toLowerCase()}</option>${choices.map(item => `<option value="${escape(item.id)}" ${item.id === value ? "selected" : ""}>${escape(item.label)}</option>`).join("")}</select>${!value ? `<small>Saved: ${escape(selected[kind.saved] || selected.damage || "Not recorded")}. Select a current choice.</small>` : ""}</div>`;
+    const savedId = selected[kind.key + "_id"];
+    const archived = kind.optional && savedId && !choices.some(item => item.id === savedId);
+    // Optional metadata keeps the saved ID, including an archived choice. Never
+    // remap it to a replacement that happens to have the same label.
+    const value = savedId ? (archived || choices.some(item => item.id === savedId) ? savedId : "") : !kind.optional && exact.length === 1 ? exact[0].id : "";
+    return `<div class="dm-field"><label for="dm-${kind.key}">${kind.label}</label><select id="dm-${kind.key}" name="${kind.key}_id" ${kind.optional ? "" : "required"}><option value="">${kind.optional ? "Not recorded" : "Select " + kind.label.toLowerCase()}</option>${archived ? `<option value="${escape(savedId)}" selected>${escape(selected[kind.saved] || "Saved choice")} (archived — keep saved)</option>` : ""}${choices.map(item => `<option value="${escape(item.id)}" ${item.id === value ? "selected" : ""}>${escape(item.label)}</option>`).join("")}</select>${!value && !kind.optional ? `<small>Saved: ${escape(selected[kind.saved] || selected.damage || "Not recorded")}. Select a current choice.</small>` : ""}</div>`;
   }
   function editorMarkup() {
     if (!selected || mode !== "correct") return "";
-    return `<section class="dm-detail" id="dm-editor" aria-labelledby="dm-editor-title"><div class="dm-section-heading"><h3 id="dm-editor-title" tabindex="-1">Correct selected entry</h3><button type="button" data-dm-close ${blocked() ? "disabled" : ""}>Close</button></div><p class="dm-id">Entry ${escape(selected.id)}</p><details class="dm-snapshot"><summary>View saved entry</summary>${recordFacts(selected)}</details><form id="dm-correction-form" data-entry="${escape(selected.id)}"><fieldset ${blocked() || !editable() ? "disabled" : ""}><div class="dm-fields">${fieldKinds.map(optionMarkup).join("")}<div class="dm-field"><label for="dm-identifier">IMEI / serial <span class="dm-muted">(optional)</span></label><input id="dm-identifier" name="identifier" maxlength="120" value="${escape(selected.identifier || "")}"></div><div class="dm-field"><label for="dm-occurred-at">Damage date and time · UAE</label><input id="dm-occurred-at" name="occurred_at" type="datetime-local" required value="${escape(localTime(selected.occurred_at))}"></div><div class="dm-field dm-wide"><label for="dm-correction-reason">Reason for correction</label><textarea id="dm-correction-reason" name="correction_reason" required minlength="3" maxlength="2000" rows="2" placeholder="Explain what changed and why"></textarea></div></div><div class="dm-actions"><button class="dm-primary" type="submit">Save audited correction</button><span class="dm-muted">Original and corrected values stay in permanent audit history.</span></div></fieldset></form></section>`;
+    return `<section class="dm-detail" id="dm-editor" aria-labelledby="dm-editor-title"><div class="dm-section-heading"><h3 id="dm-editor-title" tabindex="-1">Correct selected entry</h3><button type="button" data-dm-close ${blocked() ? "disabled" : ""}>Close</button></div><p class="dm-id">Entry ${escape(selected.id)}</p><details class="dm-snapshot"><summary>View saved entry</summary>${recordFacts(selected)}</details><form id="dm-correction-form" data-entry="${escape(selected.id)}"><fieldset ${blocked() || !editable() ? "disabled" : ""}><div class="dm-fields">${fieldKinds.map(kind => (kind.key === "currency" ? `<div class="dm-field"><label for="dm-price-amount">Price <span class="dm-muted">(optional)</span></label><input id="dm-price-amount" name="price_amount" type="text" inputmode="decimal" autocomplete="off" aria-describedby="dm-price-help" value="${escape(selected.price_amount == null ? "" : priceValue(selected.price_amount) ?? "")}" placeholder="e.g. 125.00"><small id="dm-price-help">Leave blank if unknown, or clear to remove the price. 0 is valid. Up to 99,999,999.99 with 2 decimal places. A price requires currency.</small></div>` : "") + optionMarkup(kind)).join("")}<div class="dm-field"><label for="dm-identifier">IMEI / serial <span class="dm-muted">(optional)</span></label><input id="dm-identifier" name="identifier" maxlength="120" value="${escape(selected.identifier || "")}"></div><div class="dm-field"><label for="dm-occurred-at">Damage date and time · UAE</label><input id="dm-occurred-at" name="occurred_at" type="datetime-local" required value="${escape(localTime(selected.occurred_at))}"></div><div class="dm-field dm-wide"><label for="dm-correction-reason">Reason for correction</label><textarea id="dm-correction-reason" name="correction_reason" required minlength="3" maxlength="2000" rows="2" placeholder="Explain what changed and why"></textarea></div></div><div class="dm-actions"><button class="dm-primary" type="submit">Save audited correction</button><span class="dm-muted">Original and corrected values stay in permanent audit history.</span></div></fieldset></form></section>`;
   }
   function removalMarkup() {
     if (mode !== "remove") return "";
@@ -145,9 +164,14 @@
     for (const kind of fieldKinds) {
       const value = String(data.get(`${kind.key}_id`) || "");
       const control = form.elements.namedItem(`${kind.key}_id`);
-      control.setCustomValidity(options[kind.group].some(item => item.id === value) ? "" : "Select a current dropdown choice.");
-      payload[`p_${kind.key}_id`] = value;
+      const valid = options[kind.group].some(item => item.id === value) || (kind.optional && (!value || value === selected[kind.key + "_id"]));
+      control.setCustomValidity(valid ? "" : "Select a current dropdown choice.");
+      payload[`p_${kind.key}_id`] = value || null;
     }
+    const price = priceValue(data.get("price_amount"));
+    form.elements.price_amount.setCustomValidity(price === undefined ? "Enter a price from 0 to 99,999,999.99 with no more than 2 decimal places, or leave blank if unknown." : "");
+    payload.p_price_amount = price;
+    if (price != null && !payload.p_currency_id) form.elements.currency_id.setCustomValidity("Select a currency for this price.");
     const wallTime = String(data.get("occurred_at") || ""), instant = new Date(`${wallTime}:00+04:00`);
     const validTime = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(wallTime) && Number.isFinite(instant.getTime()) && localTime(instant) === wallTime;
     form.elements.occurred_at.setCustomValidity(validTime ? "" : "Enter a valid date and time in UAE time.");
@@ -172,7 +196,7 @@
     try {
       const data = await rpc(operation.rpc, operation.args);
       if (denied || !host) return;
-      if (!data || typeof data.operation_id !== "string" || !data.operation_id || !["correct", "delete", "reset"].includes(data.action) || !Number.isSafeInteger(Number(data.affected_count)) || (operation.rpc === "correct_manual_damage_report_v1" && (data.action !== "correct" || Number(data.affected_count) !== 1 || data.row?.id !== operation.args.p_id || typeof data.row?.version !== "string" || !data.row.version)) || (operation.rpc === "remove_manual_damage_reports_v1" && (data.action !== (operation.args.p_id ? "delete" : "reset") || Number(data.affected_count) !== operation.args.p_expected_count))) throw new Error("The server response did not confirm the action.");
+      if (!data || typeof data.operation_id !== "string" || !data.operation_id || !["correct", "delete", "reset"].includes(data.action) || !Number.isSafeInteger(Number(data.affected_count)) || (operation.rpc === "correct_manual_damage_report_v2" && (data.action !== "correct" || Number(data.affected_count) !== 1 || data.row?.id !== operation.args.p_id || typeof data.row?.version !== "string" || !data.row.version)) || (operation.rpc === "remove_manual_damage_reports_v1" && (data.action !== (operation.args.p_id ? "delete" : "reset") || Number(data.affected_count) !== operation.args.p_expected_count))) throw new Error("The server response did not confirm the action.");
       pending = null; selected = null; preview = null; success = true;
       announce(`${actionName(data.action)} saved. ${Number(data.affected_count).toLocaleString()} ${Number(data.affected_count) === 1 ? "entry" : "entries"} affected. Permanent audit history is available below.`, "success");
     } catch (error) {
@@ -198,7 +222,7 @@
     if (form.id === "dm-search-form") { search = String(new FormData(form).get("search") || "").trim(); offset = 0; selected = null; preview = null; announce(); load(); return; }
     if (!editable()) return;
     if (form.id === "dm-correction-form" && selected) {
-      const args = correctionPayload(form); if (args) mutate({ rpc: "correct_manual_damage_report_v1", args: Object.freeze(args) });
+      const args = correctionPayload(form); if (args) mutate({ rpc: "correct_manual_damage_report_v2", args: Object.freeze(args) });
     } else if (form.id === "dm-removal-form" && preview && preview.count > 0 && (preview.scope !== "all" || canReset)) {
       const values = new FormData(form), reason = String(values.get("reason") || "").trim(), confirmation = String(values.get("confirmation") || "");
       form.elements.reason.setCustomValidity(reason.length >= 3 ? "" : "Explain the deletion in at least 3 characters.");
@@ -229,7 +253,10 @@
       else { offset = Math.max(0, offset + (direction === "next" ? limit : -limit)); selected = null; preview = null; announce(); load(); }
     }
   }
-  function onInput(event) { if (event.target.setCustomValidity) event.target.setCustomValidity(""); }
+  function onInput(event) {
+    if (event.target.setCustomValidity) event.target.setCustomValidity("");
+    if (event.target.name === "price_amount") query("#dm-currency")?.setCustomValidity("");
+  }
   function unmount() {
     if (!host || blocked()) return;
     host.removeEventListener("click", onClick); host.removeEventListener("submit", onSubmit); host.removeEventListener("input", onInput);

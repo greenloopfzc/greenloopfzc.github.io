@@ -42,6 +42,7 @@
 .dm-record-top > span { color: var(--dm-muted); font-size: .72rem; flex-shrink: 0; }
 .dm-record-values { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin: 13px 0; }
 .dm-record-values > span { overflow-wrap: anywhere; }
+.dm-record-values > span:last-child { grid-column: span 2; }
 .dm-record-values small { display: block; color: var(--dm-muted); font-size: .64rem; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 2px; }
 .dm-record-bottom { border-top: 1px solid var(--dm-line); padding-top: 11px; }
 .dm-record-bottom button { flex-shrink: 0; }

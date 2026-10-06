@@ -442,6 +442,22 @@
   };
   function array(value) { return Object.prototype.toString.call(value) === "[object Array]"; }
   function count(value) { return typeof value === "number" && isFinite(value) && value >= 0 && value % 1 === 0; }
+  function damagePrice(value) {
+    // Old entries may omit their price. A recorded price must be a numeric
+    // amount with at most two decimal places, including an explicit zero.
+    return value === null || value === undefined || (typeof value === "number" && isFinite(value) &&
+      value >= 0 && value <= 99999999.99 && Math.round(value * 100) / 100 === value);
+  }
+  function damageLabel(value, limit) {
+    if (value === null || value === undefined) return true;
+    // Match PostgreSQL character limits, including custom labels with emoji.
+    return typeof value === "string" && value.replace(/^\s+|\s+$/g, "") !== "" &&
+      value.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, "_").length <= limit;
+  }
+  function damagePriceDetails(row) {
+    return damagePrice(row.price_amount) && damageLabel(row.currency, 20) && damageLabel(row.part_source, 120) &&
+      (row.price_amount === null || row.price_amount === undefined || typeof row.currency === "string");
+  }
   function timestamp(value) {
     // PostgreSQL includes microseconds; older TV Date.parse implementations
     // reject them. Check ISO calendar fields without relying on that parser.
@@ -476,7 +492,7 @@
           row = report.rows[index];
           if (!row || typeof row.id !== "string" || typeof row.damaged_by !== "string" || typeof row.model !== "string" ||
             (row.identifier !== null && typeof row.identifier !== "string") || typeof row.damage !== "string" || typeof row.reason !== "string" ||
-            typeof row.reported_by !== "string" || !timestamp(row.occurred_at) || !timestamp(row.created_at)) { valid = false; break; }
+            typeof row.reported_by !== "string" || !damagePriceDetails(row) || !timestamp(row.occurred_at) || !timestamp(row.created_at)) { valid = false; break; }
         }
         if (valid) for (index = 0; index < report.technicians.length; index += 1) {
           row = report.technicians[index];
@@ -499,7 +515,7 @@
         typeof row.model !== "string" || typeof row.reason !== "string" || typeof row.reported_by !== "string" ||
         (row.part_name !== null && typeof row.part_name !== "string") ||
         (row.identifier !== null && typeof row.identifier !== "string") ||
-        !timestamp(row.occurred_at) || !timestamp(row.created_at)) return false;
+        !damagePriceDetails(row) || !timestamp(row.occurred_at) || !timestamp(row.created_at)) return false;
       seen["id:" + row.id] = true;
     }
     return true;
@@ -543,7 +559,7 @@
         if (!entry || typeof entry.id !== "string" || !entry.id || typeof entry.damaged_by !== "string" ||
           typeof entry.model !== "string" || typeof entry.reason !== "string" ||
           (entry.part_name !== null && typeof entry.part_name !== "string") ||
-          !timestamp(entry.created_at) || !timestamp(entry.occurred_at)) { valid = false; break; }
+          !damagePriceDetails(entry) || !timestamp(entry.created_at) || !timestamp(entry.occurred_at)) { valid = false; break; }
       }
       if (!valid) { callback(error("INVALID_RESPONSE", "The employee cards could not be read. Select Refresh to retry.")); return; }
       callback(null, report);

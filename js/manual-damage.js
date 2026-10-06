@@ -20,12 +20,17 @@
     employee: { key: "employees", name: "employee", label: "Employee name", limit: 120, input: byId("damage-person") },
     model: { key: "models", name: "model", label: "Model", limit: 160, input: byId("damage-model") },
     part: { key: "parts", name: "part name", label: "Part Name", limit: 120, input: byId("damage-part") },
+    currency: { key: "currencies", name: "currency", label: "Currency", limit: 20, optional: true, defaultLabel: "AED", input: byId("damage-currency") },
+    part_source: { key: "part_sources", name: "part source", label: "Part source", limit: 120, optional: true, defaultLabel: "Local", input: byId("damage-part-source") },
     reason: { key: "reasons", name: "reason", label: "Reason", limit: 2000, input: byId("damage-reason") }
   };
   const inputs = {
     employee_id: choices.employee.input,
     model_id: choices.model.input,
     part_id: choices.part.input,
+    price_amount: byId("damage-price-amount"),
+    currency_id: choices.currency.input,
+    part_source_id: choices.part_source.input,
     reason_id: choices.reason.input,
     identifier: byId("damage-identifier"),
     occurred_at: byId("damage-occurred-at")
@@ -41,7 +46,8 @@
   let accessDenied = false;
   let catalogReady = false;
   let catalogLoading = false;
-  let catalog = { employees: [], models: [], parts: [], reasons: [] };
+  let defaultsPending = true;
+  let catalog = { employees: [], models: [], parts: [], reasons: [], currencies: [], part_sources: [] };
   let optionOperation = null;
   let optionBusy = false;
   let dialogTrigger = null;
@@ -54,6 +60,20 @@
     const date = new Date(value);
     return value && Number.isFinite(date.getTime()) ? dateFormatter.format(date) : "Time unavailable";
   }
+  // Keep money as a decimal string: reject excess precision before any rounding.
+  function priceValue(value) {
+    const text = String(value ?? "").trim();
+    if (!text) return null;
+    if (!/^(?:\d+|\d*\.\d{1,2})$/.test(text)) return undefined;
+    const [integer, fraction = ""] = text.split(".");
+    const whole = (integer || "0").replace(/^0+(?=\d)/, "");
+    if (whole.length > 8) return undefined;
+    return whole + "." + fraction.padEnd(2, "0");
+  }
+  const priceLabel = value => {
+    const price = priceValue(value);
+    return price == null ? "Not recorded" : price;
+  };
   function uaeLocalNow() {
     return new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString().slice(0, 16);
   }
@@ -108,7 +128,7 @@
     accessDenied = true;
     canEdit = false;
     catalogReady = false;
-    catalog = { employees: [], models: [], parts: [], reasons: [] };
+    catalog = { employees: [], models: [], parts: [], reasons: [], currencies: [], part_sources: [] };
     pendingRequest = null;
     optionOperation = null;
     loadVersion += 1;
@@ -153,21 +173,32 @@
       input.setCustomValidity(input.required && !payload[key] ? "Please complete this field." : "");
     });
     Object.entries(choices).forEach(([kind, choice]) => {
-      if (!catalog[choice.key].some((item) => String(item.id) === payload[`${kind}_id`])) choice.input.setCustomValidity(`Select an active ${choice.name}. Use + Add if it is missing.`);
+      if ((!choice.optional || payload[`${kind}_id`]) && !catalog[choice.key].some((item) => String(item.id) === payload[`${kind}_id`])) choice.input.setCustomValidity(`Select an active ${choice.name}. Use + Add if it is missing.`);
     });
+    const price = priceValue(payload.price_amount);
+    inputs.price_amount.setCustomValidity(price === undefined ? "Enter a price from 0 to 99,999,999.99 with no more than 2 decimal places, or leave blank if unknown." : "");
+    if (price != null && !payload.currency_id) inputs.currency_id.setCustomValidity("Select a currency for this price.");
     const occurredAt = uaeTimestamp(payload.occurred_at);
     if (!occurredAt) inputs.occurred_at.setCustomValidity("Enter a valid date and time in UAE time.");
     if (!form.reportValidity()) return null;
+    payload.price_amount = price;
+    payload.currency_id ||= null;
+    payload.part_source_id ||= null;
     payload.occurred_at = occurredAt;
     payload.identifier ||= null;
     return payload;
+  }
+  function applyNewDefaults() {
+    Object.values(choices).filter(choice => choice.defaultLabel).forEach(choice => {
+      choice.input.value = String(catalog[choice.key].find(item => item.label.toLowerCase() === choice.defaultLabel.toLowerCase())?.id || "");
+    });
   }
   function renderChoices() {
     const removed = [];
     Object.values(choices).forEach((choice) => {
       const selected = choice.input.value;
       const items = catalog[choice.key];
-      choice.input.innerHTML = `<option value="">${items.length ? `Select ${choice.name}` : `No ${choice.name} choices — use + Add`}</option>` + items.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.label)}</option>`).join("");
+      choice.input.innerHTML = `<option value="">${choice.optional ? "Not recorded" : items.length ? `Select ${choice.name}` : `No ${choice.name} choices — use + Add`}</option>` + items.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.label)}</option>`).join("");
       if (items.some((item) => String(item.id) === selected)) choice.input.value = selected;
       else if (selected) { removed.push(choice.label); choice.input.setCustomValidity(""); }
     });
@@ -188,6 +219,7 @@
       catalog = result;
       catalogReady = true;
       const removed = renderChoices();
+      if (defaultsPending) { applyNewDefaults(); defaultsPending = false; syncControls(); }
       message("manual-damage-options-message", removed.length ? `${removed.join(", ")} no longer available. Select another choice; your other details are kept.` : "Choices are shared with the workshop. Use + Add for a missing choice.");
       return true;
     } catch (error) {
@@ -271,7 +303,7 @@
   function renderReports(rows) {
     recent.innerHTML = rows.length ? rows.map((row) => `<article class="manual-damage-report">
       <div class="manual-damage-report-heading"><div><h3>${escapeHtml(row.model)}</h3><p>Damaged by <strong>${escapeHtml(row.damaged_by)}</strong> · ${row.identifier ? `Identifier: ${escapeHtml(row.identifier)}` : "Identifier unavailable"}</p></div><time datetime="${escapeHtml(row.occurred_at)}">${escapeHtml(dateLabel(row.occurred_at))}</time></div>
-      <dl><div><dt>${row.part_name ? "Part Name" : "Damage description"}</dt><dd>${escapeHtml(row.part_name || row.damage)}</dd></div><div><dt>Reason</dt><dd>${escapeHtml(row.reason)}</dd></div></dl>
+      <dl><div><dt>${row.part_name ? "Part Name" : "Damage description"}</dt><dd>${escapeHtml(row.part_name || row.damage)}</dd></div><div><dt>Price</dt><dd>${escapeHtml(priceLabel(row.price_amount))}</dd></div><div><dt>Currency</dt><dd>${escapeHtml(row.currency || "Not recorded")}</dd></div><div><dt>Part source</dt><dd>${escapeHtml(row.part_source || "Not recorded")}</dd></div><div><dt>Reason</dt><dd>${escapeHtml(row.reason)}</dd></div></dl>
       <p class="manual-damage-report-footer">Reported by ${escapeHtml(row.reported_by || "Unknown reporter")} · ${escapeHtml(dateLabel(row.created_at))}</p>
     </article>`).join("") : '<p class="manual-damage-empty">No manual damage reports yet.</p>';
   }
@@ -313,14 +345,14 @@
     try {
       // The complete arguments are frozen at the first attempt. A retry remains
       // identical even after catalog refresh, archiving, or edits to the draft.
-      const { data, error } = await api().rpc("create_manual_damage_report_v2", request.args);
+      const { data, error } = await api().rpc("create_manual_damage_report_v3", request.args);
       if (accessDenied) return;
       if (error) throw error;
       const saved = Array.isArray(data) ? data[0] : data;
       if (!saved?.id) throw new Error("The server did not confirm the saved report.");
       pendingRequest = null;
       const draftChanged = JSON.stringify(draftValues()) !== request.fingerprint;
-      if (!draftChanged) { form.reset(); inputs.occurred_at.value = uaeLocalNow(); }
+      if (!draftChanged) { form.reset(); applyNewDefaults(); inputs.occurred_at.value = uaeLocalNow(); }
       message("manual-damage-message", draftChanged ? "Original damage report confirmed. Your current draft has been kept." : "Damage report saved. It is now available in Damage Report.", true);
       await loadReports(0);
     } catch (error) {
@@ -343,8 +375,8 @@
     if (!payload) return;
     pendingRequest = {
       fingerprint: JSON.stringify(draftValues()),
-      summary: Object.values(choices).map((choice) => catalog[choice.key].find((item) => String(item.id) === choice.input.value)?.label || "").join(" · "),
-      args: Object.freeze({ p_request_id: requestId(), p_employee_id: payload.employee_id, p_model_id: payload.model_id, p_part_id: payload.part_id, p_reason_id: payload.reason_id, p_identifier: payload.identifier, p_occurred_at: payload.occurred_at })
+      summary: Object.values(choices).map((choice) => catalog[choice.key].find((item) => String(item.id) === choice.input.value)?.label || "").concat(priceLabel(payload.price_amount)).join(" · "),
+      args: Object.freeze({ p_request_id: requestId(), p_employee_id: payload.employee_id, p_model_id: payload.model_id, p_part_id: payload.part_id, p_price_amount: payload.price_amount, p_currency_id: payload.currency_id, p_part_source_id: payload.part_source_id, p_reason_id: payload.reason_id, p_identifier: payload.identifier, p_occurred_at: payload.occurred_at })
     };
     await sendReport(pendingRequest);
   }
@@ -359,7 +391,7 @@
   form.addEventListener("submit", saveReport);
   retryButton.addEventListener("click", () => { if (pendingRequest) sendReport(pendingRequest); });
   Object.values(inputs).forEach((input) => {
-    const changed = () => { input.setCustomValidity(""); syncControls(); };
+    const changed = () => { input.setCustomValidity(""); if (input === inputs.price_amount) inputs.currency_id.setCustomValidity(""); syncControls(); };
     input.addEventListener("input", changed);
     input.addEventListener("change", changed);
   });

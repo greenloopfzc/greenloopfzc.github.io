@@ -1,4 +1,4 @@
-/* Employee damage cards, 20261005-manual-damage-management-1. Literal colors and ES5-era layout. */
+/* Employee damage cards, 20261005-manual-damage-price-1. Literal colors and ES5-era layout. */
 .damage-tv-page .tv-wrap { padding-top: 18px; }
 .damage-tv-page .tv-masthead { margin-bottom: 15px; }
 .damage-tv-page .tv-logo { width: 54px; height: 54px; border-radius: 15px; }
@@ -36,15 +36,20 @@
 .damage-employee-total strong { display: inline-block; color: #29583f; font-size: 37px; font-weight: bold; line-height: 1.15; vertical-align: middle; }
 .damage-table-shell { border: 1px solid #fff; border-radius: 17px; background: #edf2f5; box-shadow: 4px 5px 10px #d0d9df, -4px -4px 9px #fff; }
 .damage-table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
-.damage-date-column { width: 18%; }
-.damage-model-column { width: 22%; }
-.damage-part-column { width: 22%; }
-.damage-reason-column { width: 38%; }
+.damage-date-column { width: 15%; }
+.damage-model-column { width: 18%; }
+.damage-part-column { width: 15%; }
+.damage-price-column { width: 18%; }
+.damage-source-column { width: 14%; }
+.damage-reason-column { width: 20%; }
 .damage-table th { border-bottom: 1px solid #cbd6dc; padding: 12px 10px 11px; color: #53665b; font-size: 12px; font-weight: bold; letter-spacing: .6px; line-height: 1.3; text-align: left; vertical-align: middle; }
 .damage-table td { border-bottom: 1px solid #d3dce2; padding: 10px; color: #344b3e; font-size: 15px; line-height: 1.3; text-align: left; vertical-align: top; word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap; }
 .damage-table th + th, .damage-table td + td { border-left: 1px solid #d3dce2; }
 .damage-table tbody tr:last-child td { border-bottom: 0; }
 .damage-table .damage-date { color: #5c6c61; font-size: 12px; line-height: 1.5; }
+.damage-table .damage-price { font-variant-numeric: tabular-nums; }
+.damage-price-amount { white-space: nowrap; }
+.damage-currency { color: #5c6c61; font-size: .82em; }
 .damage-date small { display: block; margin-top: 2px; color: #79877d; font-size: 10px; }
 .damage-table .damage-empty-history { height: 242px; color: #6e8074; font-size: 16px; text-align: center; vertical-align: middle; }
 .damage-history-controls { position: relative; min-height: 39px; margin-top: 14px; text-align: center; }
@@ -66,6 +71,7 @@
 .tv-dark .damage-table th { border-color: #4c5e69; color: #b1c9ba; }
 .tv-dark .damage-table td, .tv-dark .damage-table th + th, .tv-dark .damage-table td + td { border-color: #465966; color: #d5e7dc; }
 .tv-dark .damage-table .damage-date { color: #b7cabc; }
+.tv-dark .damage-currency { color: #b7cabc; }
 .tv-dark .damage-date small, .tv-dark .damage-history-range small { color: #9eb0a5; }
 .tv-dark .damage-table .damage-empty-history, .tv-dark .damage-history-range { color: #b8cdbf; }
 .tv-dark .damage-history-message { color: #f0bf93; }
@@ -377,4 +383,25 @@
   .damage-tv-page .tv-board-heading { top: 24px; left: 360px; right: 205px; }
   .damage-tv-page .tv-board-heading h1 { font-size: 32px; }
   .damage-tv-page .tv-heading-copy .tv-eyebrow { font-size: 11px; }
+}
+/* Keep the full incident price readable on phones without splitting its digits.
+   Wide TV layouts retain the six-column history table. */
+@media (max-width: 650px) {
+  .damage-detail-nav { position: relative; padding-bottom: 31px; }
+  .damage-detail-nav .damage-page-number { position: absolute; left: 0; bottom: 0; width: 100%; padding: 7px 0 0; }
+  .damage-detail-nav #damage-next { margin-top: 0; }
+  .damage-detail .damage-table colgroup { display: none; }
+  .damage-detail .damage-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+  .damage-detail .damage-table tbody, .damage-detail .damage-table tbody tr { display: block; width: 100%; }
+  .damage-detail .damage-table tbody tr + tr { border-top: 2px solid #cbd6dc; }
+  .damage-detail .damage-table td { display: block; position: relative; min-height: 33px; padding: 8px 10px 8px 34%; border-left: 0; font-size: 12px; }
+  .damage-detail .damage-table td:before { content: attr(data-label); position: absolute; top: 8px; left: 10px; width: 29%; color: #53665b; font-size: 11px; font-weight: bold; }
+  .damage-detail .damage-table td:last-child { border-bottom: 0; }
+  .damage-detail .damage-table .damage-price { white-space: normal; }
+  .damage-detail .damage-table .damage-date { font-size: 12px; line-height: 1.3; }
+  .damage-detail .damage-date small { display: inline; margin-left: 7px; font-size: 10px; }
+  .damage-detail .damage-table .damage-empty-history { padding: 35px 12px; height: auto; text-align: center; }
+  .damage-detail .damage-table .damage-empty-history:before { display: none; }
+  .tv-dark .damage-detail .damage-table tbody tr + tr { border-color: #4c5e69; }
+  .tv-dark .damage-detail .damage-table td:before { color: #b1c9ba; }
 }

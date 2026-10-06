@@ -1,4 +1,4 @@
-/* Manual damage TV views, 20261005-manual-damage-management-1. ES5, no external runtime. */
+/* Manual damage TV views, 20261005-manual-damage-price-1. ES5, no external runtime. */
 (function () {
   "use strict";
   function start() {
@@ -127,20 +127,29 @@
     }
     function expired(error) { return error && (error.clearSession || /^(NO_SESSION|SESSION_EXPIRED|PERMISSION_DENIED)$/.test(error.code || "")); }
     function inactiveEmployee(error) { return error && /^(EMPLOYEE_NOT_FOUND|EMPLOYEE_INACTIVE)$/.test(error.code || ""); }
-    function cell(value, className) { return '<td class="' + className + '">' + escape(value || "Not recorded") + '</td>'; }
+    function price(value) {
+      return typeof value === "number" && isFinite(value) && value >= 0 && value <= 99999999.99 &&
+        Math.round(value * 100) / 100 === value ? value.toFixed(2) : "Not recorded";
+    }
+    function priceCell(row) {
+      var amount = price(row.price_amount), currency = typeof row.currency === "string" && row.currency ? row.currency : "";
+      return '<td class="damage-price" data-label="Price"><span class="damage-price-amount">' + escape(amount) + '</span>' +
+        (currency ? ' <span class="damage-currency">' + escape(currency) + '</span>' : '') + '</td>';
+    }
+    function cell(value, className, label) { return '<td class="' + className + '" data-label="' + label + '">' + escape(value || "Not recorded") + '</td>'; }
     function cardMarkup(employee) {
       var rows = employee.rows || [], html = '', i, row, date;
       html += '<header class="damage-employee-header tv-clear"><h2>' + escape(employee.name) + '</h2>' +
         '<p class="damage-employee-total"><span>TOTAL DAMAGE</span><strong>' + count(employee.total_damage) + '</strong></p></header>' +
         '<div class="damage-table-shell"><table class="damage-table" aria-label="Damage history for ' + escape(employee.name) + '">' +
-        '<colgroup><col class="damage-date-column"><col class="damage-model-column"><col class="damage-part-column"><col class="damage-reason-column"></colgroup>' +
-        '<thead><tr><th scope="col">DATE</th><th scope="col">MODEL</th><th scope="col">PART NAME</th><th scope="col">REASON</th></tr></thead><tbody>';
+        '<colgroup><col class="damage-date-column"><col class="damage-model-column"><col class="damage-part-column"><col class="damage-price-column"><col class="damage-source-column"><col class="damage-reason-column"></colgroup>' +
+        '<thead><tr><th scope="col">DATE</th><th scope="col">MODEL</th><th scope="col">PART NAME</th><th scope="col">PRICE</th><th scope="col">PART SOURCE</th><th scope="col">REASON</th></tr></thead><tbody>';
       for (i = 0; i < rows.length; i++) {
         row = rows[i]; date = uaeDate(row.occurred_at).split(" \u00b7 ");
-        html += '<tr><td class="damage-date" title="' + escape(uaeDate(row.occurred_at)) + ' UAE">' + escape(date[0]) + '<small>' + escape(date[1] || '') + '</small></td>' +
-          cell(row.model, "damage-model") + cell(row.part_name, "damage-part") + cell(row.reason, "damage-reason") + '</tr>';
+        html += '<tr><td class="damage-date" data-label="Date" title="' + escape(uaeDate(row.occurred_at)) + ' UAE">' + escape(date[0]) + '<small>' + escape(date[1] || '') + '</small></td>' +
+          cell(row.model, "damage-model", "Model") + cell(row.part_name, "damage-part", "Part name") + priceCell(row) + cell(row.part_source, "damage-source", "Part source") + cell(row.reason, "damage-reason", "Reason") + '</tr>';
       }
-      if (!rows.length) html += '<tr><td colspan="4" class="damage-empty-history">' + (employee.total_damage ? 'History unavailable. Select Refresh now to retry.' : 'No damages recorded') + '</td></tr>';
+      if (!rows.length) html += '<tr><td colspan="6" class="damage-empty-history">' + (employee.total_damage ? 'History unavailable. Select Refresh now to retry.' : 'No damages recorded') + '</td></tr>';
       html += '</tbody></table></div><div class="damage-history-controls tv-clear">' +
         '<button id="damage-history-prev" class="tv-button damage-history-prev" type="button" data-direction="-1" aria-label="Previous damage records for ' + escape(employee.name) + '">Previous records</button>' +
         '<span class="damage-history-range">' + (rows.length ? (employee.offset + 1) + '\u2013' + (employee.offset + rows.length) + ' of ' + count(employee.total_damage) : '0 records') +
