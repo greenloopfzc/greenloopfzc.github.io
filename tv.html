@@ -7,12 +7,10 @@
   <meta name="description" content="Greenloop Manual Damage Report: employee damage cards, all-time counts and complete damage history.">
   <title>Manual Damage Report | Greenloop</title>
   <link rel="stylesheet" href="css/tv.css?v=20261005-damage-tv-views-1">
-  <link rel="stylesheet" href="css/damage-tv.css?v=20261006-damage-quantity-1">
+  <link rel="stylesheet" href="css/damage-tv.css?v=20261006-damage-entry-pdf-1">
   <script>window.GREENLOOP_TV_CONFIG = {"pageKey":"damage_report","supabaseUrl":"https://prypklagfznpdlleldll.supabase.co","supabaseAnonKey":"sb_publishable_hMIRbfKmh4vhGvEgVcPjow_F21WmwXt"};</script>
   <script defer src="js/tv-api.js?v=20261006-damage-report-pdf-1"></script>
-  <link rel="stylesheet" href="css/damage-report-export.css?v=20261006-damage-report-pdf-1">
-  <script defer src="js/damage-report-export.js?v=20261006-damage-report-pdf-1"></script>
-  <script defer src="js/damage-tv.js?v=20261006-damage-report-pdf-1"></script>
+  <script defer src="js/damage-tv.js?v=20261006-damage-entry-pdf-1"></script>
 </head>
 <body class="tv-page damage-tv-page">
   <div class="tv-wrap">
@@ -74,26 +72,11 @@
             <button id="tv-auto-toggle" class="tv-button damage-view-button" type="button" aria-pressed="false" disabled>Auto View &middot; 5 sec</button>
           </div>
           <div class="tv-action-buttons">
-            <button id="damage-pdf-toggle" class="tv-button" type="button" aria-expanded="false" aria-controls="damage-pdf-panel" disabled>Download PDF</button>
             <button id="tv-refresh" class="tv-button" type="button">Refresh now</button>
             <button id="tv-fullscreen" class="tv-button" type="button">Full screen</button>
             <button id="tv-logout" class="tv-button" type="button">Sign out</button>
           </div>
         </div>
-        <section id="damage-pdf-panel" class="damage-pdf-panel" style="display:none" aria-labelledby="damage-pdf-title">
-          <button id="damage-pdf-close" class="tv-button damage-pdf-close" type="button">Close</button>
-          <h2 id="damage-pdf-title">Damage Report</h2>
-          <p>Choose the damage dates. The PDF includes all employees and a separate table for each employee with damage.</p>
-          <form id="damage-pdf-form">
-            <div class="damage-pdf-field"><label for="damage-pdf-from">From date &middot; UAE</label><input id="damage-pdf-from" type="date" min="2000-01-01" max="2100-12-31" required></div>
-            <div class="damage-pdf-field"><label for="damage-pdf-to">To date &middot; UAE</label><input id="damage-pdf-to" type="date" min="2000-01-01" max="2100-12-31" required></div>
-            <button id="damage-pdf-download" class="tv-button tv-primary" type="submit">Download Damage Report</button>
-          </form>
-          <p class="damage-pdf-note">A4 portrait, up to 4 pages. Each table cell stays on one line. Zero-damage names appear in separate cells.</p>
-          <p class="damage-pdf-note">Print: A4 &middot; Portrait &middot; Actual size / 100% &middot; 1 page per sheet.</p>
-          <p id="damage-pdf-message" class="damage-pdf-message" role="status" aria-live="polite"></p>
-          <a id="damage-pdf-file" class="tv-button" style="display:none">Download PDF again</a>
-        </section>
         <p id="tv-board-message" class="tv-message tv-board-message" role="status" aria-live="polite"></p>
 
         <section class="damage-live-updates" aria-label="Latest saved damage entries">

@@ -141,12 +141,13 @@
     }
     const drawn = [];
     function drawText(page, text, x, y, fontSize, width, face=font, color=colors.ink, alignment='left') {
+      const cellX = x;
       const length = measure(text,fontSize,face);
       if (length>width+.01) throw new Error('A report label is too long for its A4 cell. No text was clipped.');
       if(alignment==='right')x+=width-length;
       if(alignment==='center')x+=(width-length)/2;
       page.drawText(text,{x,y,size:fontSize,font:face,color});
-      drawn.push({page:pdf.getPageCount(),text,x,y,width:length,size:fontSize});
+      drawn.push({page:pdf.getPageCount(),text,x,y,width:length,size:fontSize,alignment,cellX,cellWidth:width});
     }
     function fitText(page,text,x,y,fontSize,width,face=font,color=colors.ink,align='left') {
       const adjusted=Math.min(fontSize,width/Math.max(measure(text,1,face),1));
@@ -167,8 +168,8 @@
         for(let i=0;i<metrics.length;i++) {
           const x=MARGIN+(i%4)*(cellWidth+gap),y=HEIGHT-153-Math.floor(i/4)*65;
           rect(page,x+1.5,y-1.5,cellWidth,52,colors.pale);rect(page,x,y,cellWidth,52,colors.white);
-          fitText(page,metrics[i][0],x+8,y+37,8,cellWidth-16,bold,colors.muted);
-          fitText(page,metrics[i][1],x+8,y+12,20,cellWidth-16,bold,colors.green);
+          fitText(page,metrics[i][0],x+8,y+37,8,cellWidth-16,bold,colors.muted,'center');
+          fitText(page,metrics[i][1],x+8,y+12,20,cellWidth-16,bold,colors.green,'center');
         }
         let y=HEIGHT-111-metricRows*65;
         drawText(page,'Value = price per part x quantity; currencies kept separate. Unpriced parts: '+report.unpriced,MARGIN,y,8.5,BODY,font,colors.muted);
@@ -190,14 +191,14 @@
         const value=Array.from(employee.totals).map(([cur,cents])=>cur+' '+money(cents)).join(' / ');
         const summary='Damage: '+employee.quantity+(value?' | '+value:'');
         const sw=Math.min(BODY*.64,Math.max(150,measure(summary,9,bold)+12));
-        fitText(page,name,MARGIN+6,top-16,10.5,BODY-sw-14,bold);
-        fitText(page,summary,WIDTH-MARGIN-sw,top-16,9,sw-6,bold,colors.red,'right');
+        fitText(page,name,MARGIN+6,top-16,10.5,BODY-sw-14,bold,colors.ink,'center');
+        fitText(page,summary,WIDTH-MARGIN-sw,top-16,9,sw-6,bold,colors.red,'center');
         top-=24;let x=MARGIN;
-        for(let col=0;col<labels.length;col++) {rect(page,x,top-21,widths[col],21,colors.pale);drawText(page,labels[col],x+4,top-14,8,widths[col]-8,bold);x+=widths[col];}
+        for(let col=0;col<labels.length;col++) {rect(page,x,top-21,widths[col],21,colors.pale);drawText(page,labels[col],x+4,top-14,8,widths[col]-8,bold,colors.ink,'center');x+=widths[col];}
         top-=21;
         for(const row of block.rows) {
           x=MARGIN;
-          for(let col=0;col<row.cells.length;col++) {rect(page,x,top-rowHeight,widths[col],rowHeight,colors.white);drawText(page,row.cells[col],x+4,top-rowHeight/2-size*.35,size,widths[col]-8,font,colors.ink,col===3?'center':'left');x+=widths[col];}
+          for(let col=0;col<row.cells.length;col++) {rect(page,x,top-rowHeight,widths[col],rowHeight,colors.white);drawText(page,row.cells[col],x+4,top-rowHeight/2-size*.35,size,widths[col]-8,font,colors.ink,'center');x+=widths[col];}
           top-=rowHeight;
         }
         top-=10;

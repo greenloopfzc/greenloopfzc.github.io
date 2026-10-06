@@ -37,6 +37,7 @@
     occurred_at: byId("damage-occurred-at")
   };
   let client;
+  let pdfExport = null;
   let canEdit = false;
   let saving = false;
   let pendingRequest = null;
@@ -137,6 +138,7 @@
       [error?.status, error?.statusCode].some((value) => String(value) === "400");
   }
   function lockRevokedAccess() {
+    if (pdfExport) pdfExport.setActive(false);
     accessDenied = true;
     canEdit = false;
     catalogReady = false;
@@ -439,6 +441,37 @@
   nextButton.addEventListener("click", () => { if (!loading && hasMore) loadReports(offset + pageSize); });
   refreshButton.addEventListener("click", () => { if (!loading) loadReports(offset); });
 
+  function mountPdfExport() {
+    const toggle = byId("damage-pdf-toggle");
+    // The existing page-access loader exposes this link only to Damage Report viewers.
+    // The export RPC independently checks that permission on every download.
+    if (accessDenied || toggle.hidden || !window.GREENLOOP_DAMAGE_EXPORT) return;
+    const exportApi = { loadDamageExport(from, to, callback) {
+      api().rpc("get_manual_damage_export_v1", { p_date_from: from, p_date_to: to })
+        .then(({ data, error }) => {
+          if (error) callback(isAccessError(error) ? { ...error, code: "PERMISSION_DENIED" } : error);
+          else callback(null, Array.isArray(data) ? data[0] : data);
+        }).catch(error => callback(error));
+    } };
+    pdfExport = window.GREENLOOP_DAMAGE_EXPORT(exportApi, error => {
+      pdfExport.setActive(false);
+      toggle.hidden = true;
+      message("damage-pdf-access-message", error.message || "Damage Report access is unavailable. Ask your administrator to check your access.");
+    }, () => {});
+    pdfExport.setActive(true);
+    // Cancel an in-flight export and revoke its download URL on sign-out/account change.
+    // No RPC is called from the auth callback.
+    let accountId = null;
+    api().auth.onAuthStateChange?.((event, session) => {
+      const nextId = session?.user?.id;
+      if (event === "SIGNED_OUT" || (accountId && nextId !== accountId)) {
+        pdfExport.setActive(false);
+        lockRevokedAccess();
+      }
+      if (nextId) accountId = nextId;
+    });
+  }
+
   async function start() {
     if (!window.GREENLOOP_CONFIG?.supabaseUrl || !window.GREENLOOP_CONFIG?.supabaseAnonKey || !window.supabase) {
       message("permission-message", "The database connection is not configured.");
@@ -452,6 +485,7 @@
     byId("manual-damage-view-only").hidden = canEdit;
     inputs.occurred_at.value = uaeLocalNow();
     syncControls();
+    mountPdfExport();
     await Promise.all([loadChoices(), loadReports(0)]);
   }
   start().catch((error) => message("permission-message", error.message || "Manual damage entry could not be loaded."));

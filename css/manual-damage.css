@@ -113,7 +113,7 @@ html[data-mode="dark"] .manual-damage-dialog::backdrop {background:#020b0ca8;}
 .damage-recent-shell {border:1px solid var(--line);border-radius:14px;overflow:hidden;}
 .manual-damage-page .damage-recent-table {width:100%;min-width:0;table-layout:fixed;border-collapse:collapse;background:var(--surface);font-size:.76rem;}
 .damage-recent-table .recent-date {width:13%;}.damage-recent-table .recent-employee {width:11%;}.damage-recent-table .recent-model {width:11%;}.damage-recent-table .recent-part {width:12%;}.damage-recent-table .recent-quantity {width:5%;}.damage-recent-table .recent-price {width:12%;}.damage-recent-table .recent-source {width:8%;}.damage-recent-table .recent-reason {width:20%;}.damage-recent-table .recent-action {width:8%;}
-.manual-damage-page .damage-recent-table :is(th,td) {padding:12px 10px;text-align:left;vertical-align:middle;border:0;border-bottom:1px solid var(--line);color:var(--ink);white-space:normal;overflow-wrap:anywhere;}
+.manual-damage-page .damage-recent-table :is(th,td) {padding:12px 10px;text-align:center;vertical-align:middle;border:0;border-bottom:1px solid var(--line);color:var(--ink);white-space:normal;overflow-wrap:anywhere;}
 .manual-damage-page .damage-recent-table th {background:var(--canvas);font-size:.65rem;letter-spacing:.035em;color:var(--muted);}
 .manual-damage-page .damage-recent-table .manual-damage-report {border:0;border-radius:0;padding:0;box-shadow:none;}
 .damage-recent-table tbody tr:last-child td {border-bottom:0;}
@@ -131,3 +131,10 @@ html[data-mode="dark"] .manual-damage-dialog::backdrop {background:#020b0ca8;}
  .damage-recent-table td::before {content:attr(data-label);display:block;font-size:.6rem;font-weight:700;color:var(--muted);margin-bottom:4px;}
  .damage-record-facts {grid-template-columns:1fr;}
 }
+
+/* Center data within this module, including detail dialogs and entry fields. */
+.manual-damage-page table th, .manual-damage-page table td {text-align:center;vertical-align:middle;}
+.manual-damage-page .damage-record-facts > div {text-align:center;}
+.manual-damage-page .manual-damage-field input,
+.manual-damage-page .manual-damage-field select,
+.manual-damage-page .manual-damage-field textarea {text-align:center;text-align-last:center;}

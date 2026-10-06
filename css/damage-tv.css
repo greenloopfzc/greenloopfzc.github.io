@@ -406,3 +406,12 @@
   .tv-dark .damage-detail .damage-table tbody tr + tr { border-color: #4c5e69; }
   .tv-dark .damage-detail .damage-table td:before { color: #b1c9ba; }
 }
+
+/* Manual Damage Report: center employee names, quantities and every table cell. */
+.damage-tv-page .damage-table th, .damage-tv-page .damage-table td {text-align:center;vertical-align:middle;}
+.damage-tv-page .damage-compact-card, .damage-tv-page .damage-compact-total {text-align:center;}
+.damage-tv-page .damage-compact-total strong {float:none;display:inline-block;margin-left:10px;vertical-align:middle;}
+.damage-tv-page .damage-employee-header {display:table;width:100%;text-align:center;}
+.damage-tv-page .damage-employee-header h2 {display:table-cell;float:none;width:65%;max-width:none;padding-top:0;text-align:center;vertical-align:middle;}
+.damage-tv-page .damage-employee-total {display:table-cell;float:none;width:35%;text-align:center;vertical-align:middle;}
+.damage-tv-page .damage-employee-total span {max-width:none;text-align:center;}

@@ -63,6 +63,8 @@
 .dm-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 15px 0; }
 .dm-facts dt { color: var(--dm-muted); font-size: .66rem; text-transform: uppercase; }
 .dm-facts dd { margin: 3px 0 0; overflow-wrap: anywhere; }
+.damage-management .dm-record-values > span, .damage-management .dm-facts > div { text-align: center; }
+.damage-management table th, .damage-management table td { text-align: center; vertical-align: middle; }
 .dm-snapshot { margin: 14px 0; border: 1px solid var(--dm-line); border-radius: 12px; padding: 10px 14px; }
 .dm-snapshot summary { cursor: pointer; font-weight: 700; }
 .dm-snapshot + form { margin-top: 18px; }
