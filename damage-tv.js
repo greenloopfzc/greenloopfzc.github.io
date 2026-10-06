@@ -10,6 +10,7 @@
     var rowSize = 6, employees = [], rosterRequest = 0, selection = 0, detail = null;
     var autoView = false, autoTimer = null, view = "all";
     var activity = [], updatesPaused = false;
+    var tvMode = false, idleTimer = null, autoDeadline = 0;
     function text(id, value) { get(id).textContent = String(value === null || value === undefined ? "" : value); }
     function message(id, value) { text(id, value); get(id).style.display = value ? "block" : "none"; }
     function escape(value) {
@@ -64,10 +65,19 @@
       if (next) next.disabled = pending || !detail || !detail.has_more;
       text("damage-view-help", view === "all" ? "Select an employee to read their complete history. Totals include all recorded damage." : "Newest first \u00b7 UAE dates \u00b7 History controls pause Auto View so you can read.");
     }
-    function stopTimer() { if (autoTimer !== null) window.clearTimeout(autoTimer); autoTimer = null; }
+    function autoProgress() {
+      var progress = get("damage-auto-progress"), fill = get("damage-auto-fill");
+      if (!progress) return;
+      progress.style.display = autoView ? "block" : "none";
+      var elapsed = autoView && autoDeadline ? Math.max(0, Math.min(100, (1 - (autoDeadline - new Date().getTime()) / 5000) * 100)) : 0;
+      fill.style.width = elapsed + "%";
+      progress.setAttribute("aria-valuenow", String(Math.round(elapsed)));
+    }
+    function stopTimer() { if (autoTimer !== null) window.clearTimeout(autoTimer); autoTimer = null; autoDeadline = 0; autoProgress(); }
     function scheduleAuto() {
       stopTimer();
       if (!active || !autoView || document.hidden || !employees.length) return;
+      autoDeadline = new Date().getTime() + 5000; autoProgress();
       // A fresh timeout follows each displayed employee: everyone receives the full five seconds.
       autoTimer = window.setTimeout(function () {
         autoTimer = null;
@@ -76,6 +86,37 @@
       }, 5000);
     }
     function pauseAuto() { autoView = false; stopTimer(); controls(); }
+    function wakeControls() {
+      document.body.className = "tv-page damage-tv-page" + (tvMode ? " damage-tv-mode" : "");
+      if (idleTimer !== null) window.clearTimeout(idleTimer);
+      idleTimer = null;
+      if (!active || !tvMode || document.hidden) return;
+      idleTimer = window.setTimeout(function () {
+        idleTimer = null;
+        if (active && tvMode && !document.hidden) document.body.className = "tv-page damage-tv-page damage-tv-mode damage-controls-idle";
+      }, 8000);
+    }
+    function mode(value) {
+      tvMode = !!value; get("tv-mode").setAttribute("aria-pressed", tvMode ? "true" : "false");
+      text("tv-mode", tvMode ? "Exit TV mode" : "TV mode"); wakeControls();
+    }
+    function clock() {
+      var date = new Date(new Date().getTime() + 4 * 60 * 60 * 1000);
+      text("tv-clock", two(date.getUTCHours()) + ":" + two(date.getUTCMinutes()) + ":" + two(date.getUTCSeconds()) + " UAE");
+    }
+    function connection(state) {
+      get("tv-connection").className = "tv-live-label" + (state === "Live · 30 sec refresh" ? "" : " tv-connection-stale");
+      get("tv-connection").innerHTML = '<i></i>' + escape(state);
+    }
+    function moneyValues(employee) {
+      var totals = employee.value_totals || [], values = [], i;
+      for (i = 0; i < totals.length; i++) values.push('<span>' + escape(totals[i].currency) + ' ' + escape(totals[i].amount) + '</span>');
+      return values.length ? values.join(' ') : (employee.total_damage ? 'Price not recorded' : 'No damage');
+    }
+    function boardValues(data) {
+      get("damage-value").innerHTML = moneyValues({value_totals:data.value_totals, total_damage:data.total_count});
+      text("damage-unpriced", data.unpriced_quantity ? "Price not recorded: " + count(data.unpriced_quantity) + " parts" : "All history · currencies separate");
+    }
     function selectEmployee(id, automatic) {
       var employee = findEmployee(id);
       if (!employee) return;
@@ -138,6 +179,7 @@
       activity = []; updatesPaused = false; showActivity();
       employees = []; detail = null; selection++; rosterRequest++; view = "all"; pauseAuto();
       text("damage-today", 0); text("damage-month", 0); text("damage-total", 0);
+      text("damage-value", "—"); text("damage-unpriced", "Recorded prices · currencies separate"); mode(false); connection("Connecting");
       get("damage-employees").innerHTML = "";
       text("damage-range", "Waiting for employees"); controls();
     }
@@ -185,7 +227,7 @@
     function cardMarkup(employee) {
       var rows = employee.rows || [], html = '', i, row, date;
       html += '<header class="damage-employee-header tv-clear"><h2>' + escape(employee.name) + '</h2>' +
-        '<p class="damage-employee-total"><span>TOTAL DAMAGE</span><strong>' + count(employee.total_damage) + '</strong></p></header>' + valueSummary(employee) +
+        '<p class="damage-employee-total"><span>TOTAL DAMAGE</span><strong>' + count(employee.total_damage) + '</strong></p></header><div id="damage-auto-progress" class="damage-auto-progress" role="progressbar" aria-label="Time until next employee" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="display:none"><span id="damage-auto-fill"></span></div>' + valueSummary(employee) +
         '<div class="damage-table-shell"><table class="damage-table" aria-label="Damage history for ' + escape(employee.name) + '">' +
         '<colgroup><col class="damage-date-column"><col class="damage-model-column"><col class="damage-part-column"><col class="damage-quantity-column"><col class="damage-price-column"><col class="damage-total-column"><col class="damage-source-column"><col class="damage-reason-column"><col class="damage-recorder-column"></colgroup>' +
         '<thead><tr><th scope="col">DATE</th><th scope="col">MODEL / IDENTIFIER</th><th scope="col">PART NAME</th><th scope="col">QTY</th><th scope="col">PRICE / PART</th><th scope="col">ENTRY TOTAL</th><th scope="col">PART SOURCE</th><th scope="col">REASON</th><th scope="col">ENTERED BY / SAVED</th></tr></thead><tbody>';
@@ -209,10 +251,12 @@
       if (view === "detail" && detail) html = '<article id="damage-detail" class="damage-employee' + (count(detail.total_damage) > 0 ? ' damage-has-damage' : '') + '" tabindex="0">' + cardMarkup(detail) + '</article>';
       else for (i = 0; i < employees.length; i++) {
         html += '<div class="damage-employee-cell"><button id="damage-employee-' + i + '" class="damage-compact-card' + (count(employees[i].total_damage) > 0 ? ' damage-has-damage' : '') + '" type="button" data-employee="' + escape(employees[i].id) + '" aria-label="' + escape(employees[i].name) + ', ' + count(employees[i].total_damage) + ' total damage. Open history.">' +
-          '<span class="damage-compact-name">' + escape(employees[i].name) + '</span><span class="damage-compact-total"><small>TOTAL DAMAGE</small><strong>' + count(employees[i].total_damage) + '</strong></span></button></div>';
+          '<span class="damage-compact-name">' + escape(employees[i].name) + '</span><span class="damage-compact-total"><strong>' + count(employees[i].total_damage) + '</strong><small>damaged parts</small></span>' +
+          '<span class="damage-compact-value">' + (employees[i].total_damage ? moneyValues(employees[i]) : '&#10003; No damage') + '</span>' +
+          (employees[i].unpriced_quantity && employees[i].value_totals && employees[i].value_totals.length ? '<span class="damage-compact-unpriced">' + count(employees[i].unpriced_quantity) + ' parts without price</span>' : '') + '</button></div>';
       }
       get("damage-employees").innerHTML = html || '<p class="tv-empty">No active employees are available.</p>';
-      text("damage-range", employees.length + " employees"); controls();
+      text("damage-range", employees.length + " employees · Select a card for complete history"); controls(); autoProgress();
       var target = focused && get(focused);
       if (target && target.disabled && /^damage-history-/.test(focused)) target = get("damage-detail");
       if (target && !target.disabled && target.getClientRects().length) target.focus();
@@ -226,7 +270,7 @@
         if (!current()) return;
         loading = false; controls();
         if (expired(error)) { showLogin(error.message || "Please sign in again."); username.focus(); }
-        else message("tv-board-message", (error.message || "The report could not be refreshed.") + " Last shown figures have not been updated. Select Refresh now to retry.");
+        else { connection(navigator.onLine === false ? "Offline · saved display" : "Update delayed · retrying"); message("tv-board-message", (error.message || "The report could not be refreshed.") + " Last shown figures have not been updated. Select Refresh now to retry."); }
       }
       function changed() {
         if (!current()) return;
@@ -244,7 +288,7 @@
         }
         renderActivity(first.activity);
         text("damage-today", count(first.today_count)); text("damage-month", count(first.month_count)); text("damage-total", count(first.total_count));
-        renderEmployees(); text("tv-last-updated", stamp()); message("tv-board-message", warning || "");
+        boardValues(first); connection("Live · 30 sec refresh"); renderEmployees(); text("tv-last-updated", stamp()); message("tv-board-message", warning || "");
       }
       function finish() {
         if (!current()) return;
@@ -279,7 +323,7 @@
           var i, employee;
           if (!data || !validCount(data.employee_count) || !data.employees || typeof data.has_more !== "boolean" || data.employees.length > 100) { changed(); return; }
           if (!first) first = data;
-          else if (data.employee_count !== first.employee_count || data.today_count !== first.today_count || data.month_count !== first.month_count || data.total_count !== first.total_count || data.record_count !== first.record_count) { changed(); return; }
+          else if (data.employee_count !== first.employee_count || data.today_count !== first.today_count || data.month_count !== first.month_count || data.total_count !== first.total_count || data.record_count !== first.record_count || JSON.stringify(data.value_totals) !== JSON.stringify(first.value_totals) || data.unpriced_quantity !== first.unpriced_quantity) { changed(); return; }
           for (i = 0; i < data.employees.length; i++) {
             employee = data.employees[i];
             if (!employee || typeof employee.id !== "string" || !employee.id || seen["id:" + employee.id]) { changed(); return; }
@@ -316,7 +360,7 @@
       active = true; loading = false;
       get("tv-restoring").style.display = "none"; login.style.display = "none"; board.style.display = "block";
       message("tv-login-message", ""); message("tv-board-message", "Loading damage report...");
-      pauseAuto(); refresh(); get("damage-all").focus();
+      pauseAuto(); refresh(); clock(); get("damage-all").focus(); wakeControls();
     }
     function setTheme(value) {
       theme = value === "dark" ? "dark" : "light";
@@ -368,6 +412,7 @@
       if (!employees.length) return;
       autoView = true; selectEmployee(detail ? detail.id : employees[0].id, true);
     };
+    get("tv-mode").onclick = function () { mode(!tvMode); };
     get("tv-logout").onclick = function () { showLogin("Signed out."); api.logout(function () {}); username.focus(); };
     get("tv-fullscreen").onclick = function () {
       pauseAuto();
@@ -378,11 +423,12 @@
       if (!action) { unavailable(); return; }
       try { var result = action.call(full ? document : root); if (result && typeof result["catch"] === "function") result["catch"](unavailable); } catch (ignore) { unavailable(); }
     };
-    function fullChanged() { text("tv-fullscreen", document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement ? "Exit full screen" : "Full screen"); }
+    function fullChanged() { mode(!!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement)); text("tv-fullscreen", document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement ? "Exit full screen" : "Full screen"); }
     document.addEventListener("fullscreenchange", fullChanged); document.addEventListener("webkitfullscreenchange", fullChanged); document.addEventListener("mozfullscreenchange", fullChanged);
     // Clicking/touching a record or navigating with the remote gives the reader control.
     document.addEventListener("click", function (event) { if (event.target !== get("tv-auto-toggle") && autoView) pauseAuto(); }, true);
     document.addEventListener("keydown", function (event) {
+      wakeControls();
       var key = event.keyCode || event.which;
       if (autoView && !(document.activeElement === get("tv-auto-toggle") && (key === 13 || key === 32))) pauseAuto();
       if (key < 37 || key > 40 || event.altKey || event.ctrlKey || event.metaKey) return;
@@ -399,8 +445,14 @@
     });
     get("damage-updates-toggle").onclick = function () { updatesPaused = !updatesPaused; tickerState(); };
     window.addEventListener("resize", sizeTicker);
+    document.addEventListener("mousemove", wakeControls);
+    document.addEventListener("touchstart", wakeControls);
+    document.addEventListener("focusin", wakeControls);
+    window.addEventListener("offline", function () { if (active) connection("Offline · saved display"); });
+    window.setInterval(function () { if (active && !document.hidden) { clock(); autoProgress(); } }, 100);
+    clock();
     window.setInterval(function () { if (!document.hidden) refresh(); }, 30000);
-    document.addEventListener("visibilitychange", function () { stopTimer(); tickerState(); if (!document.hidden) { scheduleAuto(); refresh(); } });
+    document.addEventListener("visibilitychange", function () { stopTimer(); tickerState(); wakeControls(); if (!document.hidden) { scheduleAuto(); refresh(); } });
     window.addEventListener("online", function () { refresh(); });
     var restoreTicket = generation;
     api.restore(function (error, result) {

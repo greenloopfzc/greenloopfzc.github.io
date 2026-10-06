@@ -7,10 +7,10 @@
   <meta name="description" content="Greenloop Live Damage Report: employee damage cards, all-time counts and complete damage history.">
   <title>Live Damage Report | Greenloop</title>
   <link rel="stylesheet" href="css/tv.css?v=20261005-damage-tv-views-1">
-  <link rel="stylesheet" href="css/damage-tv.css?v=20261006-damage-employee-totals-1">
+  <link rel="stylesheet" href="css/damage-tv.css?v=20261006-damage-tv-polish-1">
   <script>window.GREENLOOP_TV_CONFIG = {"loginActivity":true,"pageKey":"damage_report","supabaseUrl":"https://prypklagfznpdlleldll.supabase.co","supabaseAnonKey":"sb_publishable_hMIRbfKmh4vhGvEgVcPjow_F21WmwXt"};</script>
-  <script defer src="js/tv-api.js?v=20261006-login-activity-1"></script>
-  <script defer src="js/damage-tv.js?v=20261006-damage-employee-totals-1"></script>
+  <script defer src="js/tv-api.js?v=20261006-damage-tv-polish-1"></script>
+  <script defer src="js/damage-tv.js?v=20261006-damage-tv-polish-1"></script>
 </head>
 <body class="tv-page damage-tv-page">
   <div class="tv-wrap">
@@ -64,7 +64,7 @@
       <section id="tv-board" class="tv-board" style="display:none" aria-labelledby="tv-board-title">
         <div class="tv-board-heading tv-clear">
           <div class="tv-heading-copy"><p class="tv-eyebrow">LIVE DAMAGE REPORT / EMPLOYEE RECORDS</p><h1 id="tv-board-title">Live Damage Report</h1></div>
-          <div class="tv-update-status"><span class="tv-live-label"><i></i>Refresh every 30 sec</span><span id="tv-last-updated">Waiting for the first update</span></div>
+          <div class="tv-update-status"><span id="tv-connection" class="tv-live-label"><i></i>Connecting</span><span id="tv-clock" class="tv-clock"></span><span id="tv-last-updated">Waiting for the first update</span></div>
         </div>
         <div class="tv-toolbar tv-clear" aria-label="Board controls">
           <div class="tv-view-buttons" role="group" aria-label="Employee views">
@@ -72,6 +72,7 @@
             <button id="tv-auto-toggle" class="tv-button damage-view-button" type="button" aria-pressed="false" disabled>Auto View &middot; 5 sec</button>
           </div>
           <div class="tv-action-buttons">
+            <button id="tv-mode" class="tv-button" type="button" aria-pressed="false">TV mode</button>
             <button id="tv-refresh" class="tv-button" type="button">Refresh now</button>
             <button id="tv-fullscreen" class="tv-button" type="button">Full screen</button>
             <button id="tv-logout" class="tv-button" type="button">Sign out</button>
@@ -86,12 +87,13 @@
             <div id="damage-live-track" class="damage-live-track"><span id="damage-live-text" class="damage-live-group" role="status" aria-live="polite">No damage entries yet.</span><span id="damage-live-copy" class="damage-live-group" aria-hidden="true">No damage entries yet.</span></div>
           </div>
         </section>
-        <div class="damage-summary" aria-label="Manual damage incident totals">
-          <span>Today <strong id="damage-today">0</strong></span>
-          <span>This month <strong id="damage-month">0</strong></span>
-          <span>All time <strong id="damage-total">0</strong></span>
-          <span id="damage-range" class="damage-range">Waiting for employees</span>
+        <div class="damage-summary" aria-label="Damage totals across all recorded history">
+          <div class="damage-stat"><span>Today’s damaged parts</span><strong id="damage-today">0</strong><small>UAE calendar day</small></div>
+          <div class="damage-stat"><span>This month</span><strong id="damage-month">0</strong><small>Damaged parts · UAE dates</small></div>
+          <div class="damage-stat"><span>Total damaged parts</span><strong id="damage-total">0</strong><small>All recorded history</small></div>
+          <div class="damage-stat damage-stat-value"><span>Total damage value</span><strong id="damage-value">—</strong><small id="damage-unpriced">Recorded prices · currencies separate</small></div>
         </div>
+        <p id="damage-range" class="damage-roster-count">Waiting for employees</p>
         <section aria-label="Employee damage cards">
           <div id="damage-detail-nav" class="damage-detail-nav tv-clear" style="display:none" aria-label="Employee navigation">
             <button id="damage-prev" class="tv-button" type="button" disabled>Previous employee</button>

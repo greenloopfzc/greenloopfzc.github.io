@@ -562,9 +562,10 @@
       callback(error("VALIDATION", "Choose a valid employee card page."));
       return;
     }
-    damageCardsRequest("get_manual_damage_cards_v4", { p_offset: offset, p_limit: limit, p_row_limit: rowLimit }, function (problem, report) {
+    damageCardsRequest("get_manual_damage_cards_v5", { p_offset: offset, p_limit: limit, p_row_limit: rowLimit }, function (problem, report) {
       if (problem) { callback(problem); return; }
       var valid = report && count(report.employee_count) && count(report.today_count) && count(report.month_count) && count(report.total_count) && count(report.record_count) && report.record_count <= report.total_count &&
+        damageValueTotals({value_totals:report.value_totals, unpriced_quantity:report.unpriced_quantity, total_damage:report.total_count}) &&
         report.today_count <= report.month_count && report.month_count <= report.total_count &&
         array(report.activity) && report.activity.length <= 5 && array(report.employees) && report.employees.length <= limit && report.employees.length <= report.employee_count && typeof report.has_more === "boolean";
       var index, employee, seen = {};
