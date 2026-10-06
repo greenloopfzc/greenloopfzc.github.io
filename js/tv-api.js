@@ -582,6 +582,13 @@
       callback(null, report);
     });
   };
+  api.loadDamageExport = function (from, to, callback) {
+    damageCardsRequest("get_manual_damage_export_v1", { p_date_from: from, p_date_to: to }, function (problem, report) {
+      if (problem && problem.status === 404 && problem.serverCode === "PGRST202") problem.message = "Install the Damage Report PDF database update before downloading reports.";
+      if (!problem && (!report || report.version !== "20261006-damage-report-pdf-1" || report.date_from !== from || report.date_to !== to || !array(report.rows) || !array(report.employees) || report.record_count !== report.rows.length)) problem = error("INVALID_RESPONSE", "The complete PDF report could not be read. Please retry.");
+      callback(problem, report);
+    });
+  };
   api.onSessionInvalidated = null;
   if (window.addEventListener) window.addEventListener("storage", function (event) {
     if (event.key === changeKey || event.key === authKey || event.key === modeKey || event.key === null) {

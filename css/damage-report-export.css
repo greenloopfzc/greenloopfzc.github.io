@@ -1,0 +1,15 @@
+.damage-pdf-panel { margin: 12px 0 18px; padding: 20px 24px; border: 1px solid #d0dce3; border-radius: 20px; background: #eef3f7; color: #1c3440; box-shadow: 5px 6px 10px #afbec8, -3px -3px 8px #fff; }
+.damage-pdf-panel h2 { margin: 0 0 8px; font-size: 23px; }
+.damage-pdf-panel p { margin: 9px 0; line-height: 1.5; }
+.damage-pdf-close { float: right; }
+.damage-pdf-field { display: inline-block; vertical-align: bottom; margin: 12px 16px 10px 0; }
+.damage-pdf-field label { display: block; font-weight: bold; margin-bottom: 7px; }
+.damage-pdf-field input { padding: 10px 12px; border: 1px solid #bacbd5; border-radius: 10px; background: #fff; color: #173340; font-size: 16px; min-height: 44px; box-sizing: border-box; }
+.damage-pdf-panel .tv-primary { margin: 10px 0; }
+.damage-pdf-note { color: #425969; font-size: 14px; }
+.damage-pdf-message { font-weight: bold; }
+.tv-dark .damage-pdf-panel { background: #2c3742; border-color: #546575; color: #f2f7fa; box-shadow: 5px 6px 10px #17212b, -3px -3px 8px #4a5969; }
+.tv-dark .damage-pdf-field input { color-scheme: dark; background: #25313b; border-color: #647a8c; color: #f2f7fa; }
+.tv-dark .damage-pdf-note { color: #c2d5e1; }
+@media (max-width: 650px) { .damage-pdf-panel { padding: 16px; } .damage-pdf-field { display: block; margin-right: 0; } .damage-pdf-field input { width: 100%; } }
+@media print { .damage-pdf-panel { display: none !important; } }

@@ -8,7 +8,7 @@
     var username = get("tv-username"), password = get("tv-password"), submit = get("tv-sign-in");
     var active = false, loading = false, busy = false, generation = 0, theme = "light";
     var rowSize = 6, employees = [], rosterRequest = 0, selection = 0, detail = null;
-    var autoView = false, autoTimer = null, view = "all";
+    var autoView = false, autoTimer = null, view = "all", pdfExport = null;
     var activity = [], activityIndex = 0, updatesPaused = false;
     function text(id, value) { get(id).textContent = String(value === null || value === undefined ? "" : value); }
     function message(id, value) { text(id, value); get(id).style.display = value ? "block" : "none"; }
@@ -117,6 +117,7 @@
     }
     function showLogin(value) {
       active = false; loading = false; generation++; clear();
+      if (pdfExport) pdfExport.setActive(false);
       get("tv-restoring").style.display = "none"; board.style.display = "none"; login.style.display = "block";
       password.value = ""; password.type = "password";
       get("tv-show-password").textContent = "Show";
@@ -272,6 +273,7 @@
       get("tv-restoring").style.display = "none"; login.style.display = "none"; board.style.display = "block";
       message("tv-login-message", ""); message("tv-board-message", "Loading damage report...");
       pauseAuto(); refresh(); get("damage-all").focus();
+      if (pdfExport) pdfExport.setActive(true);
     }
     function setTheme(value) {
       theme = value === "dark" ? "dark" : "light";
@@ -286,6 +288,7 @@
     if (!api || typeof api.restore !== "function" || typeof api.login !== "function" || typeof api.logout !== "function" || typeof api.loadDamageCards !== "function" || typeof api.loadEmployeeDamageRows !== "function") {
       showLogin("This page did not finish loading. Reload the page and check the TV internet connection."); submit.disabled = true; return;
     }
+    if (window.GREENLOOP_DAMAGE_EXPORT) pdfExport = window.GREENLOOP_DAMAGE_EXPORT(api, function (error) { showLogin(error.message || "Please sign in again."); }, pauseAuto);
     api.onSessionInvalidated = function (error) { showLogin(error && error.message || "Please sign in again."); username.focus(); };
     get("tv-show-password").onclick = function () {
       var show = password.type === "password"; password.type = show ? "text" : "password";
