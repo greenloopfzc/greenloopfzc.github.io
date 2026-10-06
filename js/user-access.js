@@ -40,7 +40,7 @@
     ["lab_glass", "Lab & Glass", "Laboratory and glass repair work."],
     ["lab_live_board", "Lab Live Board", "TV display of live technician workload and performance."],
     ["damage_report", "Damage Report", "Manual Damage Report: view employee damage cards and Live Updates."],
-    ["tv_manual_entry", "TV Manual Entry", "Manual Damage Report: view manual history; Entry Allowed records damage and manages employees and dropdown choices."],
+    ["tv_manual_entry", "Damage Entry", "Manual Damage Report: view manual history; Entry Allowed records damage and manages employees and dropdown choices."],
     ["frame_department", "Frame Department", "Frame work, final grade, pass and fail decisions."],
     ["parts", "Parts", "View requests and issue required parts."],
     ["inventory", "Inventory", "Receive and control parts inventory."],

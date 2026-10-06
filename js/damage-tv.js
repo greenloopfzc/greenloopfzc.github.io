@@ -1,4 +1,4 @@
-/* Manual damage TV views, 20261005-manual-damage-price-1. ES5, no external runtime. */
+/* Manual damage TV views, 20261006-damage-quantity-1. ES5, no external runtime. */
 (function () {
   "use strict";
   function start() {
@@ -46,7 +46,7 @@
       return -1;
     }
     function firstPage(employee) {
-      return { id: employee.id, name: employee.name, total_damage: employee.total_damage, rows: employee.rows, has_more: employee.has_more, offset: 0, loading: false, request: 0, error: "" };
+      return { id: employee.id, name: employee.name, total_damage: employee.total_damage, record_count: employee.record_count, rows: employee.rows, has_more: employee.has_more, offset: 0, loading: false, request: 0, error: "" };
     }
     function controls() {
       var index = selectedIndex(), pending = loading || !!(detail && detail.loading);
@@ -88,7 +88,7 @@
     function showActivity() {
       var entry = activity[activityIndex];
       text("damage-live-text", entry ? entry.damaged_by + " \u00b7 " + entry.model + " \u00b7 Part: " +
-        (entry.part_name || "Not recorded") + " \u00b7 Reason: " + entry.reason +
+        (entry.part_name || "Not recorded") + " \u00b7 Qty: " + count(entry.quantity) + " \u00b7 Reason: " + entry.reason +
         " \u00b7 Saved " + uaeDate(entry.created_at) + " UAE" : "No damage entries yet.");
       get("damage-updates-toggle").disabled = activity.length < 2;
       get("damage-updates-toggle").setAttribute("aria-pressed", updatesPaused ? "true" : "false");
@@ -133,7 +133,7 @@
     }
     function priceCell(row) {
       var amount = price(row.price_amount), currency = typeof row.currency === "string" && row.currency ? row.currency : "";
-      return '<td class="damage-price" data-label="Price"><span class="damage-price-amount">' + escape(amount) + '</span>' +
+      return '<td class="damage-price" data-label="Price / part"><span class="damage-price-amount">' + escape(amount) + '</span>' +
         (currency ? ' <span class="damage-currency">' + escape(currency) + '</span>' : '') + '</td>';
     }
     function cell(value, className, label) { return '<td class="' + className + '" data-label="' + label + '">' + escape(value || "Not recorded") + '</td>'; }
@@ -142,18 +142,18 @@
       html += '<header class="damage-employee-header tv-clear"><h2>' + escape(employee.name) + '</h2>' +
         '<p class="damage-employee-total"><span>TOTAL DAMAGE</span><strong>' + count(employee.total_damage) + '</strong></p></header>' +
         '<div class="damage-table-shell"><table class="damage-table" aria-label="Damage history for ' + escape(employee.name) + '">' +
-        '<colgroup><col class="damage-date-column"><col class="damage-model-column"><col class="damage-part-column"><col class="damage-price-column"><col class="damage-source-column"><col class="damage-reason-column"></colgroup>' +
-        '<thead><tr><th scope="col">DATE</th><th scope="col">MODEL</th><th scope="col">PART NAME</th><th scope="col">PRICE</th><th scope="col">PART SOURCE</th><th scope="col">REASON</th></tr></thead><tbody>';
+        '<colgroup><col class="damage-date-column"><col class="damage-model-column"><col class="damage-part-column"><col class="damage-quantity-column"><col class="damage-price-column"><col class="damage-source-column"><col class="damage-reason-column"></colgroup>' +
+        '<thead><tr><th scope="col">DATE</th><th scope="col">MODEL</th><th scope="col">PART NAME</th><th scope="col">QTY</th><th scope="col">PRICE / PART</th><th scope="col">PART SOURCE</th><th scope="col">REASON</th></tr></thead><tbody>';
       for (i = 0; i < rows.length; i++) {
         row = rows[i]; date = uaeDate(row.occurred_at).split(" \u00b7 ");
         html += '<tr><td class="damage-date" data-label="Date" title="' + escape(uaeDate(row.occurred_at)) + ' UAE">' + escape(date[0]) + '<small>' + escape(date[1] || '') + '</small></td>' +
-          cell(row.model, "damage-model", "Model") + cell(row.part_name, "damage-part", "Part name") + priceCell(row) + cell(row.part_source, "damage-source", "Part source") + cell(row.reason, "damage-reason", "Reason") + '</tr>';
+          cell(row.model, "damage-model", "Model") + cell(row.part_name, "damage-part", "Part name") + cell(row.quantity, "damage-quantity", "Qty") + priceCell(row) + cell(row.part_source, "damage-source", "Part source") + cell(row.reason, "damage-reason", "Reason") + '</tr>';
       }
-      if (!rows.length) html += '<tr><td colspan="6" class="damage-empty-history">' + (employee.total_damage ? 'History unavailable. Select Refresh now to retry.' : 'No damages recorded') + '</td></tr>';
+      if (!rows.length) html += '<tr><td colspan="7" class="damage-empty-history">' + (employee.total_damage ? 'History unavailable. Select Refresh now to retry.' : 'No damages recorded') + '</td></tr>';
       html += '</tbody></table></div><div class="damage-history-controls tv-clear">' +
         '<button id="damage-history-prev" class="tv-button damage-history-prev" type="button" data-direction="-1" aria-label="Previous damage records for ' + escape(employee.name) + '">Previous records</button>' +
-        '<span class="damage-history-range">' + (rows.length ? (employee.offset + 1) + '\u2013' + (employee.offset + rows.length) + ' of ' + count(employee.total_damage) : '0 records') +
-        '<small>Page ' + (Math.floor(employee.offset / rowSize) + 1) + ' of ' + Math.max(1, Math.ceil(employee.total_damage / rowSize)) + '</small></span>' +
+        '<span class="damage-history-range">' + (rows.length ? (employee.offset + 1) + '\u2013' + (employee.offset + rows.length) + ' of ' + count(employee.record_count) : '0 records') +
+        '<small>Page ' + (Math.floor(employee.offset / rowSize) + 1) + ' of ' + Math.max(1, Math.ceil(employee.record_count / rowSize)) + '</small></span>' +
         '<button id="damage-history-next" class="tv-button damage-history-next" type="button" data-direction="1" aria-label="Next damage records for ' + escape(employee.name) + '">Next records</button></div>' +
         '<p class="damage-history-message" role="status"' + (employee.error || employee.loading ? '' : ' style="display:none"') + '>' + escape(employee.loading ? 'Loading history...' : employee.error || '') + '</p>';
       return html;
@@ -206,7 +206,7 @@
         var chosen = detail, savedSelection = selection, incoming = chosen && findEmployee(chosen.id, collected);
         if (!chosen || !incoming || !chosen.offset) { commit(savedSelection, null, ""); return; }
         var next = firstPage(incoming), attempts = 0;
-        next.offset = Math.min(chosen.offset, Math.max(0, Math.floor((incoming.total_damage - 1) / rowSize) * rowSize));
+        next.offset = Math.min(chosen.offset, Math.max(0, Math.floor((incoming.record_count - 1) / rowSize) * rowSize));
         function rows() {
           api.loadEmployeeDamageRows(next.id, next.offset, rowSize, function (error, history) {
             if (!current()) return;
@@ -217,10 +217,10 @@
               next = chosen; next.loading = false; next.error = "History not updated. Select Refresh now to retry.";
               commit(savedSelection, next, "This employee's history could not be refreshed. Previous rows remain visible."); return;
             }
-            next.rows = history.rows; next.total_damage = count(history.total_damage); next.has_more = !!history.has_more;
-            if (!next.rows.length && next.offset && next.offset >= next.total_damage) {
+            next.rows = history.rows; next.total_damage = count(history.total_damage); next.record_count = count(history.record_count); next.has_more = !!history.has_more;
+            if (!next.rows.length && next.offset && next.offset >= next.record_count) {
               if (attempts++) { changed(); return; }
-              next.offset = Math.max(0, Math.floor((next.total_damage - 1) / rowSize) * rowSize); rows(); return;
+              next.offset = Math.max(0, Math.floor((next.record_count - 1) / rowSize) * rowSize); rows(); return;
             }
             commit(savedSelection, next, "");
           });
@@ -234,7 +234,7 @@
           var i, employee;
           if (!data || !validCount(data.employee_count) || !data.employees || typeof data.has_more !== "boolean" || data.employees.length > 100) { changed(); return; }
           if (!first) first = data;
-          else if (data.employee_count !== first.employee_count || data.today_count !== first.today_count || data.month_count !== first.month_count || data.total_count !== first.total_count) { changed(); return; }
+          else if (data.employee_count !== first.employee_count || data.today_count !== first.today_count || data.month_count !== first.month_count || data.total_count !== first.total_count || data.record_count !== first.record_count) { changed(); return; }
           for (i = 0; i < data.employees.length; i++) {
             employee = data.employees[i];
             if (!employee || typeof employee.id !== "string" || !employee.id || seen["id:" + employee.id]) { changed(); return; }
@@ -262,8 +262,8 @@
           if (inactiveEmployee(error)) { employee.error = "Employee roster changed. Refreshing..."; renderEmployees(); refresh(); return; }
           employee.error = (error.message || "History could not be loaded.") + " Select Next or Previous to retry."; renderEmployees(); return;
         }
-        employee.total_damage = count(data.total_damage); employee.rows = data.rows; employee.has_more = !!data.has_more; employee.offset = requested;
-        if (!employee.rows.length && requested >= employee.total_damage) { employee.offset = 0; refresh(); return; }
+        employee.total_damage = count(data.total_damage); employee.record_count = count(data.record_count); employee.rows = data.rows; employee.has_more = !!data.has_more; employee.offset = requested;
+        if (!employee.rows.length && requested >= employee.record_count) { employee.offset = 0; refresh(); return; }
         renderEmployees();
       });
     }

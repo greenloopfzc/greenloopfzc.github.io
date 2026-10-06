@@ -28,6 +28,7 @@
     employee_id: choices.employee.input,
     model_id: choices.model.input,
     part_id: choices.part.input,
+    quantity: byId("damage-quantity"),
     price_amount: byId("damage-price-amount"),
     currency_id: choices.currency.input,
     part_source_id: choices.part_source.input,
@@ -74,6 +75,17 @@
     const price = priceValue(value);
     return price == null ? "Not recorded" : price;
   };
+  function quantityValue(value) {
+    const text = String(value ?? "").trim();
+    return /^\d+$/.test(text) && Number(text) >= 1 && Number(text) <= 99999 ? Number(text) : null;
+  }
+  const quantityLabel = row => quantityValue(row.quantity ?? 1) ?? "Not recorded";
+  function totalPrice(row) {
+    const unit = priceValue(row.price_amount), quantity = quantityValue(row.quantity ?? 1);
+    if (unit == null || quantity === null) return "Not recorded";
+    const cents = Number(unit.replace(".", "")) * quantity;
+    return Math.floor(cents / 100) + "." + String(cents % 100).padStart(2, "0");
+  }
   function uaeLocalNow() {
     return new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString().slice(0, 16);
   }
@@ -136,6 +148,9 @@
     offset = 0;
     hasMore = false;
     if (dialog.open) dialog.close();
+    if (byId("damage-record-dialog").open) byId("damage-record-dialog").close();
+    byId("damage-record-details").textContent = "";
+    recentRows = [];
     // Discard sensitive choices and drafts, including hidden dialog/retry text.
     // In-flight requests also check accessDenied before touching these values.
     Object.values(inputs).forEach((input) => { input.value = ""; input.setCustomValidity(""); });
@@ -153,7 +168,7 @@
     message("manual-damage-message");
     message("manual-damage-history-message");
     message("manual-damage-options-message");
-    message("permission-message", "Your session or TV Manual Entry access has changed. Sign in again or ask an administrator to restore access, then reload this page.");
+    message("permission-message", "Your session or Damage Entry access has changed. Sign in again or ask an administrator to restore access, then reload this page.");
   }
   function requestId() {
     if (window.crypto?.randomUUID) return window.crypto.randomUUID();
@@ -175,12 +190,15 @@
     Object.entries(choices).forEach(([kind, choice]) => {
       if ((!choice.optional || payload[`${kind}_id`]) && !catalog[choice.key].some((item) => String(item.id) === payload[`${kind}_id`])) choice.input.setCustomValidity(`Select an active ${choice.name}. Use + Add if it is missing.`);
     });
+    const quantity = quantityValue(payload.quantity);
+    inputs.quantity.setCustomValidity(quantity === null ? "Enter a whole quantity from 1 to 99,999." : "");
     const price = priceValue(payload.price_amount);
     inputs.price_amount.setCustomValidity(price === undefined ? "Enter a price from 0 to 99,999,999.99 with no more than 2 decimal places, or leave blank if unknown." : "");
     if (price != null && !payload.currency_id) inputs.currency_id.setCustomValidity("Select a currency for this price.");
     const occurredAt = uaeTimestamp(payload.occurred_at);
     if (!occurredAt) inputs.occurred_at.setCustomValidity("Enter a valid date and time in UAE time.");
     if (!form.reportValidity()) return null;
+    payload.quantity = quantity;
     payload.price_amount = price;
     payload.currency_id ||= null;
     payload.part_source_id ||= null;
@@ -300,13 +318,28 @@
       syncControls();
     }
   }
+  let recentRows = [], detailTrigger = null;
   function renderReports(rows) {
-    recent.innerHTML = rows.length ? rows.map((row) => `<article class="manual-damage-report">
-      <div class="manual-damage-report-heading"><div><h3>${escapeHtml(row.model)}</h3><p>Damaged by <strong>${escapeHtml(row.damaged_by)}</strong> · ${row.identifier ? `Identifier: ${escapeHtml(row.identifier)}` : "Identifier unavailable"}</p></div><time datetime="${escapeHtml(row.occurred_at)}">${escapeHtml(dateLabel(row.occurred_at))}</time></div>
-      <dl><div><dt>${row.part_name ? "Part Name" : "Damage description"}</dt><dd>${escapeHtml(row.part_name || row.damage)}</dd></div><div><dt>Price</dt><dd>${escapeHtml(priceLabel(row.price_amount))}</dd></div><div><dt>Currency</dt><dd>${escapeHtml(row.currency || "Not recorded")}</dd></div><div><dt>Part source</dt><dd>${escapeHtml(row.part_source || "Not recorded")}</dd></div><div><dt>Reason</dt><dd>${escapeHtml(row.reason)}</dd></div></dl>
-      <p class="manual-damage-report-footer">Reported by ${escapeHtml(row.reported_by || "Unknown reporter")} · ${escapeHtml(dateLabel(row.created_at))}</p>
-    </article>`).join("") : '<p class="manual-damage-empty">No manual damage reports yet.</p>';
+    recentRows = rows;
+    recent.innerHTML = rows.length ? '<div class="damage-recent-shell"><table class="damage-recent-table"><caption class="sr-only">Recent damage entries</caption><colgroup><col class="recent-date"><col class="recent-employee"><col class="recent-model"><col class="recent-part"><col class="recent-quantity"><col class="recent-price"><col class="recent-source"><col class="recent-reason"><col class="recent-action"></colgroup><thead><tr>' +
+      ["Date · UAE", "Employee", "Model", "Part name", "Qty", "Price / part", "Source", "Reason", "Details"].map(label => '<th scope="col">' + label + '</th>').join("") + '</tr></thead><tbody>' + rows.map((row, index) => {
+        const cell = (label, value, extra = "") => '<td data-label="' + label + '"' + extra + '><span class="recent-cell-text">' + escapeHtml(value) + '</span></td>';
+        return '<tr class="manual-damage-report">' + cell("Date · UAE", dateLabel(row.occurred_at)) + cell("Employee", row.damaged_by) + cell("Model", row.model) + cell("Part name", row.part_name || row.damage) + cell("Qty", quantityLabel(row)) + cell("Price / part", priceLabel(row.price_amount) + (row.currency ? " " + row.currency : "")) + cell("Source", row.part_source || "—") + cell("Reason", row.reason) + '<td data-label="Details"><button type="button" class="secondary-button recent-view" data-damage-details="' + index + '" aria-label="View damage report for ' + escapeHtml(row.damaged_by) + '">View</button></td></tr>';
+      }).join("") + '</tbody></table></div>' : '<p class="manual-damage-empty">No manual damage reports yet.</p>';
   }
+  recent.addEventListener("click", event => {
+    const trigger = event.target.closest("[data-damage-details]");
+    if (!trigger || accessDenied) return;
+    const row = recentRows[Number(trigger.dataset.damageDetails)];
+    if (!row) return;
+    detailTrigger = trigger;
+    const facts = [["Damaged by", row.damaged_by], ["Model", row.model], ["Part name", row.part_name || row.damage], ["Damaged quantity", quantityLabel(row)], ["Price per part", priceLabel(row.price_amount)], ["Total price", totalPrice(row)], ["Currency", row.currency || "Not recorded"], ["Part source", row.part_source || "Not recorded"], ["Reason", row.reason], ["IMEI / serial / device number", row.identifier || "Not recorded"], ["Damage time · UAE", dateLabel(row.occurred_at)], ["Reported by", row.reported_by || "Unknown reporter"], ["Reported at · UAE", dateLabel(row.created_at)]];
+    byId("damage-record-details").innerHTML = '<dl class="damage-record-facts">' + facts.map(([label, value]) => '<div><dt>' + label + '</dt><dd>' + escapeHtml(value) + '</dd></div>').join("") + '</dl>';
+    byId("damage-record-dialog").showModal();
+    byId("damage-record-close").focus();
+  });
+  byId("damage-record-close").addEventListener("click", () => byId("damage-record-dialog").close());
+  byId("damage-record-dialog").addEventListener("close", () => { byId("damage-record-details").textContent = ""; if (detailTrigger?.isConnected) detailTrigger.focus(); });
   async function loadReports(nextOffset = offset) {
     if (accessDenied) return;
     const version = ++loadVersion;
@@ -314,7 +347,7 @@
     updatePager();
     message("manual-damage-history-message");
     try {
-      const { data, error } = await api().rpc("get_manual_damage_report_v1", { p_offset: nextOffset, p_limit: pageSize });
+      const { data, error } = await api().rpc("get_manual_damage_report_v2", { p_offset: nextOffset, p_limit: pageSize });
       if (error) throw error;
       const report = Array.isArray(data) ? data[0] : data;
       if (!report || !Array.isArray(report.rows)) throw new Error("The recent reports response could not be read.");
@@ -322,7 +355,7 @@
       offset = nextOffset;
       hasMore = report.has_more === true;
       renderReports(report.rows);
-      const total = Number(report.total_count);
+      const total = Number(report.record_count);
       byId("manual-damage-page-label").textContent = report.rows.length
         ? `Reports ${offset + 1}–${offset + report.rows.length}${Number.isFinite(total) ? ` of ${total}` : ""}`
         : "No reports on this page";
@@ -345,11 +378,11 @@
     try {
       // The complete arguments are frozen at the first attempt. A retry remains
       // identical even after catalog refresh, archiving, or edits to the draft.
-      const { data, error } = await api().rpc("create_manual_damage_report_v3", request.args);
+      const { data, error } = await api().rpc("create_manual_damage_report_v4", request.args);
       if (accessDenied) return;
       if (error) throw error;
       const saved = Array.isArray(data) ? data[0] : data;
-      if (!saved?.id) throw new Error("The server did not confirm the saved report.");
+      if (!saved?.id || saved.quantity !== request.args.p_quantity) throw new Error("The server did not confirm the saved report.");
       pendingRequest = null;
       const draftChanged = JSON.stringify(draftValues()) !== request.fingerprint;
       if (!draftChanged) { form.reset(); applyNewDefaults(); inputs.occurred_at.value = uaeLocalNow(); }
@@ -375,8 +408,8 @@
     if (!payload) return;
     pendingRequest = {
       fingerprint: JSON.stringify(draftValues()),
-      summary: Object.values(choices).map((choice) => catalog[choice.key].find((item) => String(item.id) === choice.input.value)?.label || "").concat(priceLabel(payload.price_amount)).join(" · "),
-      args: Object.freeze({ p_request_id: requestId(), p_employee_id: payload.employee_id, p_model_id: payload.model_id, p_part_id: payload.part_id, p_price_amount: payload.price_amount, p_currency_id: payload.currency_id, p_part_source_id: payload.part_source_id, p_reason_id: payload.reason_id, p_identifier: payload.identifier, p_occurred_at: payload.occurred_at })
+      summary: Object.values(choices).map((choice) => catalog[choice.key].find((item) => String(item.id) === choice.input.value)?.label || "").concat("Qty " + payload.quantity, priceLabel(payload.price_amount)).join(" · "),
+      args: Object.freeze({ p_request_id: requestId(), p_employee_id: payload.employee_id, p_model_id: payload.model_id, p_part_id: payload.part_id, p_quantity: payload.quantity, p_price_amount: payload.price_amount, p_currency_id: payload.currency_id, p_part_source_id: payload.part_source_id, p_reason_id: payload.reason_id, p_identifier: payload.identifier, p_occurred_at: payload.occurred_at })
     };
     await sendReport(pendingRequest);
   }

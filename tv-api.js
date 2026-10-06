@@ -455,7 +455,7 @@
       value.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, "_").length <= limit;
   }
   function damagePriceDetails(row) {
-    return damagePrice(row.price_amount) && damageLabel(row.currency, 20) && damageLabel(row.part_source, 120) &&
+    return count(row.quantity) && row.quantity >= 1 && row.quantity <= 99999 && damagePrice(row.price_amount) && damageLabel(row.currency, 20) && damageLabel(row.part_source, 120) &&
       (row.price_amount === null || row.price_amount === undefined || typeof row.currency === "string");
   }
   function timestamp(value) {
@@ -477,7 +477,7 @@
     }
     checkAccess(function (problem) {
       if (problem) { callback(problem); return; }
-      authorised("POST", "/rest/v1/rpc/get_manual_damage_report_v1", { p_offset: offset, p_limit: limit }, function (reportError, report) {
+      authorised("POST", "/rest/v1/rpc/get_manual_damage_report_v2", { p_offset: offset, p_limit: limit }, function (reportError, report) {
         if (reportError) {
           if (reportError.status === 404 && reportError.serverCode === "PGRST202") {
             reportError.message = "The Damage Report database update is not installed yet. Ask your administrator to finish the update.";
@@ -485,7 +485,7 @@
           callback(reportError);
           return;
         }
-        var valid = report && count(report.today_count) && count(report.month_count) && count(report.total_count) &&
+        var valid = report && count(report.today_count) && count(report.month_count) && count(report.total_count) && count(report.record_count) && report.record_count <= report.total_count &&
           array(report.rows) && report.rows.length <= limit && array(report.technicians) && typeof report.has_more === "boolean";
         var index, row;
         if (valid) for (index = 0; index < report.rows.length; index += 1) {
@@ -527,7 +527,7 @@
         if (reportError && reportError.status === 404 && reportError.serverCode === "PGRST202") {
           reportError.message = "The Damage Cards database update is not installed yet. Ask your administrator to finish the update.";
         }
-        if (reportError && name === "get_manual_damage_employee_rows_v1" && reportError.serverCode === "22023") {
+        if (reportError && name === "get_manual_damage_employee_rows_v2" && reportError.serverCode === "22023") {
           reportError = error("EMPLOYEE_NOT_FOUND", "This employee is no longer on the Damage Report. Refresh the employee cards.");
         }
         callback(reportError, report);
@@ -540,16 +540,16 @@
       callback(error("VALIDATION", "Choose a valid employee card page."));
       return;
     }
-    damageCardsRequest("get_manual_damage_cards_v1", { p_offset: offset, p_limit: limit, p_row_limit: rowLimit }, function (problem, report) {
+    damageCardsRequest("get_manual_damage_cards_v2", { p_offset: offset, p_limit: limit, p_row_limit: rowLimit }, function (problem, report) {
       if (problem) { callback(problem); return; }
-      var valid = report && count(report.employee_count) && count(report.today_count) && count(report.month_count) && count(report.total_count) &&
+      var valid = report && count(report.employee_count) && count(report.today_count) && count(report.month_count) && count(report.total_count) && count(report.record_count) && report.record_count <= report.total_count &&
         report.today_count <= report.month_count && report.month_count <= report.total_count &&
         array(report.activity) && report.activity.length <= 5 && array(report.employees) && report.employees.length <= limit && report.employees.length <= report.employee_count && typeof report.has_more === "boolean";
       var index, employee, seen = {};
       if (valid) for (index = 0; index < report.employees.length; index += 1) {
         employee = report.employees[index];
         if (!employee || typeof employee.id !== "string" || !employee.id || seen["id:" + employee.id] || typeof employee.name !== "string" || !employee.name ||
-          !count(employee.total_damage) || !damageRows(employee.rows, rowLimit) || employee.rows.length > employee.total_damage || typeof employee.has_more !== "boolean") {
+          !count(employee.total_damage) || !damageRows(employee.rows, rowLimit) || !count(employee.record_count) || employee.record_count > employee.total_damage || employee.rows.length > employee.record_count || typeof employee.has_more !== "boolean") {
           valid = false; break;
         }
         seen["id:" + employee.id] = true;
@@ -572,10 +572,10 @@
       return;
     }
     employeeId = employeeId.toLowerCase();
-    damageCardsRequest("get_manual_damage_employee_rows_v1", { p_employee_id: employeeId, p_offset: offset, p_limit: limit }, function (problem, report) {
+    damageCardsRequest("get_manual_damage_employee_rows_v2", { p_employee_id: employeeId, p_offset: offset, p_limit: limit }, function (problem, report) {
       if (problem) { callback(problem); return; }
       if (!report || report.employee_id !== employeeId || !count(report.total_damage) || !damageRows(report.rows, limit) ||
-        report.rows.length > report.total_damage || typeof report.has_more !== "boolean") {
+        !count(report.record_count) || report.record_count > report.total_damage || report.rows.length > report.record_count || typeof report.has_more !== "boolean") {
         callback(error("INVALID_RESPONSE", "This employee's damage history could not be read. Select Refresh to retry."));
         return;
       }
