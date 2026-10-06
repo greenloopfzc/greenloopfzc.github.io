@@ -458,6 +458,17 @@
     return count(row.quantity) && row.quantity >= 1 && row.quantity <= 99999 && damagePrice(row.price_amount) && damageLabel(row.currency, 20) && damageLabel(row.part_source, 120) &&
       (row.price_amount === null || row.price_amount === undefined || typeof row.currency === "string");
   }
+  function damageValueTotals(report) {
+    if (!array(report.value_totals) || !count(report.unpriced_quantity) || report.unpriced_quantity > report.total_damage) return false;
+    var i, value, seen = {}, quantity = report.unpriced_quantity;
+    for (i = 0; i < report.value_totals.length; i++) {
+      value = report.value_totals[i];
+      if (!value || typeof value.currency !== "string" || !damageLabel(value.currency, 20) || seen["currency:" + value.currency] ||
+        typeof value.amount !== "string" || !/^(?:0|[1-9][0-9]*)\.[0-9]{2}$/.test(value.amount) || !count(value.quantity) || value.quantity < 1) return false;
+      seen["currency:" + value.currency] = true; quantity += value.quantity;
+    }
+    return quantity === report.total_damage;
+  }
   function timestamp(value) {
     // PostgreSQL includes microseconds; older TV Date.parse implementations
     // reject them. Check ISO calendar fields without relying on that parser.
@@ -527,7 +538,7 @@
         if (reportError && reportError.status === 404 && reportError.serverCode === "PGRST202") {
           reportError.message = "The Damage Cards database update is not installed yet. Ask your administrator to finish the update.";
         }
-        if (reportError && name === "get_manual_damage_employee_rows_v2" && reportError.serverCode === "22023") {
+        if (reportError && name === "get_manual_damage_employee_rows_v3" && reportError.serverCode === "22023") {
           reportError = error("EMPLOYEE_NOT_FOUND", "This employee is no longer on the Damage Report. Refresh the employee cards.");
         }
         callback(reportError, report);
@@ -540,7 +551,7 @@
       callback(error("VALIDATION", "Choose a valid employee card page."));
       return;
     }
-    damageCardsRequest("get_manual_damage_cards_v3", { p_offset: offset, p_limit: limit, p_row_limit: rowLimit }, function (problem, report) {
+    damageCardsRequest("get_manual_damage_cards_v4", { p_offset: offset, p_limit: limit, p_row_limit: rowLimit }, function (problem, report) {
       if (problem) { callback(problem); return; }
       var valid = report && count(report.employee_count) && count(report.today_count) && count(report.month_count) && count(report.total_count) && count(report.record_count) && report.record_count <= report.total_count &&
         report.today_count <= report.month_count && report.month_count <= report.total_count &&
@@ -549,7 +560,7 @@
       if (valid) for (index = 0; index < report.employees.length; index += 1) {
         employee = report.employees[index];
         if (!employee || typeof employee.id !== "string" || !employee.id || seen["id:" + employee.id] || typeof employee.name !== "string" || !employee.name ||
-          !count(employee.total_damage) || !damageRows(employee.rows, rowLimit) || !count(employee.record_count) || employee.record_count > employee.total_damage || employee.rows.length > employee.record_count || typeof employee.has_more !== "boolean") {
+          !count(employee.total_damage) || !damageValueTotals(employee) || !damageRows(employee.rows, rowLimit) || !count(employee.record_count) || employee.record_count > employee.total_damage || employee.rows.length > employee.record_count || typeof employee.has_more !== "boolean") {
           valid = false; break;
         }
         seen["id:" + employee.id] = true;
@@ -573,9 +584,9 @@
       return;
     }
     employeeId = employeeId.toLowerCase();
-    damageCardsRequest("get_manual_damage_employee_rows_v2", { p_employee_id: employeeId, p_offset: offset, p_limit: limit }, function (problem, report) {
+    damageCardsRequest("get_manual_damage_employee_rows_v3", { p_employee_id: employeeId, p_offset: offset, p_limit: limit }, function (problem, report) {
       if (problem) { callback(problem); return; }
-      if (!report || report.employee_id !== employeeId || !count(report.total_damage) || !damageRows(report.rows, limit) ||
+      if (!report || report.employee_id !== employeeId || !count(report.total_damage) || !damageValueTotals(report) || !damageRows(report.rows, limit) ||
         !count(report.record_count) || report.record_count > report.total_damage || report.rows.length > report.record_count || typeof report.has_more !== "boolean") {
         callback(error("INVALID_RESPONSE", "This employee's damage history could not be read. Select Refresh to retry."));
         return;
