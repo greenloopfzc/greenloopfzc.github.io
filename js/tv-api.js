@@ -540,7 +540,7 @@
       callback(error("VALIDATION", "Choose a valid employee card page."));
       return;
     }
-    damageCardsRequest("get_manual_damage_cards_v2", { p_offset: offset, p_limit: limit, p_row_limit: rowLimit }, function (problem, report) {
+    damageCardsRequest("get_manual_damage_cards_v3", { p_offset: offset, p_limit: limit, p_row_limit: rowLimit }, function (problem, report) {
       if (problem) { callback(problem); return; }
       var valid = report && count(report.employee_count) && count(report.today_count) && count(report.month_count) && count(report.total_count) && count(report.record_count) && report.record_count <= report.total_count &&
         report.today_count <= report.month_count && report.month_count <= report.total_count &&
@@ -557,7 +557,8 @@
       if (valid) for (index = 0; index < report.activity.length; index += 1) {
         var entry = report.activity[index];
         if (!entry || typeof entry.id !== "string" || !entry.id || typeof entry.damaged_by !== "string" ||
-          typeof entry.model !== "string" || typeof entry.reason !== "string" ||
+          typeof entry.model !== "string" || typeof entry.reason !== "string" || typeof entry.reported_by !== "string" ||
+          (entry.identifier !== null && typeof entry.identifier !== "string") ||
           (entry.part_name !== null && typeof entry.part_name !== "string") ||
           !damagePriceDetails(entry) || !timestamp(entry.created_at) || !timestamp(entry.occurred_at)) { valid = false; break; }
       }

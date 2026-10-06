@@ -100,13 +100,22 @@
       get("damage-updates-toggle").setAttribute("aria-pressed", updatesPaused ? "true" : "false");
       text("damage-updates-toggle", updatesPaused ? "Resume updates" : "Pause updates");
     }
+    function detailText(value) { return typeof value === "string" && value.replace(/\s/g, "") ? value.replace(/\s+/g, " ").replace(/^ | $/g, "") : "Not recorded"; }
     function showActivity() {
       var messages = [], i, entry;
       for (i = 0; i < activity.length; i++) {
         entry = activity[i];
-        messages.push(entry.damaged_by + " \u00b7 " + entry.model + " \u00b7 Part: " +
-          (entry.part_name || "Not recorded") + " \u00b7 Qty: " + count(entry.quantity) + " \u00b7 Reason: " + entry.reason +
-          " \u00b7 Saved " + uaeDate(entry.created_at) + " UAE");
+        var amount = price(entry.price_amount), currency = detailText(entry.currency);
+        var unitPrice = amount + (currency !== "Not recorded" ? " " + currency : "");
+        var cents = amount === "Not recorded" ? null : Math.round(entry.price_amount * 100) * count(entry.quantity);
+        var total = cents === null ? "Not recorded" : Math.floor(cents / 100) + "." + two(cents % 100) + (currency !== "Not recorded" ? " " + currency : "");
+        messages.push("Tech: " + detailText(entry.damaged_by) + " \u00b7 Model: " + detailText(entry.model) +
+          " \u00b7 IMEI / serial / device: " + detailText(entry.identifier) +
+          " \u00b7 Part: " + detailText(entry.part_name) + " \u00b7 Qty: " + count(entry.quantity) +
+          " \u00b7 Price / part: " + unitPrice + " \u00b7 Total: " + total +
+          " \u00b7 Source: " + detailText(entry.part_source) + " \u00b7 Reason: " + detailText(entry.reason) +
+          " \u00b7 Damage time: " + uaeDate(entry.occurred_at) + " UAE" +
+          " \u00b7 Entered by: " + detailText(entry.reported_by) + " \u00b7 Saved " + uaeDate(entry.created_at) + " UAE");
       }
       var line = messages.length ? messages.join("     |     ") : "No damage entries yet. New damage reports will appear here automatically.";
       // Text-only rendering, with an aria-hidden duplicate for the seamless loop.
