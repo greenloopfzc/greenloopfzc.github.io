@@ -16,9 +16,9 @@
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script defer src="js/config.js?v=20261006-live-damage-motion-1"></script>
   <script defer src="js/login-activity.js?v=20261006-login-activity-1"></script>
-    <link rel="stylesheet" href="css/damage-report-export.css?v=20261007-damage-pdf-view-1">
-    <script defer src="js/damage-report-export.js?v=20261007-damage-pdf-view-1"></script>
-    <script defer src="js/manual-damage.js?v=20261006-damage-entry-pdf-1"></script>
+    <link rel="stylesheet" href="css/damage-report-export.css?v=20261007-damage-payable-1">
+    <script defer src="js/damage-report-export.js?v=20261007-damage-payable-1"></script>
+    <script defer src="js/manual-damage.js?v=20261007-damage-payable-1"></script>
   </head>
   <body class="app-page manual-damage-page">
     <div class="app-shell">
@@ -39,7 +39,7 @@
           <p id="permission-message" class="access-message" role="status" hidden></p>
           <div id="manual-damage-app" hidden>
             <section class="manual-damage-panel" aria-labelledby="manual-damage-form-title">
-              <div class="manual-damage-panel-heading"><div><p class="panel-kicker">NEW INCIDENT</p><h2 id="manual-damage-form-title">Damage details</h2></div><span class="manual-damage-required-note">Employee, model, part, quantity, reason and time are required</span></div>
+              <div class="manual-damage-panel-heading"><div><p class="panel-kicker">NEW INCIDENT</p><h2 id="manual-damage-form-title">Damage details</h2></div><span class="manual-damage-required-note">Employee, department, model, part, quantity, reason and time are required</span></div>
               <p id="manual-damage-view-only" class="manual-damage-access-note" hidden>View-only access. You can read recent reports below. Ask an administrator for Entry Allowed access to Damage Entry to record damage.</p>
               <div class="manual-damage-catalog-status"><p id="manual-damage-options-message" role="status" aria-live="polite">Loading dropdown choices…</p><button id="refresh-damage-options" class="secondary-button" type="button">Refresh choices</button></div>
               <form id="manual-damage-form">
@@ -47,6 +47,7 @@
                   <legend class="sr-only">Damage details</legend>
                   <div class="manual-damage-form-grid">
                     <div class="manual-damage-field"><label for="damage-person">Damaged by · Employee</label><div class="manual-damage-choice"><select id="damage-person" name="employee_id" required><option value="">Select employee</option></select><button class="manual-damage-option-button" type="button" data-option-action="add" data-option-kind="employee" aria-label="Add employee"><span aria-hidden="true">＋</span> Add</button><button class="manual-damage-option-button is-delete" type="button" data-option-action="delete" data-option-kind="employee" aria-label="Delete selected employee" disabled>Delete</button></div></div>
+                    <div class="manual-damage-field"><label for="damage-department">Technician department</label><select id="damage-department" name="department" required aria-describedby="damage-department-help"><option value="">Select department</option><option value="glass">Glass Department</option><option value="other">Other Department</option></select><small id="damage-department-help">Monthly LCD allowance: Glass 4 units; other departments 1 unit. Only the part named LCD qualifies.</small></div>
                     <div class="manual-damage-field"><label for="damage-model">Model</label><div class="manual-damage-choice"><select id="damage-model" name="model_id" required><option value="">Select model</option></select><button class="manual-damage-option-button" type="button" data-option-action="add" data-option-kind="model" aria-label="Add model"><span aria-hidden="true">＋</span> Add</button><button class="manual-damage-option-button is-delete" type="button" data-option-action="delete" data-option-kind="model" aria-label="Delete selected model" disabled>Delete</button></div></div>
                     <div class="manual-damage-field"><label for="damage-part">Part Name</label><div class="manual-damage-choice"><select id="damage-part" name="part_id" required><option value="">Select part name</option></select><button class="manual-damage-option-button" type="button" data-option-action="add" data-option-kind="part" aria-label="Add part name"><span aria-hidden="true">＋</span> Add</button><button class="manual-damage-option-button is-delete" type="button" data-option-action="delete" data-option-kind="part" aria-label="Delete selected part name" disabled>Delete</button></div><small id="damage-part-help">Use + Add to create a part name if it is missing.</small></div>
                     <div class="manual-damage-field"><label for="damage-quantity">Damaged quantity</label><input id="damage-quantity" name="quantity" type="number" inputmode="numeric" min="1" max="99999" step="1" value="1" required aria-describedby="damage-quantity-help"><small id="damage-quantity-help">Same employee and part: enter how many parts were damaged.</small></div>
@@ -68,7 +69,7 @@
         <section id="damage-pdf-panel" class="damage-pdf-panel" style="display:none" aria-labelledby="damage-pdf-title">
           <button id="damage-pdf-close" class="secondary-button damage-pdf-close" type="button">Close</button>
           <h2 id="damage-pdf-title">Damage Report</h2>
-          <p>Choose the damage dates. The PDF includes all employees and a separate table for each employee with damage.</p>
+          <p>Start on the first day of a month and choose the last damage date. Monthly allowances are calculated separately for each employee and month. The PDF includes all employees and a separate table for each employee with damage.</p>
           <form id="damage-pdf-form">
             <div class="damage-pdf-field"><label for="damage-pdf-from">From date &middot; UAE</label><input id="damage-pdf-from" type="date" min="2000-01-01" max="2100-12-31" required></div>
             <div class="damage-pdf-field"><label for="damage-pdf-to">To date &middot; UAE</label><input id="damage-pdf-to" type="date" min="2000-01-01" max="2100-12-31" required></div>

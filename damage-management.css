@@ -102,3 +102,6 @@ html[data-mode="dark"] .damage-management .dm-danger { color: #fff; background: 
   .dm-toolbar { gap: 11px; }
   .dm-audit .dm-section-heading > button { width: 100%; }
 }
+
+.damage-management .dm-department-option { display:flex; align-items:center; justify-content:center; gap:10px; }
+.damage-management .dm-department-option input[type="checkbox"] { display:inline-block; flex:0 0 18px; width:18px; height:18px; min-height:18px; padding:0; margin:0; box-shadow:none; accent-color:var(--dm-accent); }

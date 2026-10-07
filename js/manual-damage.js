@@ -26,6 +26,7 @@
   };
   const inputs = {
     employee_id: choices.employee.input,
+    department: byId("damage-department"),
     model_id: choices.model.input,
     part_id: choices.part.input,
     quantity: byId("damage-quantity"),
@@ -49,6 +50,7 @@
   let catalogReady = false;
   let catalogLoading = false;
   let defaultsPending = true;
+  let departmentDefaults = {};
   let catalog = { employees: [], models: [], parts: [], reasons: [], currencies: [], part_sources: [] };
   let optionOperation = null;
   let optionBusy = false;
@@ -192,6 +194,7 @@
     Object.entries(choices).forEach(([kind, choice]) => {
       if ((!choice.optional || payload[`${kind}_id`]) && !catalog[choice.key].some((item) => String(item.id) === payload[`${kind}_id`])) choice.input.setCustomValidity(`Select an active ${choice.name}. Use + Add if it is missing.`);
     });
+    inputs.department.setCustomValidity(["glass", "other"].includes(payload.department) ? "" : "Select the technician department.");
     const quantity = quantityValue(payload.quantity);
     inputs.quantity.setCustomValidity(quantity === null ? "Enter a whole quantity from 1 to 99,999." : "");
     const price = priceValue(payload.price_amount);
@@ -236,6 +239,10 @@
       if (error) throw error;
       const result = Array.isArray(data) ? data[0] : data;
       if (!result || !Object.values(choices).every((choice) => Array.isArray(result[choice.key]) && result[choice.key].every((item) => item && item.id != null && typeof item.label === "string"))) throw new Error("The dropdown choices response could not be read.");
+      const departments = await api().rpc("get_manual_damage_department_defaults_v1");
+      if (accessDenied) return false;
+      if (departments.error) throw departments.error;
+      departmentDefaults = departments.data || {};
       catalog = result;
       catalogReady = true;
       const removed = renderChoices();
@@ -380,11 +387,11 @@
     try {
       // The complete arguments are frozen at the first attempt. A retry remains
       // identical even after catalog refresh, archiving, or edits to the draft.
-      const { data, error } = await api().rpc("create_manual_damage_report_v4", request.args);
+      const { data, error } = await api().rpc("create_manual_damage_report_v5", request.args);
       if (accessDenied) return;
       if (error) throw error;
       const saved = Array.isArray(data) ? data[0] : data;
-      if (!saved?.id || saved.quantity !== request.args.p_quantity) throw new Error("The server did not confirm the saved report.");
+      if (!saved?.id || saved.quantity !== request.args.p_quantity || saved.department !== request.args.p_department) throw new Error("The server did not confirm the saved report.");
       pendingRequest = null;
       const draftChanged = JSON.stringify(draftValues()) !== request.fingerprint;
       if (!draftChanged) { form.reset(); applyNewDefaults(); inputs.occurred_at.value = uaeLocalNow(); }
@@ -411,7 +418,7 @@
     pendingRequest = {
       fingerprint: JSON.stringify(draftValues()),
       summary: Object.values(choices).map((choice) => catalog[choice.key].find((item) => String(item.id) === choice.input.value)?.label || "").concat("Qty " + payload.quantity, priceLabel(payload.price_amount)).join(" · "),
-      args: Object.freeze({ p_request_id: requestId(), p_employee_id: payload.employee_id, p_model_id: payload.model_id, p_part_id: payload.part_id, p_quantity: payload.quantity, p_price_amount: payload.price_amount, p_currency_id: payload.currency_id, p_part_source_id: payload.part_source_id, p_reason_id: payload.reason_id, p_identifier: payload.identifier, p_occurred_at: payload.occurred_at })
+      args: Object.freeze({ p_request_id: requestId(), p_employee_id: payload.employee_id, p_department: payload.department, p_model_id: payload.model_id, p_part_id: payload.part_id, p_quantity: payload.quantity, p_price_amount: payload.price_amount, p_currency_id: payload.currency_id, p_part_source_id: payload.part_source_id, p_reason_id: payload.reason_id, p_identifier: payload.identifier, p_occurred_at: payload.occurred_at })
     };
     await sendReport(pendingRequest);
   }
@@ -430,6 +437,10 @@
     input.addEventListener("input", changed);
     input.addEventListener("change", changed);
   });
+  inputs.employee_id.addEventListener("change", () => {
+    inputs.department.value = departmentDefaults[inputs.employee_id.value] || "";
+    inputs.department.setCustomValidity("");
+  });
   optionButtons.forEach((button) => button.addEventListener("click", () => openOptionDialog(button)));
   optionForm.addEventListener("submit", commitOption);
   optionInput.addEventListener("input", () => optionInput.setCustomValidity(""));
@@ -447,7 +458,7 @@
     // The export RPC independently checks that permission on every download.
     if (accessDenied || toggle.hidden || !window.GREENLOOP_DAMAGE_EXPORT) return;
     const exportApi = { loadDamageExport(from, to, callback) {
-      api().rpc("get_manual_damage_export_v1", { p_date_from: from, p_date_to: to })
+      api().rpc("get_manual_damage_export_v2", { p_date_from: from, p_date_to: to })
         .then(({ data, error }) => {
           if (error) callback(isAccessError(error) ? { ...error, code: "PERMISSION_DENIED" } : error);
           else callback(null, Array.isArray(data) ? data[0] : data);

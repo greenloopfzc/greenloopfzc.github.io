@@ -1,7 +1,7 @@
 /* Damage Report PDF: measured single-line cells, native vector text, adaptive A4 orientation. */
 (function (root) {
   'use strict';
-  const VERSION = '20261006-damage-report-pdf-1';
+  const VERSION = '20261007-damage-payable-1';
   const MARGIN = 24;
   const labels = ['DATE / TIME', 'MODEL', 'PART NAME', 'QTY', 'PRICE / PART', 'PART SOURCE', 'REASON'];
   const clean = value => String(value == null || value === '' ? 'Not recorded' : value).replace(/\s+/g, ' ').trim();
@@ -31,6 +31,7 @@
       !Array.isArray(data.rows) || !Array.isArray(data.employees) || data.rows.length !== data.record_count || data.rows.length > 2000) {
       throw new Error('The complete report could not be read. Refresh and try again.');
     }
+    if (data.date_from.slice(8) !== '01') throw new Error('Start on the first day of a month to calculate the monthly allowance correctly.');
     const employees = [], byKey = new Map(), seen = new Set(), totals = new Map();
     const add = (key, name) => {
       if (typeof key !== 'string' || !key || typeof name !== 'string' || !name.trim()) throw new Error('An employee record could not be read.');
@@ -62,7 +63,10 @@
       const currency = row.currency ? clean(row.currency) : null;
       const cells = [dateLabel(row.occurred_at, true), clean(row.model), clean(row.part_name), String(row.quantity),
         cents === null ? 'Not recorded' : money(cents) + ' ' + currency, clean(row.part_source), clean(row.reason)];
-      employee.rows.push({ id: row.id, timestamp: Date.parse(row.occurred_at), cells });
+      if (row.department != null && !['glass','other'].includes(row.department)) throw new Error('An entry has an invalid department.');
+      if (typeof row.is_lcd !== 'boolean') throw new Error('LCD classification is missing. Refresh the report.');
+      employee.rows.push({ id: row.id, timestamp: Date.parse(row.occurred_at), cells, month:day.slice(0,7),
+        department:row.department || null, isLcd:row.is_lcd, quantity:row.quantity, cents, currency });
       employee.quantity += row.quantity; quantity += row.quantity;
       if (cents === null) { employee.unpriced += row.quantity; unpriced += row.quantity; }
       else {
@@ -72,10 +76,53 @@
       }
     }
     for (const employee of employees) employee.rows.sort((a,b) => b.timestamp-a.timestamp || b.id.localeCompare(a.id));
-    const currencies = ['AED','USD', ...Array.from(totals.keys()).filter(c => c !== 'AED' && c !== 'USD').sort()];
+    const active = [], pending = [];
+    let payable = 0n;
+    for (const employee of employees) {
+      const monthly = new Map();
+      for (const row of employee.rows) {
+        if (!monthly.has(row.month)) monthly.set(row.month, []);
+        monthly.get(row.month).push(row);
+      }
+      for (const [month, rows] of [...monthly].sort((a,b)=>a[0].localeCompare(b[0]))) {
+        const group = {key:employee.key, name:employee.name, month, rows, quantity:0, totals:new Map(), unpriced:0,
+          lcdQuantity:0, lcdValue:0n, department:null, waived:0, average:0n, waiver:0n, payable:null, pending:''};
+        const departments = new Set(rows.map(row=>row.department));
+        if (departments.has(null)) group.pending = 'Department pending';
+        else if (departments.size !== 1) group.pending = 'Department conflict';
+        else group.department = [...departments][0];
+        for (const row of rows) {
+          group.quantity += row.quantity;
+          if(row.cents === null) { group.unpriced += row.quantity; group.pending ||= 'Price pending'; }
+          else {
+            const value = row.cents*BigInt(row.quantity);
+            group.totals.set(row.currency,(group.totals.get(row.currency)||0n)+value);
+            if(row.currency !== 'AED') group.pending ||= 'AED settlement pending';
+            if(row.isLcd) group.lcdValue += value;
+          }
+          if(row.isLcd) group.lcdQuantity += row.quantity;
+        }
+        group.waived = Math.min(group.lcdQuantity,group.department === 'glass' ? 4 : 1);
+        const denominator = BigInt(group.lcdQuantity || 1);
+        // Rational cents retain the exact quantity-weighted average until the
+        // final payable is rounded. Display rounding never changes settlement.
+        const waiverNumerator = group.lcdValue*BigInt(group.waived);
+        const rounded = (n,d) => (n+d/2n)/d;
+        group.average = rounded(group.lcdValue,denominator);
+        group.waiver = rounded(waiverNumerator,denominator);
+        if(!group.pending) {
+          const remaining = ((group.totals.get('AED')||0n)-10000n)*denominator-waiverNumerator;
+          group.payable = remaining > 0n ? rounded(remaining,denominator*2n) : 0n;
+          payable += group.payable;
+        } else pending.push(group);
+        active.push(group);
+      }
+    }
+    const currencies = ['AED', ...Array.from(totals.keys()).filter(c => c !== 'AED').sort()];
     return { from: data.date_from, to: data.date_to, generated: data.generated_at, employees, quantity, count: data.rows.length, unpriced,
-      currencies, totals, active: employees.filter(e => e.rows.length), zero: employees.filter(e => !e.rows.length) };
+      currencies, totals, active, zero: employees.filter(e => !e.rows.length), payable, pending };
   }
+
   async function create(data, options = {}) {
     const lib = options.PDFLib || root.PDFLib;
     if (!lib) throw new Error('PDF tools did not load. Please try again.');
@@ -131,7 +178,9 @@
     }
     if (current.length) zeroRows.push(current);
     const metrics = [['DAMAGED PARTS', String(report.quantity)], ['REPORT ENTRIES', String(report.count)],
-      ...report.currencies.map(cur => ['TOTAL VALUE - ' + cur, money(report.totals.get(cur) || 0n)])];
+      ['TOTAL VALUE - AED', money(report.totals.get('AED') || 0n)],
+      ['PAYABLE - AED', report.pending.length ? 'Pending' : money(report.payable)],
+      ...report.currencies.filter(cur=>cur!=='AED').map(cur => ['TOTAL VALUE - ' + cur, money(report.totals.get(cur) || 0n)])];
     const metricRows = Math.ceil(metrics.length/4);
     const firstTop = HEIGHT - (111 + metricRows*65 + (zeroRows.length ? 27+zeroRows.length*23 : 0) + 18);
     const laterTop = HEIGHT - 85, bottom = 49;
@@ -144,14 +193,14 @@
       for (const employee of report.active) {
         let offset = 0;
         while (offset < employee.rows.length) {
-          const full = 24+21+(employee.rows.length-offset)*rowHeight+10;
+          const full = 68+21+(employee.rows.length-offset)*rowHeight+10;
           const fresh = laterTop-bottom;
           if (full > remaining && full <= fresh && pages[pages.length-1].length) { pages.push([]); remaining=fresh; }
-          let room = Math.floor((remaining-24-21-10)/rowHeight);
-          if (room < 1) { pages.push([]); remaining=fresh; room=Math.floor((remaining-55)/rowHeight); }
+          let room = Math.floor((remaining-68-21-10)/rowHeight);
+          if (room < 1) { pages.push([]); remaining=fresh; room=Math.floor((remaining-99)/rowHeight); }
           const rows = employee.rows.slice(offset,offset+room);
           pages[pages.length-1].push({ employee, rows, continued:offset>0 });
-          remaining -= 24+21+rows.length*rowHeight+10;
+          remaining -= 68+21+rows.length*rowHeight+10;
           offset += rows.length;
         }
       }
@@ -230,7 +279,7 @@
           fitText(page,metrics[i][1],x+8,y+12,20,cellWidth-16,bold,colors.green,'center');
         }
         let y=HEIGHT-111-metricRows*65;
-        drawText(page,'Value = price per part x quantity; currencies kept separate. Unpriced parts: '+report.unpriced,MARGIN,y,8.5,BODY,font,colors.muted);
+        drawText(page,'Monthly AED settlement | LCD allowance only | Unpriced parts: '+report.unpriced+' | Pending: '+report.pending.length,MARGIN,y,8.5,BODY,font,colors.muted);
         if(zeroRows.length) {
           y-=23;drawText(page,'ZERO DAMAGE - '+report.zero.length+' EMPLOYEES',MARGIN,y,9,BODY,bold,colors.green);y-=27;
           for(const row of zeroRows) {
@@ -249,14 +298,25 @@
       }
       for(const block of (pages[pi].detailLines ? [] : pages[pi])) {
         const employee=block.employee;
-        rect(page,MARGIN,top-24,BODY,24,colors.pink);
         const name=employee.name+(block.continued?' (continued)':'');
-        const value=Array.from(employee.totals).map(([cur,cents])=>cur+' '+money(cents)).join(' / ');
-        const summary='Damage: '+employee.quantity+(value?' | '+value:'');
-        const sw=Math.min(BODY*.64,Math.max(150,measure(summary,9,bold)+12));
-        fitText(page,name,MARGIN+6,top-16,10.5,BODY-sw-14,bold,colors.ink,'center');
-        fitText(page,summary,WIDTH-MARGIN-sw,top-16,9,sw-6,bold,colors.red,'center');
-        top-=24;let x=MARGIN;
+        const department=employee.department==='glass'?'Glass Department':employee.department==='other'?'Other Department':'Department pending';
+        const month=months[Number(employee.month.slice(5))-1]+' '+employee.month.slice(0,4);
+        const value=Array.from(employee.totals).map(([cur,cents])=>cur+' '+money(cents)).join(' / ') || 'Not priced';
+        const cells=[{w:BODY*.40,label:name,value:department+' | '+month,color:colors.pale},
+          {w:BODY*.30,label:'TOTAL DAMAGE VALUE',value,color:colors.pink},
+          {w:BODY*.30,label:'TECHNICIAN PAYABLE',value:employee.pending || 'AED '+money(employee.payable),color:colors.pale}];
+        let hx=MARGIN;
+        for(const cell of cells) {
+          rect(page,hx,top-42,cell.w,42,cell.color);
+          fitText(page,cell.label,hx+5,top-15,9.5,cell.w-10,bold,colors.ink,'center');
+          fitText(page,cell.value,hx+5,top-32,10,cell.w-10,bold,colors.green,'center');
+          hx+=cell.w;
+        }
+        const allowance=employee.pending ? employee.pending+' - correct this employee/month in Data Correction.' :
+          'LCD '+employee.lcdQuantity+' | Average AED '+money(employee.average)+' | Waived '+employee.waived+' = AED '+money(employee.waiver)+' | Less AED 100 | Balance / 2';
+        rect(page,MARGIN,top-68,BODY,26,colors.white);
+        fitText(page,allowance,MARGIN+5,top-59,8.5,BODY-10,font,colors.muted,'center');
+        top-=68;let x=MARGIN;
         for(let col=0;col<labels.length;col++) {rect(page,x,top-21,widths[col],21,colors.pale);drawText(page,labels[col],x+4,top-14,8,widths[col]-8,bold,colors.ink,'center');x+=widths[col];}
         top-=21;
         for(const row of block.rows) {
