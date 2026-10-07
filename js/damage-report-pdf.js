@@ -1,8 +1,8 @@
-/* Damage Report PDF: measured single-line cells, native vector text, A4 portrait. */
+/* Damage Report PDF: measured single-line cells, native vector text, adaptive A4 orientation. */
 (function (root) {
   'use strict';
   const VERSION = '20261006-damage-report-pdf-1';
-  const WIDTH = 595.276, HEIGHT = 841.89, MARGIN = 24, BODY = WIDTH - 2 * MARGIN;
+  const MARGIN = 24;
   const labels = ['DATE / TIME', 'MODEL', 'PART NAME', 'QTY', 'PRICE / PART', 'PART SOURCE', 'REASON'];
   const clean = value => String(value == null || value === '' ? 'Not recorded' : value).replace(/\s+/g, ' ').trim();
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -80,6 +80,10 @@
     const lib = options.PDFLib || root.PDFLib;
     if (!lib) throw new Error('PDF tools did not load. Please try again.');
     const report = prepare(data), pdf = await lib.PDFDocument.create();
+    let WIDTH = 595.276, HEIGHT = 841.89, BODY = WIDTH - 2 * MARGIN;
+    let orientation = "portrait";
+    const details = [];
+    for (const employee of report.active) for (const row of employee.rows) row.displayCells = row.cells.slice();
     const font = await pdf.embedFont(lib.StandardFonts.Helvetica), bold = await pdf.embedFont(lib.StandardFonts.HelveticaBold);
     pdf.setTitle('Damage Report'); pdf.setAuthor('Greenloop FZC'); pdf.setSubject('Employee damage report | UAE incident dates');
     pdf.catalog.getOrCreateViewerPreferences().setPrintScaling(lib.PrintScaling.None);
@@ -89,10 +93,33 @@
       catch (_) { throw new Error('The PDF cannot render a character in this report. Use standard Latin characters in the employee and dropdown names. No entries were omitted.'); }
     }
     const widthsAt = size => labels.map((label, index) => Math.max(measure(label, 8, bold),
-      ...report.active.flatMap(e => e.rows.map(r => measure(r.cells[index], size))), 10) + 8);
-    let size = 10.5, widths;
-    for (; size >= 8.5; size -= 0.25) { widths = widthsAt(size); if (widths.reduce((a,b) => a+b,0) <= BODY) break; }
-    if (size < 8.5) throw new Error('Some details are too long for a readable, single-line A4 table. Shorten the wording in Data Correction before exporting. Nothing has been cut off.');
+      ...report.active.flatMap(e => e.rows.map(r => measure(r.displayCells[index], size))), 10) + 8);
+    let size, widths;
+    function fitColumns() {
+      for (size = 10.5; size >= 8.5; size -= 0.25) {
+        widths = widthsAt(size);
+        if (widths.reduce((a,b) => a+b,0) <= BODY) return true;
+      }
+      return false;
+    }
+    if (!fitColumns()) {
+      WIDTH = 841.89; HEIGHT = 595.276; BODY = WIDTH - 2 * MARGIN; orientation = 'landscape';
+      if (!fitColumns()) {
+        // Keep table cells on one line. Preserve exceptional text in full in
+        // a separate, readable detail section instead of editing saved data.
+        const limits = {1:100, 2:100, 5:75, 6:200};
+        for (const employee of report.active) for (const row of employee.rows) {
+          for (const col of [1,2,5,6]) if (measure(row.cells[col],8.5)>limits[col]) {
+            const ref = 'D' + (details.length + 1);
+            details.push({ref, title:employee.name+' | '+row.cells[0]+' | '+labels[col], text:row.cells[col]});
+            row.displayCells[col] = 'See ' + ref;
+          }
+        }
+        WIDTH = 595.276; HEIGHT = 841.89; BODY = WIDTH - 2 * MARGIN; orientation = 'portrait';
+        if (!fitColumns()) { WIDTH = 841.89; HEIGHT = 595.276; BODY = WIDTH - 2 * MARGIN; orientation = 'landscape'; }
+        if (!fitColumns()) throw new Error('This report contains unusually wide identifiers or currency values. Contact your administrator for help exporting the complete report.');
+      }
+    }
     const extra = BODY - widths.reduce((a,b) => a+b,0);
     widths[6] += extra;
     const zeroRows = []; let current = [], used = 0;
@@ -131,6 +158,33 @@
       if (!best || pages.length < best.pages.length) best = {pages, rowHeight};
     }
     pages=best.pages;rowHeight=best.rowHeight;
+    // Paginate full details within the same four-page limit as the tables.
+    function wrap(text, width) {
+      const lines = []; let line = '';
+      for (const word of text.split(' ')) {
+        if (measure((line ? line+' ' : '')+word,9.5)<=width) { line+=(line?' ':'')+word; continue; }
+        if (line) { lines.push(line); line=''; }
+        let chunk='';
+        for (const char of word) {
+          if (chunk && measure(chunk+char,9.5)>width) { lines.push(chunk); chunk=''; }
+          chunk+=char;
+        }
+        line=chunk;
+      }
+      if(line)lines.push(line);
+      return lines;
+    }
+    const detailPages=[];
+    let detailLines=[], available=laterTop-bottom-25;
+    for(const detail of details) {
+      const lines=[...wrap(detail.ref+' | '+detail.title,BODY),...wrap(detail.text,BODY),''];
+      for(const line of lines) {
+        if(available<14){detailPages.push(detailLines);detailLines=[];available=laterTop-bottom-25;}
+        detailLines.push(line);available-=14;
+      }
+    }
+    if(detailLines.length)detailPages.push(detailLines);
+    for(const lines of detailPages)pages.push({detailLines:lines});
     if (pages.length>4) throw new Error('This date range needs more than four readable A4 pages. Select a shorter date range. No entries have been left out.');
     const colors = { ink:lib.rgb(.07,.13,.17), green:lib.rgb(0,.40,.29), muted:lib.rgb(.22,.29,.33), line:lib.rgb(.66,.73,.77),
       pale:lib.rgb(.91,.94,.96), pink:lib.rgb(.99,.92,.90), white:lib.rgb(1,1,1), red:lib.rgb(.53,.17,.12) };
@@ -139,7 +193,8 @@
       const bytes = new Uint8Array(options.logo);
       logo = bytes[0]===137 ? await pdf.embedPng(bytes) : await pdf.embedJpg(bytes);
     }
-    const drawn = [];
+    const drawn = [], previewPages = [];
+    let previewOps;
     function drawText(page, text, x, y, fontSize, width, face=font, color=colors.ink, alignment='left') {
       const cellX = x;
       const length = measure(text,fontSize,face);
@@ -147,6 +202,7 @@
       if(alignment==='right')x+=width-length;
       if(alignment==='center')x+=(width-length)/2;
       page.drawText(text,{x,y,size:fontSize,font:face,color});
+      previewOps.push({kind:'text',text,x,y,size:fontSize,bold:face===bold,color});
       drawn.push({page:pdf.getPageCount(),text,x,y,width:length,size:fontSize,alignment,cellX,cellWidth:width});
     }
     function fitText(page,text,x,y,fontSize,width,face=font,color=colors.ink,align='left') {
@@ -154,9 +210,11 @@
       if(adjusted<8)throw new Error('A report heading is too long for a readable A4 line.');
       drawText(page,text,x,y,adjusted,width,face,color,align);
     }
-    function rect(page,x,y,width,height,color) { page.drawRectangle({x,y,width,height,color,borderColor:colors.line,borderWidth:.45}); }
+    function rect(page,x,y,width,height,color) { previewOps.push({kind:'rect',x,y,width,height,color,border:colors.line});page.drawRectangle({x,y,width,height,color,borderColor:colors.line,borderWidth:.45}); }
     for(let pi=0;pi<pages.length;pi++) {
       const page=pdf.addPage([WIDTH,HEIGHT]);
+      previewOps=[];previewPages.push({width:WIDTH,height:HEIGHT,ops:previewOps});
+      if(logo)previewOps.push({kind:"logo",x:MARGIN,y:HEIGHT-43,width:25,height:25});
       if(logo)page.drawImage(logo,{x:MARGIN,y:HEIGHT-43,width:25,height:25});
       drawText(page,'greenloop',MARGIN+(logo?32:0),HEIGHT-35,20,200,font,colors.green);
       if(options.sample)drawText(page,'PRINT CHECK - FICTIONAL DATA',WIDTH-MARGIN-200,HEIGHT-33,8,200,bold,colors.muted,'right');
@@ -184,7 +242,12 @@
       }
       let top=pi===0?firstTop:laterTop;
       if(!report.active.length)drawText(page,'No damage recorded in the selected dates.',MARGIN,top-20,12,BODY);
-      for(const block of pages[pi]) {
+      if (pages[pi].detailLines) {
+        drawText(page,'Full details - references from the tables',MARGIN,top-12,12,BODY,bold,colors.green);
+        let detailY=top-34;
+        for(const line of pages[pi].detailLines){if(line)drawText(page,line,MARGIN,detailY,9.5,BODY);detailY-=14;}
+      }
+      for(const block of (pages[pi].detailLines ? [] : pages[pi])) {
         const employee=block.employee;
         rect(page,MARGIN,top-24,BODY,24,colors.pink);
         const name=employee.name+(block.continued?' (continued)':'');
@@ -198,16 +261,17 @@
         top-=21;
         for(const row of block.rows) {
           x=MARGIN;
-          for(let col=0;col<row.cells.length;col++) {rect(page,x,top-rowHeight,widths[col],rowHeight,colors.white);drawText(page,row.cells[col],x+4,top-rowHeight/2-size*.35,size,widths[col]-8,font,colors.ink,'center');x+=widths[col];}
+          for(let col=0;col<row.cells.length;col++) {rect(page,x,top-rowHeight,widths[col],rowHeight,colors.white);drawText(page,row.displayCells[col],x+4,top-rowHeight/2-size*.35,size,widths[col]-8,font,colors.ink,'center');x+=widths[col];}
           top-=rowHeight;
         }
         top-=10;
       }
+      previewOps.push({kind:'line',x:MARGIN,y:35,x2:WIDTH-MARGIN,y2:35,color:colors.line});
       page.drawLine({start:{x:MARGIN,y:35},end:{x:WIDTH-MARGIN,y:35},thickness:.5,color:colors.line});
       drawText(page,'Greenloop FZC | '+dateLabel(report.generated,true)+' UAE',MARGIN,21,8,BODY*.72,font,colors.muted);
-      drawText(page,'A4 portrait | '+(pi+1)+' / '+pages.length,WIDTH-MARGIN-120,21,8,120,font,colors.muted,'right');
+      drawText(page,'A4 '+orientation+' | '+(pi+1)+' / '+pages.length,WIDTH-MARGIN-120,21,8,120,font,colors.muted,'right');
     }
-    return {bytes:await pdf.save(),pages:pages.length,bodyFont:size,drawn,report,
+    return {bytes:await pdf.save(),pages:pages.length,bodyFont:size,drawn,previewPages,report,orientation,width:WIDTH,height:HEIGHT,detailCount:details.length,
       filename:'Greenloop-Damage-Report-'+report.from+'-to-'+report.to+'.pdf'};
   }
   root.GREENLOOP_DAMAGE_PDF={create,prepare,validDate,version:VERSION};
