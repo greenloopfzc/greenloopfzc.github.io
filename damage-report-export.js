@@ -54,7 +54,7 @@
       api.loadDamageExport(start,end,function(error,data){
         if(request!==ticket||!active)return;
         if(error){if(error.clearSession||/^(NO_SESSION|SESSION_EXPIRED|PERMISSION_DENIED)$/.test(error.code||'')){close();onDenied(error);}else failed(error);return;}
-        Promise.all([script('js/vendor/pdf-lib-1.17.1.min.js','PDFLib'),script('js/damage-report-pdf.js?v=20261007-damage-payable-1','GREENLOOP_DAMAGE_PDF'),
+        Promise.all([script('js/vendor/pdf-lib-1.17.1.min.js','PDFLib'),script('js/damage-report-pdf.js?v=20261007-damage-portrait-1','GREENLOOP_DAMAGE_PDF'),
           fetch('assets/looplogo.jpg').then(function(response){if(!response.ok)throw new Error('Report logo did not load. Please retry.');return response.arrayBuffer();})])
           .then(function(results){if(request!==ticket||!active)return null;return window.GREENLOOP_DAMAGE_PDF.create(data,{logo:results[2]});})
           .then(function(result){if(!result||request!==ticket||!active)return;finish();

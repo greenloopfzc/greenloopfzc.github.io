@@ -1,4 +1,4 @@
-/* Damage Report PDF: measured single-line cells, native vector text, adaptive A4 orientation. */
+/* Damage Report PDF: A4 portrait only, wrapped cells, native vector text. */
 (function (root) {
   'use strict';
   const VERSION = '20261007-damage-payable-1';
@@ -127,10 +127,8 @@
     const lib = options.PDFLib || root.PDFLib;
     if (!lib) throw new Error('PDF tools did not load. Please try again.');
     const report = prepare(data), pdf = await lib.PDFDocument.create();
-    let WIDTH = 595.276, HEIGHT = 841.89, BODY = WIDTH - 2 * MARGIN;
-    let orientation = "portrait";
-    const details = [];
-    for (const employee of report.active) for (const row of employee.rows) row.displayCells = row.cells.slice();
+    const WIDTH = 595.276, HEIGHT = 841.89, BODY = WIDTH - 2 * MARGIN;
+    const orientation = "portrait";
     const font = await pdf.embedFont(lib.StandardFonts.Helvetica), bold = await pdf.embedFont(lib.StandardFonts.HelveticaBold);
     pdf.setTitle('Damage Report'); pdf.setAuthor('Greenloop FZC'); pdf.setSubject('Employee damage report | UAE incident dates');
     pdf.catalog.getOrCreateViewerPreferences().setPrintScaling(lib.PrintScaling.None);
@@ -139,36 +137,28 @@
       try { return face.widthOfTextAtSize(text, size); }
       catch (_) { throw new Error('The PDF cannot render a character in this report. Use standard Latin characters in the employee and dropdown names. No entries were omitted.'); }
     }
-    const widthsAt = size => labels.map((label, index) => Math.max(measure(label, 8, bold),
-      ...report.active.flatMap(e => e.rows.map(r => measure(r.displayCells[index], size))), 10) + 8);
-    let size, widths;
-    function fitColumns() {
-      for (size = 10.5; size >= 8.5; size -= 0.25) {
-        widths = widthsAt(size);
-        if (widths.reduce((a,b) => a+b,0) <= BODY) return true;
-      }
-      return false;
-    }
-    if (!fitColumns()) {
-      WIDTH = 841.89; HEIGHT = 595.276; BODY = WIDTH - 2 * MARGIN; orientation = 'landscape';
-      if (!fitColumns()) {
-        // Keep table cells on one line. Preserve exceptional text in full in
-        // a separate, readable detail section instead of editing saved data.
-        const limits = {1:100, 2:100, 5:75, 6:200};
-        for (const employee of report.active) for (const row of employee.rows) {
-          for (const col of [1,2,5,6]) if (measure(row.cells[col],8.5)>limits[col]) {
-            const ref = 'D' + (details.length + 1);
-            details.push({ref, title:employee.name+' | '+row.cells[0]+' | '+labels[col], text:row.cells[col]});
-            row.displayCells[col] = 'See ' + ref;
-          }
+    // A4 portrait is fixed. Content wraps inside its own cell; orientation
+    // never changes in response to text length or number of records.
+    const size = 9.5, lineHeight = 11.5;
+    const widths = [86,78,75,26,70,66,BODY-401];
+    function cellLines(text,width) {
+      const lines=[];let line='';
+      for(const word of text.split(' ')) {
+        const candidate=(line?line+' ':'')+word;
+        if(measure(candidate,size)<=width){line=candidate;continue;}
+        if(line){lines.push(line);line='';}
+        let piece='';
+        for(const char of word) {
+          if(piece&&measure(piece+char,size)>width){lines.push(piece);piece='';}
+          piece+=char;
         }
-        WIDTH = 595.276; HEIGHT = 841.89; BODY = WIDTH - 2 * MARGIN; orientation = 'portrait';
-        if (!fitColumns()) { WIDTH = 841.89; HEIGHT = 595.276; BODY = WIDTH - 2 * MARGIN; orientation = 'landscape'; }
-        if (!fitColumns()) throw new Error('This report contains unusually wide identifiers or currency values. Contact your administrator for help exporting the complete report.');
+        line=piece;
       }
+      if(line)lines.push(line);
+      return lines.length?lines:[''];
     }
-    const extra = BODY - widths.reduce((a,b) => a+b,0);
-    widths[6] += extra;
+    for(const employee of report.active) for(const row of employee.rows)
+      row.lines=row.cells.map((cell,col)=>cellLines(cell,widths[col]-8));
     const zeroRows = []; let current = [], used = 0;
     for (const employee of report.zero) {
       const width = measure(employee.name, 9) + 18;
@@ -185,55 +175,40 @@
     const firstTop = HEIGHT - (111 + metricRows*65 + (zeroRows.length ? 27+zeroRows.length*23 : 0) + 18);
     const laterTop = HEIGHT - 85, bottom = 49;
     if (firstTop < bottom + 65) throw new Error('Too many employee or currency cells for this four-page report. Select a smaller report scope.');
-    // Densities change only row padding. Body text is never wrapped or shrunk
-    // below the measured readable size, and entries are never truncated.
-    let pages, rowHeight, best = null;
-    for (rowHeight of [25,22,19,17]) {
-      pages = [[]]; let remaining = firstTop-bottom;
-      for (const employee of report.active) {
-        let offset = 0;
-        while (offset < employee.rows.length) {
-          const full = 68+21+(employee.rows.length-offset)*rowHeight+10;
-          const fresh = laterTop-bottom;
-          if (full > remaining && full <= fresh && pages[pages.length-1].length) { pages.push([]); remaining=fresh; }
-          let room = Math.floor((remaining-68-21-10)/rowHeight);
-          if (room < 1) { pages.push([]); remaining=fresh; room=Math.floor((remaining-99)/rowHeight); }
-          const rows = employee.rows.slice(offset,offset+room);
-          pages[pages.length-1].push({ employee, rows, continued:offset>0 });
-          remaining -= 68+21+rows.length*rowHeight+10;
-          offset += rows.length;
+    // Paginate measured, variable-height rows. Repeat the employee band and
+    // column headings on each continuation page. Exceptionally tall entries
+    // split into readable fragments without dropping any cell text.
+    let pages, best=null;
+    for(const padding of [10,7,4]) {
+      pages=[[]];let remaining=firstTop-bottom;
+      const fresh=laterTop-bottom;
+      const maxLines=Math.max(1,Math.floor((fresh-99-padding)/lineHeight));
+      for(const employee of report.active) {
+        const fragments=[];
+        for(const row of employee.rows) {
+          const count=Math.max(...row.lines.map(lines=>lines.length));
+          for(let start=0;start<count;start+=maxLines) {
+            const lines=row.lines.map(cell=>cell.length<=maxLines?cell:cell.slice(start,start+maxLines));
+            fragments.push({...row,lines,height:Math.max(23,Math.max(...lines.map(cell=>cell.length))*lineHeight+padding)});
+          }
+        }
+        let offset=0;
+        while(offset<fragments.length) {
+          const full=99+fragments.slice(offset).reduce((n,row)=>n+row.height,0);
+          if(full>remaining&&full<=fresh&&pages[pages.length-1].length){pages.push([]);remaining=fresh;}
+          if(remaining<99+fragments[offset].height){pages.push([]);remaining=fresh;}
+          const rows=[];let used=99;
+          while(offset+rows.length<fragments.length&&used+fragments[offset+rows.length].height<=remaining) {
+            const row=fragments[offset+rows.length];rows.push(row);used+=row.height;
+          }
+          if(!rows.length)throw new Error('An entry could not fit on an A4 portrait page. No text was omitted.');
+          pages[pages.length-1].push({employee,rows,continued:offset>0});
+          remaining-=used;offset+=rows.length;
         }
       }
-      if (!best || pages.length < best.pages.length) best = {pages, rowHeight};
+      if(!best||pages.length<best.length)best=pages;
     }
-    pages=best.pages;rowHeight=best.rowHeight;
-    // Paginate full details within the same four-page limit as the tables.
-    function wrap(text, width) {
-      const lines = []; let line = '';
-      for (const word of text.split(' ')) {
-        if (measure((line ? line+' ' : '')+word,9.5)<=width) { line+=(line?' ':'')+word; continue; }
-        if (line) { lines.push(line); line=''; }
-        let chunk='';
-        for (const char of word) {
-          if (chunk && measure(chunk+char,9.5)>width) { lines.push(chunk); chunk=''; }
-          chunk+=char;
-        }
-        line=chunk;
-      }
-      if(line)lines.push(line);
-      return lines;
-    }
-    const detailPages=[];
-    let detailLines=[], available=laterTop-bottom-25;
-    for(const detail of details) {
-      const lines=[...wrap(detail.ref+' | '+detail.title,BODY),...wrap(detail.text,BODY),''];
-      for(const line of lines) {
-        if(available<14){detailPages.push(detailLines);detailLines=[];available=laterTop-bottom-25;}
-        detailLines.push(line);available-=14;
-      }
-    }
-    if(detailLines.length)detailPages.push(detailLines);
-    for(const lines of detailPages)pages.push({detailLines:lines});
+    pages=best;
     if (pages.length>4) throw new Error('This date range needs more than four readable A4 pages. Select a shorter date range. No entries have been left out.');
     const colors = { ink:lib.rgb(.07,.13,.17), green:lib.rgb(0,.40,.29), muted:lib.rgb(.22,.29,.33), line:lib.rgb(.66,.73,.77),
       pale:lib.rgb(.91,.94,.96), pink:lib.rgb(.99,.92,.90), white:lib.rgb(1,1,1), red:lib.rgb(.53,.17,.12) };
@@ -291,12 +266,7 @@
       }
       let top=pi===0?firstTop:laterTop;
       if(!report.active.length)drawText(page,'No damage recorded in the selected dates.',MARGIN,top-20,12,BODY);
-      if (pages[pi].detailLines) {
-        drawText(page,'Full details - references from the tables',MARGIN,top-12,12,BODY,bold,colors.green);
-        let detailY=top-34;
-        for(const line of pages[pi].detailLines){if(line)drawText(page,line,MARGIN,detailY,9.5,BODY);detailY-=14;}
-      }
-      for(const block of (pages[pi].detailLines ? [] : pages[pi])) {
+      for(const block of pages[pi]) {
         const employee=block.employee;
         const name=employee.name+(block.continued?' (continued)':'');
         const department=employee.department==='glass'?'Glass Department':employee.department==='other'?'Other Department':'Department pending';
@@ -321,8 +291,14 @@
         top-=21;
         for(const row of block.rows) {
           x=MARGIN;
-          for(let col=0;col<row.cells.length;col++) {rect(page,x,top-rowHeight,widths[col],rowHeight,colors.white);drawText(page,row.displayCells[col],x+4,top-rowHeight/2-size*.35,size,widths[col]-8,font,colors.ink,'center');x+=widths[col];}
-          top-=rowHeight;
+          for(let col=0;col<row.cells.length;col++) {
+            rect(page,x,top-row.height,widths[col],row.height,colors.white);
+            const lines=row.lines[col],textHeight=(lines.length-1)*lineHeight+size;
+            const baseline=top-(row.height-textHeight)/2-size;
+            for(let i=0;i<lines.length;i++) drawText(page,lines[i],x+4,baseline-i*lineHeight,size,widths[col]-8,font,colors.ink,'center');
+            x+=widths[col];
+          }
+          top-=row.height;
         }
         top-=10;
       }
@@ -331,7 +307,7 @@
       drawText(page,'Greenloop FZC | '+dateLabel(report.generated,true)+' UAE',MARGIN,21,8,BODY*.72,font,colors.muted);
       drawText(page,'A4 '+orientation+' | '+(pi+1)+' / '+pages.length,WIDTH-MARGIN-120,21,8,120,font,colors.muted,'right');
     }
-    return {bytes:await pdf.save(),pages:pages.length,bodyFont:size,drawn,previewPages,report,orientation,width:WIDTH,height:HEIGHT,detailCount:details.length,
+    return {bytes:await pdf.save(),pages:pages.length,bodyFont:size,drawn,previewPages,report,orientation,width:WIDTH,height:HEIGHT,detailCount:0,
       filename:'Greenloop-Damage-Report-'+report.from+'-to-'+report.to+'.pdf'};
   }
   root.GREENLOOP_DAMAGE_PDF={create,prepare,validDate,version:VERSION};

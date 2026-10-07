@@ -16,9 +16,9 @@
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script defer src="js/config.js?v=20261006-live-damage-motion-1"></script>
   <script defer src="js/login-activity.js?v=20261006-login-activity-1"></script>
-    <link rel="stylesheet" href="css/damage-report-export.css?v=20261007-damage-payable-1">
-    <script defer src="js/damage-report-export.js?v=20261007-damage-payable-1"></script>
-    <script defer src="js/manual-damage.js?v=20261007-damage-payable-1"></script>
+    <link rel="stylesheet" href="css/damage-report-export.css?v=20261007-damage-portrait-1">
+    <script defer src="js/damage-report-export.js?v=20261007-damage-portrait-1"></script>
+    <script defer src="js/manual-damage.js?v=20261007-damage-portrait-1"></script>
   </head>
   <body class="app-page manual-damage-page">
     <div class="app-shell">
@@ -76,8 +76,8 @@
             <button id="damage-pdf-view" class="secondary-button" data-search-read-only type="button">View PDF</button>
             <button id="damage-pdf-download" class="primary-button" data-search-read-only type="submit">Download PDF</button>
           </form>
-          <p class="damage-pdf-note">A4, up to 4 pages. Wide tables use landscape automatically. Table cells stay on one line; long fields are preserved in a Full details section. Zero-damage names appear in separate cells.</p>
-          <p class="damage-pdf-note">Print: A4 &middot; Match the PDF orientation &middot; Actual size / 100% &middot; 1 page per sheet.</p>
+          <p class="damage-pdf-note">A4 portrait, up to 4 pages. Long text wraps inside its table cell. Zero-damage names appear in separate cells.</p>
+          <p class="damage-pdf-note">Print: A4 &middot; Portrait &middot; Actual size / 100% &middot; 1 page per sheet.</p>
           <p id="damage-pdf-message" class="damage-pdf-message" role="status" aria-live="polite"></p>
           <a id="damage-pdf-file" class="secondary-button" style="display:none">Download PDF again</a>
           <section id="damage-pdf-preview" class="damage-pdf-preview" aria-label="Damage Report PDF preview" hidden>
