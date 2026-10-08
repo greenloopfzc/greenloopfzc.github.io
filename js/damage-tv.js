@@ -31,11 +31,16 @@
       }
       var date = new Date(Date.UTC(Number(parts[1]), Number(parts[2]) - 1, Number(parts[3]), Number(parts[4]), Number(parts[5]), Number(parts[6])) + (240 - shift) * 60000);
       var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-      return two(date.getUTCDate()) + " " + months[date.getUTCMonth()] + " " + date.getUTCFullYear() + " \u00b7 " + two(date.getUTCHours()) + ":" + two(date.getUTCMinutes());
+      return two(date.getUTCDate()) + " " + months[date.getUTCMonth()] + " " + date.getUTCFullYear() + " \u00b7 " + clockLabel(date, false);
+    }
+    function clockLabel(date, seconds) {
+      function two(n) { return n < 10 ? "0" + n : String(n); }
+      var hour=date.getUTCHours();
+      return two(hour % 12 || 12) + ":" + two(date.getUTCMinutes()) + (seconds ? ":" + two(date.getUTCSeconds()) : "") + (hour < 12 ? " AM" : " PM");
     }
     function stamp() {
       var date = new Date(new Date().getTime() + 4 * 60 * 60 * 1000);
-      return "Updated " + two(date.getUTCHours()) + ":" + two(date.getUTCMinutes()) + ":" + two(date.getUTCSeconds()) + " (UAE)";
+      return "Updated " + clockLabel(date, true) + " (UAE)";
     }
     function findEmployee(id, list) {
       list = list || employees;
@@ -102,7 +107,7 @@
     }
     function clock() {
       var date = new Date(new Date().getTime() + 4 * 60 * 60 * 1000);
-      text("tv-clock", two(date.getUTCHours()) + ":" + two(date.getUTCMinutes()) + ":" + two(date.getUTCSeconds()) + " UAE");
+      text("tv-clock", clockLabel(date, true) + " UAE");
     }
     function connection(state) {
       get("tv-connection").className = "tv-live-label" + (state === "Live · 30 sec refresh" ? "" : " tv-connection-stale");

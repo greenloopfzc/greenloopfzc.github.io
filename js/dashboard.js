@@ -230,7 +230,7 @@
       ...(reportData.stock_received || []).map((row) => ({ time: row.received_at, title: "Stock received", text: `${row.imei || "No IMEI"} - ${row.model || "Unknown model"}`, style: "green" }))
     ].filter((item) => item.time).sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 4);
     document.querySelector(".activity-list").innerHTML = items.length ? items.map((item) => `
-      <li><i class="activity-dot ${item.style}"></i><span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.text)}</small></span><time>${escapeHtml(new Date(item.time).toLocaleTimeString([], { timeZone: "Asia/Dubai", hour: "2-digit", minute: "2-digit" }))}</time></li>
+      <li><i class="activity-dot ${item.style}"></i><span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.text)}</small></span><time>${escapeHtml(new Date(item.time).toLocaleTimeString([], { timeZone: "Asia/Dubai", hour: "2-digit", minute: "2-digit", hour12: true }))}</time></li>
     `).join("") : '<li><span><strong>No recent live activity.</strong><small>New receipts and workflow actions will appear here.</small></span></li>';
   }
 

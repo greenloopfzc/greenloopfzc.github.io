@@ -105,7 +105,7 @@
     if (input && text) input.value = text;
   }
   function displayStage(value) { return String(value || "Unknown stage").replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()); }
-  function displayDate(value) { return value ? new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "Not recorded"; }
+  function displayDate(value) { return value ? new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", hour12: true }).format(new Date(value)) : "Not recorded"; }
   function closeDuplicateDialog() { if (duplicateDialog?.open) duplicateDialog.close(); }
   function duplicateNoticeGuard(value) {
     // Keep manual, bulk and cable checks tied to the fields that requested them.

@@ -198,7 +198,7 @@
   function setMessage(text = "", type = "error") { message.textContent = text; message.classList.toggle("is-visible", Boolean(text)); message.classList.toggle("is-success", type === "success"); }
   function localDate(value) { const date = new Date(value); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
   function dateLabel(value) { return value ? new Date(`${value}T00:00:00`).toLocaleDateString([], { day: "2-digit", month: "short", year: "numeric" }) : "—"; }
-  function dateTime(value) { return value ? new Date(value).toLocaleString([], { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"; }
+  function dateTime(value) { return value ? new Date(value).toLocaleString([], { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true }) : "—"; }
   function money(value) { return `AED ${Number(value || 0).toFixed(2)}`; }
   function title(value) { return String(value || "—").replaceAll("_", " "); }
   function partnerLabel(code, name, fallback = "—") {
@@ -290,7 +290,7 @@
     }
     const returnDate = value => {
       const parsed = new Date(value);
-      return value && Number.isFinite(parsed.getTime()) ? new Intl.DateTimeFormat([], {day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit",timeZone:"Asia/Dubai"}).format(parsed) : "—";
+      return value && Number.isFinite(parsed.getTime()) ? new Intl.DateTimeFormat([], {day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit", hour12: true,timeZone:"Asia/Dubai"}).format(parsed) : "—";
     };
     rowCount.textContent = `${supplierTotal(rows, "returned_quantity")} returned · ${rows.length} record${rows.length === 1 ? "" : "s"}`;
     const body = rows.length ? rows.map(row => `<tr>

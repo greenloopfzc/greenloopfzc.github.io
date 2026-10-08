@@ -3,7 +3,7 @@
   if (!window.GREENLOOP_GET_CLIENT || window.GREENLOOP_LOGIN_TRACKER) return;
   const client=window.GREENLOOP_GET_CLIENT(), page=(location.pathname.split('/').pop()||'index.html').toLowerCase();
   let userId='', generation=0, cursor=null, busy=false, tracking=false, offset=0, allowed=false, link, notice, panel, mounted=false;
-  const fmt=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false});
+  const fmt=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true});
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const stamp=v=>v&&Number.isFinite(new Date(v).getTime())?fmt.format(new Date(v)):'—';
   const el=id=>document.getElementById(id);

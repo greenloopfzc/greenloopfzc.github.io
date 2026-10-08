@@ -4,7 +4,7 @@
   const labels = { requested: "Requested", approved: "Return Pending", returned: "Returned to Supplier", rejected: "Rejected", cancelled: "Cancelled", dead: "Dead phone", icloud_locked: "iCloud locked", other: "Other" };
   const label = v => labels[v] || String(v || "—").replaceAll("_", " ");
   const statusLabel = r => r.archived_at ? `Archived audit · ${label(r.status)}` : label(r.status);
-  const date = v => v ? new Date(v).toLocaleString() : "—";
+  const date = v => v ? new Date(v).toLocaleString("en-GB", { hour12: true }) : "—";
   const supplier = r => [r.supplier_code, window.GREENLOOP_CAN_VIEW_PARTNER_NAMES ? r.supplier_name : ""].filter(Boolean).join(" · ") || "—";
   const rid = r => r.id || r.return_id;
   const imei = r => r.imei_1 || r.imei || "Without IMEI";

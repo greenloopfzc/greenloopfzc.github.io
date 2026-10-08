@@ -124,6 +124,7 @@
       const form = query(`#${draft.id}`);
       if (form && form.dataset.entry === draft.entry) draft.values.forEach(([name, value]) => { const control = form.elements.namedItem(name); if (control) { if (control.type === "checkbox") control.checked = value; else control.value = value; } });
     }
+    window.GREENLOOP_AMPM_INPUT.mountAll(host);
   }
   async function load() {
     if (!host || denied || loading || blocked()) return;
@@ -191,7 +192,7 @@
     if (price != null && !payload.p_currency_id) form.elements.currency_id.setCustomValidity("Select a currency for this price.");
     const wallTime = String(data.get("occurred_at") || ""), instant = new Date(`${wallTime}:00+04:00`);
     const validTime = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(wallTime) && Number.isFinite(instant.getTime()) && localTime(instant) === wallTime;
-    form.elements.occurred_at.setCustomValidity(validTime ? "" : "Enter a valid date and time in UAE time.");
+    window.GREENLOOP_AMPM_INPUT.validity(form.elements.occurred_at, validTime ? "" : "Enter a valid date and time in UAE time.");
     const reason = String(data.get("correction_reason") || "").trim();
     form.elements.correction_reason.setCustomValidity(reason.length >= 3 ? "" : "Explain the correction in at least 3 characters.");
     if (!form.reportValidity()) return null;

@@ -46,7 +46,7 @@
 
   function formatDateTime(value) {
     return new Date(value || Date.now()).toLocaleString("en-GB", {
-      timeZone: "Asia/Dubai", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
+      timeZone: "Asia/Dubai", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true
     });
   }
 

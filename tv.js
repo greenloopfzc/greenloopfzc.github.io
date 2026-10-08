@@ -30,10 +30,14 @@
     function expired(error) {
       return error && (error.clearSession || /^(NO_SESSION|SESSION_EXPIRED|PERMISSION_DENIED)$/.test(error.code || ""));
     }
+    function clockLabel(date, seconds) {
+      function two(n) { return n < 10 ? "0" + n : String(n); }
+      var hour=date.getUTCHours();
+      return two(hour % 12 || 12) + ":" + two(date.getUTCMinutes()) + (seconds ? ":" + two(date.getUTCSeconds()) : "") + (hour < 12 ? " AM" : " PM");
+    }
     function stamp() {
       var date = new Date(new Date().getTime() + 4 * 60 * 60 * 1000);
-      function two(n) { return n < 10 ? "0" + n : String(n); }
-      return "Updated " + two(date.getUTCHours()) + ":" + two(date.getUTCMinutes()) + ":" + two(date.getUTCSeconds()) + " (UAE)";
+      return "Updated " + clockLabel(date, true) + " (UAE)";
     }
     function refresh() {
       if (!active || loading) return;

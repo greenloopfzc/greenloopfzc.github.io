@@ -283,7 +283,7 @@
   }
 
   function formatDateTime(value) {
-    return value ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "—";
+    return value ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short", hour12: true }).format(new Date(value)) : "—";
   }
 
   async function loadFrameReport() {

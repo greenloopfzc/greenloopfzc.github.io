@@ -10,7 +10,7 @@
   function dateLabel(value, time = false) {
     const date = new Date(time ? Date.parse(value) + 14400000 : value + 'T00:00:00Z');
     if (!Number.isFinite(date.getTime())) throw new Error('A damage entry has an invalid date. Refresh the report.');
-    return `${two(date.getUTCDate())} ${months[date.getUTCMonth()]} ${date.getUTCFullYear()}` + (time ? ` ${two(date.getUTCHours())}:${two(date.getUTCMinutes())}` : '');
+    return `${two(date.getUTCDate())} ${months[date.getUTCMonth()]} ${date.getUTCFullYear()}` + (time ? ` ${two(date.getUTCHours() % 12 || 12)}:${two(date.getUTCMinutes())} ${date.getUTCHours() < 12 ? 'AM' : 'PM'}` : '');
   }
   function validDate(value) {
     return /^\d{4}-\d{2}-\d{2}$/.test(value || '') && value >= '2000-01-01' && value <= '2100-12-31' &&
@@ -238,9 +238,20 @@
     for(let pi=0;pi<pages.length;pi++) {
       const page=pdf.addPage([WIDTH,HEIGHT]);
       previewOps=[];previewPages.push({width:WIDTH,height:HEIGHT,ops:previewOps});
-      if(logo)previewOps.push({kind:"logo",x:MARGIN,y:HEIGHT-43,width:25,height:25});
-      if(logo)page.drawImage(logo,{x:MARGIN,y:HEIGHT-43,width:25,height:25});
-      drawText(page,'greenloop',MARGIN+(logo?32:0),HEIGHT-35,20,200,font,colors.green);
+      const brandSize=22, brandBaseline=HEIGHT-40;
+      const ascent=font.heightAtSize(brandSize,{descender:false});
+      const inkHeight=font.heightAtSize(brandSize),descent=inkHeight-ascent;
+      // The existing transparent logo has visible bounds (18,91)-(346,266)
+      // inside a 360px square. Match its visible height to the wordmark's ink,
+      // keeping the original image's aspect ratio and aligning their baselines.
+      const logoSize=inkHeight*360/175;
+      const logoX=MARGIN-18*logoSize/360;
+      const logoY=brandBaseline-descent-94*logoSize/360;
+      if(logo) {
+        previewOps.push({kind:'logo',x:logoX,y:logoY,width:logoSize,height:logoSize});
+        page.drawImage(logo,{x:logoX,y:logoY,width:logoSize,height:logoSize});
+      }
+      drawText(page,'greenloop',MARGIN+(logo?328*logoSize/360+10:0),brandBaseline,brandSize,200,font,colors.green);
       if(options.sample)drawText(page,'PRINT CHECK - FICTIONAL DATA',WIDTH-MARGIN-200,HEIGHT-33,8,200,bold,colors.muted,'right');
       drawText(page,'Damage Report',MARGIN,HEIGHT-69,pi===0?24:17,BODY,bold);
       drawText(page,dateLabel(report.from)+' - '+dateLabel(report.to),WIDTH-MARGIN-230,HEIGHT-67,10.5,230,bold,colors.green,'right');

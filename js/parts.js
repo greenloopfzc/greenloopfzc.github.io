@@ -44,7 +44,7 @@
   const getClient = () => (client ||= window.GREENLOOP_GET_CLIENT());
   const escapeHtml = (value) => String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]);
   const money = (value) => `AED ${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  const dateTime = (value) => value ? new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "—";
+  const dateTime = (value) => value ? new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", hour12: true }).format(new Date(value)) : "—";
   const jobOf = (request) => Array.isArray(request.job) ? request.job[0] : request.job;
   const deviceOf = (request) => { const job = jobOf(request) || {}; return Array.isArray(job.device) ? job.device[0] : job.device; };
   const supplierOf = (request) => { const job = jobOf(request) || {}; return Array.isArray(job.supplier) ? job.supplier[0] : job.supplier; };

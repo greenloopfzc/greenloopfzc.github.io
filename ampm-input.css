@@ -1,0 +1,5 @@
+.gl-ampm-input { display:grid; grid-template-columns:minmax(130px,2fr) repeat(3,minmax(58px,1fr)); gap:8px; min-width:0; }
+.gl-ampm-input label { display:flex; flex-direction:column; gap:5px; min-width:0; margin:0; }
+.gl-ampm-input label > span { font-size:.72rem; font-weight:500; }
+.gl-ampm-input :is(input,select) { width:100%; min-width:0; text-align:center; }
+@media(max-width:600px) { .gl-ampm-input {grid-template-columns:repeat(3,minmax(0,1fr));} .gl-ampm-input .gl-ampm-date {grid-column:1/-1;} }

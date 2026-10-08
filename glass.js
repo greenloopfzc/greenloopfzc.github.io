@@ -87,7 +87,7 @@
     completeButton.disabled = !started;
     statusTitle.textContent = started ? "Work in progress" : "Ready to start";
     statusText.textContent = started
-      ? `Started ${startedAt ? new Date(startedAt).toLocaleString() : "just now"}. Complete the record when all Glass work is finished.`
+      ? `Started ${startedAt ? new Date(startedAt).toLocaleString("en-GB", { hour12: true }) : "just now"}. Complete the record when all Glass work is finished.`
       : "Start the work to record the assigned worker and automatic start time.";
   }
 

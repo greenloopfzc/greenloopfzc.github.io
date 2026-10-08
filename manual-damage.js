@@ -158,6 +158,7 @@
     // Discard sensitive choices and drafts, including hidden dialog/retry text.
     // In-flight requests also check accessDenied before touching these values.
     Object.values(inputs).forEach((input) => { input.value = ""; input.setCustomValidity(""); });
+    window.GREENLOOP_AMPM_INPUT.sync(inputs.occurred_at);
     Object.values(choices).forEach((choice) => { choice.input.innerHTML = '<option value="">Access unavailable</option>'; });
     optionInput.value = "";
     message("damage-option-description");
@@ -201,7 +202,7 @@
     inputs.price_amount.setCustomValidity(price === undefined ? "Enter a price from 0 to 99,999,999.99 with no more than 2 decimal places, or leave blank if unknown." : "");
     if (price != null && !payload.currency_id) inputs.currency_id.setCustomValidity("Select a currency for this price.");
     const occurredAt = uaeTimestamp(payload.occurred_at);
-    if (!occurredAt) inputs.occurred_at.setCustomValidity("Enter a valid date and time in UAE time.");
+    if (!occurredAt) window.GREENLOOP_AMPM_INPUT.validity(inputs.occurred_at, "Enter a valid date and time in UAE time.");
     if (!form.reportValidity()) return null;
     payload.quantity = quantity;
     payload.price_amount = price;
@@ -394,7 +395,7 @@
       if (!saved?.id || saved.quantity !== request.args.p_quantity || saved.department !== request.args.p_department) throw new Error("The server did not confirm the saved report.");
       pendingRequest = null;
       const draftChanged = JSON.stringify(draftValues()) !== request.fingerprint;
-      if (!draftChanged) { form.reset(); applyNewDefaults(); inputs.occurred_at.value = uaeLocalNow(); }
+      if (!draftChanged) { form.reset(); applyNewDefaults(); inputs.occurred_at.value = uaeLocalNow(); window.GREENLOOP_AMPM_INPUT.sync(inputs.occurred_at); }
       message("manual-damage-message", draftChanged ? "Original damage report confirmed. Your current draft has been kept." : "Damage report saved. It is now available in Damage Report.", true);
       await loadReports(0);
     } catch (error) {
@@ -494,7 +495,7 @@
     canEdit = access.canEdit === true;
     byId("manual-damage-app").hidden = false;
     byId("manual-damage-view-only").hidden = canEdit;
-    inputs.occurred_at.value = uaeLocalNow();
+    inputs.occurred_at.value = uaeLocalNow(); window.GREENLOOP_AMPM_INPUT.sync(inputs.occurred_at);
     syncControls();
     mountPdfExport();
     await Promise.all([loadChoices(), loadReports(0)]);
