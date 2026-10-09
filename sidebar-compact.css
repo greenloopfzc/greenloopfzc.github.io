@@ -1,0 +1,31 @@
+/* Keep the obsolete close control hidden for older page event bindings. */
+.sidebar #close-menu {display:none!important;}
+.sidebar .sidebar-top {padding-left:0;padding-right:0;}
+html .sidebar .app-brand {width:100%;margin-right:0;flex:1;}
+html .app-page #open-menu {display:grid;}
+html[data-sidebar="compact"] .app-shell {grid-template-columns:76px minmax(0,1fr);}
+html[data-sidebar="compact"] .sidebar {padding:14px 8px;width:76px;min-width:0;transform:none;}
+html[data-sidebar="compact"] .sidebar-top,html[data-sidebar="compact"] .sidebar-user {display:none;}
+html[data-sidebar="compact"] .sidebar-nav {overflow-x:hidden;padding:2px 3px 14px;row-gap:6px;}
+html[data-sidebar="compact"] .sidebar .nav-label {font-size:0;height:1px;margin:9px 5px;background:var(--nm-line,#d4dfe3);}
+html[data-sidebar="compact"] .sidebar .nav-label:first-child {display:none;}
+html[data-sidebar="compact"] .sidebar .nav-item {font-size:0;min-height:44px;justify-content:center;gap:0;padding:0;border-radius:12px;}
+html[data-sidebar="compact"] .sidebar .nav-item > :not(.nav-icon) {display:none;}
+html[data-sidebar="compact"] .sidebar .nav-item .nav-icon {font-size:24px;font-weight:600;width:32px;height:32px;flex:0 0 32px;border-radius:9px;color:var(--rail-ink,#176249)!important;background:var(--rail-bg,#dcefe4);}
+html[data-sidebar="compact"] .sidebar .nav-item.active {outline:2px solid var(--nm-accent,#087653);outline-offset:-2px;}
+.sidebar [data-icon-color="blue"] {--rail-ink:#1754a1;--rail-bg:#e0edff;}
+.sidebar [data-icon-color="green"] {--rail-ink:#076540;--rail-bg:#d9f2e4;}
+.sidebar [data-icon-color="purple"] {--rail-ink:#7138a6;--rail-bg:#f0e4fb;}
+.sidebar [data-icon-color="red"] {--rail-ink:#a42b3e;--rail-bg:#ffe2e7;}
+.sidebar [data-icon-color="amber"] {--rail-ink:#885408;--rail-bg:#fff0ca;}
+.sidebar [data-icon-color="teal"] {--rail-ink:#076774;--rail-bg:#d5f1f5;}
+.sidebar [hidden] {display:none!important;}
+@media(max-width:800px){
+ html[data-sidebar] .app-shell {display:block;}
+ html[data-sidebar] .app-main {margin-left:76px;min-width:0;}
+ html[data-sidebar] .sidebar {transform:none;}
+ html[data-sidebar="expanded"] .sidebar {width:min(275px,calc(100vw - 65px));}
+ html[data-sidebar="expanded"] #open-menu {position:fixed;left:min(287px,calc(100vw - 53px));top:14px;z-index:25;}
+}
+@media print {html[data-sidebar] .app-main {margin-left:0;}html[data-sidebar] .app-shell {display:block;}}
+html[data-sidebar] body.lab-tv-mode .app-main {margin:0;}

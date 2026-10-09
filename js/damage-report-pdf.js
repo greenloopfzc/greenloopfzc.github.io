@@ -172,7 +172,7 @@
       ['PAYABLE - AED', report.pending.length ? 'Pending' : money(report.payable)],
       ...report.currencies.filter(cur=>cur!=='AED').map(cur => ['TOTAL VALUE - ' + cur, money(report.totals.get(cur) || 0n)])];
     const metricRows = Math.ceil(metrics.length/4);
-    const firstTop = HEIGHT - (111 + metricRows*65 + (zeroRows.length ? 27+zeroRows.length*23 : 0) + 18);
+    const firstTop = HEIGHT - (91 + metricRows*65 + (zeroRows.length ? 27+zeroRows.length*23 : 0) + 18);
     const laterTop = HEIGHT - 85, bottom = 49;
     if (firstTop < bottom + 65) throw new Error('Too many employee or currency cells for this four-page report. Select a smaller report scope.');
     // Paginate measured, variable-height rows. Repeat the employee band and
@@ -249,18 +249,18 @@
       previewOps=[];previewPages.push({width:WIDTH,height:HEIGHT,ops:previewOps});
       drawBrand(page,MARGIN,HEIGHT-45,140);
       if(options.sample)drawText(page,'PRINT CHECK - FICTIONAL DATA',WIDTH-MARGIN-200,HEIGHT-33,8,200,bold,colors.muted,'right');
-      drawText(page,'Damage Report',MARGIN,HEIGHT-69,pi===0?24:17,BODY,bold);
-      drawText(page,dateLabel(report.from)+' - '+dateLabel(report.to),WIDTH-MARGIN-230,HEIGHT-67,10.5,230,bold,colors.green,'right');
+      drawText(page,'Damage Report',MARGIN,HEIGHT-67,12,100,bold);
+      drawText(page,'| '+report.employees.length+' employees',MARGIN+100,HEIGHT-67,9.5,115,font,colors.muted);
+      drawText(page,dateLabel(report.from)+' - '+dateLabel(report.to)+' | UAE (UTC+4)',WIDTH-MARGIN-238,HEIGHT-67,9.5,238,font,colors.green,'right');
       if(pi===0) {
-        drawText(page,report.employees.length+' employees | UAE incident dates (UTC+4)',MARGIN,HEIGHT-90,9.5,BODY,font,colors.muted);
         const gap=8,cellWidth=(BODY-gap*3)/4;
         for(let i=0;i<metrics.length;i++) {
-          const x=MARGIN+(i%4)*(cellWidth+gap),y=HEIGHT-153-Math.floor(i/4)*65;
+          const x=MARGIN+(i%4)*(cellWidth+gap),y=HEIGHT-133-Math.floor(i/4)*65;
           rect(page,x+1.5,y-1.5,cellWidth,52,colors.pale);rect(page,x,y,cellWidth,52,colors.white);
           fitText(page,metrics[i][0],x+8,y+37,8,cellWidth-16,bold,colors.muted,'center');
           fitText(page,metrics[i][1],x+8,y+12,20,cellWidth-16,bold,colors.green,'center');
         }
-        let y=HEIGHT-111-metricRows*65;
+        let y=HEIGHT-91-metricRows*65;
         drawText(page,'Monthly AED settlement | LCD allowance only | Unpriced parts: '+report.unpriced+' | Pending: '+report.pending.length,MARGIN,y,8.5,BODY,font,colors.muted);
         if(zeroRows.length) {
           y-=23;drawText(page,'ZERO DAMAGE - '+report.zero.length+' EMPLOYEES',MARGIN,y,9,BODY,bold,colors.green);y-=27;
