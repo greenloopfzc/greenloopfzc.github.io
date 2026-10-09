@@ -1,0 +1,29 @@
+/* Original supplied Greenloop FZC artwork, unchanged. Only its outer whitespace
+   is clipped by the layout. A light plaque preserves the black wordmark in both themes. */
+.gl-wordmark { position:relative; display:inline-block; width:175px; max-width:100%; overflow:hidden; vertical-align:middle; background:#fff; border-radius:5px; line-height:0; }
+.gl-wordmark:before { content:""; display:block; padding-top:21.296296%; }
+.gl-wordmark > img { position:absolute; display:block; left:-10.185185%; top:-43.478261%; width:118.518519%; max-width:none; height:auto; margin:0; padding:0; border:0; border-radius:0; box-shadow:none; filter:none; mix-blend-mode:normal; }
+.app-brand, html[data-design="neumorphism"] .app-brand { width:184px; min-width:0; flex-shrink:1; margin-right:10px; padding:7px; border:1px solid #d4dfe3; border-radius:12px; background:#fff; box-shadow:2px 3px 5px #aabcc780; }
+.app-brand .gl-wordmark { width:100%; }
+.sidebar-header .close-menu { flex-shrink:0; }
+.auth-page .brand, .auth-page .mobile-brand { width:100%; max-width:720px; padding:20px; gap:0; background:#fff; }
+html[data-mode="dark"] .auth-page .brand, html[data-mode="dark"] .auth-page .mobile-brand { background:#fff; border-color:#70858f; }
+.auth-page .brand .gl-wordmark, .auth-page .mobile-brand .gl-wordmark { width:100%; }
+.gl-wordmark-small { width:94px; }
+.gl-brand-context { display:inline-block; margin-left:10px; vertical-align:middle; }
+.intro-footer .gl-wordmark, .tv-company .gl-wordmark { padding:0; }
+.sidebar-user .gl-wordmark { width:105px; }
+.tv-brand { width:245px; padding:8px 12px; border:1px solid #d4dfe3; border-radius:14px; background:#fff; box-shadow:2px 3px 6px #aabcc780; }
+.tv-brand .gl-wordmark { width:100%; }
+.tv-brand .tv-brand-caption { padding:3px 0 0; text-align:center; color:#426459; font-size:8px; letter-spacing:2px; }
+.tv-dark .tv-brand { background:#fff; border-color:#70858f; box-shadow:2px 4px 7px #10202b; }
+.tv-dark .tv-brand .tv-brand-caption { color:#426459; }
+.damage-tv-page .tv-brand, .tv-live-page .tv-brand { width:245px; }
+.damage-tv-page .tv-brand { width:220px; padding:5px 10px; }
+.damage-tv-page .tv-brand .tv-brand-caption { display:none; }
+.export-print-brand .gl-wordmark { width:185px; }
+@media (min-width:1600px) and (min-height:900px) { .damage-tv-page .tv-brand { width:290px; } }
+@media (max-width:1100px) { .damage-tv-page .tv-brand, .tv-live-page .tv-brand { width:190px; padding:6px 9px; } }
+@media (max-width:1100px) and (min-width:651px) { .damage-tv-page .tv-brand { width:180px; padding:4px 8px; } }
+@media (max-width:650px) { .tv-brand, .damage-tv-page .tv-brand, .tv-live-page .tv-brand { width:180px; } .auth-page .mobile-brand { padding:14px; } }
+@media print { .gl-wordmark { -webkit-print-color-adjust:exact; print-color-adjust:exact; } .export-print-brand { display:block; } }

@@ -235,23 +235,19 @@
       drawText(page,text,x,y,adjusted,width,face,color,align);
     }
     function rect(page,x,y,width,height,color) { previewOps.push({kind:'rect',x,y,width,height,color,border:colors.line});page.drawRectangle({x,y,width,height,color,borderColor:colors.line,borderWidth:.45}); }
+    function drawBrand(page,x,y,width) {
+      if(!logo) {drawText(page,'Greenloop FZC',x,y+5,Math.min(14,width/8),width,bold,colors.green);return;}
+      const crop={x:110,y:100,width:1080,height:230};
+      const scale=width/crop.width,height=crop.height*scale;
+      previewOps.push({kind:'brand',x,y,width,height,crop});
+      page.pushOperators(lib.pushGraphicsState(),lib.rectangle(x,y,width,height),lib.clip(),lib.endPath());
+      page.drawImage(logo,{x:x-crop.x*scale,y:y-(427-crop.y-crop.height)*scale,width:1280*scale,height:427*scale});
+      page.pushOperators(lib.popGraphicsState());
+    }
     for(let pi=0;pi<pages.length;pi++) {
       const page=pdf.addPage([WIDTH,HEIGHT]);
       previewOps=[];previewPages.push({width:WIDTH,height:HEIGHT,ops:previewOps});
-      const brandSize=22, brandBaseline=HEIGHT-40;
-      const ascent=font.heightAtSize(brandSize,{descender:false});
-      const inkHeight=font.heightAtSize(brandSize),descent=inkHeight-ascent;
-      // The existing transparent logo has visible bounds (18,91)-(346,266)
-      // inside a 360px square. Match its visible height to the wordmark's ink,
-      // keeping the original image's aspect ratio and aligning their baselines.
-      const logoSize=inkHeight*360/175;
-      const logoX=MARGIN-18*logoSize/360;
-      const logoY=brandBaseline-descent-94*logoSize/360;
-      if(logo) {
-        previewOps.push({kind:'logo',x:logoX,y:logoY,width:logoSize,height:logoSize});
-        page.drawImage(logo,{x:logoX,y:logoY,width:logoSize,height:logoSize});
-      }
-      drawText(page,'greenloop',MARGIN+(logo?328*logoSize/360+10:0),brandBaseline,brandSize,200,font,colors.green);
+      drawBrand(page,MARGIN,HEIGHT-45,140);
       if(options.sample)drawText(page,'PRINT CHECK - FICTIONAL DATA',WIDTH-MARGIN-200,HEIGHT-33,8,200,bold,colors.muted,'right');
       drawText(page,'Damage Report',MARGIN,HEIGHT-69,pi===0?24:17,BODY,bold);
       drawText(page,dateLabel(report.from)+' - '+dateLabel(report.to),WIDTH-MARGIN-230,HEIGHT-67,10.5,230,bold,colors.green,'right');
@@ -315,7 +311,8 @@
       }
       previewOps.push({kind:'line',x:MARGIN,y:35,x2:WIDTH-MARGIN,y2:35,color:colors.line});
       page.drawLine({start:{x:MARGIN,y:35},end:{x:WIDTH-MARGIN,y:35},thickness:.5,color:colors.line});
-      drawText(page,'Greenloop FZC | '+dateLabel(report.generated,true)+' UAE',MARGIN,21,8,BODY*.72,font,colors.muted);
+      drawBrand(page,MARGIN,17,65);
+      drawText(page,dateLabel(report.generated,true)+' UAE',MARGIN+74,21,8,BODY*.60,font,colors.muted);
       drawText(page,'A4 '+orientation+' | '+(pi+1)+' / '+pages.length,WIDTH-MARGIN-120,21,8,120,font,colors.muted,'right');
     }
     return {bytes:await pdf.save(),pages:pages.length,bodyFont:size,drawn,previewPages,report,orientation,width:WIDTH,height:HEIGHT,detailCount:0,

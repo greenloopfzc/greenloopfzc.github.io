@@ -19,7 +19,7 @@ html[data-mode="dark"] .damage-pdf-note { color: #c2d5e1; }
 .damage-pdf-preview[hidden] { display: none !important; }
 .damage-pdf-preview { margin-top: 18px; }
 .damage-pdf-pages { max-height: 75vh; overflow: auto; padding: 12px; border: 1px solid #bacbd5; border-radius: 12px; background: #c9d4db; }
-.damage-pdf-pages svg { display: block; width: 100%; height: auto; margin: 0 auto 16px; box-shadow: 0 2px 6px #80909b; }
-.damage-pdf-pages svg:last-child { margin-bottom: 0; }
+.damage-pdf-pages > svg { display: block; width: 100%; height: auto; margin: 0 auto 16px; box-shadow: 0 2px 6px #80909b; }
+.damage-pdf-pages > svg:last-child { margin-bottom: 0; }
 #damage-pdf-view { margin: 10px 8px 10px 0; }
 .damage-pdf-preview a { color: inherit; text-decoration: underline; }

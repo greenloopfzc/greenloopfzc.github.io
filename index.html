@@ -25,25 +25,13 @@
   <script defer src="js/record-search.js?v=20261003-navigation-search-1"></script>
     <script defer src="js/auth.js?v=20261006-login-activity-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20260928-sidebar-depth-1">
-  </head>
+    <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
+</head>
   <body class="auth-page">
-    <svg class="login-brand-effects" width="0" height="0" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <filter id="login-logo-relief" x="-25%" y="-25%" width="160%" height="175%" color-interpolation-filters="sRGB">
-          <feColorMatrix in="SourceGraphic" type="luminanceToAlpha" result="logo-mask" />
-          <feComponentTransfer in="logo-mask" result="strong-mask"><feFuncA type="linear" slope="4" intercept="-0.08" /></feComponentTransfer>
-          <feComposite in="SourceGraphic" in2="strong-mask" operator="in" result="logo-cutout" />
-          <feDropShadow in="logo-cutout" dx="-1" dy="-1" stdDeviation="0.35" flood-color="#e7ffb6" flood-opacity="0.75" result="logo-highlight" />
-          <feDropShadow in="logo-highlight" dx="2" dy="3" stdDeviation="0.25" flood-color="#254513" flood-opacity="0.95" result="logo-edge" />
-          <feDropShadow in="logo-edge" dx="5" dy="7" stdDeviation="2.5" flood-color="#022f21" flood-opacity="0.65" />
-        </filter>
-      </defs>
-    </svg>
-    <main class="auth-shell">
+<main class="auth-shell">
       <section class="auth-intro" aria-labelledby="intro-title">
         <a class="brand" href="index.html" aria-label="Greenloop home">
-          <img class="brand-image" src="assets/looplogo.jpg" alt="">
-          <span>greenloop</span>
+          <span class="gl-wordmark"><img src="assets/greenloop-fzc-logo.jpg" alt="Greenloop FZC" width="1280" height="427"></span>
         </a>
 
         <div class="intro-copy">
@@ -69,14 +57,13 @@
           </li>
         </ul>
 
-        <p class="intro-footer">Greenloop FZC &middot; Operations system</p>
+        <p class="intro-footer"><span class="gl-wordmark gl-wordmark-small"><img src="assets/greenloop-fzc-logo.jpg" alt="Greenloop FZC" width="1280" height="427"></span><span class="gl-brand-context">Operations system</span></p>
       </section>
 
       <section class="auth-panel" aria-labelledby="sign-in-title">
         <div class="auth-card">
           <div class="mobile-brand">
-            <img class="brand-image" src="assets/looplogo.jpg" alt="">
-            <span>greenloop</span>
+            <span class="gl-wordmark"><img src="assets/greenloop-fzc-logo.jpg" alt="Greenloop FZC" width="1280" height="427"></span>
           </div>
 
           <header class="auth-header">
