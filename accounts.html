@@ -5,13 +5,13 @@
     <script src="js/appearance.js?v=20260928-sidebar-depth-1"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#0d5c43">
-    <meta name="description" content="Export box preparation from Greenloop Ready Stock.">
+    <meta name="description" content="Verify boxes and review supplier and customer stock.">
     <title>Accounts | Greenloop</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/box-workflow.css?v=20261010-box-workflow-1">
+    <link rel="stylesheet" href="css/box-workflow.css?v=20261010-accounts-stock-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="js/imei-stage-notice.js?v=20261003-qc-duplicate-stage-1"></script>
   <script defer src="js/config.js?v=20261010-box-workflow-1"></script>
@@ -19,7 +19,8 @@
   <link rel="stylesheet" href="css/record-search.css?v=20261003-navigation-search-1">
   <script defer src="js/record-search.js?v=20261003-navigation-search-1"></script>
     <script defer src="js/part-notifications.js?v=20260918-audit-2"></script>
-    <script defer src="js/box-workflow.js?v=20261010-box-workflow-1"></script>
+    <script defer src="js/accounts-stock.js?v=20261010-accounts-stock-1"></script>
+    <script defer src="js/box-workflow.js?v=20261010-accounts-stock-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20260928-sidebar-depth-1">
     <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261003-qc-duplicate-stage-1">
   <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
@@ -37,13 +38,35 @@
       <main class="app-main">
         <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Dashboard</a><span aria-hidden="true">/</span><strong>Accounts</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
         <div class="page-content export-box-content">
-          <section class="page-heading"><div><p class="eyebrow">BOX WORKFLOW</p><h1>Accounts</h1><p>Review saved boxes and supplier details, then verify them for Stock Exported.</p></div></section>
+          <section class="page-heading"><div><p class="eyebrow">BOX WORKFLOW</p><h1>Accounts</h1><p>Verify boxes, track supplier stock, and review customer exports.</p></div></section>
           <p id="permission-message" class="form-message is-visible" hidden></p>
           <section id="box-queue-app" hidden data-box-page="accounts">
+            <nav class="accounts-sections" aria-label="Accounts sections">
+              <button type="button" class="accounts-section-card is-active" data-accounts-view="verify" data-search-read-only aria-pressed="true"><span class="accounts-card-icon" aria-hidden="true">✓</span><strong>Verify Box</strong><small>Review saved boxes and select a customer.</small></button>
+              <button type="button" class="accounts-section-card" data-accounts-view="supplier" data-search-read-only aria-pressed="false"><span class="accounts-card-icon" aria-hidden="true">▦</span><strong>Supplier Stock</strong><small>All suppliers in one stock table.</small></button>
+              <button type="button" class="accounts-section-card" data-accounts-view="customer" data-search-read-only aria-pressed="false"><span class="accounts-card-icon" aria-hidden="true">↗</span><strong>Customer Stock</strong><small>All customers and their exported phones.</small></button>
+            </nav>
+            <section id="accounts-verify-panel" aria-label="Verify Box">
             <form id="box-queue-filter" class="box-queue-filter"><label>From date · UAE<input name="from" type="date"></label><label>To date · UAE<input name="to" type="date"></label><button class="primary-button" type="submit" data-search-read-only>Show boxes</button><button id="clear-box-dates" class="secondary-button" type="button" data-search-read-only>All dates</button></form>
             <p id="box-queue-message" role="status" class="form-message"></p>
             <section class="box-queue-card"><div id="box-queue-list"></div><div class="box-queue-pagination"><button id="box-queue-prev" class="secondary-button" type="button" data-search-read-only>Previous</button><span id="box-queue-count"></span><button id="box-queue-next" class="secondary-button" type="button" data-search-read-only>Next</button></div></section>
             <section id="box-queue-detail" class="box-queue-card" hidden></section>
+            </section>
+            <section id="accounts-stock-panel" hidden aria-labelledby="accounts-stock-title">
+              <div class="accounts-stock-heading"><h2 id="accounts-stock-title">Supplier Stock</h2><span id="accounts-stock-updated" class="live-chip" role="status"></span></div>
+              <form id="accounts-stock-filter" class="box-queue-filter">
+                <label id="accounts-date-from-label">Received from · UAE<input name="from" type="date"></label>
+                <label id="accounts-date-to-label">Received to · UAE<input name="to" type="date"></label>
+                <label class="accounts-search">Find stock<input name="search" type="search" placeholder="Supplier, invoice, model, color…" maxlength="160"></label>
+                <button class="primary-button" type="submit" data-search-read-only>Search</button>
+                <button id="accounts-stock-clear" class="secondary-button" type="button" data-search-read-only>Clear filters</button>
+                <button id="accounts-stock-refresh" class="secondary-button" type="button" data-search-read-only>Refresh</button>
+              </form>
+              <p id="accounts-stock-note" class="box-review-note"></p>
+              <p id="accounts-stock-message" class="form-message" role="status"></p>
+              <div id="accounts-stock-totals" class="accounts-stock-totals"></div>
+              <section class="box-queue-card"><div id="accounts-stock-list"></div><div class="box-queue-pagination"><button id="accounts-stock-prev" class="secondary-button" type="button" data-search-read-only>Previous</button><span id="accounts-stock-count"></span><button id="accounts-stock-next" class="secondary-button" type="button" data-search-read-only>Next</button></div></section>
+            </section>
           </section>
         </div>
       </main>
