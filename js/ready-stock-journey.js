@@ -149,6 +149,10 @@
     return typeof value === 'object' ? 'Not recorded' : String(value);
   }
 
+  function journeyDate(value) {
+    const date = value ? new Date(value) : null;
+    return date && Number.isFinite(date.getTime()) ? date.toLocaleString("en-GB", {timeZone:"Asia/Dubai",day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:true}) : "Not recorded";
+  }
   function renderDetail(data) {
     const device = data.device || {};
     document.querySelector('#journey-detail-title').textContent = device.imei_1 || device.device_number || 'Device history';
@@ -156,9 +160,9 @@
     const current = row?.current_stage || displayValue(device.current_status).replace(/_/g, ' ');
     document.querySelector('#journey-detail-stage').textContent = [device.model, device.storage_gb ? `${device.storage_gb} GB` : '', device.color, `Current stage: ${current}`].filter(Boolean).join(' · ');
     const records = Array.isArray(data.rows) ? data.rows : [];
-    detailBody.innerHTML = records.length ? '<ol class="stock-journey-steps">' + records.map(item => {
+    const fullActivity = records.length ? '<ol class="stock-journey-steps">' + records.map(item => {
       const details = (Array.isArray(item.details) ? item.details : []).map(value => `<li><strong>${escapeHtml(value.label)}:</strong> ${escapeHtml(displayValue(value.value))}</li>`);
-      details.unshift(`<li><strong>Date & time:</strong> ${escapeHtml(formatDateTime(item.occurred_at))}</li>`);
+      details.unshift(`<li><strong>Date & time:</strong> ${escapeHtml(journeyDate(item.occurred_at))}</li>`);
       details.push(`<li><strong>${item.stage === 'assignment' ? 'Assigned technician' : 'By'}:</strong> ${escapeHtml(item.actor || 'Not recorded')}</li>`);
       if (item.job_number) details.push(`<li><strong>Job:</strong> ${escapeHtml(item.job_number)}</li>`);
       if (item.status) details.push(`<li><strong>Status:</strong> ${escapeHtml(displayValue(item.status).replace(/_/g, ' '))}</li>`);
@@ -170,6 +174,8 @@
       }
       return `<li class="stock-journey-step"><h3>${escapeHtml(item.title || 'Recorded step')}</h3><ul>${details.join('')}</ul></li>`;
     }).join('') + '</ol>' : '<p>No recorded steps are available for this phone yet.</p>';
+    detailBody.innerHTML = window.GREENLOOP_STOCK_JOURNEY.render(records, {escape:escapeHtml,date:journeyDate,money:formatMoney}) +
+      (records.length ? '<details class="journey-full-activity"><summary>Full activity ('+records.length+' records)</summary>'+fullActivity+'</details>' : '');
   }
 
   async function loadDetail(deviceId) {

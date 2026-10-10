@@ -57,3 +57,16 @@
 .stock-journey-step ul { padding-left: 20px; }
 .stock-journey-step ul li { margin: 7px 0; line-height: 1.5; }
 @media (max-width: 620px) { .stock-journey-detail { padding: 18px; } .stock-journey-detail > header { flex-wrap: wrap; } .stock-journey-step { padding: 12px; } }
+
+/* One compact item per recorded workflow visit. */
+.stock-journey-compact {list-style:none;margin:0;padding:0;}
+.journey-summary-step {display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--nm-line,#d6e2d9);}
+.journey-summary-step:last-child {border-bottom:0;}
+.journey-step-number {flex:0 0 27px;height:27px;display:grid;place-items:center;border-radius:8px;background:var(--nm-accent-soft,#def2e7);color:var(--nm-accent,#087859);font-weight:800;font-size:.82rem;}
+.journey-summary-step > div {min-width:0;}
+.stock-journey-detail .journey-summary-step h3 {margin:1px 0 4px;font-size:.98rem;color:inherit;}
+.journey-step-meta,.journey-step-facts {margin:3px 0;font-size:.8rem;line-height:1.5;overflow-wrap:anywhere;}
+.journey-step-meta {color:var(--nm-muted,#687d70);}
+.journey-full-activity {margin-top:18px;border-top:1px solid var(--nm-line,#d6e2d9);padding-top:12px;}
+.journey-full-activity > summary {cursor:pointer;font-size:.85rem;font-weight:700;color:var(--nm-accent,#087859);padding:8px 0;}
+.journey-full-activity .stock-journey-steps {margin-top:12px;}
