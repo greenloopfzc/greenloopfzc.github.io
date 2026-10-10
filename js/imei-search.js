@@ -340,6 +340,25 @@ function buildStageSections(sortedRows) {
     if(section.key==="other")return `<details class="history-other"><summary>Other saved entries</summary><ul class="history-bullets">${section.rows.map(row=>renderRecord(row,section.key)).join("")}</ul></details>`;
     return `<section class="history-stage" data-stage="${escapeHtml(section.key)}" aria-labelledby="history-stage-${index}"><h3 id="history-stage-${index}">${escapeHtml(section.title)}</h3><ul class="history-bullets">${bullets}</ul>${supplemental.length ? `<details class="history-other"><summary>Timer records</summary><ul class="history-bullets">${supplemental.map(row=>renderRecord(row,section.key)).join("")}</ul></details>` : ""}</section>`;
   }
+  function journeyMoment(value) {
+    const stamp=timestamp(value);
+    return stamp===null ? missing : new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Dubai",day:"2-digit",month:"short",year:"numeric",hour:"numeric",minute:"2-digit",second:"2-digit",hour12:true}).format(new Date(stamp));
+  }
+  function currentStage(device) {
+    // Match the workflow status names used by Stock Journey. Do not infer the
+    // current stage from an older job's last history event.
+    const status=scalar(device.current_status).toLowerCase();
+    const names={received:"IMEI Entry — saved",initial_qc_pending:"Initial QC",initial_qc_completed:"Initial QC — completed",no_work_required:"Initial QC — no work required",parts_pending:"Parts",laboratory_pending:"Laboratory",laboratory_in_progress:"Laboratory",glass_pending:"Glass",glass_in_progress:"Glass",frame_pending:"Frame Department",frame_in_progress:"Frame Department",final_qc_pending:"Final QC",qc_failed:"Final QC — failed",qc_passed:"Ready Stock",production_pending:"Ready Stock",production_completed:"Ready Stock",ready_for_packing:"Ready Stock",ready_for_shipment:"Ready Stock",shipped:"Export / Shipped",supplier_return_requested:"Stock Return — requested",return_pending:"Stock Return — pending",returned_to_supplier:"Returned to supplier"};
+    return names[status] || scalar(device.current_status);
+  }
+  function renderActivity(row) {
+    const details=visibleDetails(row).map(item=>`<li>${fact(item.label,item.value)}</li>`);
+    for(const part of (Array.isArray(row.parts)?row.parts:[])) {
+      details.push(`<li>${fact("Part",[scalar(part.name),number(part.quantity)===null ? "" : "× "+part.quantity,number(part.unit_cost)===null ? "Price not recorded" : money(part.unit_cost)+" / part"].filter(Boolean).join(" · "))}</li>`);
+    }
+    if(number(row.duration_seconds)!==null)details.push(`<li>${fact(row.duration_label || "Recorded time",duration(row.duration_seconds))}</li>`);
+    return `<li class="history-activity-record" data-record-id="${escapeHtml(row.id)}"><h4>${safe(row.title || stages[row.stage] || row.stage)}</h4><p>${safe(journeyMoment(row.occurred_at))} · ${fact("By",row.actor)}${scalar(row.status) ? " · "+fact("Status",label(row.status)) : ""}${scalar(row.job_number) ? " · "+fact("Job",row.job_number) : ""}</p>${details.length ? `<ul class="history-bullets">${details.join("")}</ul>` : ""}</li>`;
+  }
   function renderBasicTable(device,rows) {
     const names=Boolean(window.GREENLOOP_CAN_VIEW_PARTNER_NAMES);
     const receipt=[...rows].reverse().find(row=>row.stage==="stock_received") || {};
@@ -353,16 +372,23 @@ function buildStageSections(sortedRows) {
     ];
     if(scalar(device.imei_2) || scalar(device.region))values.push([scalar(device.imei_2) ? "IMEI 2" : "Current location",scalar(device.imei_2) || place(device.current_location)],["Phone region",device.region]);
     const cells=values.map(([name,value])=>`<th scope="row">${escapeHtml(name)}</th><td>${safe(value)}</td>`);
-    header.innerHTML=`<div class="history-basic-heading"><h2 id="history-device-name">Device details</h2>${badge(device.current_status)}</div><table class="history-basic-table"><caption class="history-sr-only">Basic phone and supplier details</caption><tbody>${cells.reduce((html,cell,index)=>html+(index%2===0 ? "<tr>" : "")+cell+(index%2===1 || index===cells.length-1 ? "</tr>" : ""),"")}</tbody></table>`;
+    header.innerHTML=`<div class="history-basic-heading"><h2 id="history-device-name">Device details</h2>${badge(currentStage(device))}</div><table class="history-basic-table"><caption class="history-sr-only">Basic phone and supplier details</caption><tbody>${cells.reduce((html,cell,index)=>html+(index%2===0 ? "<tr>" : "")+cell+(index%2===1 || index===cells.length-1 ? "</tr>" : ""),"")}</tbody></table>`;
   }
   function renderHistory(data) {
     const rows=(Array.isArray(data.rows)?data.rows:[]).filter(row=>row && typeof row==="object").map((row,index)=>({row,index,stamp:timestamp(row.occurred_at)})).sort((a,b)=>(a.stamp===null?Infinity:a.stamp)-(b.stamp===null?Infinity:b.stamp)||a.index-b.index).map(item=>item.row);
     renderBasicTable(data.device || {},rows);
-    const sections=buildStageSections(rows);
-    body.innerHTML=sections.map(renderSection).join("") || '<p class="history-missing">No history has been recorded for this phone.</p>';
-    count.textContent="All dates and times are UAE time";
+    const visibleRows=rows.map(row=>({...row,details:visibleDetails(row)}));
+    const compact=window.GREENLOOP_STOCK_JOURNEY.render(visibleRows,{
+      escape:escapeHtml,date:journeyMoment,
+      money:value=>number(value)===null ? missing : number(value).toLocaleString("en-GB",{minimumFractionDigits:2,maximumFractionDigits:2})
+    });
+    body.innerHTML=rows.length ? compact+`<details class="history-full-activity"><summary>Full activity (${rows.length} records)</summary><ol class="history-activity-list">${visibleRows.map(renderActivity).join("")}</ol></details>` : '<p class="history-missing">No history has been recorded for this phone.</p>';
+    count.textContent="Journey in recorded order · All dates and times are UAE time";
     const totals=data.summary || {};
-    summary.innerHTML=`<span>${fact("Total recorded cost",money(totals.recorded_total_cost))}</span>${number(totals.unpriced_manual_part_quantity)>0 ? '<span class="history-missing">Some manual parts have no recorded price.</span>' : ""}`;
+    const unpriced=number(totals.unpriced_manual_part_quantity) || 0;
+    summary.innerHTML=unpriced>0
+      ? `<span>${fact("Total cost","Incomplete — part prices missing")}</span><span>${fact("Recorded amount",money(totals.recorded_total_cost))}</span><span class="history-missing">${escapeHtml(unpriced)} manual part${unpriced===1 ? " has" : "s have"} no recorded price and ${unpriced===1 ? "is" : "are"} excluded from the recorded amount.</span>`
+      : `<span>${fact("Total recorded cost",money(totals.recorded_total_cost))}</span>`;
     result.hidden=false;
   }
 

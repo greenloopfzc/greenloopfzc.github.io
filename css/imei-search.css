@@ -67,3 +67,21 @@ html:is([data-design="neumorphism"],[data-mode="dark"]) .history-content { --his
 }
 @media(max-width:560px) { .search-row { grid-template-columns:1fr; } .search-row .primary-button { width:100%; } }
 @media print { .sidebar,.topbar,.menu-backdrop,.history-heading,.search-panel,.toast { display:none!important; } .app-main { margin:0!important; } .history-content { max-width:none; padding:0; } .history-result.imei-journey { box-shadow:none!important; background:#fff!important; --history-ink:#172d23; --history-muted:#425a4d; --history-green:#176648; --history-line:#cbd6ce; --history-well:#f4f6f4; } .history-stage { break-inside:avoid; } }
+
+/* Compact workflow visits, shared with Stock Journey; scoped to IMEI Search. */
+#history-rows .stock-journey-compact { list-style:none; margin:0; padding:0; }
+#history-rows .journey-summary-step { display:flex; gap:12px; padding:15px 0; border-bottom:1px solid var(--history-line); }
+#history-rows .journey-summary-step > div { min-width:0; }
+#history-rows .journey-step-number { display:grid; place-items:center; flex:0 0 28px; height:28px; border-radius:50%; background:var(--history-green-bg); color:var(--history-green); font-size:.8rem; font-weight:700; }
+#history-rows .journey-summary-step h3 { margin:0 0 5px; color:var(--history-green); font-size:1rem; line-height:1.4; }
+#history-rows .journey-step-meta,#history-rows .journey-step-facts { margin:4px 0; color:var(--history-ink); font-size:.85rem; line-height:1.6; overflow-wrap:anywhere; }
+#history-rows .journey-step-meta { color:var(--history-muted); }
+#history-rows .journey-step-facts strong { font-size:.85rem; font-weight:650; line-height:1.6; }
+.history-full-activity { margin:18px 0; padding:12px 15px; border:1px solid var(--history-line); border-radius:12px; }
+.history-full-activity > summary { cursor:pointer; font-size:.85rem; font-weight:650; }
+.history-full-activity > summary:focus-visible { outline:2px solid var(--history-green); outline-offset:5px; }
+.history-activity-list { padding-left:22px; }
+.history-activity-record { padding:12px 0; border-bottom:1px solid var(--history-line); overflow-wrap:anywhere; }
+.history-activity-record h4 { margin:0 0 5px; font-size:.9rem; }
+.history-activity-record p,.history-activity-record .history-bullets { margin:5px 0; font-size:.8rem; line-height:1.6; }
+@media print { #history-rows .journey-summary-step { break-inside:avoid; } }
