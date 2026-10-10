@@ -22,7 +22,7 @@
     if(tracking&&!end)return;tracking=true;
     try{if(await session())await client.rpc('touch_login_activity_v1',{p_surface:'Software',p_page:page,p_end:end});}catch(_){}finally{tracking=false;}
   }
-  window.GREENLOOP_LOGIN_TRACKER={touch};
+  window.GREENLOOP_LOGIN_TRACKER={touch,refresh:()=>poll()};
   // Logging cannot prevent signing out or delay it indefinitely.
   const signOut=client.auth.signOut.bind(client.auth);
   client.auth.signOut=async (...args)=>{await Promise.race([touch(true),new Promise(r=>setTimeout(r,1200))]);const result=await signOut(...args);reset();return result;};
@@ -36,7 +36,8 @@
     if(mounted)return;mounted=true;
     const style=document.createElement('link');style.rel='stylesheet';style.href='css/login-activity.css?v=20261006-login-activity-1';document.head.append(style);
     if(page!=='user-access.html')return;
-    const host=document.querySelector('.user-access-content');if(!host)return;
+    const sectionHost=document.querySelector('#access-login-view');
+    const host=sectionHost||document.querySelector('.user-access-content');if(!host)return;
     panel=document.createElement('section');panel.id='login-activity';panel.className='login-activity-panel access-panel';panel.hidden=true;
     panel.innerHTML=`<div class="access-panel-heading"><div><p class="panel-kicker">SUPER ADMIN ONLY</p><h2>Login Activity</h2></div><button id="login-activity-refresh" type="button" class="secondary-button">Refresh</button></div>
       <p class="login-activity-help">Software and TV sign-ins · UAE time · Refresh every 30 seconds.<br>Recently active = connection confirmed within 90 seconds. Offline can mean a closed browser or lost connection. Existing sessions are marked separately.</p>
@@ -45,6 +46,7 @@
       <div class="login-activity-table"><table><thead><tr><th>User</th><th>Login · UAE</th><th>Device / browser</th><th>Signed in through</th><th>Last activity · UAE</th><th>Last window</th><th>Status</th></tr></thead><tbody id="login-activity-rows"></tbody></table></div>
       <div class="login-activity-pages"><button id="login-activity-prev" class="secondary-button" type="button">Previous</button><span id="login-activity-range"></span><button id="login-activity-next" class="secondary-button" type="button">Next</button></div><p id="login-activity-since" class="login-activity-help"></p>`;
     const anchor=host.querySelector('#permission-message');anchor?anchor.after(panel):host.append(panel);
+    panel.querySelectorAll('button').forEach(button=>button.setAttribute('data-search-read-only',''));
     el('login-activity-filters').addEventListener('submit',e=>{e.preventDefault();offset=0;poll();});
     el('login-activity-clear').onclick=()=>{el('login-activity-filters').reset();offset=0;poll();};
     el('login-activity-refresh').onclick=()=>poll();
@@ -52,6 +54,7 @@
     el('login-activity-next').onclick=()=>{offset+=25;poll();};
   }
   function showLink() {
+    if(page==='user-access.html'&&document.querySelector('.user-access-sections'))return;
     if(link||!document.querySelector('.topbar-actions'))return;
     link=document.createElement('a');link.className='secondary-button login-activity-link';link.href='user-access.html#login-activity';link.textContent='Login Activity';document.querySelector('.topbar-actions').prepend(link);
   }
@@ -81,7 +84,9 @@
     try {
       if(!await session())return;mine=generation;
       const access=await client.rpc('get_login_activity_access_v1');if(mine!==generation)return;
-      if(access.error||access.data!==true){allowed=false;if(link)link.remove();link=null;if(notice)notice.remove();notice=null;if(panel){panel.hidden=true;el('login-activity-rows').innerHTML='';}return;}
+      const unavailable=el('login-activity-unavailable');
+      if(access.error||access.data!==true){allowed=false;if(unavailable){unavailable.hidden=false;unavailable.textContent=access.error?'Login Activity access could not be checked. Select the Login Activity card again to retry.':'Only Super Admin can view Login Activity.';}if(link)link.remove();link=null;if(notice)notice.remove();notice=null;if(panel){panel.hidden=true;el('login-activity-rows').innerHTML='';}return;}
+      if(unavailable)unavailable.hidden=true;
       allowed=true;mount();showLink();
       const from=el('login-activity-from')?.value||null,to=el('login-activity-to')?.value||null;
       if(from&&to&&from>to){el('login-activity-message').textContent='From date must be before or equal to To date.';return;}
@@ -90,7 +95,7 @@
       if(result.error){if(result.error.code==='42501'){reset(userId);return;}throw result.error;}
       const data=result.data;if(!data||!Array.isArray(data.rows)||!Array.isArray(data.alerts)||!/^\d+$/.test(data.cursor))throw Error('Login Activity response could not be verified.');
       render(data);alertNew(data.alerts);cursor=data.cursor;try{localStorage.setItem(key(),cursor);}catch(_){}
-    }catch(_){if(panel&&!panel.hidden)el('login-activity-message').textContent='Live connection unavailable. The last loaded records remain below; use Refresh to retry.';}
+    }catch(_){if(panel&&!panel.hidden)el('login-activity-message').textContent='Live connection unavailable. The last loaded records remain below; use Refresh to retry.';else if(el('login-activity-unavailable')){el('login-activity-unavailable').hidden=false;el('login-activity-unavailable').textContent='Login Activity could not be loaded. Select the Login Activity card again to retry.';}}
     finally{if(mine===undefined||mine===generation)busy=false;}
   }
   function start(){mount();touch();poll();setInterval(()=>{if(!document.hidden){touch();poll();}},30000);}

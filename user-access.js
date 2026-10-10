@@ -29,6 +29,30 @@
   let savingAccess = false;
   let creatingUser = false;
 
+  const accessSections = {
+    "login-activity": ["access-login-view", "Login Activity"],
+    "greenloop-accounts": ["access-accounts-view", "Greenloop Accounts with Page Permissions"],
+    "add-greenloop-user": ["access-create-view", "Add Greenloop User"]
+  };
+
+  function showAccessSection(focusHeading = false) {
+    const section = location.hash.slice(1);
+    const selected = Object.prototype.hasOwnProperty.call(accessSections, section) ? section : "";
+    Object.entries(accessSections).forEach(([key, [id]]) => {
+      document.getElementById(id).hidden = key !== selected;
+    });
+    app.querySelectorAll("[data-access-section]").forEach((button) => {
+      const active = button.dataset.accessSection === selected;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-expanded", String(active));
+    });
+    document.getElementById("user-access-section-heading").hidden = !selected;
+    const heading = document.getElementById("user-access-section-title");
+    heading.textContent = selected ? accessSections[selected][1] : "";
+    if (selected && focusHeading) heading.focus({preventScroll: true});
+    if (selected === "login-activity") window.GREENLOOP_LOGIN_TRACKER?.refresh?.();
+  }
+
   // Permanent rule: every new Greenloop page must be added here with its own
   // View only and Entry Allowed access choice, plus matching config and SQL keys.
   const pageGuideData = [
@@ -47,7 +71,7 @@
     ["final_qc", "Final QC", "Final inspection, grade, Battery Health, Pass or Fail."],
     ["ready_stock", "Ready Stock", "View all Final QC passed stock."],
     ["export_boxes", "Box Entry", "Scan phones, print the box and save it to Accounts."],
-    ["accounts", "Accounts", "View saved boxes and source details; Entry Allowed can verify boxes for export."],
+    ["accounts", "Accounts", "View supplier and customer stock; Entry Allowed can manage customers and verify boxes for export."],
     ["stock_exported", "Stock Exported", "View and print verified exported boxes and historical boxes."],
     ["ready_stock_journey", "Ready Stock Journey", "View complete IMEI workflow history."],
     ["reports", "Reports", "View operational and management reports."],
@@ -374,11 +398,24 @@
     currentUserIsSuperAdmin = Boolean(isSuperAdmin);
 
     app.hidden = false;
+    showAccessSection();
     renderNewUserPages();
     await loadUsers();
   }
 
   document.querySelector("#open-menu").addEventListener("click", () => setMenu(true));
+  app.querySelectorAll("[data-access-section]").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (location.hash.slice(1) === button.dataset.accessSection) showAccessSection(true);
+      else location.hash = button.dataset.accessSection;
+    });
+  });
+  document.querySelector("#user-access-home").addEventListener("click", () => {
+    history.pushState(null, "", location.pathname + location.search);
+    showAccessSection();
+    app.querySelector("[data-access-section]").focus({preventScroll: true});
+  });
+  window.addEventListener("hashchange", () => showAccessSection(true));
   document.querySelector("#close-menu").addEventListener("click", () => setMenu(false));
   backdrop.addEventListener("click", () => setMenu(false));
   document.querySelector("#refresh-users").addEventListener("click", () => {

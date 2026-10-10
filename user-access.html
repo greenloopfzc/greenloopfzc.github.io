@@ -10,14 +10,14 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css?v=20260811-5">
-    <link rel="stylesheet" href="css/user-access.css?v=20261005-manual-damage-module-1">
+    <link rel="stylesheet" href="css/user-access.css?v=20261010-user-access-sections-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="js/config.js?v=20261010-box-workflow-1"></script>
-  <script defer src="js/login-activity.js?v=20261007-time-brand-1"></script>
+  <script defer src="js/login-activity.js?v=20261010-user-access-sections-1"></script>
   <link rel="stylesheet" href="css/record-search.css?v=20261003-navigation-search-1">
   <script defer src="js/record-search.js?v=20261003-navigation-search-1"></script>
     <script defer src="js/part-notifications.js?v=20260918-audit-2"></script>
-    <script defer src="js/user-access.js?v=20261010-box-workflow-1"></script>
+    <script defer src="js/user-access.js?v=20261010-user-access-sections-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20260928-sidebar-depth-1">
     <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
   <link rel="stylesheet" href="css/sidebar-compact.css?v=20261009-sidebar-pdf-1">
@@ -46,24 +46,36 @@
           <section class="page-heading">
             <div>
               <p class="eyebrow dashboard-eyebrow">Access control</p>
-              <h1>Users and permissions</h1>
-              <p class="heading-subtitle">Create username accounts and choose which Greenloop pages each user can use.</p>
+              <h1>User Access</h1>
+              <p class="heading-subtitle">Choose Login Activity, manage existing accounts, or add a new Greenloop user.</p>
             </div>
           </section>
 
           <div id="permission-message" class="access-message" hidden></div>
 
           <section id="user-access-app" hidden>
-            <div class="access-notice">
-              <strong>Username login</strong>
-              <span>Create staff accounts here with a username and password. The required internal authentication email is generated automatically and is never shown to staff.</span>
-            </div>
-
+            <nav class="user-access-sections" aria-label="User Access sections">
+              <button class="user-access-section" type="button" data-access-section="login-activity" data-search-read-only aria-controls="access-login-view" aria-expanded="false">
+                <span class="user-access-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></svg></span>
+                <strong>Login Activity</strong><small>View sign-ins and recent activity.<br>Super Admin only.</small>
+              </button>
+              <button class="user-access-section" type="button" data-access-section="greenloop-accounts" data-search-read-only aria-controls="access-accounts-view" aria-expanded="false">
+                <span class="user-access-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="3"/><path d="M3 20v-3a6 6 0 0 1 12 0v3M16 7h5M18.5 4.5v5M17 14h4M17 18h4"/></svg></span>
+                <strong>Greenloop Accounts with Page Permissions</strong><small>View users and manage their page access.</small>
+              </button>
+              <button class="user-access-section" type="button" data-access-section="add-greenloop-user" data-search-read-only aria-controls="access-create-view" aria-expanded="false">
+                <span class="user-access-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="3"/><path d="M3 20v-3a6 6 0 0 1 12 0v3M19 11v8M15 15h8"/></svg></span>
+                <strong>Add Greenloop User</strong><small>Create a username account and assign access.</small>
+              </button>
+            </nav>
+            <div id="user-access-section-heading" class="user-access-section-heading" hidden><h2 id="user-access-section-title" tabindex="-1"></h2><button id="user-access-home" class="secondary-button" type="button" data-search-read-only>Back to User Access</button></div>
+            <section id="access-login-view" class="user-access-view" aria-label="Login Activity" hidden><p id="login-activity-unavailable" class="access-empty" role="status">Checking Login Activity access…</p></section>
+            <section id="access-accounts-view" class="user-access-view" aria-label="Greenloop Accounts with Page Permissions" hidden>
             <div class="user-access-layout">
               <section class="access-panel user-list-panel">
                 <div class="access-panel-heading">
                   <div><p class="panel-kicker">Users</p><h2>Greenloop accounts</h2></div>
-                  <button id="refresh-users" class="secondary-button" type="button">Refresh</button>
+                  <button id="refresh-users" class="secondary-button" type="button" data-search-read-only>Refresh</button>
                 </div>
                 <div id="user-list" class="user-list"></div>
               </section>
@@ -90,6 +102,13 @@
               </section>
             </div>
 
+            </section>
+            <section id="access-create-view" class="user-access-view" aria-label="Add Greenloop User" hidden>
+            <div class="access-notice">
+              <strong>Username login</strong>
+              <span>Create staff accounts here with a username and password. The required internal authentication email is generated automatically and is never shown to staff.</span>
+            </div>
+
             <section class="access-panel create-user-panel">
               <div class="access-panel-heading">
                 <div><p class="panel-kicker">New account</p><h2>Add Greenloop user</h2></div>
@@ -112,6 +131,7 @@
                 <p id="create-user-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
                 <div class="form-actions"><button id="create-user-button" class="primary-button" type="submit">Create user</button></div>
               </form>
+            </section>
             </section>
           </section>
         </div>
