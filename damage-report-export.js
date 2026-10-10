@@ -36,6 +36,7 @@
         page.ops.forEach(function(op){var el;
           if(op.kind==='text'){el=node('text',{x:op.x,y:page.height-op.y,'font-size':op.size,'font-family':'Helvetica, Arial, sans-serif','font-weight':op.bold?'bold':'normal',fill:color(op.color)});el.textContent=op.text;}
           else if(op.kind==='rect')el=node('rect',{x:op.x,y:page.height-op.y-op.height,width:op.width,height:op.height,fill:color(op.color),stroke:color(op.border),'stroke-width':.45});
+          else if(op.kind==='outline')el=node('rect',{x:op.x,y:page.height-op.y-op.height,width:op.width,height:op.height,fill:'none',stroke:color(op.border),'stroke-width':op.borderWidth});
           else if(op.kind==='line')el=node('line',{x1:op.x,y1:page.height-op.y,x2:op.x2,y2:page.height-op.y2,stroke:color(op.color),'stroke-width':.5});
           else if(op.kind==='brand'){
             el=node('svg',{x:op.x,y:page.height-op.y-op.height,width:op.width,height:op.height,viewBox:op.crop.x+' '+op.crop.y+' '+op.crop.width+' '+op.crop.height,overflow:'hidden'});
@@ -57,7 +58,7 @@
       api.loadDamageExport(start,end,function(error,data){
         if(request!==ticket||!active)return;
         if(error){if(error.clearSession||/^(NO_SESSION|SESSION_EXPIRED|PERMISSION_DENIED)$/.test(error.code||'')){close();onDenied(error);}else failed(error);return;}
-        Promise.all([script('js/vendor/pdf-lib-1.17.1.min.js','PDFLib'),script('js/damage-report-pdf.js?v=20261010-pdf-hub-1','GREENLOOP_DAMAGE_PDF'),
+        Promise.all([script('js/vendor/pdf-lib-1.17.1.min.js','PDFLib'),script('js/damage-report-pdf.js?v=20261010-pdf-borders-1','GREENLOOP_DAMAGE_PDF'),
           fetch('assets/greenloop-fzc-logo.jpg').then(function(response){if(!response.ok)throw new Error('Report logo did not load. Please retry.');return response.arrayBuffer();})])
           .then(function(results){if(request!==ticket||!active)return null;return window.GREENLOOP_DAMAGE_PDF.create(data,{logo:results[2]});})
           .then(function(result){if(!result||request!==ticket||!active)return;finish();

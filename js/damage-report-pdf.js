@@ -174,6 +174,7 @@
     const metricRows = Math.ceil(metrics.length/4);
     const firstTop = HEIGHT - (91 + metricRows*65 + (zeroRows.length ? 27+zeroRows.length*23 : 0) + 18);
     const laterTop = HEIGHT - 85, bottom = 49;
+    const employeeGap = 16, blockOverhead = 89 + employeeGap;
     if (firstTop < bottom + 65) throw new Error('Too many employee or currency cells for this four-page report. Select a smaller report scope.');
     // Paginate measured, variable-height rows. Repeat the employee band and
     // column headings on each continuation page. Exceptionally tall entries
@@ -182,7 +183,7 @@
     for(const padding of [10,7,4]) {
       pages=[[]];let remaining=firstTop-bottom;
       const fresh=laterTop-bottom;
-      const maxLines=Math.max(1,Math.floor((fresh-99-padding)/lineHeight));
+      const maxLines=Math.max(1,Math.floor((fresh-blockOverhead-padding)/lineHeight));
       for(const employee of report.active) {
         const fragments=[];
         for(const row of employee.rows) {
@@ -194,8 +195,8 @@
         }
         let offset=0;
         while(offset<fragments.length) {
-          if(remaining<99+fragments[offset].height){pages.push([]);remaining=fresh;}
-          const rows=[];let used=99;
+          if(remaining<blockOverhead+fragments[offset].height){pages.push([]);remaining=fresh;}
+          const rows=[];let used=blockOverhead;
           while(offset+rows.length<fragments.length&&used+fragments[offset+rows.length].height<=remaining) {
             const row=fragments[offset+rows.length];rows.push(row);used+=row.height;
           }
@@ -212,13 +213,13 @@
     for(let pi=0;pi<pages.length;pi++) {
       const blocks=pages[pi], rows=blocks.flatMap(block=>block.rows);
       const available=(pi===0?firstTop:laterTop)-bottom;
-      const used=blocks.length*99+rows.reduce((total,row)=>total+row.height,0);
+      const used=blocks.length*blockOverhead+rows.reduce((total,row)=>total+row.height,0);
       const slack=rows.length?Math.max(0,available-used)/rows.length:0;
       const extra=pi===pages.length-1?Math.min(24,slack):slack;
       for(const row of rows) row.height+=extra;
     }
     const colors = { ink:lib.rgb(.07,.13,.17), green:lib.rgb(0,.40,.29), muted:lib.rgb(.22,.29,.33), line:lib.rgb(.66,.73,.77),
-      pale:lib.rgb(.91,.94,.96), pink:lib.rgb(.99,.92,.90), white:lib.rgb(1,1,1), red:lib.rgb(.53,.17,.12) };
+      heading:lib.rgb(.85,.94,.89), pale:lib.rgb(.91,.94,.96), pink:lib.rgb(.99,.92,.90), white:lib.rgb(1,1,1), red:lib.rgb(.53,.17,.12) };
     let logo = null;
     if (options.logo) {
       const bytes = new Uint8Array(options.logo);
@@ -242,6 +243,12 @@
       drawText(page,text,x,y,adjusted,width,face,color,align);
     }
     function rect(page,x,y,width,height,color) { previewOps.push({kind:'rect',x,y,width,height,color,border:colors.line});page.drawRectangle({x,y,width,height,color,borderColor:colors.line,borderWidth:.45}); }
+    // Record outlines for both the downloadable PDF and its vector preview.
+    function outline(page,x,y,width,height) {
+      const borderWidth=.85;
+      previewOps.push({kind:'outline',x,y,width,height,border:colors.green,borderWidth});
+      page.drawRectangle({x,y,width,height,borderColor:colors.green,borderWidth});
+    }
     function drawBrand(page,x,y,width) {
       if(!logo) {drawText(page,'Greenloop FZC',x,y+5,Math.min(14,width/8),width,bold,colors.green);return;}
       const crop={x:110,y:100,width:1080,height:230};
@@ -270,25 +277,28 @@
         let y=HEIGHT-91-metricRows*65;
         drawText(page,'Monthly AED settlement | LCD allowance only | Unpriced parts: '+report.unpriced+' | Pending: '+report.pending.length,MARGIN,y,8.5,BODY,font,colors.muted);
         if(zeroRows.length) {
-          y-=23;drawText(page,'ZERO DAMAGE - '+report.zero.length+' EMPLOYEES',MARGIN,y,9,BODY,bold,colors.green);y-=27;
+          const zeroBoxTop=y-7;
+          y-=23;drawText(page,'ZERO DAMAGE - '+report.zero.length+' EMPLOYEES',MARGIN+8,y,9,BODY-16,bold,colors.green);y-=27;
           for(const row of zeroRows) {
             const surplus=(BODY-row.reduce((sum,cell)=>sum+cell.width,0))/row.length; let x=MARGIN;
             for(const cell of row) { const w=cell.width+surplus;rect(page,x,y,w,23,colors.pale);drawText(page,cell.name,x+7,y+8,9,w-14,font,colors.ink,'center');x+=w; }
             y-=23;
           }
+          outline(page,MARGIN,y+23,BODY,zeroBoxTop-y-23);
         }
       }
       let top=pi===0?firstTop:laterTop;
       if(!report.active.length)drawText(page,'No damage recorded in the selected dates.',MARGIN,top-20,12,BODY);
       for(const block of pages[pi]) {
+        const boxTop=top;
         const employee=block.employee;
         const name=employee.name+(block.continued?' (continued)':'');
         const department=employee.department==='glass'?'Glass Department':employee.department==='other'?'Other Department':'Department pending';
         const month=months[Number(employee.month.slice(5))-1]+' '+employee.month.slice(0,4);
         const value=Array.from(employee.totals).map(([cur,cents])=>cur+' '+money(cents)).join(' / ') || 'Not priced';
-        const cells=[{w:BODY*.40,label:name,value:department+' | '+month,color:colors.pale},
-          {w:BODY*.30,label:'TOTAL DAMAGE VALUE',value,color:colors.pink},
-          {w:BODY*.30,label:'TECHNICIAN PAYABLE',value:employee.pending || 'AED '+money(employee.payable),color:colors.pale}];
+        const cells=[{w:BODY*.40,label:name,value:department+' | '+month,color:colors.heading},
+          {w:BODY*.30,label:'TOTAL DAMAGE VALUE',value,color:colors.heading},
+          {w:BODY*.30,label:'TECHNICIAN PAYABLE',value:employee.pending || 'AED '+money(employee.payable),color:colors.heading}];
         let hx=MARGIN;
         for(const cell of cells) {
           rect(page,hx,top-42,cell.w,42,cell.color);
@@ -314,7 +324,8 @@
           }
           top-=row.height;
         }
-        top-=10;
+        outline(page,MARGIN,top,BODY,boxTop-top);
+        top-=employeeGap;
       }
       previewOps.push({kind:'line',x:MARGIN,y:35,x2:WIDTH-MARGIN,y2:35,color:colors.line});
       page.drawLine({start:{x:MARGIN,y:35},end:{x:WIDTH-MARGIN,y:35},thickness:.5,color:colors.line});
