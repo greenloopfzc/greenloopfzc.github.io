@@ -1,0 +1,16 @@
+.box-queue-filter,.box-queue-card { background:var(--nm-card,#f7fafb); border:1px solid var(--nm-line,#d4dfe5); border-radius:22px; padding:24px; margin-bottom:22px; box-shadow:var(--nm-shadow-out,5px 5px 9px #b8c9d1,-5px -5px 9px #fff); }
+.box-queue-filter { display:flex; align-items:end; flex-wrap:wrap; gap:18px; }
+.box-queue-filter label { display:grid; gap:8px; font-size:.85rem; font-weight:600; }
+.box-queue-filter input { padding:12px; border:1px solid var(--nm-line,#ccd9df); border-radius:12px; color:var(--nm-ink,#24363d); background:var(--nm-well,#e6eef1); font:inherit; }
+.box-table-wrap { overflow:auto; }
+.box-table { width:100%; border-collapse:collapse; font-size:.85rem; color:var(--nm-ink,#24363d); }
+.box-table th,.box-table td { text-align:center; padding:13px 9px; border:1px solid var(--nm-line,#ccd9df); overflow-wrap:anywhere; }
+.box-table th { background:var(--nm-well,#e4edef); font-size:.75rem; }
+.box-table button { font:inherit; white-space:nowrap; }
+.box-detail-heading,.box-actions,.box-queue-pagination { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+.box-detail-heading h2 { margin:12px 0 6px; }
+.box-review-note,.box-empty { color:var(--nm-muted,#526a76); line-height:1.6; font-size:.85rem; }
+.box-queue-pagination { margin-top:18px; }
+.box-actions button[hidden] { display:none; }
+@media(max-width:700px){ .box-queue-filter,.box-queue-card { padding:15px; } .box-table { font-size:.8rem; } }
+@media print { @page { size:A4 portrait; margin:10mm; } .sidebar,.topbar,.page-heading,.box-queue-filter,#box-queue-list,.box-queue-pagination,#box-queue-message,.box-actions,.box-review-note,.toast { display:none!important; } .app-main,.page-content { margin:0!important; padding:0!important; } .box-queue-card:not(#box-queue-detail) { display:none; } #box-queue-detail { padding:0; margin:0; border:0; box-shadow:none; } .box-table-wrap { overflow:visible; } .box-table { font-size:8pt; table-layout:fixed; color:#000; } .box-table th,.box-table td { padding:5px 3px; border:1px solid #9ba9ad; } .box-table tr { break-inside:avoid; } .box-table thead { display:table-header-group; } }

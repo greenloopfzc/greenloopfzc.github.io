@@ -78,7 +78,7 @@ window.GREENLOOP_CONFIG = Object.freeze({
       sharedClient.rpc = async (name, ...args) => {
         // Capture guards also cover automatic saves and scanner callbacks that
         // never pass through a button click. The database must enforce this too.
-        const writes = /^(add_|archive_|assign_|cancel_|close_|complete_|correct_|create_|delete_|ensure_|issue_|mark_|pause_|receive_|record_|remove_|request_|reset_|resume_|return_|review_|route_|save_|scan_imei_to_export_box$|send_|set_|start_|transfer_|transition_|update_|get_or_create_open_export_box$)/;
+        const writes = /^(add_|archive_|assign_|cancel_|close_|complete_|correct_|create_|delete_|ensure_|issue_|mark_|verify_|pause_|receive_|record_|remove_|request_|reset_|resume_|return_|review_|route_|save_|scan_imei_to_export_box$|send_|set_|start_|transfer_|transition_|update_|get_or_create_open_export_box$)/;
         if (writes.test(name)) {
           await window.GREENLOOP_ACCESS_READY;
           if (!window.GREENLOOP_PAGE_ACCESS?.canEdit) return { data: null, error: { code: "42501", message: "Entry Allowed permission is required to make changes on this page." } };
@@ -124,6 +124,9 @@ document.addEventListener("click", (event) => {
     "Final QC": "final-qc.html",
     "Ready Stock": "ready-stock.html",
     "Export Boxes": "export-box.html",
+    "Box Entry": "export-box.html",
+    "Accounts": "accounts.html",
+    "Stock Exported": "stock-exported.html",
     "Ready Stock Journey": "ready-stock-journey.html",
     "Stock Journey": "ready-stock-journey.html",
     "Reports": "reports.html",
@@ -173,7 +176,9 @@ document.addEventListener("click", (event) => {
   if (readyStock) {
     readyStock.insertAdjacentHTML(
       "afterend",
-      `<a class="nav-item${page === "export-box.html" ? " active" : ""}" href="export-box.html"><span class="nav-icon" aria-hidden="true">&#9635;</span>Export Boxes</a>`
+      `<a class="nav-item${page === "export-box.html" ? " active" : ""}" href="export-box.html"><span class="nav-icon" aria-hidden="true">&#9635;</span>Box Entry</a>` +
+      item("Accounts", "accounts.html", "▣", page === "accounts.html") +
+      item("Stock Exported", "stock-exported.html", "↗", page === "stock-exported.html")
     );
   }
 })();
@@ -273,6 +278,8 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     final_qc: "final-qc.html",
     ready_stock: "ready-stock.html",
     export_boxes: "export-box.html",
+    accounts: "accounts.html",
+    stock_exported: "stock-exported.html",
     ready_stock_journey: "ready-stock-journey.html",
     reports: "reports.html",
     user_access: "user-access.html"
@@ -298,6 +305,8 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     "final-qc.html": "final_qc",
     "ready-stock.html": "ready_stock",
     "export-box.html": "export_boxes",
+    "accounts.html": "accounts",
+    "stock-exported.html": "stock_exported",
     "packing.html": "export_boxes",
     "stock-out.html": "export_boxes",
     "ready-stock-journey.html": "ready_stock_journey",
@@ -361,7 +370,7 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
   function makePageViewOnly(main, pageKey) {
     window.GREENLOOP_PAGE_ACCESS = { pageKey, accessLevel: "view", canEdit: false };
     document.documentElement.dataset.pageAccess = "view";
-    const mutationWords = /\b(save|create|add|remove|delete|receive|issue|install|return|approve|reject|order|complete|route|pass|fail|cancel|submit|update|edit|start|pause)\b/i;
+    const mutationWords = /\b(save|create|add|remove|delete|receive|issue|install|return|approve|verify|reject|order|complete|route|pass|fail|cancel|submit|update|edit|start|pause)\b/i;
     const mutationSelector = [
       "[data-save-row]", "[data-order-parts]", "[data-complete-lab]", "[data-complete-frame]",
       "[data-add-choice]", "[data-remove-choice]", "[data-review-return]", "[data-delete]",

@@ -384,6 +384,7 @@
       .sort((left, right) => new Date(right.rows[0]?.opened_at || 0) - new Date(left.rows[0]?.opened_at || 0));
   }
 
+  let correctionBoxNumber="";
   let exportFilterWidget;
   function exportSearchItems(rows){return rows.map(row=>({...row,kind:"device",id:row.imei,identifier:row.imei,imei_1:row.imei,storage_gb:row.memory}));}
   function renderExportBoxes() {
@@ -401,7 +402,7 @@
     if(!group)return;
     const matches=exportBoxImeiFilter.trim()?window.GREENLOOP_RECORD_SEARCH.localLookup(exportSearchItems(group.rows),exportBoxImeiFilter).items:exportSearchItems(group.rows);
     const visible=new Set(matches.map(item=>String(item.imei_1)));
-    reportContent.querySelectorAll(".export-box-lines tbody tr").forEach(row=>{row.hidden=!visible.has(row.cells[1]?.textContent.trim());});
+    reportContent.querySelectorAll(".export-box-lines tbody tr").forEach(row=>{row.hidden=!visible.has(row.cells[1]?.querySelector('[data-box-correct-imei]')?.dataset.boxCorrectImei || row.cells[1]?.textContent.trim());});
     const tableBody=reportContent.querySelector(".export-box-lines tbody");
     let empty=tableBody?.querySelector("[data-export-search-empty]");
     if(tableBody && !empty){empty=document.createElement("tr");empty.dataset.exportSearchEmpty="true";const cell=document.createElement("td");cell.colSpan=9;cell.textContent="No phones in this box match your search.";empty.append(cell);tableBody.append(empty);}
@@ -424,11 +425,11 @@
       const filter = exportBoxImeiFilter.trim().toLowerCase();
       const rows = selected.rows;
       const body = rows.length
-        ? rows.map((row) => `<tr><td>${escapeHtml(row.serial_no)}</td><td>${escapeHtml(row.imei)}</td><td>${formatCell(row.serial_number)}</td><td>${formatCell(row.specification_region)}</td><td>${formatCell(row.model)}</td><td>${formatCell(row.memory)}</td><td>${formatCell(row.final_grade)}</td><td>${formatCell(row.color)}</td><td>${formatCell(row.scanned_at, "date")}</td></tr>`).join("")
+        ? rows.map((row) => `<tr><td>${escapeHtml(row.serial_no)}</td><td>${escapeHtml(row.imei)}<br><button type="button" data-box-correct-imei="${escapeHtml(row.imei)}" class="quiet-link">Correct phone</button></td><td>${formatCell(row.serial_number)}</td><td>${formatCell(row.specification_region)}</td><td>${formatCell(row.model)}</td><td>${formatCell(row.memory)}</td><td>${formatCell(row.final_grade)}</td><td>${formatCell(row.color)}</td><td>${formatCell(row.scanned_at, "date")}</td></tr>`).join("")
         : '<tr><td class="report-empty" colspan="9">No IMEI in this box matches your search.</td></tr>';
       detail = `
         <section class="export-box-detail">
-          <div class="export-box-detail-heading"><div><p class="panel-kicker">Selected export box</p><h3>${escapeHtml(selected.boxNumber)}</h3></div><div class="export-box-detail-actions"><span>${selected.rows.length} phone${selected.rows.length === 1 ? "" : "s"}</span><button class="report-delete-box" type="button" data-delete-export-box="${escapeHtml(selected.boxNumber)}">Delete box</button></div></div>
+          <div class="export-box-detail-heading"><div><p class="panel-kicker">Selected export box</p><h3>${escapeHtml(selected.boxNumber)}</h3></div><div class="export-box-detail-actions"><span>${selected.rows.length} phone${selected.rows.length === 1 ? "" : "s"}</span><button class="secondary-button" type="button" data-box-correction>Box Correction</button><button class="report-delete-box" type="button" data-delete-export-box="${escapeHtml(selected.boxNumber)}">Delete box</button></div></div>
           <label class="export-box-imei-search" for="export-box-imei-filter">Search phones in this box<input id="export-box-imei-filter" type="search" autocomplete="off" value="${escapeHtml(exportBoxImeiFilter)}" placeholder="IMEI, serial number, model, GB, or color"></label>
           <div class="report-table-wrap"><table class="report-table export-box-lines"><thead><tr><th>S.No</th><th>IMEI</th><th>Serial number</th><th>Region</th><th>Model</th><th>GB</th><th>Grade</th><th>Color</th><th>Scanned</th></tr></thead><tbody>${body}</tbody></table></div>
         </section>`;
@@ -653,13 +654,14 @@
   }
   function renderDataCorrectionMarkup() {
     panelKicker.textContent = "Management control";
-    panelTitle.textContent = "IMEI data correction";
+    panelTitle.textContent = correctionBoxNumber ? "Box Correction · "+correctionBoxNumber : "IMEI data correction";
     panelDescription.textContent = window.GREENLOOP_PAGE_ACCESS?.canEdit
       ? "Correct authorised device data without erasing the original workflow. An authorised correction code and a reason are required."
       : "View only: Reports edit permission is required to save corrections. Search and workflow history are available below.";
     rowCount.textContent = correctionRecord ? "1 device loaded" : "Search required";
 
     const search = `
+      ${correctionBoxNumber ? '<button class="secondary-button" type="button" data-back-box data-search-read-only>Back to box</button>' : ""}
       <form id="correction-search-form" class="correction-search" novalidate>
         <label for="correction-identifier">IMEI or device number</label>
         <div><input id="correction-identifier" name="identifier" type="search" autocomplete="off" placeholder="Scan IMEI or enter DEV-000001" required><button class="primary-button" type="submit">Search record</button></div>
@@ -1064,6 +1066,19 @@
     if (auditButton) {
       auditView = auditButton.dataset.auditView || "deleted";
       renderDeletedHistory();
+      return;
+    }
+    if(event.target.closest("[data-back-box]")){
+      const returnBox=correctionBoxNumber;activeReport="export_boxes";selectedExportBox=returnBox;correctionBoxNumber="";exportBoxImeiFilter="";renderActiveReport();loadReports().then(()=>{if(activeReport==="export_boxes"){selectedExportBox=returnBox;renderActiveReport();}});return;
+    }
+    const correctionButton=event.target.closest("[data-box-correct-imei],[data-box-correction]");
+    if(correctionButton) {
+      if(!window.GREENLOOP_PAGE_ACCESS?.canEdit){setMessage("Reports Entry Allowed permission is required for Box Correction.");return;}
+      correctionBoxNumber=selectedExportBox;
+      const identifier=correctionButton.dataset.boxCorrectImei || exportBoxImeiFilter;
+      activeReport="data_correction";correctionRecord=null;renderActiveReport();
+      if(identifier)searchCorrectionRecord(identifier).catch(error=>setMessage(error.message));
+      else setMessage("Box Correction: search an IMEI from the selected box. Corrections require reprinting and Accounts verification.","success");
       return;
     }
     const deleteBoxButton = event.target.closest("[data-delete-export-box]");

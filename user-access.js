@@ -46,7 +46,9 @@
     ["inventory", "Inventory", "Receive and control parts inventory."],
     ["final_qc", "Final QC", "Final inspection, grade, Battery Health, Pass or Fail."],
     ["ready_stock", "Ready Stock", "View all Final QC passed stock."],
-    ["export_boxes", "Export Boxes", "Create boxes and scan phones for export."],
+    ["export_boxes", "Box Entry", "Scan phones, print the box and save it to Accounts."],
+    ["accounts", "Accounts", "View saved boxes and source details; Entry Allowed can verify boxes for export."],
+    ["stock_exported", "Stock Exported", "View and print verified exported boxes and historical boxes."],
     ["ready_stock_journey", "Ready Stock Journey", "View complete IMEI workflow history."],
     ["reports", "Reports", "View operational and management reports."],
     ["supplier_returns", "Supplier Returns", "View returns; Entry Allowed can request returns, cancel holds and request unused part returns."],
@@ -130,7 +132,7 @@
   }
 
   function collectPagePermissions(container) {
-    const result = { supplier_returns: "none", supplier_return_approval: "none", supplier_return_handover: "none", damage_report: "none", tv_manual_entry: "none" };
+    const result = { supplier_returns: "none", supplier_return_approval: "none", supplier_return_handover: "none", damage_report: "none", tv_manual_entry: "none", accounts: "none", stock_exported: "none" };
     container.querySelectorAll("[data-page-permission]").forEach((card) => {
       const checkbox = card.querySelector('input[type="checkbox"]');
       if (checkbox.checked) result[checkbox.value] = card.querySelector("[data-access-level]").value || "view";
