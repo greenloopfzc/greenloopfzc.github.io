@@ -194,8 +194,6 @@
         }
         let offset=0;
         while(offset<fragments.length) {
-          const full=99+fragments.slice(offset).reduce((n,row)=>n+row.height,0);
-          if(full>remaining&&full<=fresh&&pages[pages.length-1].length){pages.push([]);remaining=fresh;}
           if(remaining<99+fragments[offset].height){pages.push([]);remaining=fresh;}
           const rows=[];let used=99;
           while(offset+rows.length<fragments.length&&used+fragments[offset+rows.length].height<=remaining) {
@@ -210,6 +208,15 @@
     }
     pages=best;
     if (pages.length>4) throw new Error('This date range needs more than four readable A4 pages. Select a shorter date range. No entries have been left out.');
+    // Use the available page height, with modest padding on a short final page.
+    for(let pi=0;pi<pages.length;pi++) {
+      const blocks=pages[pi], rows=blocks.flatMap(block=>block.rows);
+      const available=(pi===0?firstTop:laterTop)-bottom;
+      const used=blocks.length*99+rows.reduce((total,row)=>total+row.height,0);
+      const slack=rows.length?Math.max(0,available-used)/rows.length:0;
+      const extra=pi===pages.length-1?Math.min(24,slack):slack;
+      for(const row of rows) row.height+=extra;
+    }
     const colors = { ink:lib.rgb(.07,.13,.17), green:lib.rgb(0,.40,.29), muted:lib.rgb(.22,.29,.33), line:lib.rgb(.66,.73,.77),
       pale:lib.rgb(.91,.94,.96), pink:lib.rgb(.99,.92,.90), white:lib.rgb(1,1,1), red:lib.rgb(.53,.17,.12) };
     let logo = null;

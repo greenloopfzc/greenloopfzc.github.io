@@ -23,3 +23,9 @@ html[data-mode="dark"] .damage-pdf-note { color: #c2d5e1; }
 .damage-pdf-pages > svg:last-child { margin-bottom: 0; }
 #damage-pdf-view { margin: 10px 8px 10px 0; }
 .damage-pdf-preview a { color: inherit; text-decoration: underline; }
+
+/* Three equal raised destinations on the Live Damage Report hub. */
+.manual-damage-module-page .manual-damage-module-grid {grid-template-columns:repeat(3,minmax(0,1fr));}
+.manual-damage-module-page .manual-damage-module-card {padding:26px;}
+@media(max-width:1000px){.manual-damage-module-page .manual-damage-module-grid {grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:650px){.manual-damage-module-page .manual-damage-module-grid {grid-template-columns:1fr;}}

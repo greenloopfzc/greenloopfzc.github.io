@@ -17,7 +17,7 @@
       if(window[name])return Promise.resolve();
       if(loadingScripts[name])return loadingScripts[name];
       loadingScripts[name]=new Promise(function(resolve,reject){var element=document.createElement('script');element.src=url;
-        element.onload=function(){if(window[name])resolve();else{loadingScripts[name]=null;reject(new Error('This browser cannot create PDFs. Open Damage Entry in an updated computer browser.'));}};
+        element.onload=function(){if(window[name])resolve();else{loadingScripts[name]=null;reject(new Error('This browser cannot create PDFs. Open Live Damage Report in an updated computer browser.'));}};
         element.onerror=function(){loadingScripts[name]=null;element.remove();reject(new Error('PDF tools could not load. Check your connection and retry.'));};document.head.appendChild(element);});
       return loadingScripts[name];
     }
@@ -47,7 +47,7 @@
     }
     function generate(action){
       if(!active||download.disabled)return false;
-      if(!window.Promise||!window.fetch||!window.BigInt||!window.Blob||!window.URL||!window.URL.createObjectURL){message.textContent='Open Damage Entry in an updated computer browser to download the PDF.';return false;}
+      if(!window.Promise||!window.fetch||!window.BigInt||!window.Blob||!window.URL||!window.URL.createObjectURL){message.textContent='Open Live Damage Report in an updated computer browser to download the PDF.';return false;}
       if(!/^\d{4}-\d{2}-\d{2}$/.test(from.value)||!/^\d{4}-\d{2}-\d{2}$/.test(to.value)||from.value>to.value){message.textContent='Select a valid start and end date.';return false;}
       if(from.value.slice(8)!=='01'){revoke();message.textContent='Start on the first day of a month so the monthly LCD allowance is counted once.';return false;}
       revoke();var request=++ticket;download.disabled=true;view.disabled=true;from.disabled=true;to.disabled=true;message.textContent='Preparing the complete report...';
@@ -57,7 +57,7 @@
       api.loadDamageExport(start,end,function(error,data){
         if(request!==ticket||!active)return;
         if(error){if(error.clearSession||/^(NO_SESSION|SESSION_EXPIRED|PERMISSION_DENIED)$/.test(error.code||'')){close();onDenied(error);}else failed(error);return;}
-        Promise.all([script('js/vendor/pdf-lib-1.17.1.min.js','PDFLib'),script('js/damage-report-pdf.js?v=20261009-sidebar-pdf-1','GREENLOOP_DAMAGE_PDF'),
+        Promise.all([script('js/vendor/pdf-lib-1.17.1.min.js','PDFLib'),script('js/damage-report-pdf.js?v=20261010-pdf-hub-1','GREENLOOP_DAMAGE_PDF'),
           fetch('assets/greenloop-fzc-logo.jpg').then(function(response){if(!response.ok)throw new Error('Report logo did not load. Please retry.');return response.arrayBuffer();})])
           .then(function(results){if(request!==ticket||!active)return null;return window.GREENLOOP_DAMAGE_PDF.create(data,{logo:results[2]});})
           .then(function(result){if(!result||request!==ticket||!active)return;finish();

@@ -16,11 +16,9 @@
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script defer src="js/config.js?v=20261006-live-damage-motion-1"></script>
   <script defer src="js/login-activity.js?v=20261007-time-brand-1"></script>
-    <link rel="stylesheet" href="css/damage-report-export.css?v=20261009-brand-1">
-    <script defer src="js/damage-report-export.js?v=20261009-sidebar-pdf-1"></script>
     <link rel="stylesheet" href="css/ampm-input.css?v=20261007-time-brand-1">
     <script defer src="js/ampm-input.js?v=20261007-time-brand-1"></script>
-    <script defer src="js/manual-damage.js?v=20261007-time-brand-1"></script>
+    <script defer src="js/manual-damage.js?v=20261010-pdf-hub-1"></script>
     <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
   <link rel="stylesheet" href="css/sidebar-compact.css?v=20261009-sidebar-pdf-1">
   <script defer src="js/sidebar-compact.js?v=20261009-sidebar-pdf-1"></script>
@@ -70,28 +68,8 @@
               <div id="manual-damage-pending" class="manual-damage-pending" hidden><p id="manual-damage-pending-summary"></p><button id="retry-manual-damage" class="secondary-button" type="button">Retry original report</button></div>
             </section>
             <section class="manual-damage-panel manual-damage-history" aria-labelledby="manual-damage-history-title">
-              <div class="manual-damage-panel-heading"><div><p class="panel-kicker">MANUAL REPORTS</p><h2 id="manual-damage-history-title">Recent reports</h2><p>Incident and reporting times shown in UAE time.</p></div><a id="damage-pdf-toggle" class="secondary-button" data-page-access="damage_report" href="#damage-pdf-panel" role="button" aria-expanded="false" aria-controls="damage-pdf-panel" hidden>View / Download PDF</a><button id="refresh-manual-damage" class="secondary-button" type="button">Refresh</button></div>
-        <section id="damage-pdf-panel" class="damage-pdf-panel" style="display:none" aria-labelledby="damage-pdf-title">
-          <button id="damage-pdf-close" class="secondary-button damage-pdf-close" type="button">Close</button>
-          <h2 id="damage-pdf-title">Damage Report</h2>
-          <p>Start on the first day of a month and choose the last damage date. Monthly allowances are calculated separately for each employee and month. The PDF includes all employees and a separate table for each employee with damage.</p>
-          <form id="damage-pdf-form">
-            <div class="damage-pdf-field"><label for="damage-pdf-from">From date &middot; UAE</label><input id="damage-pdf-from" type="date" min="2000-01-01" max="2100-12-31" required></div>
-            <div class="damage-pdf-field"><label for="damage-pdf-to">To date &middot; UAE</label><input id="damage-pdf-to" type="date" min="2000-01-01" max="2100-12-31" required></div>
-            <button id="damage-pdf-view" class="secondary-button" data-search-read-only type="button">View PDF</button>
-            <button id="damage-pdf-download" class="primary-button" data-search-read-only type="submit">Download PDF</button>
-          </form>
-          <p class="damage-pdf-note">A4 portrait, up to 4 pages. Long text wraps inside its table cell. Zero-damage names appear in separate cells.</p>
-          <p class="damage-pdf-note">Print: A4 &middot; Portrait &middot; Actual size / 100% &middot; 1 page per sheet.</p>
-          <p id="damage-pdf-message" class="damage-pdf-message" role="status" aria-live="polite"></p>
-          <a id="damage-pdf-file" class="secondary-button" style="display:none">Download PDF again</a>
-          <section id="damage-pdf-preview" class="damage-pdf-preview" aria-label="Damage Report PDF preview" hidden>
-            <p><strong>PDF preview</strong> &middot; <a id="damage-pdf-open" target="_blank" rel="noopener">Open PDF in a new tab</a></p>
-            <div id="damage-pdf-frame" class="damage-pdf-pages"></div>
-            <p class="damage-pdf-note">Preview pages match the generated report. Use Download PDF again to save the PDF, or open it in a new tab.</p>
-          </section>
-        </section>
-              <p id="damage-pdf-access-message" role="status" hidden></p>
+              <div class="manual-damage-panel-heading"><div><p class="panel-kicker">MANUAL REPORTS</p><h2 id="manual-damage-history-title">Recent reports</h2><p>Incident and reporting times shown in UAE time.</p></div><button id="refresh-manual-damage" class="secondary-button" type="button">Refresh</button></div>
+
               <p id="manual-damage-history-message" class="manual-damage-message" role="status" aria-live="polite" hidden></p>
               <div id="manual-damage-recent" class="manual-damage-recent" aria-busy="true"><p class="manual-damage-empty">Loading recent reports…</p></div>
               <div class="manual-damage-pagination"><span id="manual-damage-page-label" role="status" aria-live="polite">Loading…</span><div><button id="manual-damage-previous" class="secondary-button" type="button" disabled>Previous</button><button id="manual-damage-next" class="secondary-button" type="button" disabled>Next</button></div></div>
