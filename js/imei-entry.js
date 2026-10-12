@@ -266,9 +266,20 @@
     if (batches.some((batch) => batch.batch_id === selected)) batchSelect.value = selected;
     else batchSelect.value = "";
     batchSelect.disabled = false;
+    filterReceipts();
     updateBatchView();
   }
 
+  function filterReceipts(){
+    const options=[...batchSelect.options].filter(o=>o.value);
+    const records=options.map(o=>batches.find(b=>String(b.batch_id)===o.value)||{});
+    const f=window.GREENLOOP_FILTERS.get('imei-receipt-filters',{
+      before:batchSelect.closest('.form-field'),fields:[['supplier_code','Supplier code'],['stock_channel','Channel']],
+      searchFields:['supplier_code','invoice_number','batch_number','stock_channel'],onChange:filterReceipts
+    });
+    const matches=new Set(f.apply(records));
+    options.forEach((o,i)=>{o.hidden=!matches.has(records[i])&&o.value!==batchSelect.value;});
+  }
   function updateBatchView() {
     const batch = batches.find((item) => item.batch_id === batchSelect.value);
     const available = Boolean(batch);

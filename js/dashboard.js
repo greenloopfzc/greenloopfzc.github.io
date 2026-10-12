@@ -188,7 +188,10 @@
 
   function renderPriority(rowsToRender) {
     const body = document.querySelector(".priority-table tbody");
-    body.innerHTML = rowsToRender.length ? rowsToRender.slice(0, 5).map((row) => {
+    const matching=window.GREENLOOP_FILTERS.use('dashboard-queue-filters',rowsToRender,{
+      before:body.closest('table'),search:false,fields:[['status','Stage'],['model','Model']],onChange:()=>renderPriority(rowsToRender)
+    });
+    body.innerHTML = matching.length ? matching.slice(0, 20).map((row) => {
       const age = Number(row.days_open) || 0;
       const status = titleCase(row.status);
       const style = row.status?.includes("in_progress") ? "info" : "warning";
@@ -199,6 +202,7 @@
     }).join("") : '<tr><td colspan="4">No active devices need attention.</td></tr>';
     rows = [...body.querySelectorAll("tr[data-search]")];
     filterRows();
+    document.querySelector("#dashboard-queue-filters .table-filter-status").textContent=`${matching.length} matching records · First 20 shown`;
   }
 
   function isReadyStockStatus(status) {

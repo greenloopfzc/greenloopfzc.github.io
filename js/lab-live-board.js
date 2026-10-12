@@ -76,7 +76,12 @@
       updateView();
     }, 5000);
   }
-  function render(rows) {
+  function render(sourceRows) {
+    const rows=window.GREENLOOP_FILTERS.use('lab-live-filters',sourceRows,{
+      before:grid,fields:[['technician_name','Technician'],['work_status','Work status']],
+      project:r=>({...r,work_status:r.working_count>0?'Working':r.pending_count>0?'Pending':'Clear'}),
+      searchFields:['technician_name','latest_imei','latest_model','latest_color'],onChange:()=>render(sourceRows)
+    });
     boardRows = rows;
     const totalPending = rows.reduce((total, row) => total + (Number(row.pending_count) || 0), 0);
     const totalWorking = rows.reduce((total, row) => total + (Number(row.working_count) || 0), 0);

@@ -60,13 +60,21 @@
     $('#accounts-stock-prev').disabled = context.isBusy() || offset === 0;
     $('#accounts-stock-next').disabled = context.isBusy() || offset + 50 >= total;
   }
+  const stockFilters=window.GREENLOOP_FILTERS.get('accounts-record-filters',{
+    before:$('#accounts-stock-filter'),dateKey:'received_at',dateLabel:'Received / exported',
+    fields:[['supplier_code','Supplier code'],['customer_code','Customer code'],['model','Model'],['storage_gb','GB'],['color','Color'],['final_grade','Grade']],
+    onChange:()=>{offset=0;return loadStock();}
+  });
+  $('#accounts-stock-filter').hidden=true;
+  stockFilters.bar.querySelector('.table-filter-actions').append($('#accounts-stock-refresh'));
   async function loadStock() {
     if (view === 'verify' || context.isBusy()) return;
     context.lock(true);
     const msg = $('#accounts-stock-message');
     msg.textContent = ''; msg.classList.remove('is-visible');
     try {
-      const data = await rpc('get_accounts_stock_v1',{p_kind:view,p_date_from:query.from,p_date_to:query.to,p_search:query.search,p_offset:offset,p_limit:50});
+      const data = await rpc('get_filter_records_v1',{p_source:'accounts_'+view,p_filters:stockFilters.query(),p_offset:offset,p_limit:50});
+      stockFilters.result(data);
       total = data.total;
       $('#accounts-stock-list').innerHTML = table(data);
       const metrics = view === 'supplier' ? [['Received','received'],['In company','in_company'],['Ready','ready'],['In process','in_process'],['Exported','exported'],['Returned','returned']] : [['Exported phones','exported']];
@@ -91,12 +99,15 @@
     if (view === 'verify') return;
     offset = 0; query = {from:null,to:null,search:null}; $('#accounts-stock-filter').reset();
     const supplier = view === 'supplier';
+    stockFilters.controls.get('_from').previousElementSibling.textContent=supplier?'Received from · UAE':'Exported from · UAE';
+    stockFilters.controls.get('customer_code').closest('label').hidden=supplier;
+    stockFilters.controls.get('final_grade').closest('label').hidden=supplier;
     $('#accounts-stock-title').textContent = supplier ? 'Supplier Stock' : 'Customer Stock';
     $('#accounts-date-from-label').firstChild.textContent = supplier ? 'Received from · UAE' : 'Exported from · UAE';
     $('#accounts-date-to-label').firstChild.textContent = supplier ? 'Received to · UAE' : 'Exported to · UAE';
     $('#accounts-stock-filter').elements.search.placeholder = supplier ? 'Supplier, invoice, model, color…' : 'Customer, supplier, box, invoice, model…';
     $('#accounts-stock-note').textContent = supplier ? 'All suppliers in one table. In company = Ready + In process. In process includes stock awaiting IMEI entry, Box Entry and Accounts verification. Returned phones are shown separately. Dates filter the original receipt.' : 'All customers in one table. Exports appear after Accounts verification. Older boxes show the recorded customer, or Not recorded if unavailable. Totals cover all matching rows.';
-    loadStock();
+    stockFilters.clear();
   }
   async function init(settings) {
     context = settings;
@@ -114,7 +125,7 @@
       e.preventDefault(); if (context.isBusy()) return;
       const f=e.currentTarget;query={from:f.elements.from.value || null,to:f.elements.to.value || null,search:f.elements.search.value.trim() || null};offset=0;loadStock();
     });
-    $('#accounts-stock-clear').addEventListener('click',()=>{if(!context.isBusy())showView(view);});
+    $('#accounts-stock-clear').addEventListener('click',()=>{if(!context.isBusy()){query={from:null,to:null,search:null};$('#accounts-stock-filter').reset();stockFilters.clear();}});
     $('#accounts-stock-refresh').addEventListener('click',loadStock);
     $('#accounts-stock-prev').addEventListener('click',()=>{if(!context.isBusy() && offset>0){offset-=50;loadStock();}});
     $('#accounts-stock-next').addEventListener('click',()=>{if(!context.isBusy() && offset+50<total){offset+=50;loadStock();}});

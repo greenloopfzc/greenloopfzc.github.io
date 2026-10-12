@@ -125,14 +125,25 @@
       if (form && form.dataset.entry === draft.entry) draft.values.forEach(([name, value]) => { const control = form.elements.namedItem(name); if (control) { if (control.type === "checkbox") control.checked = value; else control.value = value; } });
     }
     window.GREENLOOP_AMPM_INPUT.mountAll(host);
+    managementFilters();
+  }
+  function managementFilters(){
+    const f=window.GREENLOOP_FILTERS.get('damage-correction-filters',{
+      before:host,search:false,dateKey:'occurred_at',dateLabel:'Damage',
+      fields:[['damaged_by','Employee'],['department','Department'],['model','Model'],['part_name','Part'],['part_source','Source'],['currency','Currency']],
+      onChange:()=>{if(!loading&&!blocked()){offset=0;return load();}}
+    });
+    f.mount();f.bar.hidden=denied||mode==='home'||(mode==='remove'&&scope==='all');
+    f.setBusy(loading||blocked());return f;
   }
   async function load() {
     if (!host || denied || loading || blocked()) return;
     const token = ++generation; loading = true; render();
     try {
-      const data = await rpc("get_manual_damage_management_v1", { p_search: search, p_offset: offset, p_limit: limit });
+      const data = await rpc('get_filter_records_v1',{p_source:'damage_management',p_filters:{...managementFilters().query(),_search:search},p_offset:offset,p_limit:limit});
       if (token !== generation || !host || denied) return;
       if (!data || !Array.isArray(data.rows) || !Number.isSafeInteger(Number(data.total_count)) || Number(data.total_count) < 0 || !data.options || !fieldKinds.every(kind => Array.isArray(data.options[kind.group]) && data.options[kind.group].every(item => item && typeof item.id === "string" && typeof item.label === "string")) || !data.rows.every(row => row && typeof row.id === "string" && typeof row.version === "string")) throw new Error("The damage entries response could not be read. Select Refresh to retry.");
+      managementFilters().result(data);
       rows = data.rows; total = Number(data.total_count); more = data.has_more === true; options = data.options;
       canEdit = data.can_edit === true; canReset = data.can_reset === true; loaded = true;
       if (offset >= total && offset > 0) { offset = Math.max(0, Math.floor(Math.max(0, total - 1) / limit) * limit); loading = false; return load(); }

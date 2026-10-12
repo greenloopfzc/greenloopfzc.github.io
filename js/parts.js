@@ -125,6 +125,20 @@
     })].join("");
   }
 
+  const requestFilters=window.GREENLOOP_FILTERS.get('parts-request-filters',{
+    before:queueList.closest('.parts-sheet-wrap'),dateKey:'requested_at',dateLabel:'Requested',
+    fields:[['technician','Technician'],['part_name','Part'],['status','Status'],['supplier_code','Supplier code']],
+    searchFields:['imei','device_number','model','job_number','part_name','technician','supplier_code'],
+    onChange:applyRequestFilters
+  });
+  function applyRequestFilters(){
+    const elements=[...queueList.querySelectorAll('.part-request-row')];
+    const rows=requests.map(r=>({...r,technician:r.requested_for_technician||'Unassigned',supplier_code:supplierOf(r)?.supplier_code,imei:deviceOf(r)?.imei_1,device_number:deviceOf(r)?.device_number,model:deviceOf(r)?.model,job_number:jobOf(r)?.job_number}));
+    const count=requestFilters.bind(rows,elements);
+    requestCount.textContent=`${count} matching requests`;
+  }
+  new MutationObserver(applyRequestFilters).observe(queueList,{childList:true});
+
   function renderQueue() {
     const waiting = requests.filter((request) => Number(request.quantity_issued || 0) < Number(request.quantity_requested || 0) && request.status !== "issued");
     requestCount.textContent = `${waiting.length} waiting`;
@@ -155,13 +169,22 @@
   }
 
   function renderInventory() {
-    inventoryTable.innerHTML = inventory.length ? inventory.map((part) => {
+    const filteredInventory = window.GREENLOOP_FILTERS.use('parts-availability-filters', inventory, {before:inventoryTable.closest('.parts-sheet-wrap'),fields:[['part_name','Part'],['origin','Origin']],onChange:()=>renderInventory(),project:r=>({...r,...invoiceDetails(r)}),searchFields:['invoice','sku','part_name','origin']});
+    inventoryTable.innerHTML = filteredInventory.length ? filteredInventory.map((part) => {
       const lot = invoiceDetails(part);
       return `<tr><td>${escapeHtml(lot.invoice)}</td><td>${escapeHtml(part.sku)}</td><td>${escapeHtml(part.part_name)}</td><td>${part.stock_quantity}</td><td>${money(part.unit_cost)}</td><td>${escapeHtml(lot.origin)}</td></tr>`;
     }).join("") : '<tr><td colspan="6">No inventory has been added yet.</td></tr>';
   }
 
-  function renderPartReturnReport() {
+  function renderPartReturnReport(allReturns = partReturns, allPending = pendingReturns) {
+    const matchingReturns=window.GREENLOOP_FILTERS.use('parts-return-filters',[
+      ...allReturns.map(r=>({...r,filter_date:r.returned_at,filter_kind:'returned'})),
+      ...allPending.map(r=>({...r,filter_date:r.requested_at,filter_kind:'pending'}))
+    ],{before:partReturnReport.closest('.parts-sheet-wrap'),dateKey:'filter_date',dateLabel:'Return / request',
+      fields:[['supplier_code','Supplier code'],['part_name','Part']],
+      searchFields:['imei','device_number','job_number','supplier_code','part_name','reason','invoice_number','returned_by_name','technician_name'],onChange:()=>renderPartReturnReport()});
+    const partReturns=matchingReturns.filter(r=>r.filter_kind==='returned');
+    const pendingReturns=matchingReturns.filter(r=>r.filter_kind==='pending');
     const condition = (item) => String(item?.return_condition || "").trim().toLowerCase();
     const returned = partReturns.filter((item) => condition(item) === "restocked");
     const damaged = partReturns.filter((item) => condition(item) === "damaged");
@@ -203,7 +226,7 @@
   async function loadPartReturnReport() {
     setMessage(returnReportMessage);
     const [reportResponse, pendingResponse] = await Promise.all([
-      getClient().rpc("get_part_return_report", { p_return_condition: null, p_limit: 500 }),
+      getClient().rpc('get_part_return_filter_data_v1'),
       getClient().rpc("get_pending_part_return_requests")
     ]);
     if (reportResponse.error || pendingResponse.error) {
@@ -217,8 +240,8 @@
 
   async function loadData() {
     const [requestResponse, inventoryResponse] = await Promise.all([
-      getClient().from("job_part_requests").select("id, part_name, quantity_requested, quantity_issued, request_source, requested_for_technician, notes, status, requested_at, job:jobs!inner(job_number, supplier:greenloop_suppliers(supplier_code, company_name), receiving_batch:receiving_batches(planned_quantity), device:devices(device_number, imei_1, model))").in("status", ["requested", "partially_issued", "issued"]).order("requested_at", { ascending: false }).limit(500),
-      getClient().from("part_inventory").select("id, sku, part_name, stock_quantity, unit_cost, is_active, notes").order("part_name")
+      window.GREENLOOP_FILTERS.all(()=>getClient().from("job_part_requests").select("id, part_name, quantity_requested, quantity_issued, request_source, requested_for_technician, notes, status, requested_at, job:jobs!inner(job_number, supplier:greenloop_suppliers(supplier_code, company_name), receiving_batch:receiving_batches(planned_quantity), device:devices(device_number, imei_1, model))").in("status", ["requested", "partially_issued", "issued"]).order("requested_at", { ascending: false }).order("id")),
+      window.GREENLOOP_FILTERS.all(()=>getClient().from("part_inventory").select("id, sku, part_name, stock_quantity, unit_cost, is_active, notes").order("part_name").order("id"))
     ]);
     if (requestResponse.error) throw requestResponse.error;
     if (inventoryResponse.error) throw inventoryResponse.error;

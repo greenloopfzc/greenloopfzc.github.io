@@ -10,11 +10,16 @@
   async function rpc(name,args={}){const {data,error}=await client.rpc(name,args);if(error)throw error;return data;}
   function notice(text='',error=false){message.textContent=text;message.classList.toggle('is-visible',!!text);message.classList.toggle('is-success',!error);}
   function lock(value){busy=value;app.setAttribute('aria-busy',String(value));app.querySelectorAll('button').forEach(b=>b.disabled=value);$('#box-queue-prev').disabled=value||offset===0;$('#box-queue-next').disabled=value||offset+50>=total;detail.querySelectorAll('[data-entry-only]').forEach(b=>b.disabled=value||!canEdit);}
+  const queueFilters=window.GREENLOOP_FILTERS.get('box-record-filters',{
+    before:filter,dateKey:'filter_date',dateLabel:page==='accounts'?'Saved':'Exported',fields:[['state','Status'],['customer_code','Customer code'],['saved_by_name','Saved by'],['verified_by_name','Verified by']],
+    onChange:()=>{offset=0;return load();}
+  });
+  filter.hidden=true;
   async function load(){
     if(busy)return;const token=++generation;notice();lock(true);selected=null;printed=null;detail.hidden=true;
     try {
-      const data=await rpc('get_box_queue_v1',{p_page:page,p_date_from:filter.elements.from.value||null,p_date_to:filter.elements.to.value||null,p_offset:offset,p_limit:50});if(token!==generation)return;
-      total=data.total;list.innerHTML=data.rows.length?'<div class="box-table-wrap"><table class="box-table"><thead><tr><th>Box</th><th>Phones</th><th>Saved · UAE</th><th>Saved by</th><th>Status</th><th>Verified · UAE</th><th>Verified by</th><th>Customer</th></tr></thead><tbody>'+data.rows.map(b=>`<tr><td><button type="button" class="quiet-link" data-search-read-only data-open-box="${esc(b.id)}">${cell(b.box_number)}</button></td><td>${cell(b.quantity)}</td><td>${cell(dt(b.saved_at))}</td><td>${cell(b.saved_by_name)}</td><td>${cell(state(b.state))}</td><td>${cell(dt(b.verified_at))}</td><td>${cell(b.verified_by_name)}</td><td>${cell(b.customer_name||b.customer_code)}</td></tr>`).join('')+'</tbody></table></div>':'<p class="box-empty">No boxes found for these dates.</p>';
+      const data=await rpc('get_filter_records_v1',{p_source:page,p_filters:queueFilters.query(),p_offset:offset,p_limit:50});if(token!==generation)return;
+      queueFilters.result(data);total=data.total;list.innerHTML=data.rows.length?'<div class="box-table-wrap"><table class="box-table"><thead><tr><th>Box</th><th>Phones</th><th>Saved · UAE</th><th>Saved by</th><th>Status</th><th>Verified · UAE</th><th>Verified by</th><th>Customer</th></tr></thead><tbody>'+data.rows.map(b=>`<tr><td><button type="button" class="quiet-link" data-search-read-only data-open-box="${esc(b.id)}">${cell(b.box_number)}</button></td><td>${cell(b.quantity)}</td><td>${cell(dt(b.saved_at))}</td><td>${cell(b.saved_by_name)}</td><td>${cell(state(b.state))}</td><td>${cell(dt(b.verified_at))}</td><td>${cell(b.verified_by_name)}</td><td>${cell(b.customer_name||b.customer_code)}</td></tr>`).join('')+'</tbody></table></div>':'<p class="box-empty">No boxes found for these dates.</p>';
       $('#box-queue-count').textContent=total?`${offset+1}–${Math.min(offset+50,total)} of ${total} boxes`:'0 boxes';
     }catch(e){list.innerHTML='';total=0;notice(e.message||'Boxes could not be loaded.',true);}finally{if(token===generation)lock(false);}
   }
@@ -43,7 +48,7 @@
     if(done){offset=0;await load();notice('Box verified and moved to Stock Exported.');}
   }
   filter.addEventListener('submit',e=>{e.preventDefault();if(!busy){offset=0;load();}});
-  $('#clear-box-dates').addEventListener('click',()=>{if(busy)return;filter.reset();offset=0;load();});
+  $('#clear-box-dates').addEventListener('click',()=>{if(busy)return;filter.reset();offset=0;queueFilters.clear();});
   $('#box-queue-prev').addEventListener('click',()=>{if(!busy&&offset>0){offset-=50;load();}});
   $('#box-queue-next').addEventListener('click',()=>{if(!busy&&offset+50<total){offset+=50;load();}});
   app.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||busy)return;if(b.dataset.openBox)open(b.dataset.openBox);else if(b.hasAttribute('data-print-box'))printBox();else if(b.hasAttribute('data-confirm-print'))confirmPrint();else if(b.hasAttribute('data-verify-box'))verify();else if(b.hasAttribute('data-close-box')){detail.hidden=true;selected=null;printed=null;}});

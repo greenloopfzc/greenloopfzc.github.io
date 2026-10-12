@@ -112,6 +112,11 @@
     pageLabel.textContent = rowCount ? `${offset + 1}–${offset + loadedRows.length} of ${rowCount} phones` : '0 phones';
   }
 
+  const journeyFilters=window.GREENLOOP_FILTERS.get('journey-record-filters',{
+    before:body.closest('.journey-table-wrap'),search:false,
+    fields:[['current_stage','Stage'],['supplier_code','Supplier code'],['company_final_grade','Final grade']],
+    onChange:()=>{offset=0;return loadJourney();}
+  });
   async function loadJourney(quiet = false) {
     const refresh = document.querySelector('#refresh-journey');
     const from = rangeFrom.value || null, to = rangeTo.value || null;
@@ -122,10 +127,11 @@
     if (!quiet) refresh.textContent = 'Loading...';
     updatePager();
     try {
-      const {data, error} = await getClient().rpc('get_stock_journey_v1', {p_date_from: from, p_date_to: to, p_query: search.value.trim(), p_offset: offset, p_limit: pageSize});
+      const {data, error} = await getClient().rpc('get_filter_records_v1',{p_source:'journey',p_filters:{...journeyFilters.query(),_from:from||'',_to:to||'',_search:search.value.trim()},p_offset:offset,p_limit:pageSize});
       if (generation !== journeyGeneration) return;
       if (error) throw error;
       if (!data || !Array.isArray(data.rows) || !Number.isSafeInteger(Number(data.total)) || Number(data.total) < 0) throw new Error('Stock Journey returned an invalid response.');
+      journeyFilters.result(data);
       rowCount = Number(data.total);
       if (offset && offset >= rowCount) { offset = Math.max(0, Math.floor((rowCount - 1) / pageSize) * pageSize); return await loadJourney(quiet); }
       render(data.rows);

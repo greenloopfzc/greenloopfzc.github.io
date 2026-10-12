@@ -178,7 +178,8 @@
   }
 
   function renderUsers() {
-    userList.innerHTML = users.length ? users.map((user) => {
+    const matchingUsers = window.GREENLOOP_FILTERS.use('user-list-filters', users, {before:userList,fields:[['status','Status']],onChange:()=>renderUsers(),project:u=>({...u,status:u.is_active?'Active':'Inactive'}),searchFields:['full_name','login_username']});
+    userList.innerHTML = matchingUsers.length ? matchingUsers.map((user) => {
       const permissions = displayPermissionsForUser(user);
       const pages = Object.keys(permissions).filter(key => ["view", "edit"].includes(permissions[key]));
       return `
@@ -188,7 +189,7 @@
           <span class="user-role-summary">${escapeHtml(pages.length ? pages.map((key) => `${pageName(key)} (${permissions[key] === "view" ? "View" : "Entry"})`).join(", ") : "No page assigned")}</span>
         </button>
       `;
-    }).join("") : '<p class="access-empty">No user profiles were found.</p>';
+    }).join("") : '<p class="access-empty">No users match these filters.</p>';
   }
 
   function renderEditor() {

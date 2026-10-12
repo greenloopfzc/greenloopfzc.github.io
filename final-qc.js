@@ -348,12 +348,12 @@
   }
 
   async function loadQueue() {
-    const { data, error } = await getClient()
+    const { data, error } = await window.GREENLOOP_FILTERS.all(()=>getClient()
       .from("job_work_order_steps")
       .select("id, work_order:job_work_orders!inner(work_order_number, job:jobs!inner(id, job_number, supplier_grade, supplier:greenloop_suppliers(supplier_code, company_name), receiving_batch:receiving_batches(planned_quantity, invoice_number, batch_number), device:devices(device_number, imei_1, imei_2, serial_number, brand, model, storage_gb, color, battery_health, device_platform, battery_health_unavailable, gc_grade)))")
       .eq("department", "final_qc")
       .eq("step_status", "in_progress")
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: true }).order("id"));
     if (error) throw error;
     queueSteps = data || [];
     queueCount.textContent = `${queueSteps.length} waiting`;
@@ -436,7 +436,8 @@
   });
   function renderPendingJobs(filter = "") {
     const search = String(filter || "").trim().toLocaleLowerCase();
-    const rows = search ? window.GREENLOOP_RECORD_SEARCH.localLookup(pendingSearchItems(),search).items : pendingSearchItems();
+    const sourceRows = search ? window.GREENLOOP_RECORD_SEARCH.localLookup(pendingSearchItems(),search).items : pendingSearchItems();
+    const rows = window.GREENLOOP_FILTERS.use('qc-pending-filters', sourceRows, {before:pendingListBody.closest('div'),fields:[['supplier','Supplier code'],['model','Model'],['storage','GB'],['color','Color']],onChange:()=>renderPendingJobs(pendingSearch.value),search:false});
     pendingListBody.innerHTML = rows.length
       ? rows.map((row, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(row.imei)}</td><td>${escapeHtml(row.supplier)}</td><td>${escapeHtml(row.model)}</td><td>${escapeHtml(row.storage)}</td><td>${escapeHtml(row.color)}</td><td>${escapeHtml(row.battery)}</td><td>${escapeHtml(row.supplierGrade)}</td><td>${escapeHtml(row.initialGrade)}</td></tr>`).join("")
       : '<tr><td colspan="9" class="final-pending-empty">No pending phones match this search.</td></tr>';

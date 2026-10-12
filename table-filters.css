@@ -1,0 +1,13 @@
+.table-filters { display:flex; flex-wrap:wrap; align-items:end; gap:10px; padding:14px; margin:12px 0; border:1px solid var(--nm-line,#cad8e0); border-radius:14px; background:var(--nm-card,#f3f7fa); color:var(--nm-ink,#24343b); }
+.table-filters[hidden] { display:none!important; }
+.box-queue-filter[hidden] { display:none!important; }
+.table-filter-field { display:flex; flex-direction:column; gap:5px; flex:1 1 135px; min-width:0; max-width:260px; font-size:12px; font-weight:600; }
+.table-filter-field:has(input[type=search]) { flex:2 1 210px; max-width:420px; }
+.table-filters .table-filter-field input,.table-filters .table-filter-field select { width:100%; min-width:0; box-sizing:border-box; height:40px; padding:8px 10px; font:inherit; font-size:14px; color:var(--nm-ink,#24343b); background:var(--nm-well,#e5edf2); border:1px solid var(--nm-line,#cad8e0); border-radius:9px; box-shadow:var(--nm-inset,none); text-align:left; }
+.table-filter-actions { display:flex; flex-wrap:wrap; gap:8px; }
+.table-filters button { min-height:40px; padding:8px 14px; font-size:13px; white-space:nowrap; }
+.table-filter-status { flex-basis:100%; margin:0; font-size:12px; color:var(--nm-muted,#546b77); }
+.table-filters input:focus-visible,.table-filters select:focus-visible,.table-filters button:focus-visible { outline:2px solid #078164; outline-offset:2px; }
+tr[hidden] { display:none!important; }
+@media(max-width:600px) { .table-filter-field { max-width:none; flex-basis:130px; } .table-filter-actions { width:100%; } }
+@media print { .table-filters { display:none!important; } }

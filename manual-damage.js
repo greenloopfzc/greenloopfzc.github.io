@@ -333,7 +333,7 @@
       ["Date · UAE", "Employee", "Model", "Part name", "Qty", "Price / part", "Source", "Reason", "Details"].map(label => '<th scope="col">' + label + '</th>').join("") + '</tr></thead><tbody>' + rows.map((row, index) => {
         const cell = (label, value, extra = "") => '<td data-label="' + label + '"' + extra + '><span class="recent-cell-text">' + escapeHtml(value) + '</span></td>';
         return '<tr class="manual-damage-report">' + cell("Date · UAE", dateLabel(row.occurred_at)) + cell("Employee", row.damaged_by) + cell("Model", row.model) + cell("Part name", row.part_name || row.damage) + cell("Qty", quantityLabel(row)) + cell("Price / part", priceLabel(row.price_amount) + (row.currency ? " " + row.currency : "")) + cell("Source", row.part_source || "—") + cell("Reason", row.reason) + '<td data-label="Details"><button type="button" class="secondary-button recent-view" data-damage-details="' + index + '" aria-label="View damage report for ' + escapeHtml(row.damaged_by) + '">View</button></td></tr>';
-      }).join("") + '</tbody></table></div>' : '<p class="manual-damage-empty">No manual damage reports yet.</p>';
+      }).join("") + '</tbody></table></div>' : '<p class="manual-damage-empty">No damage reports match these filters.</p>';
   }
   recent.addEventListener("click", event => {
     const trigger = event.target.closest("[data-damage-details]");
@@ -348,6 +348,11 @@
   });
   byId("damage-record-close").addEventListener("click", () => byId("damage-record-dialog").close());
   byId("damage-record-dialog").addEventListener("close", () => { byId("damage-record-details").textContent = ""; if (detailTrigger?.isConnected) detailTrigger.focus(); });
+  const historyFilters=window.GREENLOOP_FILTERS.get('damage-history-filters',{
+    before:recent,dateKey:'occurred_at',dateLabel:'Damage',
+    fields:[['damaged_by','Employee'],['department','Department'],['model','Model'],['part_name','Part'],['part_source','Source'],['currency','Currency']],
+    onChange:()=>loadReports(0)
+  });
   async function loadReports(nextOffset = offset) {
     if (accessDenied) return;
     const version = ++loadVersion;
@@ -355,11 +360,12 @@
     updatePager();
     message("manual-damage-history-message");
     try {
-      const { data, error } = await api().rpc("get_manual_damage_report_v2", { p_offset: nextOffset, p_limit: pageSize });
+      const { data, error } = await api().rpc('get_filter_records_v1',{p_source:'damage_entry',p_filters:historyFilters.query(),p_offset:nextOffset,p_limit:pageSize});
       if (error) throw error;
       const report = Array.isArray(data) ? data[0] : data;
       if (!report || !Array.isArray(report.rows)) throw new Error("The recent reports response could not be read.");
       if (version !== loadVersion) return;
+      historyFilters.result(report);
       offset = nextOffset;
       hasMore = report.has_more === true;
       renderReports(report.rows);
@@ -371,7 +377,7 @@
       if (version !== loadVersion) return;
       if (isAccessError(error)) { lockRevokedAccess(); return; }
       message("manual-damage-history-message", error.message || "Recent reports could not be loaded. Select Refresh to retry.");
-      if (!recent.querySelector(".manual-damage-report")) {
+      {
         recent.innerHTML = '<p class="manual-damage-empty">Recent reports are unavailable. Select Refresh to retry.</p>';
         byId("manual-damage-page-label").textContent = "Reports unavailable";
       }

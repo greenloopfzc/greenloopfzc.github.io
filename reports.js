@@ -262,7 +262,7 @@
 
   function renderTable(reportKey) {
     const report = reports[reportKey];
-    const rows = reportData[reportKey] || [];
+    const rows = window.GREENLOOP_FILTERS.use('report-'+reportKey, reportData[reportKey] || [], {before:reportContent,fields:report.columns.filter(([,key,type])=>['model','color','memory','source','status','location','part_name','technician','result','failure_department','record_type','deleted_by','low_stock'].includes(key)).map(([label,key])=>[key,label]),onChange:()=>renderTable(reportKey),project:r=>({...r,low_stock:r.low_stock?'Low stock':'OK'}),searchFields:report.columns.filter(([,key,type])=>type!=='details').map(([,key])=>key)});
     panelKicker.textContent = report.title;
     panelTitle.textContent = report.title;
     panelDescription.textContent = report.description;
@@ -282,12 +282,13 @@
     panelKicker.textContent = "Stock Return";
     panelTitle.textContent = "Stock Return";
     panelDescription.textContent = reports.stock_returns.description;
-    const rows = reportData.stock_returns;
+    let rows = reportData.stock_returns;
     if (!Array.isArray(rows)) {
       rowCount.textContent = rows === null ? "Unavailable" : "Loading";
       reportContent.innerHTML = `<p class="report-empty">${rows === null ? "Stock Return could not be loaded. Apply the date range to retry." : "Loading Stock Return report…"}</p>`;
       return;
     }
+    rows = window.GREENLOOP_FILTERS.use('report-stock-returns', rows, {before:reportContent,fields:[['supplier_code','Supplier code'],['model','Model'],['reason','Reason']],onChange:()=>renderStockReturns(),searchFields:['invoice_number','batch_number','supplier_code','model','reason','return_reference','imeis','returned_by_name']});
     const returnDate = value => {
       const parsed = new Date(value);
       return value && Number.isFinite(parsed.getTime()) ? new Intl.DateTimeFormat([], {day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit", hour12: true,timeZone:"Asia/Dubai"}).format(parsed) : "—";
@@ -315,7 +316,7 @@
     }])).values()].sort((left, right) => left.label.localeCompare(right.label));
 
     if (selectedSupplier !== "all" && !suppliers.some((supplier) => supplier.id === selectedSupplier)) selectedSupplier = "all";
-    const rows = selectedSupplier === "all" ? allRows : allRows.filter((row) => String(row.supplier_id) === selectedSupplier);
+    const rows = window.GREENLOOP_FILTERS.use('report-supplier-progress', selectedSupplier === "all" ? allRows : allRows.filter((row) => String(row.supplier_id) === selectedSupplier), {before:reportContent,fields:[['model','Model']],onChange:()=>renderSupplierProgress(),searchFields:['supplier_code','model','invoice_number']});
     const received = supplierTotal(rows, "received_quantity");
     const ready = supplierTotal(rows, "ready_quantity");
     const exported = supplierTotal(rows, "exported_quantity");
@@ -409,7 +410,7 @@
     if(empty)empty.hidden=matches.length>0;
   }
   function renderExportBoxesMarkup() {
-    const boxes = getExportBoxGroups();
+    const boxes = window.GREENLOOP_FILTERS.use('report-box-filters',getExportBoxGroups(),{before:reportContent,fields:[],searchFields:['boxNumber'],placeholder:'Search box number…',onChange:()=>renderExportBoxes()});
     const selected = boxes.find((box) => box.boxNumber === selectedExportBox);
     panelKicker.textContent = "Export boxes";
     panelTitle.textContent = "Export box history";
@@ -741,8 +742,9 @@
   }
 
   function renderDeletedHistory() {
-    const deletionRows = reportData.deleted_history || [];
-    const changeRows = reportData.data_changes || [];
+    const deletionRows = auditView==='deleted'?window.GREENLOOP_FILTERS.use('audit-deletion-filters',reportData.deleted_history||[],{before:reportContent,fields:[['record_type','Record type'],['deleted_by','Deleted by']],searchFields:['record_label','record_type','deleted_by','deletion_reason'],onChange:()=>renderDeletedHistory()}):reportData.deleted_history||[];
+    const changeRows = auditView==='changes'?window.GREENLOOP_FILTERS.use('audit-change-filters',reportData.data_changes||[],{before:reportContent,fields:[['changed_by','Changed by']],searchFields:['device_number','imei_before','imei_after','job_number','change_reason','changed_by'],onChange:()=>renderDeletedHistory()}):reportData.data_changes||[];
+    const inactiveFilter=document.querySelector(auditView==='changes'?'#audit-deletion-filters':'#audit-change-filters');if(inactiveFilter)inactiveFilter.hidden=true;
     const rows = auditView === "changes" ? changeRows : deletionRows;
     panelKicker.textContent = "Permanent audit";
     panelTitle.textContent = "Deleted history and data changes";
@@ -761,7 +763,8 @@
     } else {
       const report = reports.deleted_history;
       const headers = report.columns.map(([label]) => `<th>${escapeHtml(label)}</th>`).join("");
-      const body = deletionRows.length ? deletionRows.map((row, index) => {
+      const body = deletionRows.length ? deletionRows.map((row) => {
+        const index=(reportData.deleted_history||[]).indexOf(row);
         const detailsId = `deleted-record-details-${index}`;
         const cells = report.columns.map(([, key, type]) => {
           if (type !== "details") return `<td>${formatCell(row[key], type)}</td>`;
@@ -892,6 +895,7 @@
   }
 
   function renderActiveReport() {
+    document.querySelectorAll('.table-filters').forEach(el=>el.hidden=true);
     document.querySelectorAll(".report-tab[data-report]").forEach((tab) => {
       const selected = tab.dataset.report === activeReport;
       tab.classList.toggle("active", selected);

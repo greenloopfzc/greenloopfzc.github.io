@@ -55,6 +55,19 @@
   function showToast(text) { window.clearTimeout(toastTimer); toast.textContent = text; toast.hidden = false; toast.classList.add("is-visible"); toastTimer = window.setTimeout(() => { toast.hidden = true; toast.classList.remove("is-visible"); }, 3500); }
   function setSubmitting(button, busy, text) { if (busy) button.dataset.label = button.textContent.trim(); button.disabled = busy; button.textContent = busy ? text : button.dataset.label || button.textContent; }
 
+  const workFilters=window.GREENLOOP_FILTERS.get('lab-work-filters',{
+    before:technicianWorkRows.closest('.technician-lines-scroll'),
+    fields:[['model','Model'],['storage_gb','GB'],['color','Color'],['supplier_code','Supplier code'],['department','Department']],
+    searchFields:['imei','device_number','serial_number','model','supplier_code','invoice_number'],
+    onChange:applyWorkFilters
+  });
+  function applyWorkFilters(){
+    const elements=[...technicianWorkRows.querySelectorAll('tr[data-step-id]')];
+    const rows=elements.map(el=>technicianRows.find(row=>String(row.step_id)===el.dataset.stepId)||{});
+    workFilters.bind(rows,elements);
+  }
+  new MutationObserver(applyWorkFilters).observe(technicianWorkRows,{childList:true});
+
   function configureMode() {
     if (!isFrameMode) return;
     document.body.classList.add("frame-mode");
@@ -286,14 +299,16 @@
     return value ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short", hour12: true }).format(new Date(value)) : "—";
   }
 
-  async function loadFrameReport() {
-    const { data, error } = await getClient().rpc("get_frame_department_report", { p_limit: 250 });
-    if (error) throw error;
-    const rows = data || [];
-    framePassCount.textContent = `${rows.filter((row) => row.result === "pass").length} Pass`;
-    frameFailCount.textContent = `${rows.filter((row) => row.result === "fail").length} Fail`;
+  const frameFilters=window.GREENLOOP_FILTERS.remote('frame-result-filters',{
+    before:frameReportRows.closest('.frame-report-scroll'),source:'frame_results',dateKey:'reviewed_at',dateLabel:'Checked',
+    fields:[['supplier_code','Supplier code'],['model','Model'],['result','Result'],['reviewed_by_name','Checked by']],
+    onResult:data=>{const rows=data.rows;
+    framePassCount.textContent = `${data.totals.pass} Pass`;
+    frameFailCount.textContent = `${data.totals.fail} Fail`;
     frameReportRows.innerHTML = rows.length ? rows.map((row) => `<tr><td>${escapeHtml(formatDateTime(row.reviewed_at))}</td><td><strong>${escapeHtml(row.imei || "—")}</strong></td><td>${escapeHtml(row.supplier_code || "—")}</td><td>${escapeHtml(row.model || "—")}</td><td><span class="frame-result ${escapeHtml(row.result)}">${escapeHtml(String(row.result || "").toUpperCase())}</span></td><td>${escapeHtml(row.reviewed_by_name || "System")}</td></tr>`).join("") : '<tr><td colspan="6" class="technician-lines-empty">No Frame results recorded yet.</td></tr>';
-  }
+    },onError:()=>{frameReportRows.innerHTML='<tr><td colspan="6">Frame results unavailable.</td></tr>';framePassCount.textContent=frameFailCount.textContent='Unavailable';}
+  });
+  async function loadFrameReport(){return frameFilters.load();}
 
   async function loadPartOptions() {
     const { data, error } = await getClient().rpc("get_entry_options", { p_option_group: "part_name" });

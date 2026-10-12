@@ -148,7 +148,8 @@
   }
 
   function render(data) {
-    const flatRows = Array.isArray(data?.rows) ? data.rows : [];
+    const flatRows = window.GREENLOOP_FILTERS.use('ready-stock-filters', Array.isArray(data?.rows) ? data.rows : [], {before:tableBody.closest('.ready-stock-table-wrap'),fields:[['model','Model'],['final_grade','Grade']],onChange:()=>render(data),searchFields:['model','final_grade']});
+    const filteredTotal = flatRows.reduce((sum,row)=>sum+Number(row.quantity||0),0);
     const grades = buildGradeList(data, flatRows);
     const rows = pivotRows(flatRows, grades);
     const gradeTotals = new Map(grades.map((grade) => [grade.key, 0]));
@@ -156,15 +157,15 @@
       grades.forEach((grade) => gradeTotals.set(grade.key, Number(gradeTotals.get(grade.key) || 0) + Number(row.grades.get(grade.key) || 0)));
     });
 
-    total.textContent = `${Number(data?.total_qty || 0)} pcs`;
+    total.textContent = `${filteredTotal} pcs`;
     rangeLabel.textContent = data?.date_from && data?.date_to
       ? `Current Ready Stock passed Final QC from ${data.date_from} to ${data.date_to}`
       : "Final-QC-passed devices still held by Greenloop";
     tableHead.innerHTML = `<tr><th>Model</th>${grades.map((grade) => `<th>${escapeHtml(grade.label)}</th>`).join("")}<th>Latest Final QC pass</th><th>Total Qty</th></tr>`;
     tableBody.innerHTML = rows.length
       ? rows.map((row) => `<tr><td>${escapeHtml(row.model)}</td>${grades.map((grade) => `<td>${escapeHtml(row.grades.get(grade.key) || 0)}</td>`).join("")}<td>${escapeHtml(formatDateTime(row.latest))}</td><td>${escapeHtml(row.total || 0)}</td></tr>`).join("")
-      : `<tr><td class="ready-stock-empty" colspan="${grades.length + 3}">No Final-QC-passed stock is waiting in Ready Stock.</td></tr>`;
-    tableFoot.innerHTML = `<tr><th>Total</th>${grades.map((grade) => `<th>${escapeHtml(gradeTotals.get(grade.key) || 0)}</th>`).join("")}<th>-</th><th>${escapeHtml(Number(data?.total_qty || 0))} pcs</th></tr>`;
+      : `<tr><td class="ready-stock-empty" colspan="${grades.length + 3}">No Ready Stock matches these filters.</td></tr>`;
+    tableFoot.innerHTML = `<tr><th>Total</th>${grades.map((grade) => `<th>${escapeHtml(gradeTotals.get(grade.key) || 0)}</th>`).join("")}<th>-</th><th>${escapeHtml(filteredTotal)} pcs</th></tr>`;
   }
 
   async function loadReadyStock() {

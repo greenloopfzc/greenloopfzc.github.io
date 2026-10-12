@@ -91,10 +91,11 @@
     showToast("Part name removed.");
   }
 
-  function renderStock(rows) {
+  function renderStock(sourceRows) {
+    const rows = window.GREENLOOP_FILTERS.use('inventory-stock-filters', sourceRows, {before:stockList.closest('.inventory-table-wrap'),fields:[['part_name','Part'],['last_origin','Origin']],onChange:()=>renderStock(sourceRows),searchFields:['sku','part_name','last_invoice_number','last_origin']});
     stockList.innerHTML = rows.length
       ? rows.map((row) => `<tr><td>${escapeHtml(row.sku)}</td><td><strong>${escapeHtml(row.part_name)}</strong></td><td>${Number(row.total_received||0).toLocaleString()}</td><td>${Number(row.stock_quantity||0).toLocaleString()}</td><td>${Number(row.used_in_phones||0).toLocaleString()}</td><td>${Number(row.damaged_quantity||0).toLocaleString()}</td><td>${Number(row.faulty_quantity||0).toLocaleString()}</td><td>${Number(row.issued_pending||0).toLocaleString()}</td><td>${money(row.unit_cost)}</td><td>${money(row.stock_value)}</td><td>${escapeHtml(row.last_invoice_number||"—")}</td><td class="history-origin">${escapeHtml(row.last_origin||"—")}</td><td>${dateTime(row.last_received_at)}</td></tr>`).join("")
-      : '<tr><td colspan="13" class="inventory-empty">No parts have been received yet.</td></tr>';
+      : '<tr><td colspan="13" class="inventory-empty">No parts match these filters.</td></tr>';
     document.querySelector("#stat-part-types").textContent = rows.length.toLocaleString();
     document.querySelector("#stat-units").textContent = rows.reduce((total, row) => total + Number(row.stock_quantity || 0), 0).toLocaleString();
     document.querySelector("#stat-value").textContent = money(rows.reduce((total, row) => total + Number(row.stock_value || 0), 0));
@@ -105,13 +106,19 @@
   function renderReceipts(rows) {
     receiptList.innerHTML = rows.length
       ? rows.map((row) => `<tr><td>${dateTime(row.received_at)}</td><td>${escapeHtml(row.receipt_number)}</td><td>${escapeHtml(row.invoice_number)}</td><td>${escapeHtml(row.sku)}</td><td>${escapeHtml(row.part_name)}</td><td class="history-origin">${escapeHtml(row.source_origin)}</td><td>${Number(row.quantity_received).toLocaleString()}</td><td>${money(row.total_cost)}</td><td>${money(row.unit_cost)}</td></tr>`).join("")
-      : '<tr><td colspan="9" class="inventory-empty">No invoice receipt history yet.</td></tr>';
+      : '<tr><td colspan="9" class="inventory-empty">No receipts match these filters.</td></tr>';
   }
 
+  const receiptFilters = window.GREENLOOP_FILTERS.remote('inventory-receipt-filters', {
+    before:receiptList.closest('.inventory-table-wrap'),source:'inventory_receipts',dateKey:'received_at',dateLabel:'Received',
+    fields:[['part_name','Part'],['source_origin','Origin']],
+    onResult:data=>{renderReceipts(data.rows);receiptFilters.bar.querySelector('.table-filter-status').textContent=`${data.total} receipts · ${data.totals.quantity} parts · AED ${Number(data.totals.total_cost).toFixed(2)}`;},
+    onError:()=>renderReceipts([])
+  });
   async function loadData() {
     const [stockResponse, receiptResponse] = await Promise.all([
       api().rpc("get_part_inventory_breakdown"),
-      api().rpc("get_part_inventory_receipts", { p_limit: 150 })
+      Promise.resolve({data:[],error:null})
     ]);
     if (missingInventoryFunction(stockResponse.error) || missingInventoryFunction(receiptResponse.error)) {
       throw new Error("Run the latest Greenloop database update first. Inventory totals are not shown from an unsafe fallback.");
@@ -119,7 +126,7 @@
     if (stockResponse.error) throw stockResponse.error;
     if (receiptResponse.error) throw receiptResponse.error;
     renderStock(stockResponse.data || []);
-    renderReceipts(receiptResponse.data || []);
+    await receiptFilters.load();
   }
 
   async function saveThroughExistingParts() {

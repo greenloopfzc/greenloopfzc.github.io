@@ -423,7 +423,8 @@
   });
   function renderPendingJobs(filter = "") {
     const search = String(filter || "").trim().toLocaleLowerCase();
-    const rows = search ? window.GREENLOOP_RECORD_SEARCH.localLookup(pendingSearchItems(),search).items : pendingSearchItems();
+    const sourceRows = search ? window.GREENLOOP_RECORD_SEARCH.localLookup(pendingSearchItems(),search).items : pendingSearchItems();
+    const rows = window.GREENLOOP_FILTERS.use('qc-pending-filters', sourceRows, {before:pendingListBody.closest('div'),fields:[['supplier','Supplier code'],['model','Model'],['storage','GB'],['color','Color']],onChange:()=>renderPendingJobs(pendingSearch.value),search:false});
     pendingListBody.innerHTML = rows.length
       ? rows.map((job, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(job.imei)}</td><td>${escapeHtml(job.supplier)}</td><td>${escapeHtml(job.model)}</td><td>${escapeHtml(job.storage)}</td><td>${escapeHtml(job.color)}</td></tr>`).join("")
       : '<tr><td colspan="6" class="qc-pending-empty">No pending phones match this search.</td></tr>';
@@ -445,12 +446,12 @@
   }
 
   async function loadPendingCount() {
-    const { data, error } = await getClient()
+    const { data, error } = await window.GREENLOOP_FILTERS.all(()=>getClient()
       .from("jobs")
       .select("job_number, received_at, supplier:greenloop_suppliers(supplier_code, company_name), receiving_batch:receiving_batches(planned_quantity, invoice_number, batch_number), device:devices!inner(imei_1, imei_2, device_number, serial_number, brand, model, storage_gb, color)")
       .eq("current_status", "initial_qc_pending")
       .is("deleted_at", null)
-      .order("received_at", { ascending: true });
+      .order("received_at", { ascending: true }).order("id"));
     if (error) throw error;
     pendingJobs = data || [];
     queueCount.textContent = `${pendingJobs.length} waiting`;
