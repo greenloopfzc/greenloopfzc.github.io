@@ -99,12 +99,12 @@
     if (view === 'verify') return;
     offset = 0; query = {from:null,to:null,search:null}; $('#accounts-stock-filter').reset();
     const supplier = view === 'supplier';
-    stockFilters.controls.get('_from').previousElementSibling.textContent=supplier?'Received from · UAE':'Exported from · UAE';
+    for (const key of ['_from', '_to']) stockFilters.controls.get(key).title = supplier ? 'Stock received date range' : 'Exported date range';
     stockFilters.controls.get('customer_code').closest('label').hidden=supplier;
     stockFilters.controls.get('final_grade').closest('label').hidden=supplier;
     $('#accounts-stock-title').textContent = supplier ? 'Supplier Stock' : 'Customer Stock';
-    $('#accounts-date-from-label').firstChild.textContent = supplier ? 'Received from · UAE' : 'Exported from · UAE';
-    $('#accounts-date-to-label').firstChild.textContent = supplier ? 'Received to · UAE' : 'Exported to · UAE';
+    $('#accounts-date-from-label').firstChild.textContent = 'From date';
+    $('#accounts-date-to-label').firstChild.textContent = 'To date';
     $('#accounts-stock-filter').elements.search.placeholder = supplier ? 'Supplier, invoice, model, color…' : 'Customer, supplier, box, invoice, model…';
     $('#accounts-stock-note').textContent = supplier ? 'All suppliers in one table. In company = Ready + In process. In process includes stock awaiting IMEI entry, Box Entry and Accounts verification. Returned phones are shown separately. Dates filter the original receipt.' : 'All customers in one table. Exports appear after Accounts verification. Older boxes show the recorded customer, or Not recorded if unavailable. Totals cover all matching rows.';
     stockFilters.clear();

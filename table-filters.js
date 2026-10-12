@@ -31,7 +31,7 @@
       wrap.append(input); bar.append(wrap); controls.set(key, input);
     }
     if (options.search !== false) control('_search', 'Search', 'search');
-    if (options.dateKey) { control('_from', (options.dateLabel || 'Date') + ' from · UAE', 'date'); control('_to', 'To · UAE', 'date'); }
+    if (options.dateKey) { control('_from', 'From date', 'date'); control('_to', 'To date', 'date'); for (const key of ['_from', '_to']) controls.get(key).title = (options.dateLabel || 'Record') + ' date range'; }
     fields.forEach(([key, label]) => control(key, label, 'select'));
     const actions = node('div', 'table-filter-actions');
     const apply = node('button', 'primary-button', 'Search'); apply.type = 'button'; apply.dataset.searchReadOnly = '';

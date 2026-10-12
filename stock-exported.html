@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <link rel="stylesheet" href="css/table-filters.css?v=20261012-table-filters-1">
-  <script defer src="js/table-filters.js?v=20261012-table-filters-1"></script>
+  <script defer src="js/table-filters.js?v=20261012-filter-labels-1"></script>
   <script src="js/appearance.js?v=20260928-sidebar-depth-1"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#0d5c43">
@@ -42,7 +42,7 @@
           <section class="page-heading"><div><p class="eyebrow">BOX WORKFLOW</p><h1>Stock Exported</h1><p>Verified boxes, export dates and the account that verified each box.</p></div></section>
           <p id="permission-message" class="form-message is-visible" hidden></p>
           <section id="box-queue-app" hidden data-box-page="stock_exported">
-            <form id="box-queue-filter" class="box-queue-filter"><label>From date · UAE<input name="from" type="date"></label><label>To date · UAE<input name="to" type="date"></label><button class="primary-button" type="submit" data-search-read-only>Show boxes</button><button id="clear-box-dates" class="secondary-button" type="button" data-search-read-only>All dates</button></form>
+            <form id="box-queue-filter" class="box-queue-filter"><label>From date<input name="from" type="date"></label><label>To date<input name="to" type="date"></label><button class="primary-button" type="submit" data-search-read-only>Show boxes</button><button id="clear-box-dates" class="secondary-button" type="button" data-search-read-only>All dates</button></form>
             <p id="box-queue-message" role="status" class="form-message"></p>
             <section class="box-queue-card"><div id="box-queue-list"></div><div class="box-queue-pagination"><button id="box-queue-prev" class="secondary-button" type="button" data-search-read-only>Previous</button><span id="box-queue-count"></span><button id="box-queue-next" class="secondary-button" type="button" data-search-read-only>Next</button></div></section>
             <section id="box-queue-detail" class="box-queue-card" hidden></section>

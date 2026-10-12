@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <link rel="stylesheet" href="css/table-filters.css?v=20261012-table-filters-1">
-  <script defer src="js/table-filters.js?v=20261012-table-filters-1"></script>
+  <script defer src="js/table-filters.js?v=20261012-filter-labels-1"></script>
   <script src="js/appearance.js?v=20260928-sidebar-depth-1"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#0d5c43">
@@ -21,7 +21,7 @@
   <link rel="stylesheet" href="css/record-search.css?v=20261003-navigation-search-1">
   <script defer src="js/record-search.js?v=20261003-navigation-search-1"></script>
     <script defer src="js/part-notifications.js?v=20260918-audit-2"></script>
-    <script defer src="js/accounts-stock.js?v=20261012-table-filters-1"></script>
+    <script defer src="js/accounts-stock.js?v=20261012-filter-labels-1"></script>
     <script defer src="js/box-workflow.js?v=20261012-table-filters-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20260928-sidebar-depth-1">
     <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261003-qc-duplicate-stage-1">
@@ -49,7 +49,7 @@
               <button type="button" class="accounts-section-card" data-accounts-view="customer" data-search-read-only aria-pressed="false"><span class="accounts-card-icon" aria-hidden="true">↗</span><strong>Customer Stock</strong><small>All customers and their exported phones.</small></button>
             </nav>
             <section id="accounts-verify-panel" aria-label="Verify Box">
-            <form id="box-queue-filter" class="box-queue-filter"><label>From date · UAE<input name="from" type="date"></label><label>To date · UAE<input name="to" type="date"></label><button class="primary-button" type="submit" data-search-read-only>Show boxes</button><button id="clear-box-dates" class="secondary-button" type="button" data-search-read-only>All dates</button></form>
+            <form id="box-queue-filter" class="box-queue-filter"><label>From date<input name="from" type="date"></label><label>To date<input name="to" type="date"></label><button class="primary-button" type="submit" data-search-read-only>Show boxes</button><button id="clear-box-dates" class="secondary-button" type="button" data-search-read-only>All dates</button></form>
             <p id="box-queue-message" role="status" class="form-message"></p>
             <section class="box-queue-card"><div id="box-queue-list"></div><div class="box-queue-pagination"><button id="box-queue-prev" class="secondary-button" type="button" data-search-read-only>Previous</button><span id="box-queue-count"></span><button id="box-queue-next" class="secondary-button" type="button" data-search-read-only>Next</button></div></section>
             <section id="box-queue-detail" class="box-queue-card" hidden></section>
@@ -57,8 +57,8 @@
             <section id="accounts-stock-panel" hidden aria-labelledby="accounts-stock-title">
               <div class="accounts-stock-heading"><h2 id="accounts-stock-title">Supplier Stock</h2><span id="accounts-stock-updated" class="live-chip" role="status"></span></div>
               <form id="accounts-stock-filter" class="box-queue-filter">
-                <label id="accounts-date-from-label">Received from · UAE<input name="from" type="date"></label>
-                <label id="accounts-date-to-label">Received to · UAE<input name="to" type="date"></label>
+                <label id="accounts-date-from-label">From date<input name="from" type="date"></label>
+                <label id="accounts-date-to-label">To date<input name="to" type="date"></label>
                 <label class="accounts-search">Find stock<input name="search" type="search" placeholder="Supplier, invoice, model, color…" maxlength="160"></label>
                 <button class="primary-button" type="submit" data-search-read-only>Search</button>
                 <button id="accounts-stock-clear" class="secondary-button" type="button" data-search-read-only>Clear filters</button>
