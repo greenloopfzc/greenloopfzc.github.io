@@ -113,7 +113,7 @@
   }
 
   const journeyFilters=window.GREENLOOP_FILTERS.get('journey-record-filters',{
-    before:body.closest('.journey-table-wrap'),search:false,
+    before:body.closest('.journey-table-wrap'),searchInput:search,
     fields:[['current_stage','Stage'],['supplier_code','Supplier code'],['company_final_grade','Final grade']],
     onChange:()=>{offset=0;return loadJourney();}
   });
@@ -123,11 +123,12 @@
     if ((from && !to) || (!from && to) || (from && to && from > to)) throw new Error('Select a valid From date and To date, or clear both dates.');
     const generation = ++journeyGeneration;
     loading = true;
+    journeyFilters.setBusy(true);
     refresh.disabled = true;
     if (!quiet) refresh.textContent = 'Loading...';
     updatePager();
     try {
-      const {data, error} = await getClient().rpc('get_sorted_filter_records_v1',{...journeyFilters.sortArgs(),p_source:'journey',p_filters:{...journeyFilters.query(),_from:from||'',_to:to||'',_search:search.value.trim()},p_offset:offset,p_limit:pageSize});
+      const {data, error} = await getClient().rpc('get_sorted_filter_records_v1',{...journeyFilters.sortArgs(),p_source:'journey',p_filters:{...journeyFilters.query(),_from:from||'',_to:to||''},p_offset:offset,p_limit:pageSize});
       if (generation !== journeyGeneration) return;
       if (error) throw error;
       if (!data || !Array.isArray(data.rows) || !Number.isSafeInteger(Number(data.total)) || Number(data.total) < 0) throw new Error('Stock Journey returned an invalid response.');
@@ -145,7 +146,7 @@
       if (error.code === '42501' || error.code === 'PGRST301') { rowCount = 0; offset = 0; render([]); detail.close(); }
       throw error;
     } finally {
-      if (generation === journeyGeneration) { loading = false; refresh.disabled = false; refresh.textContent = 'Refresh table'; updatePager(); }
+      if (generation === journeyGeneration) { loading = false; journeyFilters.setBusy(false); refresh.disabled = false; refresh.textContent = 'Refresh table'; updatePager(); }
     }
   }
 
@@ -230,7 +231,7 @@
   window.addEventListener("greenloop:device-reader-status", (event) => { if (["offline", "waiting"].includes(event.detail?.state)) clearConnectedDevice(); });
   window.addEventListener("greenloop:device", (event) => applyConnectedDevice(event.detail));
   saveCableDetails.addEventListener("click", () => saveConnectedDeviceDetails().catch((error) => showToast(error.message || "Connected phone details could not be saved.")));
-  document.querySelector('#journey-search-form').addEventListener('submit', event => { event.preventDefault(); offset = 0; loadJourney().catch(error => showToast(error.message)); });
+  document.querySelector('#journey-search-form').addEventListener('submit', event => { event.preventDefault(); journeyFilters.submit(); });
   previous.addEventListener('click', () => { offset = Math.max(0, offset - pageSize); loadJourney().catch(error => showToast(error.message)); });
   next.addEventListener('click', () => { offset += pageSize; loadJourney().catch(error => showToast(error.message)); });
   body.addEventListener('click', event => { const button = event.target.closest('[data-device-id]'); if (button) openJourney(button.dataset.deviceId); });

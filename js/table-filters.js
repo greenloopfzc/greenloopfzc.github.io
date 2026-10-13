@@ -16,21 +16,37 @@
     if (value !== undefined) el.textContent = value;
     return el;
   };
+  // Debounce reads, not typing. Composition is committed only when it ends.
+  function liveSearch(input, run) {
+    let timer, composing = false;
+    const cancel = () => { clearTimeout(timer); timer = null; };
+    const schedule = event => {
+      cancel();
+      if (composing || event?.isComposing) return;
+      timer = setTimeout(() => { timer = null; run(); }, input.value ? 200 : 0);
+    };
+    input.addEventListener('input', schedule);
+    input.addEventListener('search', schedule);
+    input.addEventListener('compositionstart', () => { composing = true; cancel(); });
+    input.addEventListener('compositionend', () => { composing = false; schedule(); });
+    return {cancel};
+  }
   function create(id, options) {
     const bar = node('div', 'table-filters'); bar.id = id;
     bar.setAttribute('role', 'search'); bar.setAttribute('aria-label', options.label || 'Filter records');
     const controls = new Map(), fields = options.fields || [];
-    let applied = {}, source = [], sourceRows = [], latestOptions = options;
+    let applied = {}, source = [], sourceRows = [], latestOptions = options, busy = false, pendingChange = null, live;
     function control(key, label, type) {
       const wrap = node('label', 'table-filter-field');
       wrap.append(node('span', '', label));
       const input = node(type === 'select' ? 'select' : 'input');
       input.id = id + '-' + key; input.dataset.searchReadOnly = '';
       input.setAttribute('aria-label', label); if (type !== 'select') input.type = type;
-      if (type === 'search') { input.placeholder = options.placeholder || 'Search matching records…'; input.maxLength = 160; }
+      if (type === 'search') { input.placeholder = options.placeholder || 'Type to search…'; input.maxLength = 160; }
       wrap.append(input); bar.append(wrap); controls.set(key, input);
     }
-    if (options.search !== false) control('_search', 'Search', 'search');
+    if (options.searchInput) controls.set('_search', options.searchInput);
+    else if (options.search !== false) control('_search', 'Search', 'search');
     if (options.dateKey) { control('_from', 'From date', 'date'); control('_to', 'To date', 'date'); for (const key of ['_from', '_to']) controls.get(key).title = (options.dateLabel || 'Record') + ' date range'; }
     fields.forEach(([key, label]) => control(key, label, 'select'));
     const actions = node('div', 'table-filter-actions');
@@ -65,17 +81,29 @@
       if (applied._to && (!d || d > applied._to)) return false;
       return fields.every(([key]) => !applied[key] || normalized(fieldValue(r,key)) === normalized(applied[key]));
     }
-    async function change(reset) {
-      const next = {};
-      for (const [key, input] of controls) if (!reset && input.value.trim()) next[key] = input.value.trim();
+    async function change(reset, searchOnly = false) {
+      live?.cancel();
+      // A delayed keystroke must not reopen a report after its tab was left.
+      if (searchOnly && !bar.getClientRects().length) { pendingChange = null; return; }
+      // Keep just the latest requested search while a reader is running. This
+      // also covers pages that intentionally serialize reads with other actions.
+      if (busy) { pendingChange = {reset, searchOnly}; status.textContent = 'Searching…'; return; }
+      pendingChange = null;
+      const next = searchOnly ? {...applied} : {};
+      if (searchOnly) {
+        delete next._search;
+        const value = controls.get('_search')?.value.trim();
+        if (value) next._search = value;
+      } else for (const [key, input] of controls) if (!reset && input.value.trim()) next[key] = input.value.trim();
       if (next._from && next._to && next._from > next._to) { status.textContent = 'From date must be on or before To date.'; return; }
       if (reset) { for (const input of controls.values()) input.value = ''; sorting.clear(); }
       applied = next;
       try { await latestOptions.onChange?.(); }
       catch (e) { status.textContent = e.message || 'Could not load filtered records. Try again.'; }
     }
+    if (controls.has('_search')) live = liveSearch(controls.get('_search'), () => change(false, true));
     apply.addEventListener('click',()=>change(false)); clear.addEventListener('click',()=>change(true));
-    bar.addEventListener('keydown',e=>{if(e.key === 'Enter' && e.target.tagName !== 'BUTTON'){e.preventDefault();e.stopPropagation();change(false);}});
+    bar.addEventListener('keydown',e=>{if(e.key === 'Enter' && !e.isComposing && e.target.tagName !== 'BUTTON'){e.preventDefault();e.stopPropagation();change(false);}});
     const api = {
       bar, controls,
       query: () => ({...applied}),
@@ -83,6 +111,7 @@
       sortRows: rows => sorting.sort(rows),
       setSortFields: fields => { latestOptions = {...latestOptions,sortFields:fields}; sorting.refresh(latestOptions); },
       clear: () => change(true),
+      submit: () => change(false),
       mount(opts = latestOptions) {
         latestOptions = opts;
         sorting.refresh(opts);
@@ -114,11 +143,18 @@
       },
       result(data) {
         updateFacets(data.facets || {});
-        status.textContent = `${data.total} matching records`;
+        status.textContent = pendingChange ? 'Searching…' : `${data.total} matching records`;
         queueMicrotask(sorting.decorate);
       },
       fail(message) { status.textContent = message; },
-      setBusy(busy) { for(const el of [apply,clear,...controls.values()]) el.disabled = busy; sorting.setBusy(busy); }
+      setBusy(value) {
+        busy = value; bar.setAttribute('aria-busy', String(value));
+        for (const el of [apply,clear,...controls.values()]) el.disabled = value && el !== controls.get('_search');
+        sorting.setBusy(value);
+        if (!value && pendingChange) queueMicrotask(() => {
+          if (!busy && pendingChange) { const next = pendingChange; change(next.reset, next.searchOnly); }
+        });
+      }
     };
     api.mount(); instances.set(id, api); return api;
   }
@@ -162,5 +198,5 @@
     };
     return filter;
   }
-  window.GREENLOOP_FILTERS = {get,use,day,all,remote};
+  window.GREENLOOP_FILTERS = {get,use,day,all,remote,liveSearch};
 })();

@@ -85,7 +85,7 @@
     return `<div class="dm-pager"><span>${count === null ? "Records unavailable" : count === 0 ? "No entries" : `Entries ${currentOffset + 1}–${end} of ${Number(count).toLocaleString()}`}</span><div><button type="button" data-dm-page="${prefix}-previous" ${isLoading || blocked() || currentOffset === 0 ? "disabled" : ""}>Previous</button><button type="button" data-dm-page="${prefix}-next" ${isLoading || blocked() || !hasMore ? "disabled" : ""}>Next</button></div></div>`;
   }
   function listMarkup() {
-    return `<section aria-labelledby="dm-list-title"><div class="dm-section-heading"><h3 id="dm-list-title">${mode === "correct" ? "Select an entry to correct" : "Select one entry to delete"}</h3><span class="dm-muted">${total === null ? "" : `${total.toLocaleString()} ${search ? "matching" : "total"} entries`}</span></div><form id="dm-search-form" class="dm-search"><div class="dm-field"><label for="dm-search">Search manual damage entries</label><input id="dm-search" name="search" type="search" maxlength="200" placeholder="Employee, model, part, IMEI or entry ID" value="${escape(search)}" ${blocked() ? "disabled" : ""}></div><button type="submit" ${blocked() || loading ? "disabled" : ""}>Search</button><button type="button" data-dm-refresh ${blocked() || loading ? "disabled" : ""}>Refresh</button></form><div class="dm-list" aria-busy="${loading}">${loading ? '<p class="dm-empty">Loading damage entries…</p>' : !loaded ? '<p class="dm-empty">Entries could not be loaded. Select Refresh to try again.</p>' : rows.length ? rows.map(row => `<article class="dm-record ${selected?.id === row.id ? "is-selected" : ""}"><div class="dm-record-top"><strong>${escape(row.damaged_by || "Employee unavailable")}</strong><span>${escape(dateLabel(row.occurred_at))} · UAE</span></div><div class="dm-record-values"><span><small>Model</small>${escape(row.model || "—")}</span><span><small>${row.part_name ? "Part name" : "Damage description"}</small>${escape(row.part_name || row.damage || "—")}</span><span><small>Qty</small>${escape(quantityLabel(row))}</span><span><small>Price per part</small>${escape(priceLabel(row.price_amount))}</span><span><small>Currency</small>${escape(row.currency || "Not recorded")}</span><span><small>Part source</small>${escape(row.part_source || "Not recorded")}</span><span><small>IMEI / serial</small>${escape(row.identifier || "Not recorded")}</span><span><small>Reason</small>${escape(row.reason || "—")}</span></div><div class="dm-record-bottom"><span class="dm-id">Entry ${escape(row.id)}</span><button type="button" data-dm-select="${escape(row.id)}" ${blocked() || !editable() ? "disabled" : ""}>${mode === "correct" ? "Correct entry" : "Review deletion"}</button></div></article>`).join("") : '<p class="dm-empty">No damage entries match this search.</p>'}</div>${pager("records", offset, total, more, loading)}</section>`;
+    return `<section aria-labelledby="dm-list-title"><div class="dm-section-heading"><h3 id="dm-list-title">${mode === "correct" ? "Select an entry to correct" : "Select one entry to delete"}</h3><span class="dm-muted">${total === null ? "" : `${total.toLocaleString()} ${search ? "matching" : "total"} entries`}</span></div><div class="dm-search"><button type="button" data-dm-refresh ${blocked() || loading ? "disabled" : ""}>Refresh</button></div><div class="dm-list" aria-busy="${loading}">${loading ? '<p class="dm-empty">Loading damage entries…</p>' : !loaded ? '<p class="dm-empty">Entries could not be loaded. Select Refresh to try again.</p>' : rows.length ? rows.map(row => `<article class="dm-record ${selected?.id === row.id ? "is-selected" : ""}"><div class="dm-record-top"><strong>${escape(row.damaged_by || "Employee unavailable")}</strong><span>${escape(dateLabel(row.occurred_at))} · UAE</span></div><div class="dm-record-values"><span><small>Model</small>${escape(row.model || "—")}</span><span><small>${row.part_name ? "Part name" : "Damage description"}</small>${escape(row.part_name || row.damage || "—")}</span><span><small>Qty</small>${escape(quantityLabel(row))}</span><span><small>Price per part</small>${escape(priceLabel(row.price_amount))}</span><span><small>Currency</small>${escape(row.currency || "Not recorded")}</span><span><small>Part source</small>${escape(row.part_source || "Not recorded")}</span><span><small>IMEI / serial</small>${escape(row.identifier || "Not recorded")}</span><span><small>Reason</small>${escape(row.reason || "—")}</span></div><div class="dm-record-bottom"><span class="dm-id">Entry ${escape(row.id)}</span><button type="button" data-dm-select="${escape(row.id)}" ${blocked() || !editable() ? "disabled" : ""}>${mode === "correct" ? "Correct entry" : "Review deletion"}</button></div></article>`).join("") : '<p class="dm-empty">No damage entries match this search.</p>'}</div>${pager("records", offset, total, more, loading)}</section>`;
   }
   function optionMarkup(kind) {
     const choices = options?.[kind.group] || [];
@@ -129,9 +129,9 @@
   }
   function managementFilters(){
     const f=window.GREENLOOP_FILTERS.get('damage-correction-filters',{
-      before:host,search:false,dateKey:'occurred_at',dateLabel:'Damage',
+      before:host,placeholder:'Type employee, model, part, IMEI or entry ID…',dateKey:'occurred_at',dateLabel:'Damage',
       fields:[['damaged_by','Employee'],['department','Department'],['model','Model'],['part_name','Part'],['part_source','Source'],['currency','Currency']],
-      onChange:()=>{if(!loading&&!blocked()){offset=0;return load();}}
+      onChange:()=>{if(!loading&&!blocked()){search=f.query()._search || '';offset=0;return load();}}
     });
     f.mount();f.bar.hidden=denied||mode==='home'||(mode==='remove'&&scope==='all');
     f.setBusy(loading||blocked());return f;
@@ -140,7 +140,7 @@
     if (!host || denied || loading || blocked()) return;
     const token = ++generation; loading = true; render();
     try {
-      const data = await rpc('get_sorted_filter_records_v1',{...managementFilters().sortArgs(),p_source:'damage_management',p_filters:{...managementFilters().query(),_search:search},p_offset:offset,p_limit:limit});
+      const data = await rpc('get_sorted_filter_records_v1',{...managementFilters().sortArgs(),p_source:'damage_management',p_filters:managementFilters().query(),p_offset:offset,p_limit:limit});
       if (token !== generation || !host || denied) return;
       if (!data || !Array.isArray(data.rows) || !Number.isSafeInteger(Number(data.total_count)) || Number(data.total_count) < 0 || !data.options || !fieldKinds.every(kind => Array.isArray(data.options[kind.group]) && data.options[kind.group].every(item => item && typeof item.id === "string" && typeof item.label === "string")) || !data.rows.every(row => row && typeof row.id === "string" && typeof row.version === "string")) throw new Error("The damage entries response could not be read. Select Refresh to retry.");
       managementFilters().result(data);
@@ -246,9 +246,8 @@
   }
   function onSubmit(event) {
     const form = event.target;
-    if (!["dm-search-form", "dm-correction-form", "dm-removal-form"].includes(form.id)) return;
+    if (!["dm-correction-form", "dm-removal-form"].includes(form.id)) return;
     event.preventDefault(); if (blocked() || denied) return;
-    if (form.id === "dm-search-form") { search = String(new FormData(form).get("search") || "").trim(); offset = 0; selected = null; preview = null; announce(); load(); return; }
     if (!editable()) return;
     if (form.id === "dm-correction-form" && selected) {
       const args = correctionPayload(form); if (args) mutate({ rpc: "correct_manual_damage_report_v4", args: Object.freeze(args) });

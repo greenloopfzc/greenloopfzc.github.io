@@ -120,6 +120,13 @@
     const body=table.tBodies[0], elements=[...body.rows];
     if(elements.length!==rows.length)return;
     const byRow=new Map(rows.map((row,i)=>[row,elements[i]]));
+    if (window.GREENLOOP_FILTERS) {
+      const options = {before:table.parentElement,sortTarget:table,fields:[],sortFields:fields,searchFields:fields.map(([key])=>key),
+        onChange:()=>filter.bind(rows,rows.map(row=>byRow.get(row)),options)};
+      const filter = window.GREENLOOP_FILTERS.get(id,options);
+      filter.bind(rows,rows.map(row=>byRow.get(row)),options);
+      return filter;
+    }
     const bar=document.createElement('div');bar.className='table-filters table-only-sorting';table.parentElement.before(bar);
     const sorter=create(id,bar,{sortTarget:table,sortFields:fields},()=>{
       sorter.sort(rows).forEach((row,i)=>{const el=byRow.get(row);if(body.children[i]!==el)body.insertBefore(el,body.children[i]||null);});

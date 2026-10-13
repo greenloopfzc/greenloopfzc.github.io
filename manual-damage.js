@@ -357,6 +357,7 @@
     if (accessDenied) return;
     const version = ++loadVersion;
     loading = true;
+    historyFilters.setBusy(true);
     updatePager();
     message("manual-damage-history-message");
     try {
@@ -382,7 +383,7 @@
         byId("manual-damage-page-label").textContent = "Reports unavailable";
       }
     } finally {
-      if (version === loadVersion) { loading = false; updatePager(); }
+      if (version === loadVersion) { loading = false; historyFilters.setBusy(false); updatePager(); }
     }
   }
   async function sendReport(request) {

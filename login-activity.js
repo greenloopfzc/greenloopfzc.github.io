@@ -2,14 +2,14 @@
   'use strict';
   if (!window.GREENLOOP_GET_CLIENT || window.GREENLOOP_LOGIN_TRACKER) return;
   const client=window.GREENLOOP_GET_CLIENT(), page=(location.pathname.split('/').pop()||'index.html').toLowerCase();
-  let userId='', generation=0, cursor=null, busy=false, tracking=false, offset=0, allowed=false, link, notice, panel, mounted=false, sorting;
+  let userId='', generation=0, cursor=null, busy=false, tracking=false, offset=0, allowed=false, link, notice, panel, mounted=false, sorting, live, queuedSearch=false, hasMore=false;
   const fmt=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true});
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const stamp=v=>v&&Number.isFinite(new Date(v).getTime())?fmt.format(new Date(v)):'—';
   const el=id=>document.getElementById(id);
   const key=()=>`greenloop-login-alert-cursor:${userId}`;
   function reset(id='') {
-    generation++;userId=id;cursor=null;allowed=false;offset=0;busy=false;
+    generation++;userId=id;cursor=null;allowed=false;offset=0;busy=false;queuedSearch=false;hasMore=false;live?.cancel();
     if(link)link.remove();link=null;if(notice)notice.remove();notice=null;
     if(panel){panel.hidden=true;el('login-activity-rows').innerHTML='';el('login-activity-updated').textContent='';}
     if(id)try{const saved=localStorage.getItem(key());if(/^\d+$/.test(saved||''))cursor=saved;}catch(_){}
@@ -50,8 +50,10 @@
     if(window.GREENLOOP_SORTING) sorting=window.GREENLOOP_SORTING.create('login-activity-sort',el('login-activity-filters'),{
       sortTarget:panel.querySelector('.login-activity-table'),sortFields:[['name','User'],['username','Username'],['login_at','Login','date'],['device','Device / browser'],['browser','Browser'],['login_surface','Signed in through'],['last_seen','Last activity','date'],['last_page','Last window'],['status','Status']]
     },()=>{offset=0;return poll();});
-    el('login-activity-filters').addEventListener('submit',e=>{e.preventDefault();offset=0;poll();});
-    el('login-activity-clear').onclick=()=>{el('login-activity-filters').reset();sorting?.clear();offset=0;poll();};
+    const searchNow=()=>{live?.cancel();if(busy){queuedSearch=true;return;}offset=0;poll();};
+    live=window.GREENLOOP_FILTERS?.liveSearch(el('login-activity-search'),searchNow);
+    el('login-activity-filters').addEventListener('submit',e=>{e.preventDefault();searchNow();});
+    el('login-activity-clear').onclick=()=>{el('login-activity-filters').reset();sorting?.clear();searchNow();};
     el('login-activity-refresh').onclick=()=>poll();
     el('login-activity-prev').onclick=()=>{offset=Math.max(0,offset-25);poll();};
     el('login-activity-next').onclick=()=>{offset+=25;poll();};
@@ -70,7 +72,7 @@
     el('login-activity-since').textContent=`Tracking enabled ${stamp(data.installed_at)} UAE. Earlier sign-ins appear only if their sessions reconnect.`;
     el('login-activity-rows').innerHTML=data.rows.length?data.rows.map(r=>`<tr><td><strong>${esc(r.name)}</strong><small>@${esc(r.username)}</small></td><td>${esc(stamp(r.login_at))}${r.existing_session?'<small>Existing session</small>':''}</td><td>${esc(r.device)}<small>${esc(r.browser)}</small></td><td>${esc(r.login_surface)}</td><td>${esc(stamp(r.last_seen))}</td><td>${esc(r.last_surface)}<small>${esc(r.last_page.replace(/\.html$/,'').replace(/-/g,' '))}</small></td><td><span class="login-state ${r.status==='Recently active'?'is-active':''}">${esc(r.status)}</span>${r.logout_at?`<small>${esc(stamp(r.logout_at))}</small>`:''}</td></tr>`).join(''):'<tr><td colspan="7">No sign-ins match these filters.</td></tr>';
     el('login-activity-range').textContent=data.rows.length?`${offset+1}–${offset+data.rows.length} of ${data.total_count}`:'0 records';
-    el('login-activity-prev').disabled=offset===0;el('login-activity-next').disabled=!data.has_more;
+    hasMore=data.has_more;el('login-activity-prev').disabled=offset===0;el('login-activity-next').disabled=!hasMore;
     el('login-activity-message').textContent='';sorting?.decorate();
     if(firstOpen&&location.hash==='#login-activity')panel.scrollIntoView({block:'start'});
   }
@@ -91,15 +93,16 @@
       if(access.error||access.data!==true){allowed=false;if(unavailable){unavailable.hidden=false;unavailable.textContent=access.error?'Login Activity access could not be checked. Select the Login Activity card again to retry.':'Only Super Admin can view Login Activity.';}if(link)link.remove();link=null;if(notice)notice.remove();notice=null;if(panel){panel.hidden=true;el('login-activity-rows').innerHTML='';}return;}
       if(unavailable)unavailable.hidden=true;
       allowed=true;mount();showLink();sorting?.setBusy(true);
+      if(panel){el('login-activity-prev').disabled=true;el('login-activity-next').disabled=true;}
       const from=el('login-activity-from')?.value||null,to=el('login-activity-to')?.value||null;
       if(from&&to&&from>to){el('login-activity-message').textContent='From date must be before or equal to To date.';return;}
       const result=await client.rpc(sorting?'get_sorted_login_activity_v1':'get_login_activity_v1',{...(sorting?.args()||{}),p_search:el('login-activity-search')?.value.trim()||'',p_from:from,p_to:to,p_offset:panel?offset:0,p_limit:panel?25:1,p_after_id:cursor});
       if(mine!==generation)return;
       if(result.error){if(result.error.code==='42501'){reset(userId);return;}throw result.error;}
       const data=result.data;if(!data||!Array.isArray(data.rows)||!Array.isArray(data.alerts)||!/^\d+$/.test(data.cursor))throw Error('Login Activity response could not be verified.');
-      render(data);alertNew(data.alerts);cursor=data.cursor;try{localStorage.setItem(key(),cursor);}catch(_){}
+      if(!queuedSearch)render(data);alertNew(data.alerts);cursor=data.cursor;try{localStorage.setItem(key(),cursor);}catch(_){}
     }catch(_){if(panel&&!panel.hidden)el('login-activity-message').textContent='Live connection unavailable. The last loaded records remain below; use Refresh to retry.';else if(el('login-activity-unavailable')){el('login-activity-unavailable').hidden=false;el('login-activity-unavailable').textContent='Login Activity could not be loaded. Select the Login Activity card again to retry.';}}
-    finally{if(mine===undefined||mine===generation){busy=false;sorting?.setBusy(false);}}
+    finally{if(mine===undefined||mine===generation){busy=false;sorting?.setBusy(false);if(panel){el('login-activity-prev').disabled=offset===0;el('login-activity-next').disabled=!hasMore;}if(queuedSearch){queuedSearch=false;offset=0;queueMicrotask(()=>poll());}}}
   }
   function start(){mount();touch();poll();setInterval(()=>{if(!document.hidden){touch();poll();}},30000);}
   document.addEventListener('visibilitychange',()=>{if(!document.hidden){touch();poll();}});
