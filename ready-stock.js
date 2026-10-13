@@ -148,10 +148,10 @@
   }
 
   function render(data) {
-    const flatRows = window.GREENLOOP_FILTERS.use('ready-stock-filters', Array.isArray(data?.rows) ? data.rows : [], {before:tableBody.closest('.ready-stock-table-wrap'),fields:[['model','Model'],['final_grade','Grade']],onChange:()=>render(data),searchFields:['model','final_grade']});
+    const flatRows = window.GREENLOOP_FILTERS.use('ready-stock-filters', Array.isArray(data?.rows) ? data.rows : [], {before:tableBody.closest('.ready-stock-table-wrap'),sortAfterGroup:true,sortFields:[['model','Model'],['latest','Latest Final QC pass','date'],['total','Total Qty','number']],fields:[['model','Model'],['final_grade','Grade']],onChange:()=>render(data),searchFields:['model','final_grade']});
     const filteredTotal = flatRows.reduce((sum,row)=>sum+Number(row.quantity||0),0);
     const grades = buildGradeList(data, flatRows);
-    const rows = pivotRows(flatRows, grades);
+    const rows = window.GREENLOOP_FILTERS.get('ready-stock-filters').sortRows(pivotRows(flatRows, grades));
     const gradeTotals = new Map(grades.map((grade) => [grade.key, 0]));
     rows.forEach((row) => {
       grades.forEach((grade) => gradeTotals.set(grade.key, Number(gradeTotals.get(grade.key) || 0) + Number(row.grades.get(grade.key) || 0)));

@@ -274,7 +274,7 @@
     const options=[...batchSelect.options].filter(o=>o.value);
     const records=options.map(o=>batches.find(b=>String(b.batch_id)===o.value)||{});
     const f=window.GREENLOOP_FILTERS.get('imei-receipt-filters',{
-      before:batchSelect.closest('.form-field'),fields:[['supplier_code','Supplier code'],['stock_channel','Channel']],
+      before:batchSelect.closest('.form-field'),sorting:false,fields:[['supplier_code','Supplier code'],['stock_channel','Channel']],
       searchFields:['supplier_code','invoice_number','batch_number','stock_channel'],onChange:filterReceipts
     });
     const matches=new Set(f.apply(records));

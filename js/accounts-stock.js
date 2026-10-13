@@ -61,7 +61,7 @@
     $('#accounts-stock-next').disabled = context.isBusy() || offset + 50 >= total;
   }
   const stockFilters=window.GREENLOOP_FILTERS.get('accounts-record-filters',{
-    before:$('#accounts-stock-filter'),dateKey:'received_at',dateLabel:'Received / exported',
+    before:$('#accounts-stock-filter'),sortTarget:'#accounts-stock-list',dateKey:'received_at',dateLabel:'Received / exported',
     fields:[['supplier_code','Supplier code'],['customer_code','Customer code'],['model','Model'],['storage_gb','GB'],['color','Color'],['final_grade','Grade']],
     onChange:()=>{offset=0;return loadStock();}
   });
@@ -69,11 +69,11 @@
   stockFilters.bar.querySelector('.table-filter-actions').append($('#accounts-stock-refresh'));
   async function loadStock() {
     if (view === 'verify' || context.isBusy()) return;
-    context.lock(true);
+    context.lock(true); stockFilters.setBusy(true);
     const msg = $('#accounts-stock-message');
     msg.textContent = ''; msg.classList.remove('is-visible');
     try {
-      const data = await rpc('get_filter_records_v1',{p_source:'accounts_'+view,p_filters:stockFilters.query(),p_offset:offset,p_limit:50});
+      const data = await rpc('get_sorted_filter_records_v1',{...stockFilters.sortArgs(),p_source:'accounts_'+view,p_filters:stockFilters.query(),p_offset:offset,p_limit:50});
       stockFilters.result(data);
       total = data.total;
       $('#accounts-stock-list').innerHTML = table(data);
@@ -88,7 +88,7 @@
       $('#accounts-stock-count').textContent = '';
       $('#accounts-stock-updated').textContent = 'Update unavailable';
       msg.textContent = e.message || 'Stock could not be loaded.'; msg.classList.add('is-visible');
-    } finally { context.lock(false); pagination(); }
+    } finally { context.lock(false); stockFilters.setBusy(false); pagination(); }
   }
   function showView(next) {
     if (context.isBusy() || !['verify','supplier','customer'].includes(next)) return;
@@ -99,6 +99,7 @@
     if (view === 'verify') return;
     offset = 0; query = {from:null,to:null,search:null}; $('#accounts-stock-filter').reset();
     const supplier = view === 'supplier';
+    stockFilters.setSortFields((supplier ? supplierColumns : customerColumns).map(([label,key])=>[key,label,key.endsWith('_at')?'date':undefined]));
     for (const key of ['_from', '_to']) stockFilters.controls.get(key).title = supplier ? 'Stock received date range' : 'Exported date range';
     stockFilters.controls.get('customer_code').closest('label').hidden=supplier;
     stockFilters.controls.get('final_grade').closest('label').hidden=supplier;

@@ -9,16 +9,16 @@
   const state=v=>({accounts:'Awaiting verification',exported:'Verified',legacy:'Historical box · prior workflow',draft:'Box Entry'}[v]||v);
   async function rpc(name,args={}){const {data,error}=await client.rpc(name,args);if(error)throw error;return data;}
   function notice(text='',error=false){message.textContent=text;message.classList.toggle('is-visible',!!text);message.classList.toggle('is-success',!error);}
-  function lock(value){busy=value;app.setAttribute('aria-busy',String(value));app.querySelectorAll('button').forEach(b=>b.disabled=value);$('#box-queue-prev').disabled=value||offset===0;$('#box-queue-next').disabled=value||offset+50>=total;detail.querySelectorAll('[data-entry-only]').forEach(b=>b.disabled=value||!canEdit);}
+  function lock(value){busy=value;queueFilters.setBusy(value);app.setAttribute('aria-busy',String(value));app.querySelectorAll('button').forEach(b=>b.disabled=value);$('#box-queue-prev').disabled=value||offset===0;$('#box-queue-next').disabled=value||offset+50>=total;detail.querySelectorAll('[data-entry-only]').forEach(b=>b.disabled=value||!canEdit);}
   const queueFilters=window.GREENLOOP_FILTERS.get('box-record-filters',{
-    before:filter,dateKey:'filter_date',dateLabel:page==='accounts'?'Saved':'Exported',fields:[['state','Status'],['customer_code','Customer code'],['saved_by_name','Saved by'],['verified_by_name','Verified by']],
+    before:filter,sortTarget:list,dateKey:'filter_date',dateLabel:page==='accounts'?'Saved':'Exported',fields:[['state','Status'],['customer_code','Customer code'],['saved_by_name','Saved by'],['verified_by_name','Verified by']],
     onChange:()=>{offset=0;return load();}
   });
   filter.hidden=true;
   async function load(){
     if(busy)return;const token=++generation;notice();lock(true);selected=null;printed=null;detail.hidden=true;
     try {
-      const data=await rpc('get_filter_records_v1',{p_source:page,p_filters:queueFilters.query(),p_offset:offset,p_limit:50});if(token!==generation)return;
+      const data=await rpc('get_sorted_filter_records_v1',{...queueFilters.sortArgs(),p_source:page,p_filters:queueFilters.query(),p_offset:offset,p_limit:50});if(token!==generation)return;
       queueFilters.result(data);total=data.total;list.innerHTML=data.rows.length?'<div class="box-table-wrap"><table class="box-table"><thead><tr><th>Box</th><th>Phones</th><th>Saved · UAE</th><th>Saved by</th><th>Status</th><th>Verified · UAE</th><th>Verified by</th><th>Customer</th></tr></thead><tbody>'+data.rows.map(b=>`<tr><td><button type="button" class="quiet-link" data-search-read-only data-open-box="${esc(b.id)}">${cell(b.box_number)}</button></td><td>${cell(b.quantity)}</td><td>${cell(dt(b.saved_at))}</td><td>${cell(b.saved_by_name)}</td><td>${cell(state(b.state))}</td><td>${cell(dt(b.verified_at))}</td><td>${cell(b.verified_by_name)}</td><td>${cell(b.customer_name||b.customer_code)}</td></tr>`).join('')+'</tbody></table></div>':'<p class="box-empty">No boxes found for these dates.</p>';
       $('#box-queue-count').textContent=total?`${offset+1}–${Math.min(offset+50,total)} of ${total} boxes`:'0 boxes';
     }catch(e){list.innerHTML='';total=0;notice(e.message||'Boxes could not be loaded.',true);}finally{if(token===generation)lock(false);}
@@ -28,6 +28,7 @@
     selected=data;printed=null;const b=data.box;
     const columns=[['S.No','serial_no'],['IMEI','imei'],['Device','device_number'],['Model','model'],['GB','storage_gb'],['Grade','final_grade'],['Color','color'],['Supplier','supplier_name'],['Supplier code','supplier_code'],['Stock received · UAE','received_at'],['Invoice','invoice_number']];
     detail.innerHTML=`<div class="box-detail-heading"><div><span class="gl-wordmark gl-wordmark-small"><img src="assets/greenloop-fzc-logo.jpg" alt="Greenloop FZC"></span><h2>${cell(b.box_number)}</h2><p>${cell(state(b.state))} · ${data.lines.length} phones</p>${b.customer_code?`<p>Customer: ${cell(b.customer_name||b.customer_code)}</p>`:""}</div><div class="box-actions"><button class="secondary-button" type="button" data-print-box data-search-read-only>Print Box</button>${b.state==='accounts'&&page==='accounts'&&canEdit?'<button class="secondary-button" type="button" data-confirm-print data-entry-only hidden>Printing completed</button><button class="primary-button" type="button" data-verify-box data-entry-only>Verify Box</button>':''}<button class="secondary-button" type="button" data-close-box data-search-read-only>Close</button></div></div><p class="box-review-note">${b.state==='accounts'?'Review every phone and its source details. If data needs correction, use Reports → Export Boxes → Box Correction.':b.state==='legacy'?'Historical box from before Accounts verification was introduced.':'Verified by '+cell(b.verified_by_name)+' · '+cell(dt(b.verified_at))}</p>${page==='accounts'?window.GREENLOOP_ACCOUNTS?.picker(b)||'':''}<div class="box-table-wrap"><table class="box-table"><thead><tr>${columns.map(([label])=>'<th>'+esc(label)+'</th>').join('')}</tr></thead><tbody>${data.lines.map(row=>'<tr>'+columns.map(([,key])=>'<td>'+cell(key==='received_at'?dt(row[key]):row[key])+'</td>').join('')+'</tr>').join('')}</tbody></table></div>`;
+    window.GREENLOOP_SORTING.table('box-detail-lines',detail.querySelector('table'),data.lines,columns.map(([label,key])=>[key,label,key==='serial_no'?'number':undefined]));
     if(customerChoice && detail.querySelector("#box-customer"))detail.querySelector("#box-customer").value=customerChoice;
     detail.hidden=false;
   }

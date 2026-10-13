@@ -133,7 +133,7 @@
   });
   function applyRequestFilters(){
     const elements=[...queueList.querySelectorAll('.part-request-row')];
-    const rows=requests.map(r=>({...r,technician:r.requested_for_technician||'Unassigned',supplier_code:supplierOf(r)?.supplier_code,imei:deviceOf(r)?.imei_1,device_number:deviceOf(r)?.device_number,model:deviceOf(r)?.model,job_number:jobOf(r)?.job_number}));
+    const rows=elements.map(el=>requests.find(r=>String(r.id)===el.dataset.requestId)).filter(Boolean).map(r=>({...r,technician:r.requested_for_technician||'Unassigned',supplier_code:supplierOf(r)?.supplier_code,imei:deviceOf(r)?.imei_1,device_number:deviceOf(r)?.device_number,model:deviceOf(r)?.model,job_number:jobOf(r)?.job_number}));
     const count=requestFilters.bind(rows,elements);
     requestCount.textContent=`${count} matching requests`;
   }
@@ -160,7 +160,7 @@
       const actionControl = issued
         ? `<span class="part-status-chip issued">✓ Complete</span>`
         : `<div class="request-actions"><button class="issue-row-button" type="button" data-issue-request="${request.id}">Issue</button><button class="cancel-request-button" type="button" data-cancel-request="${request.id}">Cancel</button></div>`;
-      return `<tr class="part-request-row ${issued ? "is-issued" : "is-pending"}"><td>${escapeHtml(device.imei_1 || "—")}</td><td>${escapeHtml(device.device_number || "—")}<small>${escapeHtml(device.model || "")}</small></td><td>${escapeHtml(job.job_number || "—")}</td><td>${escapeHtml(supplierLabel(supplier, batchOf(request)))}</td><td><strong>${escapeHtml(request.requested_for_technician || "Unassigned")}</strong><small>Lab request</small></td><td><strong>${escapeHtml(request.part_name)}</strong><small>${sourceLabel}</small></td><td>${request.quantity_requested}</td><td><span class="part-status-chip ${issued ? "issued" : "pending"}">${issued ? "Issued" : `${remaining} pending`}</span></td><td>${stockControl}</td><td>${quantityControl}</td><td>${actionControl}</td></tr>`;
+      return `<tr data-request-id="${escapeHtml(request.id)}" class="part-request-row ${issued ? "is-issued" : "is-pending"}"><td>${escapeHtml(device.imei_1 || "—")}</td><td>${escapeHtml(device.device_number || "—")}<small>${escapeHtml(device.model || "")}</small></td><td>${escapeHtml(job.job_number || "—")}</td><td>${escapeHtml(supplierLabel(supplier, batchOf(request)))}</td><td><strong>${escapeHtml(request.requested_for_technician || "Unassigned")}</strong><small>Lab request</small></td><td><strong>${escapeHtml(request.part_name)}</strong><small>${sourceLabel}</small></td><td>${request.quantity_requested}</td><td><span class="part-status-chip ${issued ? "issued" : "pending"}">${issued ? "Issued" : `${remaining} pending`}</span></td><td>${stockControl}</td><td>${quantityControl}</td><td>${actionControl}</td></tr>`;
     }).join("") : '<tr><td colspan="11">No part requests are waiting.</td></tr>';
     queueList.querySelectorAll("[data-inventory-request]").forEach((select) => {
       const request = requests.find((item) => item.id === select.dataset.inventoryRequest);

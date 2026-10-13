@@ -38,6 +38,11 @@
     const clear = node('button', 'secondary-button', 'Clear filters'); clear.type = 'button'; clear.dataset.searchReadOnly = '';
     actions.append(apply, clear); bar.append(actions);
     const status = node('p', 'table-filter-status'); status.setAttribute('role', 'status'); bar.append(status);
+    const sorting = window.GREENLOOP_SORTING.create(id, bar, options, async () => {
+      try { await latestOptions.onChange?.(); }
+      catch (e) { status.textContent = e.message || 'Could not sort records. Try again.'; }
+    });
+    const originalOrder = new WeakMap(); let nextOrder = 0;
     const get = row => latestOptions.project ? latestOptions.project(row) : row;
     function updateFacets(facets) {
       fields.forEach(([key, label]) => {
@@ -64,7 +69,7 @@
       const next = {};
       for (const [key, input] of controls) if (!reset && input.value.trim()) next[key] = input.value.trim();
       if (next._from && next._to && next._from > next._to) { status.textContent = 'From date must be on or before To date.'; return; }
-      if (reset) for (const input of controls.values()) input.value = '';
+      if (reset) { for (const input of controls.values()) input.value = ''; sorting.clear(); }
       applied = next;
       try { await latestOptions.onChange?.(); }
       catch (e) { status.textContent = e.message || 'Could not load filtered records. Try again.'; }
@@ -74,9 +79,13 @@
     const api = {
       bar, controls,
       query: () => ({...applied}),
+      sortArgs: () => sorting.args(),
+      sortRows: rows => sorting.sort(rows),
+      setSortFields: fields => { latestOptions = {...latestOptions,sortFields:fields}; sorting.refresh(latestOptions); },
       clear: () => change(true),
       mount(opts = latestOptions) {
         latestOptions = opts;
+        sorting.refresh(opts);
         const target = typeof opts.before === 'string' ? document.querySelector(opts.before) : opts.before;
         if (target && !bar.isConnected) target.before(bar);
         bar.hidden = false;
@@ -86,21 +95,30 @@
         updateFacets(Object.fromEntries(fields.map(([key])=>[key,source.map(r=>fieldValue(r,key))])));
         const result = rows.filter(matches);
         status.textContent = `${result.length} of ${rows.length} records`;
-        return result;
+        return opts.sortAfterGroup ? result : sorting.sort(result);
       },
       // Hide existing editable rows rather than recreating them: draft values,
       // checked controls, scanner targets and workflow row identity are retained.
       bind(rows, elements, opts = latestOptions) {
         const selected = new Set(api.apply(rows, opts));
         rows.forEach((r,i)=>{if(elements[i]) elements[i].hidden = !selected.has(r);});
+        const pairs = rows.map((row,i)=>({row,element:elements[i]})).filter(p=>p.element);
+        pairs.forEach(p=>{if(!originalOrder.has(p.element))originalOrder.set(p.element,nextOrder++);});
+        pairs.sort((a,b)=>originalOrder.get(a.element)-originalOrder.get(b.element));
+        const ordered = sorting.sort(pairs,p=>get(p.row));
+        const parent = ordered[0]?.element.parentElement;
+        if(parent && ordered.every(p=>p.element.parentElement===parent)) ordered.forEach((p,i)=>{
+          if(parent.children[i]!==p.element)parent.insertBefore(p.element,parent.children[i] || null);
+        });
         return selected.size;
       },
       result(data) {
         updateFacets(data.facets || {});
         status.textContent = `${data.total} matching records`;
+        queueMicrotask(sorting.decorate);
       },
       fail(message) { status.textContent = message; },
-      setBusy(busy) { for(const el of [apply,clear,...controls.values()]) el.disabled = busy; }
+      setBusy(busy) { for(const el of [apply,clear,...controls.values()]) el.disabled = busy; sorting.setBusy(busy); }
     };
     api.mount(); instances.set(id, api); return api;
   }
@@ -130,7 +148,7 @@
       const token=++version;filter.setBusy(true);pager(true);
       try {
         const client=options.client ? options.client() : window.GREENLOOP_GET_CLIENT();
-        const {data,error}=await client.rpc('get_filter_records_v1',{p_source:options.source,p_filters:filter.query(),p_offset:filter.offset,p_limit:size});
+        const {data,error}=await client.rpc('get_sorted_filter_records_v1',{p_source:options.source,p_filters:filter.query(),p_offset:filter.offset,p_limit:size,...filter.sortArgs()});
         if(token!==version)return;
         if(error)throw error;
         total=Number(data.total);

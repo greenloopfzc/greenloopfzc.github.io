@@ -262,7 +262,7 @@
 
   function renderTable(reportKey) {
     const report = reports[reportKey];
-    const rows = window.GREENLOOP_FILTERS.use('report-'+reportKey, reportData[reportKey] || [], {before:reportContent,fields:report.columns.filter(([,key,type])=>['model','color','memory','source','status','location','part_name','technician','result','failure_department','record_type','deleted_by','low_stock'].includes(key)).map(([label,key])=>[key,label]),onChange:()=>renderTable(reportKey),project:r=>({...r,low_stock:r.low_stock?'Low stock':'OK'}),searchFields:report.columns.filter(([,key,type])=>type!=='details').map(([,key])=>key)});
+    const rows = window.GREENLOOP_FILTERS.use('report-'+reportKey, reportData[reportKey] || [], {before:reportContent,sortFields:report.columns.filter(([,key,type])=>type!=='details').map(([label,key,type])=>[key,label,type==='date'?'date':undefined]),fields:report.columns.filter(([,key,type])=>['model','color','memory','source','status','location','part_name','technician','result','failure_department','record_type','deleted_by','low_stock'].includes(key)).map(([label,key])=>[key,label]),onChange:()=>renderTable(reportKey),project:r=>({...r,low_stock:r.low_stock?'Low stock':'OK'}),searchFields:report.columns.filter(([,key,type])=>type!=='details').map(([,key])=>key)});
     panelKicker.textContent = report.title;
     panelTitle.textContent = report.title;
     panelDescription.textContent = report.description;
@@ -381,7 +381,7 @@
       groups.get(boxNumber).push(row);
     });
     return [...groups.entries()]
-      .map(([boxNumber, rows]) => ({ boxNumber, rows }))
+      .map(([boxNumber, rows]) => ({ boxNumber, rows, opened_at:rows[0]?.opened_at, quantity:rows.length }))
       .sort((left, right) => new Date(right.rows[0]?.opened_at || 0) - new Date(left.rows[0]?.opened_at || 0));
   }
 
@@ -437,6 +437,7 @@
     }
 
     reportContent.innerHTML = `<div class="export-box-report"><div class="export-box-list" aria-label="Export box numbers">${boxList}</div>${detail}</div>`;
+    if(selected) window.GREENLOOP_SORTING.table('report-box-lines',reportContent.querySelector('.export-box-lines'),selected.rows,[['serial_no','S.No','number'],['imei','IMEI'],['serial_number','Serial number'],['specification_region','Region'],['model','Model'],['memory','GB','number'],['final_grade','Grade'],['color','Color'],['scanned_at','Scanned','date']]);
   }
 
   function optionMarkup(options, selectedValue, emptyLabel = "Not set") {

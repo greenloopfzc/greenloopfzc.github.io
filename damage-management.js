@@ -140,7 +140,7 @@
     if (!host || denied || loading || blocked()) return;
     const token = ++generation; loading = true; render();
     try {
-      const data = await rpc('get_filter_records_v1',{p_source:'damage_management',p_filters:{...managementFilters().query(),_search:search},p_offset:offset,p_limit:limit});
+      const data = await rpc('get_sorted_filter_records_v1',{...managementFilters().sortArgs(),p_source:'damage_management',p_filters:{...managementFilters().query(),_search:search},p_offset:offset,p_limit:limit});
       if (token !== generation || !host || denied) return;
       if (!data || !Array.isArray(data.rows) || !Number.isSafeInteger(Number(data.total_count)) || Number(data.total_count) < 0 || !data.options || !fieldKinds.every(kind => Array.isArray(data.options[kind.group]) && data.options[kind.group].every(item => item && typeof item.id === "string" && typeof item.label === "string")) || !data.rows.every(row => row && typeof row.id === "string" && typeof row.version === "string")) throw new Error("The damage entries response could not be read. Select Refresh to retry.");
       managementFilters().result(data);

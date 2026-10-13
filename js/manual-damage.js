@@ -360,7 +360,7 @@
     updatePager();
     message("manual-damage-history-message");
     try {
-      const { data, error } = await api().rpc('get_filter_records_v1',{p_source:'damage_entry',p_filters:historyFilters.query(),p_offset:nextOffset,p_limit:pageSize});
+      const { data, error } = await api().rpc('get_sorted_filter_records_v1',{...historyFilters.sortArgs(),p_source:'damage_entry',p_filters:historyFilters.query(),p_offset:nextOffset,p_limit:pageSize});
       if (error) throw error;
       const report = Array.isArray(data) ? data[0] : data;
       if (!report || !Array.isArray(report.rows)) throw new Error("The recent reports response could not be read.");

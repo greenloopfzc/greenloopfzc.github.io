@@ -3,7 +3,7 @@
 .box-queue-filter[hidden] { display:none!important; }
 .table-filter-field { display:flex; flex-direction:column; gap:5px; flex:1 1 135px; min-width:0; max-width:260px; font-size:12px; font-weight:600; }
 .table-filter-field:has(input[type=search]) { flex:2 1 210px; max-width:420px; }
-.table-filters .table-filter-field input,.table-filters .table-filter-field select { width:100%; min-width:0; box-sizing:border-box; height:40px; padding:8px 10px; font:inherit; font-size:14px; color:var(--nm-ink,#24343b); background:var(--nm-well,#e5edf2); border:1px solid var(--nm-line,#cad8e0); border-radius:9px; box-shadow:var(--nm-inset,none); text-align:left; }
+.table-filters .table-filter-field input,.table-filters .table-filter-field select,.table-sort-controls select { width:100%; min-width:0; box-sizing:border-box; height:40px; padding:8px 10px; font:inherit; font-size:14px; color:var(--nm-ink,#24343b); background:var(--nm-well,#e5edf2); border:1px solid var(--nm-line,#cad8e0); border-radius:9px; box-shadow:var(--nm-inset,none); text-align:left; }
 .table-filter-actions { display:flex; flex-wrap:wrap; gap:8px; }
 .table-filters button { min-height:40px; padding:8px 14px; font-size:13px; white-space:nowrap; }
 .table-filter-status { flex-basis:100%; margin:0; font-size:12px; color:var(--nm-muted,#546b77); }
@@ -11,3 +11,11 @@
 tr[hidden] { display:none!important; }
 @media(max-width:600px) { .table-filter-field { max-width:none; flex-basis:130px; } .table-filter-actions { width:100%; } }
 @media print { .table-filters { display:none!important; } }
+.table-sort-controls { display:flex; flex-wrap:wrap; align-items:end; gap:8px; flex-basis:100%; padding-top:10px; border-top:1px solid var(--nm-line,#cad8e0); }
+.table-sort-controls[hidden] { display:none!important; }
+.table-only-sorting .table-sort-controls { border-top:0; padding-top:0; }
+.table-sort-controls .table-filter-field { flex:0 1 190px; }
+thead .table-sort-heading { display:inline-flex; align-items:center; justify-content:inherit; gap:6px; padding:4px 0; border:0; border-radius:3px; background:transparent; color:inherit; box-shadow:none; font:inherit; text-transform:inherit; letter-spacing:inherit; cursor:pointer; }
+thead .table-sort-heading:focus-visible { outline:2px solid #078164; outline-offset:3px; }
+html[data-design] body.app-page thead button.table-sort-heading { background:transparent!important; box-shadow:none!important; border:0!important; color:inherit!important; padding:4px 0!important; min-height:0; font:inherit; white-space:normal; }
+@media print { thead .table-sort-heading { color:inherit; } }
