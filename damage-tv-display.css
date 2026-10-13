@@ -1,0 +1,151 @@
+/* Raised surfaces with literal-color and inline-block fallbacks for TV browsers. */
+.damage-tv-page { background: #e8eff3; background: linear-gradient(125deg,#f0f5f7,#dfe9ef); }
+.damage-tv-page .tv-board-heading h1 { letter-spacing: -.8px; color: #145948; }
+.damage-tv-page .tv-clock { letter-spacing: 1px; }
+.damage-tv-page .damage-summary { margin: 10px -6px 12px; }
+.damage-tv-page .damage-stat { border-top: 3px solid #23967a; border-radius: 16px; background: #f4f8fa; background: linear-gradient(145deg,#fff,#e5eef2); box-shadow: 5px 6px 12px #c7d4dc,-4px -4px 10px #fff; }
+.damage-tv-page .damage-stat-value { border-top-color: #bf6b33; }
+.damage-tv-page .damage-summary .damage-stat strong { color: #155c49; }
+.damage-roster-heading { margin: 10px 0 8px; }
+.damage-roster-heading h2 { float: left; margin: 0; color: #214f43; font-size: 18px; letter-spacing: -.3px; }
+.damage-tv-page .damage-roster-count { float: right; margin: 3px 0 0; }
+.damage-all .damage-view-help { display: none; }
+.damage-tv-page .damage-compact-card { position: relative; padding: 9px 12px 10px; min-height: 128px; border: 1px solid #fff; border-radius: 19px; background: #f0f6f6; background: linear-gradient(140deg,#fbfefd,#e4eef0); box-shadow: 5px 6px 11px #c4d2da,-4px -4px 10px #fff; }
+.damage-tv-page .damage-compact-card:not(.damage-has-damage) { border-bottom: 3px solid #7fbba7; }
+.damage-tv-page .damage-compact-card.damage-has-damage { background-image: none; background-color: #fae9e7; }
+.damage-card-top { display: block; height: 22px; margin-bottom: 3px; text-align: left; }
+.damage-card-avatar { display: inline-block; min-width: 24px; padding: 3px; border-radius: 7px; color: #2e6c58; background: #e3efea; box-shadow: inset 1px 1px 3px #bfcfc9,inset -1px -1px 3px #fff; font-size: 10px; font-weight: bold; text-align: center; }
+.damage-card-state { float: right; padding-top: 4px; font-size: 8px; letter-spacing: .6px; color: #527368; }
+.damage-has-damage .damage-card-state { color: #461b1b; }
+.damage-has-damage .damage-card-avatar { color: #5b2020; background: #ffe4df; box-shadow: inset 1px 1px 3px #c98f88,inset -1px -1px 3px #fff4ed; }
+.damage-tv-page .damage-compact-name { margin: 3px 0 5px; font-size: 20px; letter-spacing: -.4px; }
+.damage-tv-page .damage-compact-total strong { margin: 0 8px 0 0; font-size: 31px; line-height: 1; }
+.damage-tv-page .damage-compact-total small { font-size: 10px; letter-spacing: 0; }
+.damage-tv-page .damage-compact-value { display: block; margin: 8px 0 0; padding: 4px 6px; border-radius: 8px; background: #e6efeb; background: rgba(255,255,255,.45); box-shadow: inset 1px 2px 3px rgba(50,70,60,.12),inset -1px -1px 2px rgba(255,255,255,.7); font-size: 15px; color: #225b47; }
+.damage-tv-page .damage-has-damage .damage-compact-value { color: #411616; }
+.damage-tv-page .damage-compact-unpriced { font-size: 10px; }
+.damage-tv-page .damage-detail .damage-summary,.damage-detail .damage-roster-heading { display: none; }
+.damage-tv-page .damage-detail .damage-view-help { margin: 8px 0 12px; text-align: center; font-size: 12px; }
+.damage-tv-page .damage-detail .damage-employee { padding: 18px 22px 15px; border-radius: 24px; border: 1px solid #fff; }
+.damage-tv-page .damage-detail .damage-employee-header { display: block; width: auto; margin: 0 0 15px; padding: 0; }
+.damage-identity { float: left; width: 36%; padding: 4px 16px 4px 0; text-align: center; }
+.damage-avatar { display: inline-block; min-width: 52px; height: 48px; padding: 9px; border: 1px solid #fff; border-radius: 15px; color: #236048; background: #eef6f3; box-shadow: 3px 4px 8px rgba(47,65,54,.18),-2px -2px 6px rgba(255,255,255,.8); font-size: 22px; font-weight: bold; }
+.damage-identity-label { margin: 8px 0 3px; font-size: 9px; letter-spacing: 1.5px; color: #315443; }
+.damage-tv-page .damage-detail .damage-employee-header h2 { display: block; width: auto; margin: 0; color: #1d493c; font-size: 32px; line-height: 1.12; letter-spacing: -.6px; }
+.damage-tv-page .damage-detail .damage-employee-total { display: block; float: left; width: 19%; min-height: 126px; margin: 0; padding: 16px 8px; border-radius: 17px; border: 1px solid #fff; background: #f3f8f6; box-shadow: inset 3px 3px 8px #d1dfd9,inset -3px -3px 8px #fff; }
+.damage-tv-page .damage-detail .damage-employee-total span { display: block; margin: 0 0 5px; font-size: 10px; letter-spacing: .8px; }
+.damage-tv-page .damage-detail .damage-employee-total strong { display: block; color: #244b3b; font-size: 47px; line-height: 1.05; }
+.damage-employee-total small { display: block; margin-top: 6px; font-size: 10px; color: #526e60; }
+.damage-tv-page .damage-detail .damage-value-summary { float: right; width: 43%; min-height: 126px; margin: 0; padding: 17px 10px 13px; border: 1px solid #fff; border-radius: 17px; color: #214c3c; background: #f6faf8; box-shadow: 3px 4px 8px rgba(47,65,54,.14),-2px -2px 5px rgba(255,255,255,.7); }
+.damage-tv-page .damage-value-summary > span { display: block; }
+.damage-tv-page .damage-value-summary strong { display: block; font-size: 28px; line-height: 1.2; }
+.damage-tv-page .damage-value-summary small { font-size: 10px; letter-spacing: .6px; }
+.damage-tv-page .damage-record-count { margin-top: 10px; color: #587264; font-size: 12px; }
+.damage-tv-page .damage-has-damage .damage-employee-total,.damage-tv-page .damage-has-damage .damage-value-summary { background: #fff6f1; color: #481b1b; }
+.damage-tv-page .damage-has-damage .damage-identity-label { color: #481b1b; }
+.damage-tv-page .damage-detail .damage-has-damage .damage-employee-header h2,
+.damage-tv-page .damage-detail .damage-has-damage .damage-employee-total span,
+.damage-tv-page .damage-detail .damage-has-damage .damage-employee-total strong { color: #241010; }
+.damage-auto-caption { display: table; width: 100%; margin: 5px 0 8px; padding: 8px 12px; border: 1px solid #d3dfdf; border-radius: 10px; color: #36534b; background: #edf4f3; font-size: 11px; }
+.damage-auto-caption > span,.damage-auto-caption > strong { display: table-cell; vertical-align: middle; }
+#damage-auto-label { width: 26%; font-weight: bold; letter-spacing: .8px; }
+#damage-up-next { width: 55%; text-align: center; font-weight: normal; }
+#damage-countdown { width: 19%; text-align: right; font-weight: bold; font-variant-numeric: tabular-nums; }
+.damage-tv-page .damage-auto-progress { width: auto; height: 5px; margin: 0 2px 13px; border: 0; background: #d2deda; box-shadow: inset 1px 1px 3px #baccc4; }
+.damage-tv-page #damage-auto-fill { height: 5px; background: #08785d; background: linear-gradient(90deg,#168465,#7ccba5); }
+.damage-tv-page .damage-table-shell { overflow: hidden; border-color: #fff; box-shadow: 3px 4px 9px rgba(54,68,72,.14),-2px -2px 7px rgba(255,255,255,.7); }
+.damage-tv-page .damage-table thead { background: #dfe9ed; }
+.damage-tv-page .damage-table th { color: #31574f; }
+.damage-tv-page .damage-table tbody tr:nth-child(2n) { background: #f8fbfc; }
+.damage-zero-symbol { display: block; width: 64px; height: 64px; margin: 0 auto 12px; border: 1px solid #fff; border-radius: 50%; background: #e2eee7; color: #36745b; box-shadow: 4px 5px 10px #cedcd5,-3px -3px 7px #fff; font-size: 38px; line-height: 62px; }
+.damage-empty-history strong { display: block; margin-bottom: 7px; color: #2e6952; font-size: 24px; }
+.damage-zero-caption { display: block; font-size: 13px; color: #678174; }
+.tv-dark .damage-tv-page { background: #21323c; background: linear-gradient(120deg,#293f48,#1a2935); }
+.tv-dark .damage-tv-page .tv-board-heading h1,.tv-dark .damage-roster-heading h2 { color: #d6efe3; }
+.tv-dark .damage-tv-page .damage-stat { background: #2c434e; background: linear-gradient(140deg,#354d58,#243843); box-shadow: 5px 6px 12px #14232c,-3px -3px 8px #3d525d; }
+.tv-dark .damage-tv-page .damage-summary .damage-stat strong { color: #d9f2e6; }
+.tv-dark .damage-tv-page .damage-compact-card:not(.damage-has-damage) { background: #2b424b; background: linear-gradient(140deg,#354e56,#263b46); border-color: #4a6468; box-shadow: 5px 6px 10px #14242e,-3px -3px 8px #3c535e; }
+.tv-dark .damage-card-state { color: #c0dace; }
+.tv-dark .damage-has-damage .damage-card-state { color: #461b1b; }
+.tv-dark .damage-tv-page .damage-compact-value { background: rgba(0,0,0,.12); box-shadow: inset 1px 2px 3px rgba(0,0,0,.25); color: #d6eee0; }
+.tv-dark .damage-tv-page .damage-has-damage .damage-compact-value { background: rgba(255,255,255,.4); color: #411616; }
+.tv-dark .damage-tv-page .damage-compact-card.damage-has-damage { background-color: #f0d3cf; }
+.tv-dark .damage-tv-page .damage-detail .damage-employee:not(.damage-has-damage) .damage-employee-header h2,.tv-dark .damage-tv-page .damage-detail .damage-employee:not(.damage-has-damage) .damage-identity-label { color: #d4eee0; }
+.tv-dark .damage-tv-page .damage-table thead { background: #233a43; }
+.tv-dark .damage-tv-page .damage-table th { color: #c2ddcf; }
+.tv-dark .damage-tv-page .damage-table tbody tr:nth-child(2n) { background: #263b45; }
+.tv-dark .damage-empty-history strong { color: #c6e4d3; }
+.tv-dark .damage-zero-caption { color: #aecabd; }
+@media (min-width:1600px) {
+  .damage-tv-page .damage-stat { min-height: 85px; padding: 8px 15px; }
+  .damage-tv-page .damage-summary .damage-stat strong { font-size: 29px; }
+  .damage-tv-page .damage-summary .damage-stat-value strong { font-size: 24px; }
+  .damage-tv-page .damage-live-updates { padding-top: 8px; padding-bottom: 8px; margin-bottom: 10px; }
+  .damage-tv-page .damage-compact-card { min-height: 124px; padding: 6px 14px 7px; }
+  .damage-tv-page .damage-card-top { height: 16px; margin-bottom: 2px; }
+  .damage-tv-page .damage-card-avatar { padding: 2px; font-size: 9px; }
+  .damage-tv-page .damage-compact-name { font-size: 22px; margin: 3px 0; }
+  .damage-tv-page .damage-compact-total strong { font-size: 30px; }
+  .damage-tv-page .damage-compact-total small { padding-top: 0; }
+  .damage-tv-page .damage-compact-value { font-size: 16px; padding: 2px 5px; margin-top: 5px; }
+  .damage-all .damage-employee-cell { padding-bottom: 12px; }
+  .damage-tv-page .damage-detail .damage-employee-header h2 { font-size: 42px; }
+  .damage-tv-page .damage-detail .damage-employee-total strong { font-size: 55px; }
+  .damage-tv-page .damage-value-summary strong { font-size: 36px; }
+  .damage-auto-caption { font-size: 14px; padding: 10px 14px; }
+  .damage-tv-page .damage-detail .damage-table td { padding: 10px 8px; font-size: 18px; }
+}
+@media (min-width:651px) and (max-width:1599px) {
+  .damage-tv-page .damage-summary { margin: 6px -6px 9px; }
+  .damage-tv-page .damage-stat { min-height: 75px; padding: 7px; }
+  .damage-tv-page .damage-compact-card { min-height: 74px; padding: 3px 8px 4px; border-radius: 14px; }
+  .damage-card-top { display: none; }
+  .damage-card-avatar { min-width: 18px; padding: 2px; font-size: 8px; }
+  .damage-card-state { font-size: 6px; padding-top: 3px; }
+  .damage-tv-page .damage-compact-name { font-size: 16px; margin: 2px 0; }
+  .damage-tv-page .damage-compact-total strong { font-size: 22px; }
+  .damage-tv-page .damage-compact-total small { font-size: 8px; padding-top: 0; }
+  .damage-tv-page .damage-compact-value { margin-top: 2px; padding: 1px 4px; font-size: 11px; }
+  .damage-roster-heading h2 { font-size: 15px; }
+  .damage-tv-page .damage-roster-count { font-size: 11px; }
+  .damage-all .damage-employee-cell { padding-bottom: 7px; }
+  .damage-tv-page .damage-detail .damage-employee { padding: 12px 15px; }
+  .damage-tv-page .damage-detail .damage-employee-header { margin-bottom: 10px; }
+  .damage-avatar { min-width: 38px; height: 34px; padding: 5px; font-size: 18px; }
+  .damage-identity-label { margin: 5px 0 3px; font-size: 8px; }
+  .damage-tv-page .damage-detail .damage-employee-header h2 { font-size: 28px; }
+  .damage-tv-page .damage-detail .damage-employee-total,.damage-tv-page .damage-detail .damage-value-summary { min-height: 101px; padding: 12px 6px; }
+  .damage-tv-page .damage-detail .damage-employee-total strong { font-size: 38px; }
+  .damage-tv-page .damage-value-summary strong { font-size: 25px; }
+  .damage-tv-page .damage-record-count { font-size: 10px; margin-top: 7px; }
+}
+@media (max-height:650px) and (min-width:651px) {
+  .damage-card-top { display: none; }
+  .damage-tv-page .damage-compact-card { min-height: 55px; padding: 2px 6px; }
+  .damage-tv-page .damage-compact-name { font-size: 16px; margin: 1px 0; }
+  .damage-tv-page .damage-compact-total { display: inline-block; }
+  .damage-tv-page .damage-compact-total small { display: none; }
+  .damage-tv-page .damage-compact-total strong { font-size: 18px; }
+  .damage-tv-page .damage-compact-value { display: inline-block; padding: 1px 4px; margin: 1px 0 0 3px; font-size: 10px; }
+  .damage-roster-heading { margin: 2px 0; }
+  .damage-roster-heading h2 { display: none; }
+  .damage-tv-page .damage-roster-count { margin: 0; line-height: 12px; }
+  .damage-tv-page .damage-stat { min-height: 55px; padding: 3px; }
+  .damage-all .damage-employee-cell { padding-bottom: 6px; }
+  .damage-tv-page .damage-detail .damage-employee-total,.damage-tv-page .damage-detail .damage-value-summary { min-height: 82px; padding: 8px 5px; }
+  .damage-avatar { display: none; }
+  .damage-auto-caption { padding: 5px 8px; margin-bottom: 5px; }
+}
+@media (max-width:650px) {
+  .damage-roster-heading h2,.damage-tv-page .damage-roster-count { float: none; text-align: center; }
+  .damage-tv-page .damage-compact-card { min-height: 123px; padding: 8px; }
+  .damage-tv-page .damage-compact-name { font-size: 18px; }
+  .damage-card-state { font-size: 6px; }
+  .damage-tv-page .damage-compact-value { font-size: 13px; }
+  .damage-identity { float: none; width: 100%; padding: 0 0 15px; }
+  .damage-tv-page .damage-detail .damage-employee-total { width: 35%; min-height: 132px; }
+  .damage-tv-page .damage-detail .damage-value-summary { width: 62%; min-height: 132px; padding: 12px 5px; }
+  .damage-tv-page .damage-value-summary strong { font-size: 22px; }
+  .damage-auto-caption { display: block; text-align: center; }
+  .damage-auto-caption > span,.damage-auto-caption > strong { display: block; width: 100% !important; text-align: center !important; margin: 3px 0; }
+}

@@ -247,6 +247,7 @@
       if (matches) visibleRows += 1;
     });
     searchEmpty.hidden = visibleRows !== 0 || !query;
+    window.GREENLOOP_HIGHLIGHTS?.show(document.querySelector('.priority-table tbody'), query);
   }
 
   async function loadLiveDashboard() {

@@ -1,0 +1,12 @@
+mark.search-match[data-greenloop-match] {
+  color: #302600 !important;
+  background: #ffe16a !important;
+  border-radius: 2px;
+  padding: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  box-shadow: 0 1px 0 #dab02e;
+}
+@media print {
+  mark.search-match[data-greenloop-match] { color: inherit !important; background: transparent !important; box-shadow: none; }
+}

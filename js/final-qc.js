@@ -437,7 +437,7 @@
   function renderPendingJobs(filter = "") {
     const search = String(filter || "").trim().toLocaleLowerCase();
     const sourceRows = search ? window.GREENLOOP_RECORD_SEARCH.localLookup(pendingSearchItems(),search).items : pendingSearchItems();
-    const rows = window.GREENLOOP_FILTERS.use('qc-pending-filters', sourceRows, {before:pendingListBody.closest('div'),fields:[['supplier','Supplier code'],['model','Model'],['storage','GB'],['color','Color']],onChange:()=>renderPendingJobs(pendingSearch.value),search:false});
+    const rows = window.GREENLOOP_FILTERS.use('qc-pending-filters', sourceRows, {before:pendingListBody.closest('div'),fields:[['supplier','Supplier code'],['model','Model'],['storage','GB'],['color','Color']],onChange:()=>renderPendingJobs(pendingSearch.value),search:false,highlightQuery:()=>pendingSearch.value});
     pendingListBody.innerHTML = rows.length
       ? rows.map((row, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(row.imei)}</td><td>${escapeHtml(row.supplier)}</td><td>${escapeHtml(row.model)}</td><td>${escapeHtml(row.storage)}</td><td>${escapeHtml(row.color)}</td><td>${escapeHtml(row.battery)}</td><td>${escapeHtml(row.supplierGrade)}</td><td>${escapeHtml(row.initialGrade)}</td></tr>`).join("")
       : '<tr><td colspan="9" class="final-pending-empty">No pending phones match this search.</td></tr>';

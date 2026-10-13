@@ -7,7 +7,8 @@
     var login = get("tv-login"), board = get("tv-board"), form = get("tv-login-form");
     var username = get("tv-username"), password = get("tv-password"), submit = get("tv-sign-in");
     var active = false, loading = false, busy = false, generation = 0, theme = "light";
-    var rowSize = 6, employees = [], rosterRequest = 0, selection = 0, detail = null;
+    function historySize() { var height = window.innerHeight || document.documentElement.clientHeight; return height <= 650 ? 3 : height <= 800 ? 4 : 6; }
+    var rowSize = historySize(), employees = [], rosterRequest = 0, selection = 0, detail = null;
     var autoView = false, autoTimer = null, view = "all";
     var activity = [], updatesPaused = false;
     var tvMode = false, idleTimer = null, autoDeadline = 0;
@@ -73,6 +74,10 @@
     function autoProgress() {
       var progress = get("damage-auto-progress"), fill = get("damage-auto-fill");
       if (!progress) return;
+      var index = selectedIndex(), upcoming = employees.length ? employees[(index + 1) % employees.length] : null;
+      text("damage-auto-label", autoView ? "AUTO VIEW · " + (index + 1) + " / " + employees.length : "EMPLOYEE HISTORY");
+      text("damage-up-next", autoView && upcoming ? "Up next: " + upcoming.name : "Use Previous / Next employee to browse");
+      text("damage-countdown", autoView ? Math.max(1, Math.ceil((autoDeadline - new Date().getTime()) / 1000)) + " sec" : "Paused");
       progress.style.display = autoView ? "block" : "none";
       var elapsed = autoView && autoDeadline ? Math.max(0, Math.min(100, (1 - (autoDeadline - new Date().getTime()) / 5000) * 100)) : 0;
       fill.style.width = elapsed + "%";
@@ -112,6 +117,10 @@
     function connection(state) {
       get("tv-connection").className = "tv-live-label" + (state === "Live · 30 sec refresh" ? "" : " tv-connection-stale");
       get("tv-connection").innerHTML = '<i></i>' + escape(state);
+    }
+    function initials(name) {
+      var words = String(name || "").replace(/^\s+|\s+$/g, "").split(/\s+/);
+      return (words.length > 1 ? words[0].charAt(0) + words[words.length - 1].charAt(0) : words[0].slice(0, 2)).toUpperCase();
     }
     function moneyValues(employee) {
       var totals = employee.value_totals || [], values = [], i;
@@ -221,7 +230,7 @@
       for (i = 0; i < totals.length; i++) values.push(escape(totals[i].currency) + " " + escape(totals[i].amount));
       return '<div class="damage-value-summary"><span><small>TOTAL DAMAGE VALUE · ALL RECORDS</small><strong>' +
         (values.length ? values.join(' <span class="damage-value-separator"> | </span> ') : (employee.total_damage ? 'Not recorded' : '0 · No damage')) +
-        '</strong></span><span class="damage-record-count">' + count(employee.record_count) + ' entries' +
+        '</strong></span><span class="damage-record-count">' + count(employee.record_count) + (count(employee.record_count) === 1 ? ' entry' : ' entries') +
         (employee.unpriced_quantity ? ' · Price not recorded: ' + count(employee.unpriced_quantity) + ' parts' : '') + '</span></div>';
     }
     function rowTotal(row) {
@@ -231,8 +240,10 @@
     }
     function cardMarkup(employee) {
       var rows = employee.rows || [], html = '', i, row, date;
-      html += '<header class="damage-employee-header tv-clear"><h2>' + escape(employee.name) + '</h2>' +
-        '<p class="damage-employee-total"><span>TOTAL DAMAGE</span><strong>' + count(employee.total_damage) + '</strong></p></header><div id="damage-auto-progress" class="damage-auto-progress" role="progressbar" aria-label="Time until next employee" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="display:none"><span id="damage-auto-fill"></span></div>' + valueSummary(employee) +
+      html += '<header class="damage-employee-header tv-clear"><div class="damage-identity"><span class="damage-avatar" aria-hidden="true">' + escape(initials(employee.name)) + '</span><p class="damage-identity-label">EMPLOYEE DAMAGE HISTORY</p><h2>' + escape(employee.name) + '</h2></div>' +
+        '<p class="damage-employee-total"><span>DAMAGED PARTS</span><strong>' + count(employee.total_damage) + '</strong><small>All recorded history</small></p>' + valueSummary(employee) + '</header>' +
+        '<div class="damage-auto-caption"><span id="damage-auto-label"></span><strong id="damage-up-next"></strong><span id="damage-countdown"></span></div>' +
+        '<div id="damage-auto-progress" class="damage-auto-progress" role="progressbar" aria-label="Time until next employee" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="display:none"><span id="damage-auto-fill"></span></div>' +
         '<div class="damage-table-shell"><table class="damage-table" aria-label="Damage history for ' + escape(employee.name) + '">' +
         '<colgroup><col class="damage-date-column"><col class="damage-model-column"><col class="damage-part-column"><col class="damage-quantity-column"><col class="damage-price-column"><col class="damage-total-column"><col class="damage-source-column"><col class="damage-reason-column"><col class="damage-recorder-column"></colgroup>' +
         '<thead><tr><th scope="col">DATE</th><th scope="col">MODEL / IDENTIFIER</th><th scope="col">PART NAME</th><th scope="col">QTY</th><th scope="col">PRICE / PART</th><th scope="col">ENTRY TOTAL</th><th scope="col">PART SOURCE</th><th scope="col">REASON</th><th scope="col">ENTERED BY / SAVED</th></tr></thead><tbody>';
@@ -241,7 +252,7 @@
         html += '<tr><td class="damage-date" data-label="Date" title="' + escape(uaeDate(row.occurred_at)) + ' UAE">' + escape(date[0]) + '<small>' + escape(date[1] || '') + '</small></td>' +
           '<td class="damage-model" data-label="Model / identifier">' + escape(row.model) + '<small class="damage-cell-note">ID: ' + escape(row.identifier || 'Not recorded') + '</small></td>' + cell(row.part_name, "damage-part", "Part name") + cell(row.quantity, "damage-quantity", "Qty") + priceCell(row) + cell(rowTotal(row), "damage-row-total", "Entry total") + cell(row.part_source, "damage-source", "Part source") + cell(row.reason, "damage-reason", "Reason") + '<td class="damage-recorder" data-label="Entered by / saved">' + escape(row.reported_by || 'Not recorded') + '<small class="damage-cell-note">' + escape(uaeDate(row.created_at)) + ' UAE</small></td></tr>';
       }
-      if (!rows.length) html += '<tr><td colspan="9" class="damage-empty-history">' + (employee.total_damage ? 'History unavailable. Select Refresh now to retry.' : 'No damages recorded') + '</td></tr>';
+      if (!rows.length) html += '<tr><td colspan="9" class="damage-empty-history">' + (employee.total_damage ? 'History unavailable. Select Refresh now to retry.' : '<span class="damage-zero-symbol" aria-hidden="true">&#10003;</span><strong>No damages recorded</strong><span class="damage-zero-caption">No recorded damage for this employee.</span>') + '</td></tr>';
       html += '</tbody></table></div><div class="damage-history-controls tv-clear">' +
         '<button id="damage-history-prev" class="tv-button damage-history-prev" type="button" data-direction="-1" aria-label="Previous damage records for ' + escape(employee.name) + '">Previous records</button>' +
         '<span class="damage-history-range">' + (rows.length ? (employee.offset + 1) + '\u2013' + (employee.offset + rows.length) + ' of ' + count(employee.record_count) : '0 records') +
@@ -256,6 +267,7 @@
       if (view === "detail" && detail) html = '<article id="damage-detail" class="damage-employee' + (count(detail.total_damage) > 0 ? ' damage-has-damage' : '') + '" tabindex="0">' + cardMarkup(detail) + '</article>';
       else for (i = 0; i < employees.length; i++) {
         html += '<div class="damage-employee-cell"><button id="damage-employee-' + i + '" class="damage-compact-card' + (count(employees[i].total_damage) > 0 ? ' damage-has-damage' : '') + '" type="button" data-employee="' + escape(employees[i].id) + '" aria-label="' + escape(employees[i].name) + ', ' + count(employees[i].total_damage) + ' total damage. Open history.">' +
+          '<span class="damage-card-top"><span class="damage-card-avatar" aria-hidden="true">' + escape(initials(employees[i].name)) + '</span><span class="damage-card-state">' + (employees[i].total_damage ? 'DAMAGE RECORDED' : 'CLEAR RECORD') + '</span></span>' +
           '<span class="damage-compact-name">' + escape(employees[i].name) + '</span><span class="damage-compact-total"><strong>' + count(employees[i].total_damage) + '</strong><small>damaged parts</small></span>' +
           '<span class="damage-compact-value">' + (employees[i].total_damage ? moneyValues(employees[i]) : '&#10003; No damage') + '</span>' +
           (employees[i].unpriced_quantity && employees[i].value_totals && employees[i].value_totals.length ? '<span class="damage-compact-unpriced">' + count(employees[i].unpriced_quantity) + ' parts without price</span>' : '') + '</button></div>';
@@ -449,7 +461,7 @@
       event.preventDefault(); controlsList[next].focus();
     });
     get("damage-updates-toggle").onclick = function () { updatesPaused = !updatesPaused; tickerState(); };
-    window.addEventListener("resize", sizeTicker);
+    window.addEventListener("resize", function () { sizeTicker(); var nextSize = historySize(); if (rowSize !== nextSize) { rowSize = nextSize; refresh(); } });
     document.addEventListener("mousemove", wakeControls);
     document.addEventListener("touchstart", wakeControls);
     document.addEventListener("focusin", wakeControls);

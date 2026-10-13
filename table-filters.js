@@ -60,6 +60,12 @@
     });
     const originalOrder = new WeakMap(); let nextOrder = 0;
     const get = row => latestOptions.project ? latestOptions.project(row) : row;
+    function highlight() {
+      const scope = latestOptions.highlightTarget || latestOptions.sortTarget || latestOptions.before;
+      const root = typeof scope === 'string' ? document.querySelector(scope) : scope;
+      const term = latestOptions.highlightQuery ? latestOptions.highlightQuery() : applied._search;
+      window.GREENLOOP_HIGHLIGHTS?.show(root, term);
+    }
     function updateFacets(facets) {
       fields.forEach(([key, label]) => {
         const select = controls.get(key), draft = select.value || '';
@@ -124,6 +130,7 @@
         updateFacets(Object.fromEntries(fields.map(([key])=>[key,source.map(r=>fieldValue(r,key))])));
         const result = rows.filter(matches);
         status.textContent = `${result.length} of ${rows.length} records`;
+        highlight();
         return opts.sortAfterGroup ? result : sorting.sort(result);
       },
       // Hide existing editable rows rather than recreating them: draft values,
@@ -144,6 +151,7 @@
       result(data) {
         updateFacets(data.facets || {});
         status.textContent = pendingChange ? 'Searching…' : `${data.total} matching records`;
+        highlight();
         queueMicrotask(sorting.decorate);
       },
       fail(message) { status.textContent = message; },

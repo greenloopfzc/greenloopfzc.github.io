@@ -74,6 +74,7 @@
     el('login-activity-range').textContent=data.rows.length?`${offset+1}–${offset+data.rows.length} of ${data.total_count}`:'0 records';
     hasMore=data.has_more;el('login-activity-prev').disabled=offset===0;el('login-activity-next').disabled=!hasMore;
     el('login-activity-message').textContent='';sorting?.decorate();
+    window.GREENLOOP_HIGHLIGHTS?.show(el('login-activity-rows'),el('login-activity-search').value);
     if(firstOpen&&location.hash==='#login-activity')panel.scrollIntoView({block:'start'});
   }
   function alertNew(rows) {

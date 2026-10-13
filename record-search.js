@@ -100,6 +100,7 @@
         if(info.detail)row.append(textElement("small","",info.detail));
         row.addEventListener("mousedown",event=>event.preventDefault());row.addEventListener("click",()=>select(index));list.append(row);
       });
+      window.GREENLOOP_HIGHLIGHTS?.show(list,lastQuery);
     }
     async function search({append=false,selectExact=false}={}) {
       clearTimeout(timer);
