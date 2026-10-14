@@ -501,7 +501,7 @@
       : "Only an Owner or Super Admin can reset all IMEIs.";
     return `<section class="restricted-card${preview ? " is-reviewed" : ""}" data-deletion-card="${scope}">
       <div class="restricted-card-heading"><span class="restricted-step" aria-hidden="true">${single ? "01" : "02"}</span><div><h3>${single ? "Delete a single IMEI" : "Reset all IMEIs"}</h3><p>${description}</p></div></div>
-      <p class="restricted-scope-label">${single ? "One phone · all linked processes" : "Entire software · all IMEIs and processes"}</p>
+      <p class="restricted-scope-label">${single ? "One phone · all linked processes" : "Operational stock · all IMEIs and linked processes"}</p>
       ${allowed ? `<form class="restricted-review-form" data-deletion-review="${scope}" novalidate>
         ${single ? `<label for="restricted-imei">Exact 15-digit IMEI<input id="restricted-imei" name="imei" type="text" inputmode="numeric" maxlength="15" autocomplete="off" placeholder="Enter or scan IMEI" value="${escapeHtml(deletionImei)}" required></label>` : `<p class="restricted-all-note">This reset covers all dates and all departments.</p>`}
         <button class="secondary-button restricted-review-button" type="submit">${preview ? "Review again" : "Review selection"}</button>
@@ -527,9 +527,8 @@
     rowCount.textContent = "2 deletion options";
     reportContent.innerHTML = `<div class="restricted-workspace">
       ${deletionResult ? `<div class="restricted-result" role="status"><strong>Deletion completed</strong><p>${escapeHtml(deletionResult)}</p><button type="button" class="secondary-button" data-open-deleted-history>View Deleted History</button></div>` : ""}
-      <div class="restricted-preserved"><strong>Your setup, inventory stock and audit history stay</strong><p>Technician names, parts names and dropdowns, existing inventory stock, users, permissions and settings are preserved. Deleted History keeps the records of who deleted what and when.</p><p>Unused issued parts follow the existing stock-return rules.</p></div>
+      <div class="restricted-preserved"><strong>Your setup, inventory stock, Live Damage Report and audit history stay</strong><p>Technician names, parts names and dropdowns, existing inventory stock, users, permissions and settings are preserved. Deleted History keeps the records of who deleted what and when.</p><p>Live Damage Report entries, employees, departments, quantities, prices and history are preserved and managed separately.</p><p>Unused issued parts follow the existing stock-return rules.</p></div>
       <div class="restricted-options">${deletionScopeCard("single")}${deletionScopeCard("all")}</div>
-      <p class="restricted-footer">Need to correct an IMEI or device details? Use the separate <button type="button" data-open-data-correction>IMEI Data Correction</button> report.</p>
     </div>`;
     setDeletionBusy(deletionBusy);
   }
