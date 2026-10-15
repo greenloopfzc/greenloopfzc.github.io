@@ -11,7 +11,7 @@
     var rowSize = historySize(), employees = [], rosterRequest = 0, selection = 0, detail = null;
     var autoView = false, autoTimer = null, view = "all";
     var activity = [], updatesPaused = false;
-    var tvMode = false, idleTimer = null, autoDeadline = 0;
+    var tvMode = false, idleTimer = null, autoDeadline = 0, summaries = null;
     function text(id, value) { get(id).textContent = String(value === null || value === undefined ? "" : value); }
     function message(id, value) { text(id, value); get(id).style.display = value ? "block" : "none"; }
     function escape(value) {
@@ -134,12 +134,13 @@
     function selectEmployee(id, automatic) {
       var employee = findEmployee(id);
       if (!employee) return;
+      if (summaries) summaries.close(false);
       selection++; detail = firstPage(employee); view = "detail";
       if (!automatic) pauseAuto();
       renderEmployees();
       if (automatic) scheduleAuto();
     }
-    function showAll() { pauseAuto(); selection++; detail = null; view = "all"; renderEmployees(); }
+    function showAll() { if (summaries) summaries.close(false); pauseAuto(); selection++; detail = null; view = "all"; renderEmployees(); }
     function sizeTicker() {
       var track = get("damage-live-track"), first = get("damage-live-text"), copy = get("damage-live-copy");
       var viewport = first.parentNode.parentNode;
@@ -190,6 +191,7 @@
       showActivity();
     }
     function clear() {
+      if (summaries) summaries.clear();
       activity = []; updatesPaused = false; showActivity();
       employees = []; detail = null; selection++; rosterRequest++; view = "all"; pauseAuto();
       text("damage-today", 0); text("damage-month", 0); text("damage-total", 0);
@@ -306,6 +308,7 @@
         renderActivity(first.activity);
         text("damage-today", count(first.today_count)); text("damage-month", count(first.month_count)); text("damage-total", count(first.total_count));
         boardValues(first); connection("Live · 30 sec refresh"); renderEmployees(); text("tv-last-updated", stamp()); message("tv-board-message", warning || "");
+        if (summaries) summaries.refresh();
       }
       function finish() {
         if (!current()) return;
@@ -389,9 +392,10 @@
     try { theme = window.localStorage.getItem("greenloop-tv-theme") || "light"; } catch (ignore) {}
     setTheme(theme);
     get("tv-theme-toggle").onclick = function () { pauseAuto(); setTheme(theme === "light" ? "dark" : "light"); };
-    if (!api || typeof api.restore !== "function" || typeof api.login !== "function" || typeof api.logout !== "function" || typeof api.loadDamageCards !== "function" || typeof api.loadEmployeeDamageRows !== "function") {
+    if (!api || typeof api.restore !== "function" || typeof api.login !== "function" || typeof api.logout !== "function" || typeof api.loadDamageCards !== "function" || typeof api.loadEmployeeDamageRows !== "function" || typeof api.loadDamageSummary !== "function" || typeof window.GREENLOOP_DAMAGE_SUMMARY !== "function") {
       showLogin("This page did not finish loading. Reload the page and check the TV internet connection."); submit.disabled = true; return;
     }
+    summaries = window.GREENLOOP_DAMAGE_SUMMARY(api, {onOpen:showAll, expired:expired, date:uaeDate, onExpired:function(error){showLogin(error.message || "Please sign in again.");username.focus();}});
     api.onSessionInvalidated = function (error) { showLogin(error && error.message || "Please sign in again."); username.focus(); };
     get("tv-show-password").onclick = function () {
       var show = password.type === "password"; password.type = show ? "text" : "password";

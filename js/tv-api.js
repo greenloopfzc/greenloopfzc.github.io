@@ -613,6 +613,39 @@
       callback(problem, report);
     });
   };
+  api.loadDamageSummary = function (scope, offset, limit, callback) {
+    callback = typeof callback === "function" ? callback : noop;
+    if (!/^(today|month|all|value|payable)$/.test(scope) || !pageArguments(offset, limit)) { callback(error("VALIDATION", "Choose a valid damage summary page.")); return; }
+    damageCardsRequest("get_damage_tv_summary_v1", {p_scope:scope,p_offset:offset,p_limit:limit}, function (problem, report) {
+      if (problem) { callback(problem); return; }
+      function amount(value, nullable) { return nullable && value === null || typeof value === "string" && /^\d+\.\d{2}$/.test(value); }
+      function values(items) {
+        if (!array(items)) return false;
+        for (var i=0;i<items.length;i++) if (!items[i] || typeof items[i].currency!=="string" || !items[i].currency || !amount(items[i].amount,false)) return false;
+        return true;
+      }
+      var valid=report && report.version==="20261015-damage-tv-summary-1" && report.scope===scope && report.offset===offset &&
+        count(report.record_count) && count(report.quantity) && count(report.result_count) && count(report.unpriced_quantity) && values(report.value_totals) &&
+        timestamp(report.generated_at) && array(report.rows) && report.rows.length<=limit && typeof report.has_more==="boolean";
+      if(valid)valid=report.rows.length===Math.min(limit,Math.max(0,report.result_count-offset)) && report.has_more===(offset+limit<report.result_count);
+      if(valid && /^(today|month|payable)$/.test(scope)) valid=/^\d{4}-\d{2}-\d{2}$/.test(report.date_from) && /^\d{4}-\d{2}-\d{2}$/.test(report.date_to) && report.date_from<=report.date_to;
+      if(valid && scope==="payable") valid=count(report.pending_count) && report.pending_count<=report.result_count && amount(report.payable,true) && amount(report.confirmed_payable,false) && (report.payable===null)===(report.pending_count>0);
+      var i,r,seen={};
+      if(valid)for(i=0;i<report.rows.length;i++){
+        r=report.rows[i];
+        if(!r){valid=false;break;}
+        var key=scope==="payable" ? r.employee_key : r.id;
+        if(typeof key!=="string" || !key || seen['key:'+key]){valid=false;break;}seen['key:'+key]=true;
+        if(scope==="payable") valid=typeof r.employee_name==="string" && count(r.quantity) && count(r.record_count) && count(r.lcd_quantity) && count(r.waived_quantity) &&
+          values(r.value_totals) && amount(r.lcd_average,false) && amount(r.waived_value,false) && amount(r.deduction,false) && amount(r.payable,true) &&
+          (r.pending===null || typeof r.pending==="string") && (r.payable===null)===(r.pending!==null);
+        else valid=typeof r.damaged_by==="string" && typeof r.model==="string" && typeof r.reason==="string" && typeof r.reported_by==="string" &&
+          count(r.quantity) && r.quantity>0 && amount(r.price_amount,true) && amount(r.entry_total,true) && timestamp(r.occurred_at) && timestamp(r.created_at);
+        if(!valid)break;
+      }
+      callback(valid ? null : error("INVALID_RESPONSE", "The complete damage summary could not be read. Select Retry."),valid ? report : null);
+    });
+  };
   api.onSessionInvalidated = null;
   if (window.addEventListener) window.addEventListener("storage", function (event) {
     if (event.key === changeKey || event.key === authKey || event.key === modeKey || event.key === null) {

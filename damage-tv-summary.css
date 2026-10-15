@@ -1,0 +1,76 @@
+/* Larger readable ticker and raised, remote-accessible summary buttons. */
+.damage-tv-page .damage-live-updates {padding-top:11px;padding-bottom:11px;}
+.damage-tv-page .damage-live-viewport {min-height:38px;line-height:38px;}
+.damage-tv-page .damage-live-group {font-size:23px;font-weight:500;}
+.damage-tv-page .damage-live-title {padding-top:9px;}
+.damage-tv-page .damage-summary .damage-stat {width:20%;font-family:inherit;cursor:pointer;min-height:96px;}
+.damage-tv-page .damage-summary .damage-stat:hover,.damage-tv-page .damage-summary .damage-stat[aria-expanded="true"] {border-top-color:#09684f;background:#deeee6;}
+.damage-tv-page .damage-summary .damage-stat:focus {outline:3px solid #b87a13;outline-offset:1px;}
+.damage-tv-page .damage-stat-payable {border-top-color:#426eb4;}
+.damage-summary-detail {margin:14px 0;padding:20px;background:#f4f8fa;border:1px solid #fff;border-radius:20px;box-shadow:5px 6px 12px #c7d4dc,-4px -4px 10px #fff;color:#214d41;}
+.damage-summary-detail h2 {margin:0 0 5px;font-size:25px;}
+.damage-summary-detail header p {margin:0;color:#50685e;font-size:14px;}
+#damage-summary-close {float:right;margin-left:14px;}
+.damage-summary-totals {padding:12px;margin:14px 0;border-radius:12px;background:#e3eee9;text-align:center;}
+.damage-summary-totals > span,.damage-summary-totals > strong {display:inline-block;margin:3px 12px;font-size:16px;}
+.damage-summary-totals .damage-payable-total {color:#1c5482;}
+.damage-summary-message {margin:8px 0;color:#8b431c;font-size:14px;}
+.damage-summary-message:empty {display:none;}
+.damage-summary-table-wrap {overflow:hidden;border:1px solid #c8d6dc;border-radius:12px;}
+.damage-summary-table {width:100%;table-layout:fixed;border-collapse:collapse;background:#f0f5f7;}
+.damage-summary-table th,.damage-summary-table td {padding:12px 8px;border:1px solid #ccd9df;text-align:center;vertical-align:middle;overflow-wrap:break-word;word-wrap:break-word;line-height:1.35;}
+.damage-summary-table th {background:#dce8ed;font-size:12px;color:#36594f;}
+.damage-summary-table td {font-size:16px;}
+.damage-summary-table tr:nth-child(even) {background:#fff;}
+.damage-summary-table td small {display:block;margin-top:5px;color:#5a7066;font-size:12px;}
+.damage-summary-empty {padding:35px !important;}
+.damage-summary-formula {font-size:13px;line-height:1.5;text-align:center;margin:12px 0;color:#50685e;}
+.damage-summary-pager {text-align:center;}
+.damage-summary-pager > * {display:inline-block;margin:3px 8px;vertical-align:middle;}
+.tv-dark .damage-tv-page .damage-summary .damage-stat:hover,.tv-dark .damage-tv-page .damage-summary .damage-stat[aria-expanded="true"] {background:#37584e;}
+.tv-dark .damage-summary-detail {background:#293e48;border-color:#52666e;color:#e0eee6;box-shadow:5px 6px 12px #172a34,-3px -3px 8px #3b515b;}
+.tv-dark .damage-summary-detail header p,.tv-dark .damage-summary-formula,.tv-dark .damage-summary-table td small {color:#c0d3ca;}
+.tv-dark .damage-summary-totals {background:#344e46;}
+.tv-dark .damage-summary-totals .damage-payable-total {color:#bbd9fc;}
+.tv-dark .damage-summary-message {color:#ffcb92;}
+.tv-dark .damage-summary-table {background:#283e48;}
+.tv-dark .damage-summary-table tr:nth-child(even) {background:#304954;}
+.tv-dark .damage-summary-table th {background:#213640;color:#d4e8de;}
+.tv-dark .damage-summary-table th,.tv-dark .damage-summary-table td,.tv-dark .damage-summary-table-wrap {border-color:#526771;}
+@media (min-width:1600px) {
+ .damage-tv-page .damage-live-group {font-size:27px;}
+ .damage-tv-page .damage-live-viewport {min-height:42px;line-height:42px;}
+ .damage-tv-page .damage-summary .damage-stat {min-height:100px;}
+ .damage-summary-table td {font-size:18px;padding:14px 10px;}
+ .damage-summary-table th {font-size:14px;}
+}
+@media (min-width:651px) and (max-width:1599px) {
+ .damage-tv-page .damage-summary .damage-stat {min-height:82px;padding:6px;}
+ .damage-tv-page .damage-live-group {font-size:20px;}
+ .damage-tv-page .damage-live-updates {padding-top:7px;padding-bottom:7px;}
+ .damage-summary-detail {padding:14px;}
+ .damage-summary-table td {font-size:13px;padding:8px 5px;}
+ .damage-summary-table td small {font-size:10px;}
+ .damage-summary-table th {font-size:10px;padding:8px 4px;}
+}
+@media (max-height:650px) and (min-width:651px) {
+ .damage-tv-page .damage-summary .damage-stat {min-height:60px;}
+ .damage-tv-page .damage-live-viewport {min-height:30px;line-height:30px;}
+ .damage-tv-page .damage-live-updates {padding-top:4px;padding-bottom:4px;}
+ .damage-tv-page .damage-live-title {padding-top:4px;}
+}
+@media (max-width:650px) {
+ .damage-tv-page .damage-summary .damage-stat {width:50%;min-height:112px;padding:9px;}
+ .damage-tv-page .damage-summary .damage-stat-payable {width:100%;min-height:90px;}
+ .damage-tv-page .damage-live-group {font-size:19px;}
+ .damage-tv-page .damage-live-viewport {margin-left:0;margin-right:0;clear:both;}
+ .damage-summary-detail {padding:12px;}
+ .damage-summary-detail h2 {font-size:22px;clear:both;padding-top:10px;}
+ .damage-summary-table thead {position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);}
+ .damage-summary-table tbody,.damage-summary-table tr,.damage-summary-table td {display:block;width:100%;}
+ .damage-summary-table tr+tr {border-top:3px solid #90afa0;}
+ .damage-summary-table td {padding:8px;font-size:15px;}
+ .damage-summary-table td:before {content:attr(data-label);display:block;font-size:10px;font-weight:bold;letter-spacing:.5px;margin-bottom:3px;}
+ .damage-summary-table .damage-summary-empty:before {display:none;}
+ .damage-summary-pager > * {margin:4px;font-size:12px;}
+}

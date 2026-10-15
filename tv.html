@@ -9,10 +9,12 @@
   <link rel="stylesheet" href="css/tv.css?v=20261005-damage-tv-views-1">
   <link rel="stylesheet" href="css/damage-tv.css?v=20261013-damage-red-1">
   <script>window.GREENLOOP_TV_CONFIG = {"loginActivity":true,"pageKey":"damage_report","supabaseUrl":"https://prypklagfznpdlleldll.supabase.co","supabaseAnonKey":"sb_publishable_hMIRbfKmh4vhGvEgVcPjow_F21WmwXt"};</script>
-  <script defer src="js/tv-api.js?v=20261007-damage-payable-1"></script>
-  <script defer src="js/damage-tv.js?v=20261013-search-tv-1"></script>
+  <script defer src="js/tv-api.js?v=20261015-damage-tv-summary-1"></script>
+  <script defer src="js/damage-tv-summary.js?v=20261015-damage-tv-summary-1"></script>
+  <script defer src="js/damage-tv.js?v=20261015-damage-tv-summary-1"></script>
   <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
   <link rel="stylesheet" href="css/damage-tv-display.css?v=20261013-search-tv-1">
+  <link rel="stylesheet" href="css/damage-tv-summary.css?v=20261015-damage-tv-summary-1">
 </head>
 <body class="tv-page damage-tv-page">
   <div class="tv-wrap">
@@ -88,14 +90,23 @@
             <div id="damage-live-track" class="damage-live-track"><span id="damage-live-text" class="damage-live-group" role="status" aria-live="polite">No damage entries yet.</span><span id="damage-live-copy" class="damage-live-group" aria-hidden="true">No damage entries yet.</span></div>
           </div>
         </section>
-        <div class="damage-summary" aria-label="Damage totals across all recorded history">
-          <div class="damage-stat"><span>Today’s damaged parts</span><strong id="damage-today">0</strong><small>UAE calendar day</small></div>
-          <div class="damage-stat"><span>This month</span><strong id="damage-month">0</strong><small>Damaged parts · UAE dates</small></div>
-          <div class="damage-stat"><span>Total damaged parts</span><strong id="damage-total">0</strong><small>All recorded history</small></div>
-          <div class="damage-stat damage-stat-value"><span>Total damage value</span><strong id="damage-value">—</strong><small id="damage-unpriced">Recorded prices · currencies separate</small></div>
+        <div class="damage-summary" aria-label="Damage summaries: select a card to open details">
+          <button type="button" id="damage-summary-today" data-damage-summary="today" aria-controls="damage-summary-detail" aria-expanded="false" class="damage-stat"><span>Today’s damaged parts</span><strong id="damage-today">0</strong><small>UAE calendar day · View details</small></button>
+          <button type="button" id="damage-summary-month" data-damage-summary="month" aria-controls="damage-summary-detail" aria-expanded="false" class="damage-stat"><span>This month</span><strong id="damage-month">0</strong><small>Month to date · View details</small></button>
+          <button type="button" id="damage-summary-all" data-damage-summary="all" aria-controls="damage-summary-detail" aria-expanded="false" class="damage-stat"><span>Total damaged parts</span><strong id="damage-total">0</strong><small>All history · View details</small></button>
+          <button type="button" id="damage-summary-value" data-damage-summary="value" aria-controls="damage-summary-detail" aria-expanded="false" class="damage-stat damage-stat-value"><span>Total damage value</span><strong id="damage-value">—</strong><small id="damage-unpriced">Recorded prices · currencies separate</small></button>
+          <button type="button" id="damage-summary-payable" data-damage-summary="payable" aria-controls="damage-summary-detail" aria-expanded="false" class="damage-stat damage-stat-value damage-stat-payable"><span>This Month Payable</span><strong id="damage-payable">—</strong><small id="damage-payable-period">Month to date · UAE</small></button>
         </div>
-        <div class="damage-roster-heading tv-clear"><h2>Employee overview</h2><p id="damage-range" class="damage-roster-count">Waiting for employees</p></div>
-        <section aria-label="Employee damage cards">
+        <section id="damage-summary-detail" class="damage-summary-detail" aria-labelledby="damage-summary-title" style="display:none">
+          <header class="tv-clear"><button id="damage-summary-close" class="tv-button" type="button">Back to employees</button><h2 id="damage-summary-title"></h2><p id="damage-summary-period"></p></header>
+          <div id="damage-summary-totals" class="damage-summary-totals"></div>
+          <p id="damage-summary-message" class="damage-summary-message" role="status" aria-live="polite"></p>
+          <div id="damage-summary-table-wrap" class="damage-summary-table-wrap"></div>
+          <p id="damage-summary-formula" class="damage-summary-formula"></p>
+          <div class="damage-summary-pager"><button id="damage-summary-prev" class="tv-button" type="button" disabled>Previous</button><span id="damage-summary-range"></span><button id="damage-summary-next" class="tv-button" type="button" disabled>Next</button><button id="damage-summary-retry" class="tv-button" type="button">Retry / refresh</button></div>
+        </section>
+        <div id="damage-roster-heading" class="damage-roster-heading tv-clear"><h2>Employee overview</h2><p id="damage-range" class="damage-roster-count">Waiting for employees</p></div>
+        <section id="damage-employee-section" aria-label="Employee damage cards">
           <div id="damage-detail-nav" class="damage-detail-nav tv-clear" style="display:none" aria-label="Employee navigation">
             <button id="damage-prev" class="tv-button" type="button" disabled>Previous employee</button>
             <span id="damage-page" class="damage-page-number" aria-live="polite"></span>
