@@ -475,6 +475,10 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
       return;
     }
 
+    const tvSettings=await client.rpc("get_my_damage_tv_settings_v1");
+    if(tvSettings.error || !tvSettings.data || typeof tvSettings.data.tv_only!=="boolean"){showAccessError(navigation,main);return;}
+    if(tvSettings.data.tv_only){window.location.replace("tv.html");return;}
+
     const accessByPage = new Map(accessRows
       .map((row) => [row.page_key, row.access_level || "view"])
       .filter(([, level]) => level === "view" || level === "edit"));

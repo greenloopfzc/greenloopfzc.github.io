@@ -100,7 +100,7 @@
 
       if (window.GREENLOOP_LOGIN_TRACKER) await Promise.race([window.GREENLOOP_LOGIN_TRACKER.touch(), new Promise(resolve => setTimeout(resolve, 1200))]);
       showMessage("Sign-in successful. Loading your workspace...", "success");
-      window.location.assign("dashboard.html");
+      window.location.assign(await loginDestination());
     } catch (error) {
       showMessage(error.message || "We could not sign you in. Check your username and password, then try again.");
       setSubmitting(false);
@@ -117,12 +117,19 @@
     return record.email;
   }
 
+  async function loginDestination() {
+    const {data,error}=await getClient().rpc("get_my_damage_tv_settings_v1");
+    if(error)throw error;
+    if(!data || typeof data.tv_only!=="boolean")throw new Error("Your account permissions could not be checked. Please retry.");
+    return data.tv_only ? "tv.html" : "dashboard.html";
+  }
+
   async function redirectSignedInUser() {
     if (!isConfigured()) return;
 
     const { data } = await getClient().auth.getSession();
     if (data.session) {
-      window.location.replace("dashboard.html");
+      window.location.replace(await loginDestination());
     }
   }
 

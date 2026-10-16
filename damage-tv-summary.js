@@ -2,6 +2,7 @@
 (function (root) {
   "use strict";
   root.GREENLOOP_DAMAGE_SUMMARY = function (api, hooks) {
+    var display=root.GREENLOOP_DAMAGE_DISPLAY;
     var scope = null, offset = 0, last = null, request = 0, cardRequest = 0, limit = 6;
     var titles = {today:"Today's damaged parts", month:"This month's damages", all:"All damaged parts", value:"Total damage value", payable:"This Month Payable"};
     function get(id) { return document.getElementById(id); }
@@ -10,9 +11,9 @@
     function money(value) { return value === null || value === undefined ? "Not recorded" : String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
     function date(value) { if (!value) return "All recorded history"; var p=value.split("-"); return p[2]+" "+["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][Number(p[1])-1]+" "+p[0]; }
     function period(data) { return data.date_from ? date(data.date_from)+(data.date_from===data.date_to ? "" : " – "+date(data.date_to))+" · UAE" : "All recorded history · UAE dates"; }
-    function values(list) { var out=[],i; for(i=0;i<list.length;i++)out.push(esc(list[i].currency)+" "+esc(money(list[i].amount)));return out.join(" · ") || "No recorded value"; }
+    function values(list) { list=list||[];var out=[],i; for(i=0;i<list.length;i++)out.push(esc(list[i].currency)+" "+esc(money(list[i].amount)));return out.join(" · ") || "No recorded value"; }
     function cell(label, value, note) { return '<td data-label="'+esc(label)+'">'+esc(value===null || value==="" ? "Not recorded" : value)+(note ? '<small>'+esc(note)+'</small>' : '')+'</td>'; }
-    function dual(original,copy) { return '<span class="damage-dual-line">Original: '+original+'</span><span class="damage-dual-line">Copy: '+copy+'</span>'; }
+    function dual(original,copy) { return display.dual(original,copy); }
     function dualCell(original,copy,label) { return '<td data-label="'+label+'">'+dual(original,copy)+'</td>'; }
     function payableLabel(value) { return value===null ? 'Pending' : 'AED '+esc(money(value)); }
     function status(value) { text("damage-summary-message",value || ""); }
@@ -24,19 +25,20 @@
     }
     function close(focus) { var previous=scope; scope=null;request++;last=null;toggle();if(focus && previous)get("damage-summary-"+previous).focus(); }
     function card(data) {
+      display.apply();
       text("damage-month",data.quantity);
       get("damage-payable").innerHTML=dual(payableLabel(data.payable),payableLabel(data.copy_payable));
-      text("damage-payable-period",period(data)+(data.pending_count ? " · "+data.pending_count+" pending" : ""));
+      text("damage-payable-period",period(data)+((data.pending_count||data.copy_pending_count) ? " · Pending details" : ""));
       get("damage-summary-payable").removeAttribute("data-stale");
     }
     function fatal(error) { if(hooks.expired(error)){hooks.onExpired(error);return true;}return false; }
     function render(data) {
       last=data;offset=data.offset;
       text("damage-summary-period",period(data));
-      var overview=data.quantity+" damaged parts · "+data.record_count+" entries";
+      var overview=(display.get().show_parts ? data.quantity+" damaged parts · " : "")+data.record_count+" entries";
       var html='<span>'+esc(overview)+'</span><strong>'+dual(values(data.value_totals),values(data.copy_value_totals))+'</strong>';
       if(scope==='payable') html+='<strong class="damage-payable-total">Payable'+dual(payableLabel(data.payable),payableLabel(data.copy_payable))+'</strong>';
-      if(data.unpriced_quantity || data.copy_unpriced_quantity)html+='<span>Parts without price: Original '+data.unpriced_quantity+' / Copy '+data.copy_unpriced_quantity+'</span>';
+      if(data.unpriced_quantity || data.copy_unpriced_quantity)html+='<span>Parts without price'+dual(data.unpriced_quantity||0,data.copy_unpriced_quantity||0)+'</span>';
       if(scope==='payable' && (data.pending_count || data.copy_pending_count))html+='<span>Confirmed payable so far'+dual('AED '+esc(money(data.confirmed_payable)),'AED '+esc(money(data.copy_confirmed_payable)))+'</span>';
       get("damage-summary-totals").innerHTML=html;
       var payable=scope==='payable',headers=payable ? ['EMPLOYEE','DEPARTMENT','PARTS','DAMAGE VALUE','LCD PARTS','LCD ALLOWANCE','DEDUCTION','PAYABLE'] : ['DATE / TIME','EMPLOYEE','MODEL / IDENTIFIER','PART / QTY','PRICE / PART','ENTRY TOTAL','SOURCE','REASON / ENTERED BY'];
@@ -47,8 +49,8 @@
         r=data.rows[i];table+='<tr>';
         if(payable){
           table+=cell('Employee',r.employee_name)+cell('Department',r.record_count ? (r.department==='glass' ? 'Glass' : r.department==='other' ? 'Other' : 'Pending') : '—')+cell('Parts',r.quantity);
-          table+=dualCell(r.quantity ? values(r.value_totals) : 'AED 0.00',r.quantity ? values(r.copy_value_totals) : 'AED 0.00','Damage value');
-          table+=cell('LCD parts',r.lcd_quantity)+dualCell(r.pending ? esc(r.pending) : r.waived_quantity+' LCD · AED '+money(r.waived_value)+'<small>Avg AED '+money(r.lcd_average)+'</small>',r.copy_pending ? esc(r.copy_pending) : r.waived_quantity+' LCD · AED '+money(r.copy_waived_value)+'<small>Avg AED '+money(r.copy_lcd_average)+'</small>','LCD allowance')+
+          table+=dualCell(r.record_count ? values(r.value_totals) : 'AED 0.00',r.record_count ? values(r.copy_value_totals) : 'AED 0.00','Damage value');
+          table+=cell('LCD parts',r.lcd_quantity)+dualCell(r.pending ? esc(r.pending) : (display.get().show_parts ? r.waived_quantity+' LCD · ' : '')+'AED '+money(r.waived_value)+'<small>Avg AED '+money(r.lcd_average)+'</small>',r.copy_pending ? esc(r.copy_pending) : (display.get().show_parts ? r.waived_quantity+' LCD · ' : '')+'AED '+money(r.copy_waived_value)+'<small>Avg AED '+money(r.copy_lcd_average)+'</small>','LCD allowance')+
             cell('Deduction',r.record_count ? 'AED '+money(r.deduction)+' per valuation' : '—')+dualCell(r.pending ? esc(r.pending) : payableLabel(r.payable),r.copy_pending ? esc(r.copy_pending) : payableLabel(r.copy_payable),'Payable');
         }else{
           table+=cell('Date / time',hooks.date(r.occurred_at))+cell('Employee',r.damaged_by,r.department==='glass' ? 'Glass' : r.department==='other' ? 'Other department' : 'Department not recorded')+
@@ -58,12 +60,15 @@
         table+='</tr>';
       }
       if(!data.rows.length)table+='<tr><td colspan="8" class="damage-summary-empty">No damage records in this period.</td></tr>';
-      get("damage-summary-table-wrap").innerHTML=table+'</tbody></table>';
-      text("damage-summary-formula",payable ? 'Calculated separately for Original and Copy each month: total damage − LCD allowance − AED 100, then ÷ 2. Minimum payable: AED 0.00. Glass: up to 4 LCDs; other departments: up to 1. LCD allowance uses the quantity-weighted average. Other parts receive no allowance.' : 'Newest first · Original and Copy are separate valuations, not added together · Each row shows one saved entry; quantity may include several damaged parts.');
+      var hidden=[];
+      if(!display.get().show_parts)hidden=hidden.concat(payable ? [1,2,4] : [0,2,3,6,7]);
+      if(!display.prices())hidden=hidden.concat(payable ? [3,5,6,7] : [4,5]);
+      get("damage-summary-table-wrap").innerHTML=display.table(table+'</tbody></table>',hidden);
+      text("damage-summary-formula",payable ? 'Calculated monthly for each shown valuation: total damage − LCD allowance − AED 100, then ÷ 2. Minimum payable: AED 0.00. Glass: up to 4 LCDs; other departments: up to 1. LCD allowance uses the quantity-weighted average. Other parts receive no allowance.' : (display.prices() ? 'Newest first · Shown valuations are separate; amounts are not added together.' : 'Newest first · Each row shows one saved entry; quantity may include several damaged parts.'));
       text("damage-summary-range",data.result_count ? (offset+1)+'–'+Math.min(offset+data.rows.length,data.result_count)+' of '+data.result_count+(payable ? ' employees' : ' entries') : '0 entries');
       get("damage-summary-prev").disabled=offset===0;get("damage-summary-next").disabled=!data.has_more;
       get("damage-summary-retry").disabled=false;
-      status(data.pending_count || data.copy_pending_count ? 'Pending calculations: Original '+(data.pending_count||0)+' / Copy '+(data.copy_pending_count||0)+'. Correct missing department, price or AED settlement. Each valuation is calculated independently.' : '');
+      status(data.pending_count || data.copy_pending_count ? 'Some payable calculations are pending. Ask the administrator to complete missing details.' : '');
     }
     function load(requested, retried) {
       if(!scope)return;
@@ -78,13 +83,14 @@
       });
     }
     function open(value){
-      if(!titles[value])return;
+      if(!titles[value] || (/^(today|month|all)$/.test(value) ? !display.get().show_parts : !display.prices()))return;
       hooks.onOpen();scope=value;offset=0;last=null;toggle();text("damage-summary-title",titles[value]);
       text("damage-summary-period",'');text("damage-summary-totals",'');text("damage-summary-table-wrap",'');text("damage-summary-formula",'');text("damage-summary-range",'');
       get("damage-summary-close").focus();load(0);
     }
     function refresh(){
       var ticket=++cardRequest;
+      if(!display.prices()){if(scope)load(offset);return;}
       api.loadDamageSummary('payable',0,1,function(error,data){
         if(ticket!==cardRequest)return;
         if(error){if(fatal(error))return;text("damage-payable",'Unavailable');text("damage-payable-period",'Select to retry');get("damage-summary-payable").setAttribute("data-stale","true");return;}

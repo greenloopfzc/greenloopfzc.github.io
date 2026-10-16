@@ -203,7 +203,26 @@
     username.value = user.login_username || "";
     active.checked = Boolean(user.is_active);
     roleOptions.innerHTML = pageCheckboxes(pageGuideData, displayPermissionsForUser(user));
+    const settings=user.tv_display;
+    tvOnly.checked=settings.tv_only;
+    tvOnly.disabled=settings.protected_account || !window.GREENLOOP_PAGE_ACCESS?.canEdit;
+    tvParts.checked=settings.show_parts;tvOriginal.checked=settings.show_original;tvCopy.checked=settings.show_copy;
+    document.querySelector("#damage-tv-mode-help").textContent=settings.protected_account ? "Administrator account: use a separate staff account for the TV." : "Open the damage wall directly. Entry, PDF and other software pages are blocked for this account.";
+    tvModeChanged();
   }
+
+  const tvOnly = document.querySelector("#access-tv-only");
+  const tvParts = document.querySelector("#access-tv-parts");
+  const tvOriginal = document.querySelector("#access-tv-original");
+  const tvCopy = document.querySelector("#access-tv-copy");
+  function tvModeChanged() {
+    const locked = tvOnly.checked;
+    document.querySelector("#damage-tv-choices").hidden = !locked;
+    document.querySelector("#access-page-permissions").hidden=locked;
+    roleOptions.querySelectorAll("input, select").forEach(field => { field.disabled = locked || !window.GREENLOOP_PAGE_ACCESS?.canEdit; });
+    if (!locked) roleOptions.querySelectorAll("[data-page-permission]").forEach(card => { const select=card.querySelector("select"),check=card.querySelector("input"); if(select)select.disabled=!check.checked || !window.GREENLOOP_PAGE_ACCESS?.canEdit; });
+  }
+  tvOnly.addEventListener("change", tvModeChanged);
 
   async function loadUsers(preferredUserId = selectedUserId) {
     let { data, error } = await getClient().rpc("get_user_page_access_matrix_v2");
@@ -211,7 +230,11 @@
       ({ data, error } = await getClient().rpc("get_user_page_access_matrix"));
     }
     if (error) throw error;
+    const tvResult=await getClient().rpc("get_user_damage_tv_settings_v1");
+    if(tvResult.error) throw tvResult.error;
+    const tvSettings=new Map((tvResult.data || []).map(row=>[String(row.user_id),row]));
     users = data || [];
+    for(const user of users){user.tv_display=tvSettings.get(String(user.user_id));if(!user.tv_display)throw new Error("TV display permissions could not be verified. Refresh the account list.");}
     const { data: partnerAccess, error: partnerError } = await getClient().rpc("get_user_partner_name_access_matrix");
     if (partnerError) throw partnerError;
     const accessByUser = new Map((partnerAccess || []).map((row) => {
@@ -329,7 +352,8 @@
     event.preventDefault();
     if (savingAccess || !window.GREENLOOP_PAGE_ACCESS?.canEdit) return;
     if (!editor.checkValidity()) { editor.reportValidity(); return; }
-    const selectedPermissions = collectPagePermissions(roleOptions);
+    if(tvOnly.checked && !tvParts.checked && !tvOriginal.checked && !tvCopy.checked){setMessage(message,"Choose at least one TV display option.");return;}
+    const selectedPermissions = tvOnly.checked ? {damage_report:"view"} : collectPagePermissions(roleOptions);
     const partnerNamesAccess = selectedPermissions.partner_names || "none";
     const normalPermissions = Object.fromEntries(Object.entries(selectedPermissions).filter(([key]) => key !== "partner_names"));
     if (!selectedUserId) return;
@@ -341,13 +365,15 @@
     button.textContent = "Saving...";
     let pagesSaved = false;
     try {
-    const { error } = await getClient().rpc("save_user_access_complete", {
+    const { error } = await getClient().rpc("save_user_access_with_damage_tv_v1", {
       p_user_id: targetUserId,
       p_full_name: fullName.value.trim(),
       p_login_username: username.value.trim(),
       p_is_active: active.checked,
       p_page_permissions: normalPermissions,
-      p_partner_names_access: partnerNamesAccess
+      p_partner_names_access: partnerNamesAccess,
+      p_tv_only: tvOnly.checked,p_show_parts:tvParts.checked,p_show_original:tvOriginal.checked,p_show_copy:tvCopy.checked,
+      p_expected_revision:users.find(user=>String(user.user_id)===String(targetUserId)).tv_display.revision
     });
 
     if (error) throw error;

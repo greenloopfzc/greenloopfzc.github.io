@@ -15,14 +15,14 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css?v=20260811-5">
-    <link rel="stylesheet" href="css/user-access.css?v=20261010-user-access-sections-1">
+    <link rel="stylesheet" href="css/user-access.css?v=20261016-damage-tv-display-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script defer src="js/config.js?v=20261010-box-workflow-1"></script>
+  <script defer src="js/config.js?v=20261016-damage-tv-display-1"></script>
   <script defer src="js/login-activity.js?v=20261013-search-tv-1"></script>
   <link rel="stylesheet" href="css/record-search.css?v=20261003-navigation-search-1">
   <script defer src="js/record-search.js?v=20261013-search-tv-1"></script>
     <script defer src="js/part-notifications.js?v=20260918-audit-2"></script>
-    <script defer src="js/user-access.js?v=20261012-table-filters-1"></script>
+    <script defer src="js/user-access.js?v=20261016-damage-tv-display-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20260928-sidebar-depth-1">
     <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
   <link rel="stylesheet" href="css/sidebar-compact.css?v=20261009-sidebar-pdf-1">
@@ -94,7 +94,19 @@
                     <label class="access-active"><input id="access-active" type="checkbox"> Account is active</label>
                   </div>
 
-                  <div>
+                  <fieldset class="damage-tv-settings" id="damage-tv-settings">
+                    <legend>Damage TV display</legend>
+                    <label class="damage-tv-switch"><input id="access-tv-only" type="checkbox"> TV Display Only</label>
+                    <p class="permission-help" id="damage-tv-mode-help">Open the damage wall directly. Entry, PDF and other software pages are blocked for this account.</p>
+                    <div id="damage-tv-choices" class="damage-tv-choices" hidden>
+                      <label><input id="access-tv-parts" type="checkbox"> <span><strong>Parts details</strong><small>Model, part, quantity, source, reason and dates</small></span></label>
+                      <label><input id="access-tv-original" type="checkbox"> <span><strong>Original prices</strong><small>Original unit prices, totals and payable</small></span></label>
+                      <label><input id="access-tv-copy" type="checkbox"> <span><strong>Copy prices</strong><small>Copy unit prices, totals and payable</small></span></label>
+                    </div>
+                    <p class="permission-help">Employee names always remain visible. Saved changes appear on the TV at its next live refresh.</p>
+                  </fieldset>
+
+                  <div id="access-page-permissions">
                     <p class="permission-title">Select page permissions</p>
                     <p class="permission-help">Tick a page, then choose View only or View + Entry. Unticked pages are hidden and blocked.</p>
                     <div id="role-options" class="role-options"></div>

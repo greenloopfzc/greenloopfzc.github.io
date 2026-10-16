@@ -104,3 +104,7 @@
  .damage-tv-page .damage-summary .damage-stat-value strong,.damage-tv-page .damage-summary .damage-stat-payable strong { font-size:16px; }
  .damage-tv-page .damage-value-summary strong { font-size:16px; }
 }
+
+/* Available summary cards share the width when the administrator hides fields. */
+body[data-tv-parts="false"] .damage-table col,body[data-tv-prices="false"] .damage-table col{width:auto}
+body[data-tv-parts="false"] .damage-compact-name{margin-top:12px}

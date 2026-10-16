@@ -115,6 +115,7 @@
     if (webLockRelease) { var release = webLockRelease; webLockRelease = null; release(); }
   }
   function clear(reason, notify, keepStorage) {
+    api.display=null;
     generation += 1;
     session = null;
     refreshing = false;
@@ -344,7 +345,15 @@
     window.setInterval(function () { if (!window.document.hidden && syncSession()) loginPresence(false); }, 30000);
     window.document.addEventListener("visibilitychange", function () { if (!window.document.hidden && syncSession()) loginPresence(false); });
   }
-  function signedIn(callback) {
+  function signedIn(callback, checkedProfile) {
+    if(!checkedProfile && pageKey==="lab_live_board") {
+      authorised("POST","/rest/v1/rpc/get_my_damage_tv_settings_v1",{},function(problem,d){
+        if(problem){callback(problem);return;}
+        if(!d || typeof d.tv_only!=="boolean"){callback(error("INVALID_RESPONSE","TV permissions could not be verified."));return;}
+        if(d.tv_only){if(nativeSignIn){endApplicationSession();appChange=read("localStorage",changeKey);nativeSignIn=false;}persist();window.location.replace("tv.html");return;}
+        signedIn(callback,true);
+      });return;
+    }
     checkAccess(function (problem) {
       if (problem) { callback(problem); return; }
       if (nativeSignIn) {
@@ -550,12 +559,51 @@
         if (reportError && reportError.status === 404 && reportError.serverCode === "PGRST202") {
           reportError.message = "The Damage Cards database update is not installed yet. Ask your administrator to finish the update.";
         }
-        if (reportError && name === "get_manual_damage_employee_rows_v4" && reportError.serverCode === "22023") {
+        if (reportError && name === "get_damage_tv_employee_v1" && reportError.serverCode === "22023") {
           reportError = error("EMPLOYEE_NOT_FOUND", "This employee is no longer on the Damage Report. Refresh the employee cards.");
+        }
+        if(!reportError && /^(get_damage_tv_cards_v1|get_damage_tv_employee_v1|get_damage_tv_details_v1)$/.test(name)) {
+          var d=report && report.tv_display;
+          if(!d || typeof d.tv_only!=="boolean" || typeof d.show_parts!=="boolean" || typeof d.show_original!=="boolean" || typeof d.show_copy!=="boolean" || !/^\d+$/.test(d.revision) || !(d.show_parts||d.show_original||d.show_copy)) {callback(error("INVALID_RESPONSE","TV display settings could not be verified."));return;}
+          if(api.display && Number(d.revision)<Number(api.display.revision)){callback(error("STALE_DISPLAY","TV settings changed. Refreshing…"));return;}
+          var previous=api.display;api.display=d;
+          if(previous && JSON.stringify(previous)!==JSON.stringify(d)) {
+            if(typeof api.onDisplayChanged==="function")api.onDisplayChanged(d);
+            callback(error("DISPLAY_CHANGED","TV display settings changed. Refreshing…"));return;
+          }
         }
         callback(reportError, report);
       });
     });
+  }
+  function restrictedReport(report,kind,offset,limit,rowLimit,employeeId,scope) {
+    var d=report && report.tv_display;
+    if(!d || !d.tv_only)return false;
+    function values(r,copy) {
+      var list=r[copy ? "copy_value_totals" : "value_totals"],i;
+      if(!array(list))return false;
+      for(i=0;i<list.length;i++)if(!list[i] || typeof list[i].currency!=="string" || !/^\d+\.\d{2}$/.test(list[i].amount))return false;
+      return true;
+    }
+    function priceFields(r,summary) {
+      if(d.show_original && !(summary ? (r.price_amount===null || /^\d+\.\d{2}$/.test(r.price_amount)) : damagePrice(r.price_amount)))return false;
+      if(d.show_copy && !(summary ? (r.copy_price_amount===null || /^\d+\.\d{2}$/.test(r.copy_price_amount)) : damagePrice(r.copy_price_amount)))return false;
+      return true;
+    }
+    function row(r,summary) {
+      return r && typeof r.id==="string" && (!d.show_parts || (typeof r.model==="string" && typeof r.reason==="string" && count(r.quantity) && r.quantity>0 && timestamp(r.occurred_at) && timestamp(r.created_at))) && priceFields(r,summary);
+    }
+    function totals(r) {return (!d.show_original||values(r,false)) && (!d.show_copy||values(r,true));}
+    function employee(e) {return e && typeof (e.id||e.employee_id)==="string" && count(e.record_count) && typeof e.has_more==="boolean" && typeof e.has_damage==="boolean" && totals(e) && array(e.rows) && e.rows.length<=rowLimit && e.rows.every(function(r){return row(r,false);});}
+    if(kind==='cards')return count(report.employee_count) && count(report.record_count) && typeof report.has_more==="boolean" && totals(report) && array(report.activity) && report.activity.length<=5 && report.activity.every(function(r){return row(r,false)&&typeof r.damaged_by==='string';}) && array(report.employees) && report.employees.length<=limit && report.employees.every(employee);
+    if(kind==='employee')return report.employee_id===employeeId && employee(report);
+    if(kind==='summary')return report.scope===scope && report.offset===offset && count(report.result_count) && array(report.rows) && report.rows.length===Math.min(limit,Math.max(0,report.result_count-offset)) && report.has_more===(offset+limit<report.result_count) && totals(report) && report.rows.every(function(r){return scope==='payable' ? typeof r.employee_name==='string' && totals(r) && (!d.show_original || r.payable===null || /^\d+\.\d{2}$/.test(r.payable)) && (!d.show_copy || r.copy_payable===null || /^\d+\.\d{2}$/.test(r.copy_payable)) : row(r,true);});
+    return false;
+  }
+  function maskedResult(report,kind,offset,limit,rowLimit,employeeId,scope,callback) {
+    if(!report || !report.tv_display || !report.tv_display.tv_only)return false;
+    var valid=restrictedReport(report,kind,offset,limit,rowLimit,employeeId,scope);
+    callback(valid ? null : error("INVALID_RESPONSE","The restricted TV report could not be verified. Select Refresh."),valid ? report : null);return true;
   }
   api.loadDamageCards = function (offset, limit, rowLimit, callback) {
     callback = typeof callback === "function" ? callback : noop;
@@ -563,8 +611,9 @@
       callback(error("VALIDATION", "Choose a valid employee card page."));
       return;
     }
-    damageCardsRequest("get_manual_damage_cards_v6", { p_offset: offset, p_limit: limit, p_row_limit: rowLimit }, function (problem, report) {
+    damageCardsRequest("get_damage_tv_cards_v1", { p_offset: offset, p_limit: limit, p_row_limit: rowLimit }, function (problem, report) {
       if (problem) { callback(problem); return; }
+      if(maskedResult(report,"cards",offset,limit,rowLimit,null,null,callback))return;
       var valid = report && count(report.employee_count) && count(report.today_count) && count(report.month_count) && count(report.total_count) && count(report.record_count) && report.record_count <= report.total_count &&
         damageValueTotals({value_totals:report.value_totals, unpriced_quantity:report.unpriced_quantity, total_damage:report.total_count}) &&
         copyValueTotals({copy_value_totals:report.copy_value_totals, copy_unpriced_quantity:report.copy_unpriced_quantity,total_damage:report.total_count}) &&
@@ -598,8 +647,9 @@
       return;
     }
     employeeId = employeeId.toLowerCase();
-    damageCardsRequest("get_manual_damage_employee_rows_v4", { p_employee_id: employeeId, p_offset: offset, p_limit: limit }, function (problem, report) {
+    damageCardsRequest("get_damage_tv_employee_v1", { p_employee_id: employeeId, p_offset: offset, p_limit: limit }, function (problem, report) {
       if (problem) { callback(problem); return; }
+      if(maskedResult(report,"employee",offset,limit,limit,employeeId,null,callback))return;
       if (!report || report.employee_id !== employeeId || !count(report.total_damage) || !damageValueTotals(report) || !copyValueTotals(report) || !damageRows(report.rows, limit) ||
         !count(report.record_count) || report.record_count > report.total_damage || report.rows.length > report.record_count || typeof report.has_more !== "boolean") {
         callback(error("INVALID_RESPONSE", "This employee's damage history could not be read. Select Refresh to retry."));
@@ -618,8 +668,9 @@
   api.loadDamageSummary = function (scope, offset, limit, callback) {
     callback = typeof callback === "function" ? callback : noop;
     if (!/^(today|month|all|value|payable)$/.test(scope) || !pageArguments(offset, limit)) { callback(error("VALIDATION", "Choose a valid damage summary page.")); return; }
-    damageCardsRequest("get_damage_tv_summary_v2", {p_scope:scope,p_offset:offset,p_limit:limit}, function (problem, report) {
+    damageCardsRequest("get_damage_tv_details_v1", {p_scope:scope,p_offset:offset,p_limit:limit}, function (problem, report) {
       if (problem) { callback(problem); return; }
+      if(maskedResult(report,"summary",offset,limit,limit,null,scope,callback))return;
       function amount(value, nullable) { return nullable && value === null || typeof value === "string" && /^\d+\.\d{2}$/.test(value); }
       function values(items) {
         if (!array(items)) return false;
