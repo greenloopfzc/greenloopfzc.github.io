@@ -6,13 +6,31 @@
     var panel=get('damage-pdf-panel'),button=get('damage-pdf-toggle'),form=get('damage-pdf-form');
     var from=get('damage-pdf-from'),to=get('damage-pdf-to'),download=get('damage-pdf-download'),message=get('damage-pdf-message'),link=get('damage-pdf-file');
     var view=get('damage-pdf-view'),preview=get('damage-pdf-preview'),frame=get('damage-pdf-frame'),openLink=get('damage-pdf-open');
+    var technician=get('damage-pdf-technician'),employeesReady=false,employeeTicket=0;
     var ticket=0,active=false,objectUrl=null,loadingScripts={};
     var today=new Date(new Date().getTime()+14400000),two=function(n){return n<10?'0'+n:String(n);};
     var day=today.getUTCFullYear()+'-'+two(today.getUTCMonth()+1)+'-'+two(today.getUTCDate());
     from.value=day.slice(0,8)+'01';to.value=day;
     function revoke(){preview.hidden=true;frame.textContent='';openLink.removeAttribute('href');if(objectUrl){window.URL.revokeObjectURL(objectUrl);objectUrl=null;}link.removeAttribute('href');link.style.display='none';}
-    function close(){ticket++;panel.style.display='none';button.setAttribute('aria-expanded','false');download.disabled=false;view.disabled=false;from.disabled=false;to.disabled=false;revoke();message.textContent='';}
-    function open(){if(!active)return;onOpen();panel.style.display='block';button.setAttribute('aria-expanded','true');from.focus();}
+    function close(){ticket++;employeeTicket++;panel.style.display='none';button.setAttribute('aria-expanded','false');download.disabled=false;view.disabled=false;from.disabled=false;to.disabled=false;revoke();message.textContent='';}
+    function open(){if(!active)return;onOpen();panel.style.display='block';button.setAttribute('aria-expanded','true');loadEmployees();}
+    function denied(error){return error && (error.clearSession||/^(NO_SESSION|SESSION_EXPIRED|PERMISSION_DENIED)$/.test(error.code||''));}
+    function loadEmployees(){
+      var request=++employeeTicket,selected=technician.value;
+      employeesReady=false;technician.disabled=true;download.disabled=true;view.disabled=true;message.textContent='Loading technicians...';
+      api.loadDamageEmployees(function(error,data){
+        if(request!==employeeTicket||!active)return;
+        if(error){if(denied(error)){close();onDenied(error);}else message.textContent=error.message||'Technicians could not load. Close this panel and try again.';return;}
+        if(!data||!Array.isArray(data.employees)||data.employees.some(function(e){return !e||typeof e.key!=='string'||!e.key||typeof e.name!=='string'||!e.name.trim();})){
+          message.textContent='The technician list could not be read. Close this panel and try again.';return;
+        }
+        technician.textContent='';
+        var all=document.createElement('option');all.value='';all.textContent='All Technicians';technician.appendChild(all);
+        data.employees.forEach(function(e){var option=document.createElement('option');option.value=e.key;option.textContent=e.name+(e.archived?' (Archived)':'');technician.appendChild(option);});
+        technician.value=selected;if(technician.selectedIndex<0)technician.value='';
+        employeesReady=true;technician.disabled=false;download.disabled=false;view.disabled=false;message.textContent='';technician.focus();
+      });
+    }
     function script(url,name){
       if(window[name])return Promise.resolve();
       if(loadingScripts[name])return loadingScripts[name];
@@ -47,23 +65,24 @@
       });
     }
     function generate(action){
-      if(!active||download.disabled)return false;
+      if(!active||!employeesReady||download.disabled)return false;
       if(!window.Promise||!window.fetch||!window.BigInt||!window.Blob||!window.URL||!window.URL.createObjectURL){message.textContent='Open Live Damage Report in an updated computer browser to download the PDF.';return false;}
       if(!/^\d{4}-\d{2}-\d{2}$/.test(from.value)||!/^\d{4}-\d{2}-\d{2}$/.test(to.value)||from.value>to.value){message.textContent='Select a valid start and end date.';return false;}
       if(from.value.slice(8)!=='01'){revoke();message.textContent='Start on the first day of a month so the monthly LCD allowance is counted once.';return false;}
-      revoke();var request=++ticket;download.disabled=true;view.disabled=true;from.disabled=true;to.disabled=true;message.textContent='Preparing the complete report...';
-      var start=from.value,end=to.value;
-      function finish(){if(request===ticket){download.disabled=false;view.disabled=false;from.disabled=false;to.disabled=false;}}
+      revoke();var request=++ticket;download.disabled=true;view.disabled=true;from.disabled=true;to.disabled=true;technician.disabled=true;message.textContent='Preparing the selected report...';
+      var start=from.value,end=to.value,employeeKey=technician.value;
+      function finish(){if(request===ticket){technician.disabled=!employeesReady;download.disabled=false;view.disabled=false;from.disabled=false;to.disabled=false;}}
       function failed(error){if(request!==ticket||!active)return;finish();message.textContent=error.message||'The PDF could not be created. Please retry.';}
-      api.loadDamageExport(start,end,function(error,data){
+      api.loadDamageExport(start,end,employeeKey,function(error,data){
         if(request!==ticket||!active)return;
-        if(error){if(error.clearSession||/^(NO_SESSION|SESSION_EXPIRED|PERMISSION_DENIED)$/.test(error.code||'')){close();onDenied(error);}else failed(error);return;}
-        Promise.all([script('js/vendor/pdf-lib-1.17.1.min.js','PDFLib'),script('js/damage-report-pdf.js?v=20261016-damage-dual-price-1','GREENLOOP_DAMAGE_PDF'),
+        if(error){if(denied(error)){close();onDenied(error);}else failed(error);return;}
+        if((data && data.selected_employee_key || '')!==employeeKey){failed(new Error('The selected technician report could not be verified. Please retry.'));return;}
+        Promise.all([script('js/vendor/pdf-lib-1.17.1.min.js','PDFLib'),script('js/damage-report-pdf.js?v=20261016-damage-individual-pdf-1','GREENLOOP_DAMAGE_PDF'),
           fetch('assets/greenloop-fzc-logo.jpg').then(function(response){if(!response.ok)throw new Error('Report logo did not load. Please retry.');return response.arrayBuffer();})])
           .then(function(results){if(request!==ticket||!active)return null;return window.GREENLOOP_DAMAGE_PDF.create(data,{logo:results[2]});})
           .then(function(result){if(!result||request!==ticket||!active)return;finish();
             objectUrl=window.URL.createObjectURL(new Blob([result.bytes],{type:'application/pdf'}));link.href=objectUrl;link.download=result.filename;link.style.display='inline-block';
-            message.textContent=result.pages+' A4 '+result.orientation+' '+(result.pages===1?'page':'pages')+' ready. '+result.report.count+' entries; '+result.report.quantity+' damaged parts.'+(result.detailCount?' Long fields are included in the Full details section.':'');
+            message.textContent=(result.report.selectedEmployee ? result.report.selectedEmployee.name+': ' : 'All Technicians: ')+result.pages+' A4 '+result.orientation+' '+(result.pages===1?'page':'pages')+' ready. '+result.report.count+' entries; '+result.report.quantity+' damaged parts.'+(result.detailCount?' Long fields are included in the Full details section.':'');
             openLink.href=objectUrl;
             if(action==='view'){renderPreview(result);preview.hidden=false;preview.scrollIntoView({block:'start',behavior:'smooth'});}else link.click();
           }).catch(failed);
@@ -71,7 +90,8 @@
     };
     form.onsubmit=function(event){if(event)event.preventDefault();return generate('download');};
     view.onclick=function(){if(form.reportValidity())generate('view');};
-    function invalidate(){ticket++;download.disabled=false;view.disabled=false;from.disabled=false;to.disabled=false;revoke();message.textContent='';}
+    function invalidate(){ticket++;download.disabled=!employeesReady;view.disabled=!employeesReady;from.disabled=false;to.disabled=false;technician.disabled=!employeesReady;revoke();message.textContent='';}
+    technician.addEventListener('change',invalidate);
     from.addEventListener('input',invalidate);to.addEventListener('input',invalidate);
     window.addEventListener('pagehide',close);
     return {setActive:function(value){active=value;button.disabled=!value;button.setAttribute('aria-disabled',String(!value));if(!value)close();else if(/[?&]download=1(?:&|$)/.test(window.location.search))open();}};

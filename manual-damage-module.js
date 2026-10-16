@@ -37,14 +37,20 @@
     message.hidden = false;
     message.textContent = error?.message || "Damage Report access is unavailable. Ask your administrator to check your access.";
   }
-  const api = { loadDamageExport(from, to, callback) {
-    client.rpc("get_manual_damage_export_v3", { p_date_from: from, p_date_to: to }).then(({data, error}) => {
+  function read(name, args, callback) {
+    client.rpc(name, args).then(({data, error}) => {
       if (error) {
         const denied = [error.code, error.status, error.statusCode].some(value => /^(42501|PGRST301|PGRST302|401|403)$/.test(String(value || ""))) || /permission|session|jwt|not authenticated|access denied/i.test(error.message || "");
         callback(denied ? {...error, code:"PERMISSION_DENIED"} : error);
-      } else callback(null, Array.isArray(data) ? data[0] : data);
+      } else callback(null, data);
     }).catch(error => callback(error));
-  }};
+  }
+  const api = {
+    loadDamageEmployees(callback) { read("get_damage_pdf_employees_v1", {}, callback); },
+    loadDamageExport(from, to, employeeKey, callback) {
+      read("get_manual_damage_export_v4", {p_date_from:from, p_date_to:to, p_employee_key:employeeKey || null}, callback);
+    }
+  };
   controller = window.GREENLOOP_DAMAGE_EXPORT(api, deny, () => {});
   controller.setActive(true);
   let accountId = null;

@@ -1,7 +1,7 @@
 /* Damage Report PDF: A4 portrait only, wrapped cells, native vector text. */
 (function (root) {
   'use strict';
-  const VERSION = '20261016-damage-dual-price-1';
+  const VERSION = '20261016-damage-individual-pdf-1';
   const MARGIN = 24;
   const labels = ['DATE / TIME', 'MODEL', 'PART NAME', 'QTY', 'ORIGINAL', 'COPY', 'SOURCE', 'REASON'];
   const clean = value => String(value == null || value === '' ? 'Not recorded' : value).replace(/\s+/g, ' ').trim();
@@ -27,7 +27,7 @@
     return amount.slice(0,-2).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '.' + amount.slice(-2);
   }
   function prepareBasis(data, copy) {
-    if (!data || data.version !== VERSION || !validDate(data.date_from) || !validDate(data.date_to) || data.date_from > data.date_to ||
+    if (!data || ![VERSION,'20261016-damage-dual-price-1'].includes(data.version) || !validDate(data.date_from) || !validDate(data.date_to) || data.date_from > data.date_to ||
       !Array.isArray(data.rows) || !Array.isArray(data.employees) || data.rows.length !== data.record_count || data.rows.length > 2000) {
       throw new Error('The complete report could not be read. Refresh and try again.');
     }
@@ -126,6 +126,11 @@
 
   function prepare(data) {
     const original=prepareBasis(data,false), copy=prepareBasis(data,true);
+    if (data.selected_employee_key != null) {
+      if (original.employees.length !== 1 || original.employees[0].key !== data.selected_employee_key ||
+        data.rows.some(row => row.employee_key !== data.selected_employee_key)) throw new Error('The selected technician report could not be verified. Refresh and try again.');
+      original.selectedEmployee = original.employees[0];
+    }
     // Same entries and monthly groups; each valuation has its own missing-price
     // status, weighted LCD allowance, AED100 deduction and payable rounding.
     const groups=new Map(copy.active.map(group=>[group.key+'|'+group.month,group]));
@@ -178,15 +183,15 @@
       current.push({ name: employee.name, width }); used += width;
     }
     if (current.length) zeroRows.push(current);
-    const metrics = [['DAMAGED PARTS', String(report.quantity)], ['REPORT ENTRIES', String(report.count)],
-      ['ORIGINAL VALUE - AED', money(report.totals.get('AED') || 0n)],
-      ['COPY VALUE - AED', money(report.copy.totals.get('AED') || 0n)],
-      ['ORIGINAL PAYABLE - AED', report.pending.length ? 'Pending' : money(report.payable)],
-      ['COPY PAYABLE - AED', report.copy.pending.length ? 'Pending' : money(report.copy.payable)],
+    const metrics = [[['DAMAGED','PARTS'], String(report.quantity)], [['REPORT','ENTRIES'], String(report.count)],
+      [['ORIGINAL','VALUE - AED'], money(report.totals.get('AED') || 0n)],
+      [['COPY','VALUE - AED'], money(report.copy.totals.get('AED') || 0n)],
+      [['ORIGINAL','PAYABLE - AED'], report.pending.length ? 'Pending' : money(report.payable)],
+      [['COPY','PAYABLE - AED'], report.copy.pending.length ? 'Pending' : money(report.copy.payable)],
       ...Array.from(new Set([...report.currencies,...report.copy.currencies])).filter(cur=>cur!=='AED').flatMap(cur => [
-        ['ORIGINAL VALUE - '+cur,money(report.totals.get(cur)||0n)],['COPY VALUE - '+cur,money(report.copy.totals.get(cur)||0n)]])];
-    const metricRows = Math.ceil(metrics.length/4);
-    const firstTop = HEIGHT - (91 + metricRows*65 + (zeroRows.length ? 27+zeroRows.length*23 : 0) + 18);
+        [['ORIGINAL VALUE',cur],money(report.totals.get(cur)||0n)],[['COPY VALUE',cur],money(report.copy.totals.get(cur)||0n)]])];
+    const metricRows = Math.ceil(metrics.length/6);
+    const firstTop = HEIGHT - (91 + metricRows*71 + (zeroRows.length ? 27+zeroRows.length*23 : 0) + 18);
     const laterTop = HEIGHT - 85, bottom = 49;
     const employeeGap = 16, blockOverhead = 126 + employeeGap;
     if (firstTop < bottom + 65) throw new Error('Too many employee or currency cells for this four-page report. Select a smaller report scope.');
@@ -278,21 +283,22 @@
       drawBrand(page,MARGIN,HEIGHT-45,140);
       if(options.sample)drawText(page,'PRINT CHECK - FICTIONAL DATA',WIDTH-MARGIN-200,HEIGHT-33,8,200,bold,colors.muted,'right');
       drawText(page,'Damage Report',MARGIN,HEIGHT-67,12,100,bold);
-      drawText(page,'| '+report.employees.length+' employees',MARGIN+100,HEIGHT-67,9.5,115,font,colors.muted);
+      drawText(page,'| '+report.employees.length+(report.selectedEmployee?' technician':' employees'),MARGIN+100,HEIGHT-67,9.5,115,font,colors.muted);
       drawText(page,dateLabel(report.from)+' - '+dateLabel(report.to)+' | UAE (UTC+4)',WIDTH-MARGIN-238,HEIGHT-67,9.5,238,font,colors.green,'right');
       if(pi===0) {
-        const gap=8,cellWidth=(BODY-gap*3)/4;
+        const gap=6,cellWidth=(BODY-gap*5)/6;
         for(let i=0;i<metrics.length;i++) {
-          const x=MARGIN+(i%4)*(cellWidth+gap),y=HEIGHT-133-Math.floor(i/4)*65;
-          rect(page,x+1.5,y-1.5,cellWidth,52,colors.pale);rect(page,x,y,cellWidth,52,colors.white);
-          fitText(page,metrics[i][0],x+8,y+37,8,cellWidth-16,bold,colors.muted,'center');
-          fitText(page,metrics[i][1],x+8,y+12,20,cellWidth-16,bold,colors.green,'center');
+          const x=MARGIN+(i%6)*(cellWidth+gap),y=HEIGHT-139-Math.floor(i/6)*71;
+          rect(page,x+1.5,y-1.5,cellWidth,58,colors.pale);rect(page,x,y,cellWidth,58,colors.white);
+          for(let line=0;line<metrics[i][0].length;line++)
+            fitText(page,metrics[i][0][line],x+4,y+44-line*11,8,cellWidth-8,bold,colors.muted,'center');
+          fitText(page,metrics[i][1],x+4,y+10,16,cellWidth-8,bold,colors.green,'center');
         }
-        let y=HEIGHT-91-metricRows*65;
+        let y=HEIGHT-91-metricRows*71;
         drawText(page,'Separate valuations | Unpriced parts: Original '+report.unpriced+' / Copy '+report.copy.unpriced+' | Unit prices in table',MARGIN,y,8.5,BODY,font,colors.muted);
         if(zeroRows.length) {
           const zeroBoxTop=y-7;
-          y-=23;drawText(page,'ZERO DAMAGE - '+report.zero.length+' EMPLOYEES',MARGIN+8,y,9,BODY-16,bold,colors.green);y-=27;
+          y-=23;drawText(page,'ZERO DAMAGE - '+report.zero.length+(report.zero.length===1?' EMPLOYEE':' EMPLOYEES'),MARGIN+8,y,9,BODY-16,bold,colors.green);y-=27;
           for(const row of zeroRows) {
             const surplus=(BODY-row.reduce((sum,cell)=>sum+cell.width,0))/row.length; let x=MARGIN;
             for(const cell of row) { const w=cell.width+surplus;rect(page,x,y,w,23,colors.pale);drawText(page,cell.name,x+7,y+8,9,w-14,font,colors.ink,'center');x+=w; }
@@ -359,7 +365,7 @@
       drawText(page,'A4 '+orientation+' | '+(pi+1)+' / '+pages.length,WIDTH-MARGIN-120,21,8,120,font,colors.muted,'right');
     }
     return {bytes:await pdf.save(),pages:pages.length,bodyFont:size,drawn,previewPages,report,orientation,width:WIDTH,height:HEIGHT,detailCount:0,
-      filename:'Greenloop-Damage-Report-'+report.from+'-to-'+report.to+'.pdf'};
+      filename:'Greenloop-Damage-Report-'+(report.selectedEmployee ? (report.selectedEmployee.name.replace(/[^a-z0-9_-]+/gi,'-').replace(/^-|-$/g,'').slice(0,60)||'Technician')+'-' : '')+report.from+'-to-'+report.to+'.pdf'};
   }
   root.GREENLOOP_DAMAGE_PDF={create,prepare,validDate,version:VERSION};
 })(typeof window==='object'?window:globalThis);
