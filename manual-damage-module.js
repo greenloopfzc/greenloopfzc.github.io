@@ -38,7 +38,7 @@
     message.textContent = error?.message || "Damage Report access is unavailable. Ask your administrator to check your access.";
   }
   const api = { loadDamageExport(from, to, callback) {
-    client.rpc("get_manual_damage_export_v2", { p_date_from: from, p_date_to: to }).then(({data, error}) => {
+    client.rpc("get_manual_damage_export_v3", { p_date_from: from, p_date_to: to }).then(({data, error}) => {
       if (error) {
         const denied = [error.code, error.status, error.statusCode].some(value => /^(42501|PGRST301|PGRST302|401|403)$/.test(String(value || ""))) || /permission|session|jwt|not authenticated|access denied/i.test(error.message || "");
         callback(denied ? {...error, code:"PERMISSION_DENIED"} : error);

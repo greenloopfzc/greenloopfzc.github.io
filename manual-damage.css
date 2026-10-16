@@ -138,3 +138,9 @@ html[data-mode="dark"] .manual-damage-dialog::backdrop {background:#020b0ca8;}
 .manual-damage-page .manual-damage-field input,
 .manual-damage-page .manual-damage-field select,
 .manual-damage-page .manual-damage-field textarea {text-align:center;text-align-last:center;}
+
+.damage-recent-table .recent-date {width:13%;}.damage-recent-table .recent-employee {width:10%;}
+.damage-recent-table .recent-model {width:10%;}.damage-recent-table .recent-part {width:10%;}
+.damage-recent-table .recent-quantity {width:4%;}.damage-recent-table .recent-price {width:10%;}
+.damage-recent-table .recent-source {width:7%;}.damage-recent-table .recent-reason {width:18%;}
+.damage-recent-table .recent-action {width:8%;}

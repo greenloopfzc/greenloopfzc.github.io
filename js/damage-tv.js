@@ -53,7 +53,7 @@
       return -1;
     }
     function firstPage(employee) {
-      return { id: employee.id, name: employee.name, total_damage: employee.total_damage, record_count: employee.record_count, value_totals: employee.value_totals, unpriced_quantity: employee.unpriced_quantity, rows: employee.rows, has_more: employee.has_more, offset: 0, loading: false, request: 0, error: "" };
+      return { id: employee.id, name: employee.name, total_damage: employee.total_damage, record_count: employee.record_count, value_totals: employee.value_totals, unpriced_quantity: employee.unpriced_quantity, copy_value_totals:employee.copy_value_totals, copy_unpriced_quantity:employee.copy_unpriced_quantity, rows: employee.rows, has_more: employee.has_more, offset: 0, loading: false, request: 0, error: "" };
     }
     function controls() {
       var index = selectedIndex(), pending = loading || !!(detail && detail.loading);
@@ -122,14 +122,15 @@
       var words = String(name || "").replace(/^\s+|\s+$/g, "").split(/\s+/);
       return (words.length > 1 ? words[0].charAt(0) + words[words.length - 1].charAt(0) : words[0].slice(0, 2)).toUpperCase();
     }
-    function moneyValues(employee) {
-      var totals = employee.value_totals || [], values = [], i;
+    function moneyValues(employee, copy) {
+      var totals = (copy ? employee.copy_value_totals : employee.value_totals) || [], values = [], i;
       for (i = 0; i < totals.length; i++) values.push('<span>' + escape(totals[i].currency) + ' ' + escape(totals[i].amount) + '</span>');
       return values.length ? values.join(' ') : (employee.total_damage ? 'Price not recorded' : 'No damage');
     }
+    function dualValues(employee) { return '<span class="damage-dual-line">Original: ' + moneyValues(employee) + '</span><span class="damage-dual-line">Copy: ' + moneyValues(employee,true) + '</span>'; }
     function boardValues(data) {
-      get("damage-value").innerHTML = moneyValues({value_totals:data.value_totals, total_damage:data.total_count});
-      text("damage-unpriced", data.unpriced_quantity ? "Price not recorded: " + count(data.unpriced_quantity) + " parts" : "All history · currencies separate");
+      get("damage-value").innerHTML = dualValues({value_totals:data.value_totals,copy_value_totals:data.copy_value_totals,total_damage:data.total_count});
+      text("damage-unpriced", "All history · Separate valuations");
     }
     function selectEmployee(id, automatic) {
       var employee = findEmployee(id);
@@ -168,7 +169,8 @@
         messages.push("Tech: " + detailText(entry.damaged_by) + " \u00b7 Model: " + detailText(entry.model) +
           " \u00b7 IMEI / serial / device: " + detailText(entry.identifier) +
           " \u00b7 Part: " + detailText(entry.part_name) + " \u00b7 Qty: " + count(entry.quantity) +
-          " \u00b7 Price / part: " + unitPrice + " \u00b7 Total: " + total +
+          " \u00b7 Original / part: " + unitPrice + " \u00b7 Original total: " + total +
+          " \u00b7 Copy / part: " + price(entry.copy_price_amount) + (entry.currency ? " " + entry.currency : "") + " \u00b7 Copy total: " + rowTotal(entry,true) +
           " \u00b7 Source: " + detailText(entry.part_source) + " \u00b7 Reason: " + detailText(entry.reason) +
           " \u00b7 Damage time: " + uaeDate(entry.occurred_at) + " UAE" +
           " \u00b7 Entered by: " + detailText(entry.reported_by) + " \u00b7 Saved " + uaeDate(entry.created_at) + " UAE");
@@ -221,23 +223,16 @@
       return typeof value === "number" && isFinite(value) && value >= 0 && value <= 99999999.99 &&
         Math.round(value * 100) / 100 === value ? value.toFixed(2) : "Not recorded";
     }
-    function priceCell(row) {
-      var amount = price(row.price_amount), currency = typeof row.currency === "string" && row.currency ? row.currency : "";
-      return '<td class="damage-price" data-label="Price / part"><span class="damage-price-amount">' + escape(amount) + '</span>' +
-        (currency ? ' <span class="damage-currency">' + escape(currency) + '</span>' : '') + '</td>';
-    }
+    function dualCell(original, copy, label) { return '<td data-label="'+label+'"><span class="damage-dual-line">Original: '+escape(original)+'</span><span class="damage-dual-line">Copy: '+escape(copy)+'</span></td>'; }
+    function priceCell(row) { var cur=row.currency ? " "+row.currency : "";return dualCell(price(row.price_amount)+cur,price(row.copy_price_amount)+cur,"Price / part"); }
     function cell(value, className, label) { return '<td class="' + className + '" data-label="' + label + '">' + escape(value || "Not recorded") + '</td>'; }
     function valueSummary(employee) {
-      var totals = employee.value_totals || [], values = [], i;
-      for (i = 0; i < totals.length; i++) values.push(escape(totals[i].currency) + " " + escape(totals[i].amount));
-      return '<div class="damage-value-summary"><span><small>TOTAL DAMAGE VALUE · ALL RECORDS</small><strong>' +
-        (values.length ? values.join(' <span class="damage-value-separator"> | </span> ') : (employee.total_damage ? 'Not recorded' : '0 · No damage')) +
-        '</strong></span><span class="damage-record-count">' + count(employee.record_count) + (count(employee.record_count) === 1 ? ' entry' : ' entries') +
-        (employee.unpriced_quantity ? ' · Price not recorded: ' + count(employee.unpriced_quantity) + ' parts' : '') + '</span></div>';
+      return '<div class="damage-value-summary"><span><small>TOTAL VALUE · ALL RECORDS</small><strong>'+dualValues(employee)+'</strong></span><span class="damage-record-count">'+count(employee.record_count)+' entries · Unpriced parts: Original '+count(employee.unpriced_quantity)+' / Copy '+count(employee.copy_unpriced_quantity)+'</span></div>';
     }
-    function rowTotal(row) {
-      if (price(row.price_amount) === "Not recorded") return "Not recorded";
-      var cents = Math.round(row.price_amount * 100) * count(row.quantity);
+    function rowTotal(row, copy) {
+      var unit=copy ? row.copy_price_amount : row.price_amount;
+      if (price(unit) === "Not recorded") return "Not recorded";
+      var cents = Math.round(unit * 100) * count(row.quantity);
       return Math.floor(cents / 100) + "." + two(cents % 100) + (row.currency ? " " + row.currency : "");
     }
     function cardMarkup(employee) {
@@ -252,7 +247,7 @@
       for (i = 0; i < rows.length; i++) {
         row = rows[i]; date = uaeDate(row.occurred_at).split(" \u00b7 ");
         html += '<tr><td class="damage-date" data-label="Date" title="' + escape(uaeDate(row.occurred_at)) + ' UAE">' + escape(date[0]) + '<small>' + escape(date[1] || '') + '</small></td>' +
-          '<td class="damage-model" data-label="Model / identifier">' + escape(row.model) + '<small class="damage-cell-note">ID: ' + escape(row.identifier || 'Not recorded') + '</small></td>' + cell(row.part_name, "damage-part", "Part name") + cell(row.quantity, "damage-quantity", "Qty") + priceCell(row) + cell(rowTotal(row), "damage-row-total", "Entry total") + cell(row.part_source, "damage-source", "Part source") + cell(row.reason, "damage-reason", "Reason") + '<td class="damage-recorder" data-label="Entered by / saved">' + escape(row.reported_by || 'Not recorded') + '<small class="damage-cell-note">' + escape(uaeDate(row.created_at)) + ' UAE</small></td></tr>';
+          '<td class="damage-model" data-label="Model / identifier">' + escape(row.model) + '<small class="damage-cell-note">ID: ' + escape(row.identifier || 'Not recorded') + '</small></td>' + cell(row.part_name, "damage-part", "Part name") + cell(row.quantity, "damage-quantity", "Qty") + priceCell(row) + dualCell(rowTotal(row), rowTotal(row,true), "Entry total") + cell(row.part_source, "damage-source", "Part source") + cell(row.reason, "damage-reason", "Reason") + '<td class="damage-recorder" data-label="Entered by / saved">' + escape(row.reported_by || 'Not recorded') + '<small class="damage-cell-note">' + escape(uaeDate(row.created_at)) + ' UAE</small></td></tr>';
       }
       if (!rows.length) html += '<tr><td colspan="9" class="damage-empty-history">' + (employee.total_damage ? 'History unavailable. Select Refresh now to retry.' : '<span class="damage-zero-symbol" aria-hidden="true">&#10003;</span><strong>No damages recorded</strong><span class="damage-zero-caption">No recorded damage for this employee.</span>') + '</td></tr>';
       html += '</tbody></table></div><div class="damage-history-controls tv-clear">' +
@@ -271,7 +266,7 @@
         html += '<div class="damage-employee-cell"><button id="damage-employee-' + i + '" class="damage-compact-card' + (count(employees[i].total_damage) > 0 ? ' damage-has-damage' : '') + '" type="button" data-employee="' + escape(employees[i].id) + '" aria-label="' + escape(employees[i].name) + ', ' + count(employees[i].total_damage) + ' total damage. Open history.">' +
           '<span class="damage-card-top"><span class="damage-card-avatar" aria-hidden="true">' + escape(initials(employees[i].name)) + '</span><span class="damage-card-state">' + (employees[i].total_damage ? 'DAMAGE RECORDED' : 'CLEAR RECORD') + '</span></span>' +
           '<span class="damage-compact-name">' + escape(employees[i].name) + '</span><span class="damage-compact-total"><strong>' + count(employees[i].total_damage) + '</strong><small>damaged parts</small></span>' +
-          '<span class="damage-compact-value">' + (employees[i].total_damage ? moneyValues(employees[i]) : '&#10003; No damage') + '</span>' +
+          '<span class="damage-compact-value">' + (employees[i].total_damage ? dualValues(employees[i]) : '&#10003; No damage') + '</span>' +
           (employees[i].unpriced_quantity && employees[i].value_totals && employees[i].value_totals.length ? '<span class="damage-compact-unpriced">' + count(employees[i].unpriced_quantity) + ' parts without price</span>' : '') + '</button></div>';
       }
       get("damage-employees").innerHTML = html || '<p class="tv-empty">No active employees are available.</p>';
@@ -326,7 +321,7 @@
               next = chosen; next.loading = false; next.error = "History not updated. Select Refresh now to retry.";
               commit(savedSelection, next, "This employee's history could not be refreshed. Previous rows remain visible."); return;
             }
-            next.value_totals = history.value_totals; next.unpriced_quantity = history.unpriced_quantity; next.rows = history.rows; next.total_damage = count(history.total_damage); next.record_count = count(history.record_count); next.has_more = !!history.has_more;
+            next.copy_value_totals=history.copy_value_totals; next.copy_unpriced_quantity=history.copy_unpriced_quantity; next.value_totals = history.value_totals; next.unpriced_quantity = history.unpriced_quantity; next.rows = history.rows; next.total_damage = count(history.total_damage); next.record_count = count(history.record_count); next.has_more = !!history.has_more;
             if (!next.rows.length && next.offset && next.offset >= next.record_count) {
               if (attempts++) { changed(); return; }
               next.offset = Math.max(0, Math.floor((next.record_count - 1) / rowSize) * rowSize); rows(); return;
@@ -343,7 +338,7 @@
           var i, employee;
           if (!data || !validCount(data.employee_count) || !data.employees || typeof data.has_more !== "boolean" || data.employees.length > 100) { changed(); return; }
           if (!first) first = data;
-          else if (data.employee_count !== first.employee_count || data.today_count !== first.today_count || data.month_count !== first.month_count || data.total_count !== first.total_count || data.record_count !== first.record_count || JSON.stringify(data.value_totals) !== JSON.stringify(first.value_totals) || data.unpriced_quantity !== first.unpriced_quantity) { changed(); return; }
+          else if (data.employee_count !== first.employee_count || data.today_count !== first.today_count || data.month_count !== first.month_count || data.total_count !== first.total_count || data.record_count !== first.record_count || JSON.stringify(data.value_totals) !== JSON.stringify(first.value_totals) || data.unpriced_quantity !== first.unpriced_quantity || JSON.stringify(data.copy_value_totals) !== JSON.stringify(first.copy_value_totals) || data.copy_unpriced_quantity !== first.copy_unpriced_quantity) { changed(); return; }
           for (i = 0; i < data.employees.length; i++) {
             employee = data.employees[i];
             if (!employee || typeof employee.id !== "string" || !employee.id || seen["id:" + employee.id]) { changed(); return; }
@@ -371,7 +366,7 @@
           if (inactiveEmployee(error)) { employee.error = "Employee roster changed. Refreshing..."; renderEmployees(); refresh(); return; }
           employee.error = (error.message || "History could not be loaded.") + " Select Next or Previous to retry."; renderEmployees(); return;
         }
-        employee.value_totals = data.value_totals; employee.unpriced_quantity = data.unpriced_quantity; employee.total_damage = count(data.total_damage); employee.record_count = count(data.record_count); employee.rows = data.rows; employee.has_more = !!data.has_more; employee.offset = requested;
+        employee.copy_value_totals=data.copy_value_totals; employee.copy_unpriced_quantity=data.copy_unpriced_quantity; employee.value_totals = data.value_totals; employee.unpriced_quantity = data.unpriced_quantity; employee.total_damage = count(data.total_damage); employee.record_count = count(data.record_count); employee.rows = data.rows; employee.has_more = !!data.has_more; employee.offset = requested;
         if (!employee.rows.length && requested >= employee.record_count) { employee.offset = 0; refresh(); return; }
         renderEmployees();
       });

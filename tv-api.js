@@ -466,8 +466,8 @@
       value.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, "_").length <= limit;
   }
   function damagePriceDetails(row) {
-    return count(row.quantity) && row.quantity >= 1 && row.quantity <= 99999 && damagePrice(row.price_amount) && damageLabel(row.currency, 20) && damageLabel(row.part_source, 120) &&
-      (row.price_amount === null || row.price_amount === undefined || typeof row.currency === "string");
+    return count(row.quantity) && row.quantity >= 1 && row.quantity <= 99999 && damagePrice(row.price_amount) && damagePrice(row.copy_price_amount) && damageLabel(row.currency, 20) && damageLabel(row.part_source, 120) &&
+      ((row.price_amount == null && row.copy_price_amount == null) || typeof row.currency === "string");
   }
   function damageValueTotals(report) {
     if (!array(report.value_totals) || !count(report.unpriced_quantity) || report.unpriced_quantity > report.total_damage) return false;
@@ -480,6 +480,7 @@
     }
     return quantity === report.total_damage;
   }
+  function copyValueTotals(report) { return damageValueTotals({value_totals:report.copy_value_totals,unpriced_quantity:report.copy_unpriced_quantity,total_damage:report.total_damage}); }
   function timestamp(value) {
     // PostgreSQL includes microseconds; older TV Date.parse implementations
     // reject them. Check ISO calendar fields without relying on that parser.
@@ -549,7 +550,7 @@
         if (reportError && reportError.status === 404 && reportError.serverCode === "PGRST202") {
           reportError.message = "The Damage Cards database update is not installed yet. Ask your administrator to finish the update.";
         }
-        if (reportError && name === "get_manual_damage_employee_rows_v3" && reportError.serverCode === "22023") {
+        if (reportError && name === "get_manual_damage_employee_rows_v4" && reportError.serverCode === "22023") {
           reportError = error("EMPLOYEE_NOT_FOUND", "This employee is no longer on the Damage Report. Refresh the employee cards.");
         }
         callback(reportError, report);
@@ -562,17 +563,18 @@
       callback(error("VALIDATION", "Choose a valid employee card page."));
       return;
     }
-    damageCardsRequest("get_manual_damage_cards_v5", { p_offset: offset, p_limit: limit, p_row_limit: rowLimit }, function (problem, report) {
+    damageCardsRequest("get_manual_damage_cards_v6", { p_offset: offset, p_limit: limit, p_row_limit: rowLimit }, function (problem, report) {
       if (problem) { callback(problem); return; }
       var valid = report && count(report.employee_count) && count(report.today_count) && count(report.month_count) && count(report.total_count) && count(report.record_count) && report.record_count <= report.total_count &&
         damageValueTotals({value_totals:report.value_totals, unpriced_quantity:report.unpriced_quantity, total_damage:report.total_count}) &&
+        copyValueTotals({copy_value_totals:report.copy_value_totals, copy_unpriced_quantity:report.copy_unpriced_quantity,total_damage:report.total_count}) &&
         report.today_count <= report.month_count && report.month_count <= report.total_count &&
         array(report.activity) && report.activity.length <= 5 && array(report.employees) && report.employees.length <= limit && report.employees.length <= report.employee_count && typeof report.has_more === "boolean";
       var index, employee, seen = {};
       if (valid) for (index = 0; index < report.employees.length; index += 1) {
         employee = report.employees[index];
         if (!employee || typeof employee.id !== "string" || !employee.id || seen["id:" + employee.id] || typeof employee.name !== "string" || !employee.name ||
-          !count(employee.total_damage) || !damageValueTotals(employee) || !damageRows(employee.rows, rowLimit) || !count(employee.record_count) || employee.record_count > employee.total_damage || employee.rows.length > employee.record_count || typeof employee.has_more !== "boolean") {
+          !count(employee.total_damage) || !damageValueTotals(employee) || !copyValueTotals(employee) || !damageRows(employee.rows, rowLimit) || !count(employee.record_count) || employee.record_count > employee.total_damage || employee.rows.length > employee.record_count || typeof employee.has_more !== "boolean") {
           valid = false; break;
         }
         seen["id:" + employee.id] = true;
@@ -596,9 +598,9 @@
       return;
     }
     employeeId = employeeId.toLowerCase();
-    damageCardsRequest("get_manual_damage_employee_rows_v3", { p_employee_id: employeeId, p_offset: offset, p_limit: limit }, function (problem, report) {
+    damageCardsRequest("get_manual_damage_employee_rows_v4", { p_employee_id: employeeId, p_offset: offset, p_limit: limit }, function (problem, report) {
       if (problem) { callback(problem); return; }
-      if (!report || report.employee_id !== employeeId || !count(report.total_damage) || !damageValueTotals(report) || !damageRows(report.rows, limit) ||
+      if (!report || report.employee_id !== employeeId || !count(report.total_damage) || !damageValueTotals(report) || !copyValueTotals(report) || !damageRows(report.rows, limit) ||
         !count(report.record_count) || report.record_count > report.total_damage || report.rows.length > report.record_count || typeof report.has_more !== "boolean") {
         callback(error("INVALID_RESPONSE", "This employee's damage history could not be read. Select Refresh to retry."));
         return;
@@ -607,16 +609,16 @@
     });
   };
   api.loadDamageExport = function (from, to, callback) {
-    damageCardsRequest("get_manual_damage_export_v2", { p_date_from: from, p_date_to: to }, function (problem, report) {
+    damageCardsRequest("get_manual_damage_export_v3", { p_date_from: from, p_date_to: to }, function (problem, report) {
       if (problem && problem.status === 404 && problem.serverCode === "PGRST202") problem.message = "Install the Damage Report PDF database update before downloading reports.";
-      if (!problem && (!report || report.version !== "20261007-damage-payable-1" || report.date_from !== from || report.date_to !== to || !array(report.rows) || !array(report.employees) || report.record_count !== report.rows.length)) problem = error("INVALID_RESPONSE", "The complete PDF report could not be read. Please retry.");
+      if (!problem && (!report || report.version !== "20261016-damage-dual-price-1" || report.date_from !== from || report.date_to !== to || !array(report.rows) || !array(report.employees) || report.record_count !== report.rows.length)) problem = error("INVALID_RESPONSE", "The complete PDF report could not be read. Please retry.");
       callback(problem, report);
     });
   };
   api.loadDamageSummary = function (scope, offset, limit, callback) {
     callback = typeof callback === "function" ? callback : noop;
     if (!/^(today|month|all|value|payable)$/.test(scope) || !pageArguments(offset, limit)) { callback(error("VALIDATION", "Choose a valid damage summary page.")); return; }
-    damageCardsRequest("get_damage_tv_summary_v1", {p_scope:scope,p_offset:offset,p_limit:limit}, function (problem, report) {
+    damageCardsRequest("get_damage_tv_summary_v2", {p_scope:scope,p_offset:offset,p_limit:limit}, function (problem, report) {
       if (problem) { callback(problem); return; }
       function amount(value, nullable) { return nullable && value === null || typeof value === "string" && /^\d+\.\d{2}$/.test(value); }
       function values(items) {
@@ -624,12 +626,12 @@
         for (var i=0;i<items.length;i++) if (!items[i] || typeof items[i].currency!=="string" || !items[i].currency || !amount(items[i].amount,false)) return false;
         return true;
       }
-      var valid=report && report.version==="20261015-damage-tv-summary-1" && report.scope===scope && report.offset===offset &&
-        count(report.record_count) && count(report.quantity) && count(report.result_count) && count(report.unpriced_quantity) && values(report.value_totals) &&
+      var valid=report && report.version==="20261016-damage-dual-price-1" && report.scope===scope && report.offset===offset &&
+        count(report.record_count) && count(report.quantity) && count(report.result_count) && count(report.unpriced_quantity) && values(report.value_totals) && count(report.copy_unpriced_quantity) && values(report.copy_value_totals) &&
         timestamp(report.generated_at) && array(report.rows) && report.rows.length<=limit && typeof report.has_more==="boolean";
       if(valid)valid=report.rows.length===Math.min(limit,Math.max(0,report.result_count-offset)) && report.has_more===(offset+limit<report.result_count);
       if(valid && /^(today|month|payable)$/.test(scope)) valid=/^\d{4}-\d{2}-\d{2}$/.test(report.date_from) && /^\d{4}-\d{2}-\d{2}$/.test(report.date_to) && report.date_from<=report.date_to;
-      if(valid && scope==="payable") valid=count(report.pending_count) && report.pending_count<=report.result_count && amount(report.payable,true) && amount(report.confirmed_payable,false) && (report.payable===null)===(report.pending_count>0);
+      if(valid && scope==="payable") valid=count(report.pending_count) && report.pending_count<=report.result_count && amount(report.payable,true) && amount(report.confirmed_payable,false) && (report.payable===null)===(report.pending_count>0) && count(report.copy_pending_count) && report.copy_pending_count<=report.result_count && amount(report.copy_payable,true) && amount(report.copy_confirmed_payable,false) && (report.copy_payable===null)===(report.copy_pending_count>0);
       var i,r,seen={};
       if(valid)for(i=0;i<report.rows.length;i++){
         r=report.rows[i];
@@ -638,9 +640,9 @@
         if(typeof key!=="string" || !key || seen['key:'+key]){valid=false;break;}seen['key:'+key]=true;
         if(scope==="payable") valid=typeof r.employee_name==="string" && count(r.quantity) && count(r.record_count) && count(r.lcd_quantity) && count(r.waived_quantity) &&
           values(r.value_totals) && amount(r.lcd_average,false) && amount(r.waived_value,false) && amount(r.deduction,false) && amount(r.payable,true) &&
-          (r.pending===null || typeof r.pending==="string") && (r.payable===null)===(r.pending!==null);
+          (r.pending===null || typeof r.pending==="string") && (r.payable===null)===(r.pending!==null) && values(r.copy_value_totals) && amount(r.copy_lcd_average,false) && amount(r.copy_waived_value,false) && amount(r.copy_payable,true) && (r.copy_pending===null || typeof r.copy_pending==="string") && (r.copy_payable===null)===(r.copy_pending!==null);
         else valid=typeof r.damaged_by==="string" && typeof r.model==="string" && typeof r.reason==="string" && typeof r.reported_by==="string" &&
-          count(r.quantity) && r.quantity>0 && amount(r.price_amount,true) && amount(r.entry_total,true) && timestamp(r.occurred_at) && timestamp(r.created_at);
+          count(r.quantity) && r.quantity>0 && amount(r.price_amount,true) && amount(r.entry_total,true) && amount(r.copy_price_amount,true) && amount(r.copy_entry_total,true) && timestamp(r.occurred_at) && timestamp(r.created_at);
         if(!valid)break;
       }
       callback(valid ? null : error("INVALID_RESPONSE", "The complete damage summary could not be read. Select Retry."),valid ? report : null);

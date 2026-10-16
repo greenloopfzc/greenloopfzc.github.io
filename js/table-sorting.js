@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const numberKeys = new Set(('storage storage_gb memory battery battery_health quantity quantity_received quantity_requested quantity_issued total total_qty total_received stock_quantity used_in_phones damaged_quantity faulty_quantity issued_pending unit_cost stock_value total_cost price_amount total_value in_stock received in_company ready in_process exported returned awaiting_imei requested issued installed jobs_assigned jobs_completed active_hours rework_count attempt days_open planned_quantity entered_quantity pending_quantity working_count pending_count completed_today completed_month overdue_count oldest_pending_hours damage_month qc_returns_month').split(' '));
+  const numberKeys = new Set(('storage storage_gb memory battery battery_health quantity quantity_received quantity_requested quantity_issued total total_qty total_received stock_quantity used_in_phones damaged_quantity faulty_quantity issued_pending unit_cost stock_value total_cost price_amount copy_price_amount copy_total_value total_value in_stock received in_company ready in_process exported returned awaiting_imei requested issued installed jobs_assigned jobs_completed active_hours rework_count attempt days_open planned_quantity entered_quantity pending_quantity working_count pending_count completed_today completed_month overdue_count oldest_pending_hours damage_month qc_returns_month').split(' '));
   const extras = {
     'inventory-stock-filters': ['sku','total_received','stock_quantity','used_in_phones','damaged_quantity','faulty_quantity','issued_pending','unit_cost','stock_value','last_invoice_number','last_received_at'],
     'inventory-receipt-filters': ['receipt_number','invoice_number','sku','quantity_received','total_cost','unit_cost'],
@@ -14,8 +14,8 @@
     'user-list-filters': ['full_name','login_username'],
     'lab-live-filters': ['pending_count','working_count','completed_today','completed_month','overdue_count','oldest_pending_hours','damage_month'],
     'dashboard-queue-filters': ['received_at','days_open'],
-    'damage-history-filters': ['identifier','quantity','price_amount','total_value','reported_by','created_at'],
-    'damage-correction-filters': ['identifier','quantity','price_amount','total_value','reported_by','created_at'],
+    'damage-history-filters': ['identifier','quantity','price_amount','total_value','copy_price_amount','copy_total_value','reported_by','created_at'],
+    'damage-correction-filters': ['identifier','quantity','price_amount','total_value','copy_price_amount','copy_total_value','reported_by','created_at'],
     'journey-record-filters': ['date_entered','imei','device_number','device_details','date_received','date_completed','export_date','stock_channel','invoice_number','supplier_company','quantity_received','battery_health','supplier_grade','company_initial_grade','parts_issued','parts_cost','service_done','technician_name','box_number','customer_name'],
     'box-record-filters': ['box_number','quantity','saved_at','verified_at'],
     'report-stock-returns': ['received_at','returned_at','received_quantity','returned_quantity','returned_by_name'],
@@ -24,8 +24,8 @@
     'audit-change-filters': ['changed_at','device_number','imei_before','imei_after','job_number'],
     'report-box-filters': ['boxNumber','opened_at','quantity']
   };
-  const labels = {full_name:'Name',login_username:'Username',price_amount:'Price / part',total_value:'Total value',date_entered:'Date entered',created_at:'Recorded date',filter_date:'Date',quantity:'Quantity',storage_gb:'GB',storage:'GB',boxNumber:'Box number',latest:'Latest Final QC pass',total:'Total Qty'};
-  const aliases = {quantity:['qty','phones'],part_name:['part','part name'],stock_quantity:['in stock'],last_received_at:['last received'],received_at:['received','stock received'],occurred_at:['date','damage date'],reviewed_at:['checked','date'],date_entered:['entry date'],filter_date:['date'],price_amount:['price','price / part'],supplier_code:['supplier code'],damaged_by:['employee','technician','damaged by'],reviewed_by_name:['checked by'],quantity_requested:['requested','required'],quantity_issued:['issued'],device_details:['device'],current_stage:['current stage'],total_cost:['total cost','cost']};
+  const labels = {full_name:'Name',login_username:'Username',price_amount:'Original / part',copy_price_amount:'Copy / part',copy_total_value:'Copy total',total_value:'Total value',date_entered:'Date entered',created_at:'Recorded date',filter_date:'Date',quantity:'Quantity',storage_gb:'GB',storage:'GB',boxNumber:'Box number',latest:'Latest Final QC pass',total:'Total Qty'};
+  const aliases = {quantity:['qty','phones'],part_name:['part','part name'],stock_quantity:['in stock'],last_received_at:['last received'],received_at:['received','stock received'],occurred_at:['date','damage date'],reviewed_at:['checked','date'],date_entered:['entry date'],filter_date:['date'],price_amount:['price','price / part','original / part'],copy_price_amount:['copy / part'],supplier_code:['supplier code'],damaged_by:['employee','technician','damaged by'],reviewed_by_name:['checked by'],quantity_requested:['requested','required'],quantity_issued:['issued'],device_details:['device'],current_stage:['current stage'],total_cost:['total cost','cost']};
   const clean = value => String(value || '').toLowerCase().replace(/·\s*uae|[↑↓↕]/g,'').replace(/\s+/g,' ').trim();
   Object.assign(aliases,{
     unit_cost:['unit cost','average unit cost'],receipt_number:['receipt no.'],invoice_number:['invoice','invoice / receipt'],
@@ -70,7 +70,7 @@
       options=next;
       const definitions=options.sortFields || [
         ...(options.dateKey?[[options.dateKey,(options.dateLabel || 'Record')+' date','date']]:[]),
-        ...(options.fields || []),...(extras[id] || []).map(key=>[key,title(key)])
+        ...(options.fields || []),...(extras[id] || []).map(key=>[key,id.startsWith('damage-') && key==='total_value' ? 'Original total' : title(key)])
       ];
       columns=[...new Map(definitions.map(([key,label,type])=>[key,{key,label,type:type || typeOf(key)}])).values()];
       if(by && !columns.some(c=>c.key===by)){by='';direction='asc';}

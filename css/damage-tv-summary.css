@@ -74,3 +74,33 @@
  .damage-summary-table .damage-summary-empty:before {display:none;}
  .damage-summary-pager > * {margin:4px;font-size:12px;}
 }
+
+/* Two valuations share one damage quantity; keep their labels visible. */
+.damage-dual-line { display:block; line-height:1.25; }
+.damage-dual-line + .damage-dual-line { margin-top:3px; }
+.damage-tv-page .damage-summary .damage-stat-value strong { font-size:19px; }
+.damage-tv-page .damage-summary .damage-stat-payable strong { font-size:19px; }
+.damage-tv-page .damage-value-summary strong { font-size:25px; }
+.damage-tv-page .damage-compact-value .damage-dual-line { display:block; margin:0; line-height:1.15; }
+.damage-summary-table .damage-dual-line { margin:4px 0; }
+@media (min-width:651px) and (max-width:1599px) {
+ .damage-tv-page .damage-summary .damage-stat-value strong,.damage-tv-page .damage-summary .damage-stat-payable strong { font-size:13px; }
+ .damage-tv-page .damage-value-summary strong { font-size:17px; }
+ .damage-tv-page .damage-detail .damage-table td { font-size:12px;padding:5px; }
+ .damage-tv-page .damage-compact-card { min-height:70px; padding:2px 7px; }
+ .damage-tv-page .damage-compact-name { margin:0; line-height:1.15; }
+ .damage-tv-page .damage-compact-total strong { font-size:18px; line-height:1.1; }
+ .damage-tv-page .damage-compact-value { font-size:10px; margin-top:1px; padding:1px 3px; }
+ .damage-all .damage-employee-cell { padding-bottom:6px; }
+}
+@media (min-width:1600px) {
+ .damage-tv-page .damage-card-top { display:none; }
+ .damage-tv-page .damage-compact-card { min-height:114px; padding:5px 12px; }
+ .damage-tv-page .damage-compact-total strong { font-size:26px; line-height:1.1; }
+ .damage-tv-page .damage-compact-value { font-size:14px; margin-top:3px; padding:2px 4px; }
+ .damage-all .damage-employee-cell { padding-bottom:10px; }
+}
+@media (max-width:650px) {
+ .damage-tv-page .damage-summary .damage-stat-value strong,.damage-tv-page .damage-summary .damage-stat-payable strong { font-size:16px; }
+ .damage-tv-page .damage-value-summary strong { font-size:16px; }
+}

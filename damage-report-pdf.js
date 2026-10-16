@@ -1,9 +1,9 @@
 /* Damage Report PDF: A4 portrait only, wrapped cells, native vector text. */
 (function (root) {
   'use strict';
-  const VERSION = '20261007-damage-payable-1';
+  const VERSION = '20261016-damage-dual-price-1';
   const MARGIN = 24;
-  const labels = ['DATE / TIME', 'MODEL', 'PART NAME', 'QTY', 'PRICE / PART', 'PART SOURCE', 'REASON'];
+  const labels = ['DATE / TIME', 'MODEL', 'PART NAME', 'QTY', 'ORIGINAL', 'COPY', 'SOURCE', 'REASON'];
   const clean = value => String(value == null || value === '' ? 'Not recorded' : value).replace(/\s+/g, ' ').trim();
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const two = value => String(value).padStart(2, '0');
@@ -26,7 +26,7 @@
     const amount = cents.toString().padStart(3, '0');
     return amount.slice(0,-2).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '.' + amount.slice(-2);
   }
-  function prepare(data) {
+  function prepareBasis(data, copy) {
     if (!data || data.version !== VERSION || !validDate(data.date_from) || !validDate(data.date_to) || data.date_from > data.date_to ||
       !Array.isArray(data.rows) || !Array.isArray(data.employees) || data.rows.length !== data.record_count || data.rows.length > 2000) {
       throw new Error('The complete report could not be read. Refresh and try again.');
@@ -58,11 +58,12 @@
         if (matches.length === 1) employee = matches[0];
       }
       if (!employee) employee = add(row.employee_key, row.employee_name);
-      const cents = priceCents(row.price_amount);
+      const cents = priceCents(copy ? row.copy_price_amount : row.price_amount);
       if (cents !== null && (typeof row.currency !== 'string' || !row.currency.trim())) throw new Error('A priced part is missing its currency.');
       const currency = row.currency ? clean(row.currency) : null;
       const cells = [dateLabel(row.occurred_at, true), clean(row.model), clean(row.part_name), String(row.quantity),
-        cents === null ? 'Not recorded' : money(cents) + ' ' + currency, clean(row.part_source), clean(row.reason)];
+        priceCents(row.price_amount) === null ? 'Not recorded' : money(priceCents(row.price_amount)) + ' ' + currency,
+        priceCents(row.copy_price_amount) === null ? 'Not recorded' : money(priceCents(row.copy_price_amount)) + ' ' + currency, clean(row.part_source), clean(row.reason)];
       if (row.department != null && !['glass','other'].includes(row.department)) throw new Error('An entry has an invalid department.');
       if (typeof row.is_lcd !== 'boolean') throw new Error('LCD classification is missing. Refresh the report.');
       employee.rows.push({ id: row.id, timestamp: Date.parse(row.occurred_at), cells, month:day.slice(0,7),
@@ -123,6 +124,16 @@
       currencies, totals, active, zero: employees.filter(e => !e.rows.length), payable, pending };
   }
 
+  function prepare(data) {
+    const original=prepareBasis(data,false), copy=prepareBasis(data,true);
+    // Same entries and monthly groups; each valuation has its own missing-price
+    // status, weighted LCD allowance, AED100 deduction and payable rounding.
+    const groups=new Map(copy.active.map(group=>[group.key+'|'+group.month,group]));
+    for(const group of original.active) group.copy=groups.get(group.key+'|'+group.month);
+    original.copy=copy;
+    return original;
+  }
+
   async function create(data, options = {}) {
     const lib = options.PDFLib || root.PDFLib;
     if (!lib) throw new Error('PDF tools did not load. Please try again.');
@@ -140,7 +151,7 @@
     // A4 portrait is fixed. Content wraps inside its own cell; orientation
     // never changes in response to text length or number of records.
     const size = 9.5, lineHeight = 11.5;
-    const widths = [86,78,75,26,70,66,BODY-401];
+    const widths = [74,66,64,25,65,65,50,BODY-409];
     function cellLines(text,width) {
       const lines=[];let line='';
       for(const word of text.split(' ')) {
@@ -168,13 +179,16 @@
     }
     if (current.length) zeroRows.push(current);
     const metrics = [['DAMAGED PARTS', String(report.quantity)], ['REPORT ENTRIES', String(report.count)],
-      ['TOTAL VALUE - AED', money(report.totals.get('AED') || 0n)],
-      ['PAYABLE - AED', report.pending.length ? 'Pending' : money(report.payable)],
-      ...report.currencies.filter(cur=>cur!=='AED').map(cur => ['TOTAL VALUE - ' + cur, money(report.totals.get(cur) || 0n)])];
+      ['ORIGINAL VALUE - AED', money(report.totals.get('AED') || 0n)],
+      ['COPY VALUE - AED', money(report.copy.totals.get('AED') || 0n)],
+      ['ORIGINAL PAYABLE - AED', report.pending.length ? 'Pending' : money(report.payable)],
+      ['COPY PAYABLE - AED', report.copy.pending.length ? 'Pending' : money(report.copy.payable)],
+      ...Array.from(new Set([...report.currencies,...report.copy.currencies])).filter(cur=>cur!=='AED').flatMap(cur => [
+        ['ORIGINAL VALUE - '+cur,money(report.totals.get(cur)||0n)],['COPY VALUE - '+cur,money(report.copy.totals.get(cur)||0n)]])];
     const metricRows = Math.ceil(metrics.length/4);
     const firstTop = HEIGHT - (91 + metricRows*65 + (zeroRows.length ? 27+zeroRows.length*23 : 0) + 18);
     const laterTop = HEIGHT - 85, bottom = 49;
-    const employeeGap = 16, blockOverhead = 89 + employeeGap;
+    const employeeGap = 16, blockOverhead = 126 + employeeGap;
     if (firstTop < bottom + 65) throw new Error('Too many employee or currency cells for this four-page report. Select a smaller report scope.');
     // Paginate measured, variable-height rows. Repeat the employee band and
     // column headings on each continuation page. Exceptionally tall entries
@@ -275,7 +289,7 @@
           fitText(page,metrics[i][1],x+8,y+12,20,cellWidth-16,bold,colors.green,'center');
         }
         let y=HEIGHT-91-metricRows*65;
-        drawText(page,'Monthly AED settlement | LCD allowance only | Unpriced parts: '+report.unpriced+' | Pending: '+report.pending.length,MARGIN,y,8.5,BODY,font,colors.muted);
+        drawText(page,'Separate valuations | Unpriced parts: Original '+report.unpriced+' / Copy '+report.copy.unpriced+' | Unit prices in table',MARGIN,y,8.5,BODY,font,colors.muted);
         if(zeroRows.length) {
           const zeroBoxTop=y-7;
           y-=23;drawText(page,'ZERO DAMAGE - '+report.zero.length+' EMPLOYEES',MARGIN+8,y,9,BODY-16,bold,colors.green);y-=27;
@@ -295,24 +309,35 @@
         const name=employee.name+(block.continued?' (continued)':'');
         const department=employee.department==='glass'?'Glass Department':employee.department==='other'?'Other Department':'Department pending';
         const month=months[Number(employee.month.slice(5))-1]+' '+employee.month.slice(0,4);
-        const value=Array.from(employee.totals).map(([cur,cents])=>cur+' '+money(cents)).join(' / ') || 'Not priced';
-        const cells=[{w:BODY*.40,label:name,value:department+' | '+month,color:colors.heading},
-          {w:BODY*.30,label:'TOTAL DAMAGE VALUE',value,color:colors.heading},
-          {w:BODY*.30,label:'TECHNICIAN PAYABLE',value:employee.pending || 'AED '+money(employee.payable),color:colors.heading}];
+        rect(page,MARGIN,top-24,BODY,24,colors.heading);
+        fitText(page,name,MARGIN+7,top-16,10,BODY*.48,bold,colors.ink);
+        fitText(page,department+' | '+month+' | '+employee.quantity+' parts',MARGIN+BODY*.50,top-16,8.5,BODY*.50-7,font,colors.green,'right');
+        top-=24;
+        const valueOf=e=>Array.from(e.totals).map(([cur,cents])=>cur+' '+money(cents)).join(' / ')||'Not recorded';
+        const cells=[{label:'ORIGINAL VALUE',value:valueOf(employee)},
+          {label:'COPY VALUE',value:valueOf(employee.copy)},
+          {label:'ORIGINAL PAYABLE',value:employee.pending || 'AED '+money(employee.payable)},
+          {label:'COPY PAYABLE',value:employee.copy.pending || 'AED '+money(employee.copy.payable)}];
         let hx=MARGIN;
         for(const cell of cells) {
-          rect(page,hx,top-42,cell.w,42,cell.color);
-          fitText(page,cell.label,hx+5,top-15,9.5,cell.w-10,bold,colors.ink,'center');
-          fitText(page,cell.value,hx+5,top-32,10,cell.w-10,bold,colors.green,'center');
-          hx+=cell.w;
+          const w=BODY/4,lines=cellLines(cell.value,w-10);
+          if(lines.length>2)throw new Error('Too many currencies in one employee table. Select a shorter report range.');
+          rect(page,hx,top-42,w,42,colors.pale);
+          drawText(page,cell.label,hx+5,top-12,8,w-10,bold,colors.ink,'center');
+          for(let i=0;i<lines.length;i++)drawText(page,lines[i],hx+5,top-26-i*11,9.5,w-10,font,colors.green,'center');
+          hx+=w;
         }
-        const allowance=employee.pending ? employee.pending+' - correct this employee/month in Data Correction.' :
-          'LCD '+employee.lcdQuantity+' | Average AED '+money(employee.average)+' | Waived '+employee.waived+' = AED '+money(employee.waiver)+' | Less AED 100 | Balance / 2';
-        rect(page,MARGIN,top-68,BODY,26,colors.white);
-        fitText(page,allowance,MARGIN+5,top-59,8.5,BODY-10,font,colors.muted,'center');
-        top-=68;let x=MARGIN;
-        for(let col=0;col<labels.length;col++) {rect(page,x,top-21,widths[col],21,colors.pale);drawText(page,labels[col],x+4,top-14,8,widths[col]-8,bold,colors.ink,'center');x+=widths[col];}
-        top-=21;
+        top-=42;
+        rect(page,MARGIN,top-36,BODY,36,colors.white);
+        for(const [index,basis] of [['Original',employee],['Copy',employee.copy]].entries()) {
+          const [label,e]=basis;
+          const allowance=e.pending ? label+': '+e.pending+' - correct this employee/month in Data Correction.' :
+            label+': LCD '+e.lcdQuantity+' | Avg AED '+money(e.average)+' | Waived '+e.waived+' = AED '+money(e.waiver)+' | Less AED 100 | Balance / 2';
+          fitText(page,allowance,MARGIN+5,top-13-index*14,8.5,BODY-10,font,colors.muted,'center');
+        }
+        top-=36;let x=MARGIN;
+        for(let col=0;col<labels.length;col++) {rect(page,x,top-24,widths[col],24,colors.pale);drawText(page,labels[col],x+4,top-15,8,widths[col]-8,bold,colors.ink,'center');x+=widths[col];}
+        top-=24;
         for(const row of block.rows) {
           x=MARGIN;
           for(let col=0;col<row.cells.length;col++) {
