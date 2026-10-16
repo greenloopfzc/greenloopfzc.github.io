@@ -15,14 +15,17 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css?v=20261016-strict-view-only-1">
-    <link rel="stylesheet" href="css/user-access.css?v=20261016-damage-tv-display-1">
+    <link rel="stylesheet" href="css/user-access.css?v=20261016-page-capabilities-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script defer src="js/config.js?v=20261016-strict-view-only-1"></script>
+  <script defer src="js/permission-catalog.js?v=20261016-page-capabilities-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261016-page-capabilities-1"></script>
+<script defer src="js/page-capabilities.js?v=20261016-page-capabilities-1"></script>
+<script defer src="js/config.js?v=20261016-page-capabilities-1"></script>
   <script defer src="js/login-activity.js?v=20261013-search-tv-1"></script>
   <link rel="stylesheet" href="css/record-search.css?v=20261003-navigation-search-1">
   <script defer src="js/record-search.js?v=20261013-search-tv-1"></script>
     <script defer src="js/part-notifications.js?v=20260918-audit-2"></script>
-    <script defer src="js/user-access.js?v=20261016-damage-tv-display-1"></script>
+    <script defer src="js/user-access.js?v=20261016-page-capabilities-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20260928-sidebar-depth-1">
     <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
   <link rel="stylesheet" href="css/sidebar-compact.css?v=20261009-sidebar-pdf-1">
@@ -62,7 +65,7 @@
             <nav class="user-access-sections" aria-label="User Access sections">
               <button class="user-access-section" type="button" data-access-section="login-activity" data-search-read-only aria-controls="access-login-view" aria-expanded="false">
                 <span class="user-access-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></svg></span>
-                <strong>Login Activity</strong><small>View sign-ins and recent activity.<br>Super Admin only.</small>
+                <strong>Login Activity</strong><small>Super Admin accounts with Login Activity permission.</small>
               </button>
               <button class="user-access-section" type="button" data-access-section="greenloop-accounts" data-search-read-only aria-controls="access-accounts-view" aria-expanded="false">
                 <span class="user-access-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="3"/><path d="M3 20v-3a6 6 0 0 1 12 0v3M16 7h5M18.5 4.5v5M17 14h4M17 18h4"/></svg></span>
@@ -108,7 +111,7 @@
 
                   <div id="access-page-permissions">
                     <p class="permission-title">Select page permissions</p>
-                    <p class="permission-help">Tick a page, then choose View only or View + Entry. Unticked pages are hidden and blocked.</p>
+                    <p class="permission-help">Tick View for a page, then select the actions this user may use. Unticked actions stay blocked. Protected actions also require the roles shown.</p>
                     <div id="role-options" class="role-options"></div>
                   </div>
 
@@ -141,7 +144,7 @@
 
                 <div>
                   <p class="permission-title">Select page permissions</p>
-                  <p class="permission-help">Tick a page, then choose View only or View + Entry. Unticked pages are hidden and blocked.</p>
+                  <p class="permission-help">Tick View for a page, then select the actions this user may use. Unticked actions stay blocked. Protected actions also require the roles shown.</p>
                   <div id="new-role-options" class="role-options"></div>
                 </div>
 

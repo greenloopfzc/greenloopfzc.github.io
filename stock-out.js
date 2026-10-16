@@ -173,7 +173,7 @@
 
   async function completeStockOut(event) {
     event.preventDefault();
-    if (submitting) return;
+    if (submitting || !window.GREENLOOP_CAN?.("save", "export_boxes")) return;
     setMessage();
     if (!selectedJob || !form.reportValidity()) return;
 
@@ -225,7 +225,7 @@
     }
 
     await window.GREENLOOP_ACCESS_READY;
-    if (window.GREENLOOP_PAGE_ACCESS?.pageKey !== "stock_out") return;
+    if (window.GREENLOOP_PAGE_ACCESS?.pageKey !== "export_boxes") return;
     app.hidden = false;
     await loadQueue();
   }

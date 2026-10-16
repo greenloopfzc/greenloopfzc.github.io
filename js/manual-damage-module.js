@@ -28,6 +28,7 @@
   await window.GREENLOOP_ACCESS_READY;
   const toggle = document.getElementById("damage-pdf-toggle");
   if (window.GREENLOOP_PAGE_ACCESS?.pageKey !== "manual_damage_report" || !toggle || toggle.hidden) return;
+  if (!window.GREENLOOP_CAN?.("download", "damage_report")) { toggle.hidden = true; return; }
   const client = window.GREENLOOP_GET_CLIENT();
   const message = document.getElementById("damage-pdf-access-message");
   let controller;

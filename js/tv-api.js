@@ -564,12 +564,12 @@
         }
         if(!reportError && /^(get_damage_tv_cards_v1|get_damage_tv_employee_v1|get_damage_tv_details_v1)$/.test(name)) {
           var d=report && report.tv_display;
-          if(!d || typeof d.tv_only!=="boolean" || typeof d.show_parts!=="boolean" || typeof d.show_original!=="boolean" || typeof d.show_copy!=="boolean" || !/^\d+$/.test(d.revision) || !(d.show_parts||d.show_original||d.show_copy)) {callback(error("INVALID_RESPONSE","TV display settings could not be verified."));return;}
-          if(api.display && Number(d.revision)<Number(api.display.revision)){callback(error("STALE_DISPLAY","TV settings changed. Refreshing…"));return;}
+          if(!d || typeof d.tv_only!=="boolean" || typeof d.show_parts!=="boolean" || typeof d.show_original!=="boolean" || typeof d.show_copy!=="boolean" || !/^\d+$/.test(d.revision)) {callback(error("INVALID_RESPONSE","TV display settings could not be verified."));return;}
+          if(api.display && Number(d.revision)<Number(api.display.revision)){callback(error("STALE_DISPLAY","TV settings changed. Refreshingâ€¦"));return;}
           var previous=api.display;api.display=d;
           if(previous && JSON.stringify(previous)!==JSON.stringify(d)) {
             if(typeof api.onDisplayChanged==="function")api.onDisplayChanged(d);
-            callback(error("DISPLAY_CHANGED","TV display settings changed. Refreshing…"));return;
+            callback(error("DISPLAY_CHANGED","TV display settings changed. Refreshingâ€¦"));return;
           }
         }
         callback(reportError, report);
@@ -578,7 +578,7 @@
   }
   function restrictedReport(report,kind,offset,limit,rowLimit,employeeId,scope) {
     var d=report && report.tv_display;
-    if(!d || !d.tv_only)return false;
+    if(!d)return false;
     function values(r,copy) {
       var list=r[copy ? "copy_value_totals" : "value_totals"],i;
       if(!array(list))return false;
@@ -594,14 +594,14 @@
       return r && typeof r.id==="string" && (!d.show_parts || (typeof r.model==="string" && typeof r.reason==="string" && count(r.quantity) && r.quantity>0 && timestamp(r.occurred_at) && timestamp(r.created_at))) && priceFields(r,summary);
     }
     function totals(r) {return (!d.show_original||values(r,false)) && (!d.show_copy||values(r,true));}
-    function employee(e) {return e && typeof (e.id||e.employee_id)==="string" && count(e.record_count) && typeof e.has_more==="boolean" && typeof e.has_damage==="boolean" && totals(e) && array(e.rows) && e.rows.length<=rowLimit && e.rows.every(function(r){return row(r,false);});}
-    if(kind==='cards')return count(report.employee_count) && count(report.record_count) && typeof report.has_more==="boolean" && totals(report) && array(report.activity) && report.activity.length<=5 && report.activity.every(function(r){return row(r,false)&&typeof r.damaged_by==='string';}) && array(report.employees) && report.employees.length<=limit && report.employees.every(employee);
+    function employee(e) {return e && typeof (e.id||e.employee_id)==="string" && count(e.record_count) && typeof e.has_more==="boolean" && (typeof e.has_damage==="boolean" || count(e.total_damage)) && totals(e) && array(e.rows) && e.rows.length<=rowLimit && e.rows.every(function(r){return row(r,false);});}
+    if(kind==='cards')return count(report.employee_count) && count(report.record_count) && typeof report.has_more==="boolean" && totals(report) && array(report.activity) && report.activity.length<=5 && report.activity.every(function(r){return row(r,false)&&typeof r.damaged_by==='string';}) && array(report.employees) && report.employees.length<=limit && report.employees.every(function(e){return employee(e) && typeof e.name==="string" && e.name.length>0;});
     if(kind==='employee')return report.employee_id===employeeId && employee(report);
     if(kind==='summary')return report.scope===scope && report.offset===offset && count(report.result_count) && array(report.rows) && report.rows.length===Math.min(limit,Math.max(0,report.result_count-offset)) && report.has_more===(offset+limit<report.result_count) && totals(report) && report.rows.every(function(r){return scope==='payable' ? typeof r.employee_name==='string' && totals(r) && (!d.show_original || r.payable===null || /^\d+\.\d{2}$/.test(r.payable)) && (!d.show_copy || r.copy_payable===null || /^\d+\.\d{2}$/.test(r.copy_payable)) : row(r,true);});
     return false;
   }
   function maskedResult(report,kind,offset,limit,rowLimit,employeeId,scope,callback) {
-    if(!report || !report.tv_display || !report.tv_display.tv_only)return false;
+    if(!report || !report.tv_display)return false;
     var valid=restrictedReport(report,kind,offset,limit,rowLimit,employeeId,scope);
     callback(valid ? null : error("INVALID_RESPONSE","The restricted TV report could not be verified. Select Refresh."),valid ? report : null);return true;
   }

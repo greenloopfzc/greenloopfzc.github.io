@@ -33,6 +33,7 @@
   let scanning = false;
   let boxBusy = false;
   let canEdit = false;
+  const can = capability => window.GREENLOOP_CAN?.(capability,"export_boxes") === true;
 
   function getClient() {
     if (!client) client = window.GREENLOOP_GET_CLIENT();
@@ -94,12 +95,12 @@
     boxCount.textContent = `${count} phone${count === 1 ? "" : "s"}`;
     boxRemaining.textContent = isFinished ? "Start a new box" : "Ready to scan";
     progressBar.style.width = count ? "100%" : "0";
-    startNextButton.disabled = !canEdit || boxBusy || scanning || (!isFinished && (count === 0 || workflow?.printed_revision !== workflow?.revision || !workflow?.printed_at));
+    startNextButton.disabled = !(isFinished ? can("scan") : can("save")) || boxBusy || scanning || (!isFinished && (count === 0 || workflow?.printed_revision !== workflow?.revision || !workflow?.printed_at));
     startNextButton.textContent = isFinished ? "Start next box" : "Save Box";
-    printButton.disabled = count === 0 || scanning || boxBusy;
-    confirmPrintButton.disabled = !canEdit || scanning || boxBusy;
-    deleteBoxButton.disabled = !canEdit || boxBusy || scanning || !currentBox.box_id;
-    imeiInput.disabled = !canEdit || boxBusy || isFinished || scanning;
+    printButton.disabled = !can("print") || count === 0 || scanning || boxBusy;
+    confirmPrintButton.disabled = !can("print") || scanning || boxBusy;
+    deleteBoxButton.disabled = !can("delete") || boxBusy || scanning || !currentBox.box_id;
+    imeiInput.disabled = !can("scan") || boxBusy || isFinished || scanning;
     sheetTitle.textContent = `${currentBox.box_number || "Export Box"} - Export packing list`;
     sheetDate.textContent = `Opened: ${formatDateTime(currentBox.opened_at)}`;
     sheetTotal.textContent = `${count} phone${count === 1 ? "" : "s"}`;
@@ -120,7 +121,7 @@
 
   async function loadCurrentBox() {
     let nextBox;
-    if (!canEdit) {
+    if (!can("scan")) {
       const { data, error } = await getClient().from("export_boxes").select("id, box_number, box_status, opened_at").eq("box_status", "open").order("opened_at", { ascending: true }).limit(1);
       if (error) throw error;
       const row = data?.[0];
@@ -156,19 +157,19 @@
     currentBox={...currentBox,...data.box};
   }
   async function printBox() {
-    if(boxBusy || scanning || !lines.length)return;
+    if(!can("print") || boxBusy || scanning || !lines.length)return;
     boxBusy=true;render();setMessage();
     try {
       await loadLines();
       printedSnapshot={boxId:currentBox.box_id,revision:workflow.revision};
       window.print();
-      confirmPrintButton.hidden=!canEdit;
+      confirmPrintButton.hidden=!can("print");
       setMessage("After the sheet has printed successfully, choose Printing completed. If you cancelled printing, print again.","success");
     } catch(error){setMessage(error.message || "Printing could not start.");}
     finally{boxBusy=false;render();}
   }
   async function confirmPrint() {
-    if(!canEdit || boxBusy || scanning || !printedSnapshot)return;
+    if(!can("print") || boxBusy || scanning || !printedSnapshot)return;
     boxBusy=true;render();
     try {
       const {error}=await getClient().rpc("mark_box_printed_v1",{p_box_id:printedSnapshot.boxId,p_revision:printedSnapshot.revision});if(error)throw error;
@@ -179,7 +180,7 @@
   async function scanImei() {
     const imei = imeiInput.value.replace(/\D/g, "").slice(0, 15);
     imeiInput.value = imei;
-    if (!canEdit || boxBusy || scanning || imei.length !== 15) return;
+    if (!can("scan") || boxBusy || scanning || imei.length !== 15) return;
 
     scanning = true;
     setMessage();
@@ -219,7 +220,7 @@
   }
 
   async function finishAndStartNext() {
-    if (!canEdit || scanning || boxBusy || !currentBox) return;
+    if (!currentBox || !(String(currentBox.box_status) === "open" ? can("save") : can("scan")) || scanning || boxBusy) return;
     if (!lines.length && String(currentBox.box_status) === "open") return;
     if (String(currentBox.box_status) === "open" && (workflow?.printed_revision !== workflow?.revision || !workflow?.printed_at)) { setMessage("Print and confirm printing before saving this box."); return; }
     boxBusy = true;
@@ -234,12 +235,12 @@
       const savedNumber=currentBox.box_number;
       await loadCurrentBox();
       imeiInput.value = "";
-      setMessage(savedNumber + " saved to Accounts. " + currentBox.box_number + " is ready for scanning.", "success");
+      setMessage(savedNumber + " saved to Accounts." + (currentBox ? " " + currentBox.box_number + " is ready for scanning." : ""), "success");
     } finally { boxBusy = false; render(); }
   }
 
   async function deleteCurrentBox() {
-    if (!canEdit || scanning || boxBusy || !currentBox) return;
+    if (!can("delete") || scanning || boxBusy || !currentBox) return;
     const deleteCode = window.prompt("Enter the deletion code to delete this box and return its phones to Ready Stock:");
     if (deleteCode === null) return;
 

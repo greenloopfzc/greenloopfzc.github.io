@@ -18,7 +18,7 @@
     return data;
   }
   async function getContext() { return context = await rpc("get_supplier_return_context"); }
-  function allowed(key) { return Boolean(window.GREENLOOP_PAGE_ACCESS?.canEdit && context?.permissions?.[key]); }
+  function allowed(key) { const cap=key==="request"?"entry":key; const page=key==="approve"?"supplier_return_approval":key==="handover"||key==="settle"?"supplier_return_handover":"supplier_returns"; return Boolean(window.GREENLOOP_CAN?.(cap,page) && context?.permissions?.[key]); }
   function fields(entries) { return `<dl class="sr-details">${entries.map(([k,v]) => `<div><dt>${escape(k)}</dt><dd>${escape(v ?? "—")}</dd></div>`).join("")}</dl>`; }
   function notify(message, error = false) {
     const el = dialog?.open ? dialog.querySelector("[data-sr-message]") : reportRoot?.querySelector("[data-sr-message]");
@@ -71,7 +71,7 @@
       if (r.status === "requested" && allowed("approve")) actions.push(["approve","Approve return"],["reject","Reject return"]);
       if ((r.status === "requested" || r.status === "approved" && allowed("approve")) && allowed("request")) actions.push(["cancel","Cancel return"]);
       if (r.status === "approved" && allowed("handover")) actions.push(["handover","Record physical handover"]);
-      if (r.status === "returned" && !r.settled_at && !r.settlement_type && allowed("handover")) actions.push(["settlement","Record settlement"]);
+      if (r.status === "returned" && !r.settled_at && !r.settlement_type && window.GREENLOOP_CAN?.("settle","supplier_return_handover")) actions.push(["settlement","Record settlement"]);
       if (r.archived_at) actions.length = 0;
       const parts = r.archived_at ? [] : data.parts || [], events = (data.events || []).map(ev => ({ ...ev, details: ev.event_data || ev.details || {} }));
       modal(r.return_number || "Return details", `${recordFields(r)}
@@ -84,7 +84,7 @@
   }
   function actionForm(r, action, partId) {
     const titles = { approve:"Approve return", reject:"Reject return", cancel:"Cancel return", handover:"Record physical handover", settlement:"Record settlement", request_part_return:"Request unused parts return" };
-    modal(titles[action], `<p><strong>${escape(r.return_number)}</strong> · ${escape(imei(r))} · ${escape(supplier(r))}</p><form class="sr-form" data-sr-action-form>
+    modal(titles[action], `<p><strong>${escape(r.return_number)}</strong> · ${escape(imei(r))} · ${escape(supplier(r))}</p><form class="sr-form" data-sr-action-form data-capability="${["approve","reject"].includes(action)?"approve":action==="handover"?"handover":action==="settlement"?"settle":"entry"}" data-capability-page="${["approve","reject"].includes(action)?"supplier_return_approval":["handover","settlement"].includes(action)?"supplier_return_handover":"supplier_returns"}">
       ${action === "handover" ? '<p>Confirm the phone has physically been handed to the supplier. This completes the return.</p><label>Return slip / handover reference<input name="slip_reference" required maxlength="200"></label>' : ""}
       ${action === "settlement" ? '<label>Settlement type<select name="settlement_type"><option value="replacement">Replacement</option><option value="credit">Credit</option><option value="refund">Refund</option></select></label><label>Replacement receipt / credit / refund reference<input name="settlement_reference" required maxlength="200"></label><label>Amount (optional, AED)<input name="amount" type="number" min="0" step="0.01"></label><p>Record the supplier agreement here. Receive replacement phones as a new stock receipt and use that receipt number above.</p>' : ""}
       ${action === "request_part_return" ? '<label>Part return reason<select name="return_reason"><option value="not_needed">Not needed</option><option value="faulty">Faulty</option><option value="damaged">Damaged</option></select></label><p>Parts Department must review and receive these parts before they return to stock.</p>' : ""}

@@ -136,6 +136,9 @@
     const groups=new Map(copy.active.map(group=>[group.key+'|'+group.month,group]));
     for(const group of original.active) group.copy=groups.get(group.key+'|'+group.month);
     original.copy=copy;
+    const visibility=data.visibility || {parts_details:true,original_prices:true,copy_prices:true,payable:true};
+    if(['parts_details','original_prices','copy_prices','payable'].some(key=>typeof visibility[key]!=='boolean'))throw new Error('Report visibility could not be verified.');
+    original.visibility=visibility;
     return original;
   }
 
@@ -156,7 +159,10 @@
     // A4 portrait is fixed. Content wraps inside its own cell; orientation
     // never changes in response to text length or number of records.
     const size = 9.5, lineHeight = 11.5;
-    const widths = [74,66,64,25,65,65,50,BODY-409];
+    const visibility=report.visibility;
+    const columns=[0,1,2,3,4,5,6,7].filter(index=>index===0||index===3||(index===4?visibility.original_prices:index===5?visibility.copy_prices:visibility.parts_details));
+    const baseWidths=[74,66,64,25,65,65,50,BODY-409],selectedWidth=columns.reduce((total,index)=>total+baseWidths[index],0);
+    const widths=columns.map(index=>baseWidths[index]*BODY/selectedWidth),tableLabels=columns.map(index=>labels[index]);
     function cellLines(text,width) {
       const lines=[];let line='';
       for(const word of text.split(' ')) {
@@ -174,7 +180,7 @@
       return lines.length?lines:[''];
     }
     for(const employee of report.active) for(const row of employee.rows)
-      row.lines=row.cells.map((cell,col)=>cellLines(cell,widths[col]-8));
+      {row.cells=columns.map(index=>row.cells[index]);row.lines=row.cells.map((cell,col)=>cellLines(cell,widths[col]-8));}
     const zeroRows = []; let current = [], used = 0;
     for (const employee of report.zero) {
       const width = measure(employee.name, 9) + 18;
@@ -184,16 +190,18 @@
     }
     if (current.length) zeroRows.push(current);
     const metrics = [[['DAMAGED','PARTS'], String(report.quantity)], [['REPORT','ENTRIES'], String(report.count)],
-      [['ORIGINAL','VALUE - AED'], money(report.totals.get('AED') || 0n)],
-      [['COPY','VALUE - AED'], money(report.copy.totals.get('AED') || 0n)],
-      [['ORIGINAL','PAYABLE - AED'], report.pending.length ? 'Pending' : money(report.payable)],
-      [['COPY','PAYABLE - AED'], report.copy.pending.length ? 'Pending' : money(report.copy.payable)],
+      ...(visibility.original_prices ? [[['ORIGINAL','VALUE - AED'],money(report.totals.get('AED')||0n)]] : []),
+      ...(visibility.copy_prices ? [[['COPY','VALUE - AED'],money(report.copy.totals.get('AED')||0n)]] : []),
+      ...(visibility.original_prices&&visibility.payable ? [[['ORIGINAL','PAYABLE - AED'],report.pending.length?'Pending':money(report.payable)]] : []),
+      ...(visibility.copy_prices&&visibility.payable ? [[['COPY','PAYABLE - AED'],report.copy.pending.length?'Pending':money(report.copy.payable)]] : []),
       ...Array.from(new Set([...report.currencies,...report.copy.currencies])).filter(cur=>cur!=='AED').flatMap(cur => [
-        [['ORIGINAL VALUE',cur],money(report.totals.get(cur)||0n)],[['COPY VALUE',cur],money(report.copy.totals.get(cur)||0n)]])];
-    const metricRows = Math.ceil(metrics.length/6);
+        ...(visibility.original_prices ? [[['ORIGINAL VALUE',cur],money(report.totals.get(cur)||0n)]] : []),...(visibility.copy_prices ? [[['COPY VALUE',cur],money(report.copy.totals.get(cur)||0n)]] : [])])];
+    const metricColumns=Math.min(6,metrics.length),metricRows=Math.ceil(metrics.length/metricColumns);
+    const bases=[...(visibility.original_prices?['Original']:[]),...(visibility.copy_prices?['Copy']:[])];
+    const valueBandHeight=bases.length ? 42 : 0, formulaHeight=visibility.payable&&bases.length ? 36 : 0;
     const firstTop = HEIGHT - (91 + metricRows*71 + (zeroRows.length ? 27+zeroRows.length*23 : 0) + 18);
     const laterTop = HEIGHT - 85, bottom = 49;
-    const employeeGap = 16, blockOverhead = 126 + employeeGap;
+    const employeeGap = 16, blockOverhead = 48 + valueBandHeight + formulaHeight + employeeGap;
     if (firstTop < bottom + 65) throw new Error('Too many employee or currency cells for this four-page report. Select a smaller report scope.');
     // Paginate measured, variable-height rows. Repeat the employee band and
     // column headings on each continuation page. Exceptionally tall entries
@@ -286,16 +294,16 @@
       drawText(page,'| '+report.employees.length+(report.selectedEmployee?' technician':' employees'),MARGIN+100,HEIGHT-67,9.5,115,font,colors.muted);
       drawText(page,dateLabel(report.from)+' - '+dateLabel(report.to)+' | UAE (UTC+4)',WIDTH-MARGIN-238,HEIGHT-67,9.5,238,font,colors.green,'right');
       if(pi===0) {
-        const gap=6,cellWidth=(BODY-gap*5)/6;
+        const gap=6,cellWidth=(BODY-gap*(metricColumns-1))/metricColumns;
         for(let i=0;i<metrics.length;i++) {
-          const x=MARGIN+(i%6)*(cellWidth+gap),y=HEIGHT-139-Math.floor(i/6)*71;
+          const x=MARGIN+(i%metricColumns)*(cellWidth+gap),y=HEIGHT-139-Math.floor(i/metricColumns)*71;
           rect(page,x+1.5,y-1.5,cellWidth,58,colors.pale);rect(page,x,y,cellWidth,58,colors.white);
           for(let line=0;line<metrics[i][0].length;line++)
             fitText(page,metrics[i][0][line],x+4,y+44-line*11,8,cellWidth-8,bold,colors.muted,'center');
           fitText(page,metrics[i][1],x+4,y+10,16,cellWidth-8,bold,colors.green,'center');
         }
         let y=HEIGHT-91-metricRows*71;
-        drawText(page,'Separate valuations | Unpriced parts: Original '+report.unpriced+' / Copy '+report.copy.unpriced+' | Unit prices in table',MARGIN,y,8.5,BODY,font,colors.muted);
+        drawText(page,bases.length ? 'Unpriced parts: '+bases.map(basis=>basis+' '+(basis==='Original'?report.unpriced:report.copy.unpriced)).join(' / ')+' | Unit prices in table' : 'Employee damage records',MARGIN,y,8.5,BODY,font,colors.muted);
         if(zeroRows.length) {
           const zeroBoxTop=y-7;
           y-=23;drawText(page,'ZERO DAMAGE - '+report.zero.length+(report.zero.length===1?' EMPLOYEE':' EMPLOYEES'),MARGIN+8,y,9,BODY-16,bold,colors.green);y-=27;
@@ -320,29 +328,29 @@
         fitText(page,department+' | '+month+' | '+employee.quantity+' parts',MARGIN+BODY*.50,top-16,8.5,BODY*.50-7,font,colors.green,'right');
         top-=24;
         const valueOf=e=>Array.from(e.totals).map(([cur,cents])=>cur+' '+money(cents)).join(' / ')||'Not recorded';
-        const cells=[{label:'ORIGINAL VALUE',value:valueOf(employee)},
-          {label:'COPY VALUE',value:valueOf(employee.copy)},
-          {label:'ORIGINAL PAYABLE',value:employee.pending || 'AED '+money(employee.payable)},
-          {label:'COPY PAYABLE',value:employee.copy.pending || 'AED '+money(employee.copy.payable)}];
+        const cells=[...(visibility.original_prices?[{label:'ORIGINAL VALUE',value:valueOf(employee)}]:[]),
+          ...(visibility.copy_prices?[{label:'COPY VALUE',value:valueOf(employee.copy)}]:[]),
+          ...(visibility.original_prices&&visibility.payable?[{label:'ORIGINAL PAYABLE',value:employee.pending||'AED '+money(employee.payable)}]:[]),
+          ...(visibility.copy_prices&&visibility.payable?[{label:'COPY PAYABLE',value:employee.copy.pending||'AED '+money(employee.copy.payable)}]:[])];
         let hx=MARGIN;
         for(const cell of cells) {
-          const w=BODY/4,lines=cellLines(cell.value,w-10);
+          const w=BODY/cells.length,lines=cellLines(cell.value,w-10);
           if(lines.length>2)throw new Error('Too many currencies in one employee table. Select a shorter report range.');
           rect(page,hx,top-42,w,42,colors.pale);
           drawText(page,cell.label,hx+5,top-12,8,w-10,bold,colors.ink,'center');
           for(let i=0;i<lines.length;i++)drawText(page,lines[i],hx+5,top-26-i*11,9.5,w-10,font,colors.green,'center');
           hx+=w;
         }
-        top-=42;
-        rect(page,MARGIN,top-36,BODY,36,colors.white);
-        for(const [index,basis] of [['Original',employee],['Copy',employee.copy]].entries()) {
+        top-=valueBandHeight;
+        if(formulaHeight)rect(page,MARGIN,top-formulaHeight,BODY,formulaHeight,colors.white);
+        for(const [index,basis] of (visibility.payable?bases.map(label=>[label,label==='Original'?employee:employee.copy]):[]).entries()) {
           const [label,e]=basis;
           const allowance=e.pending ? label+': '+e.pending+' - correct this employee/month in Data Correction.' :
             label+': LCD '+e.lcdQuantity+' | Avg AED '+money(e.average)+' | Waived '+e.waived+' = AED '+money(e.waiver)+' | Less AED 100 | Balance / 2';
           fitText(page,allowance,MARGIN+5,top-13-index*14,8.5,BODY-10,font,colors.muted,'center');
         }
-        top-=36;let x=MARGIN;
-        for(let col=0;col<labels.length;col++) {rect(page,x,top-24,widths[col],24,colors.pale);drawText(page,labels[col],x+4,top-15,8,widths[col]-8,bold,colors.ink,'center');x+=widths[col];}
+        top-=formulaHeight;let x=MARGIN;
+        for(let col=0;col<tableLabels.length;col++) {rect(page,x,top-24,widths[col],24,colors.pale);drawText(page,tableLabels[col],x+4,top-15,8,widths[col]-8,bold,colors.ink,'center');x+=widths[col];}
         top-=24;
         for(const row of block.rows) {
           x=MARGIN;

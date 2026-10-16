@@ -51,7 +51,7 @@ Deno.serve(async (request) => {
 
   // Read-only installation receipt; no credentials or account data returned.
   if (request.method === "GET") {
-    return jsonResponse({ version: "20261016-strict-view-only-1" });
+    return jsonResponse({ version: "20261016-page-capabilities-1" });
   }
 
   if (request.method !== "POST") {
@@ -101,20 +101,21 @@ Deno.serve(async (request) => {
     }, 500);
   }
 
-  if (!canCreateUsers) {
+  if (canCreateUsers !== true) {
     return jsonResponse({ error: "Only Super Admin and Owner can create users." }, 403);
   }
 
-  // Roles alone do not authorize writes: an administrator can have explicit
-  // View Only access to User Access. Check before any privileged Auth mutation.
-  const { data: canEditUsers, error: editAccessError } = await callerClient.rpc("has_page_edit_access", {
+  // Creating accounts is distinct from editing existing users' permissions.
+  // Check the signed-in caller before any privileged Auth mutation.
+  const { data: canEditUsers, error: editAccessError } = await callerClient.rpc("has_page_capability_v1", {
     p_page_key: "user_access",
+    p_capability: "create_users",
   });
   if (editAccessError) {
     return jsonResponse({ error: "User Access permission could not be verified. Try again." }, 503);
   }
   if (canEditUsers !== true) {
-    return jsonResponse({ error: "View Only Access" }, 403);
+    return jsonResponse({ error: "Add Greenloop User permission is required." }, 403);
   }
 
   const { data: isSuperAdmin, error: superAdminError } = await callerClient.rpc("has_role", {
@@ -133,13 +134,29 @@ Deno.serve(async (request) => {
   } catch {
     return jsonResponse({ error: "The user details are not valid." }, 400);
   }
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return jsonResponse({ error: "The user details are not valid." }, 400);
+  }
 
   const fullName = String(body.full_name || "").trim().replace(/\s+/g, " ");
   const username = cleanUsername(body.username);
   const password = String(body.password || "");
-  const requestedPages = Array.isArray(body.page_keys)
-    ? [...new Set(body.page_keys.map((value) => String(value)))]
-    : [];
+  const capabilities = body.capabilities;
+  const pagePermissions = body.page_permissions;
+  const partnerNamesAccess = String(body.partner_names_access || "none");
+  if (!capabilities || typeof capabilities !== "object" || Array.isArray(capabilities)
+      || !pagePermissions || typeof pagePermissions !== "object" || Array.isArray(pagePermissions)
+      || !["none", "view", "edit"].includes(partnerNamesAccess)) {
+    return jsonResponse({ error: "Refresh User Access and select the account's page permissions." }, 400);
+  }
+  const entries = Object.entries(capabilities as Record<string, unknown>);
+  if (!entries.length || entries.length > 100 || entries.some(([key, value]) =>
+      !/^[a-z][a-z_]{0,60}$/.test(key) || !Array.isArray(value) || value.length > 30
+      || value.some(capability => typeof capability !== "string" || !/^[a-z][a-z_]{0,60}$/.test(capability))
+      || value.length > 0 && !value.includes("view"))) {
+    return jsonResponse({ error: "Select View before selecting a page's other permissions." }, 400);
+  }
+  const requestedPages = entries.filter(([, value]) => (value as string[]).includes("view")).map(([key]) => key);
 
   if (fullName.length < 2 || fullName.length > 100) {
     return jsonResponse({ error: "Full name must use 2 to 100 characters." }, 400);
@@ -157,7 +174,7 @@ Deno.serve(async (request) => {
     return jsonResponse({ error: "Select at least one page for this user." }, 400);
   }
 
-  if (!isSuperAdmin && requestedPages.includes("user_access")) {
+  if (isSuperAdmin !== true && requestedPages.includes("user_access")) {
     return jsonResponse({ error: "Only Super Admin can grant User Access permission." }, 403);
   }
 
@@ -189,18 +206,22 @@ Deno.serve(async (request) => {
 
     createdUserId = createdData.user.id;
 
-    // The database function performs the profile update and all role writes in
-    // one transaction under the signed-in administrator's identity.
-    const { error: saveAccessError } = await callerClient.rpc("save_user_page_access", {
+    // This service-only initializer validates the original caller's create_users
+    // capability again and sets all initial permissions in one transaction.
+    // It cannot be used to edit an existing account. No browser follow-up save
+    // is needed, so a create-only administrator never needs manage_access.
+    const { data: accessSaved, error: saveAccessError } = await admin.rpc("initialize_user_capabilities_v1", {
+      p_actor_user_id: caller.id,
       p_user_id: createdUserId,
       p_full_name: fullName,
       p_login_username: username,
-      p_is_active: true,
-      p_page_keys: requestedPages,
+      p_page_permissions: pagePermissions,
+      p_capabilities: capabilities,
+      p_partner_names_access: partnerNamesAccess,
     });
 
-    if (saveAccessError) {
-      throw new Error(`User permissions could not be saved: ${saveAccessError.message}`);
+    if (saveAccessError || accessSaved !== true) {
+      throw new Error(`User permissions could not be saved: ${saveAccessError?.message || "The database did not confirm the permission setup."}`);
     }
 
     return jsonResponse({
@@ -212,7 +233,12 @@ Deno.serve(async (request) => {
     }, 201);
   } catch (error) {
     if (createdUserId) {
-      await admin.auth.admin.deleteUser(createdUserId);
+      try {
+        const { error: cleanupError } = await admin.auth.admin.deleteUser(createdUserId);
+        if (cleanupError) throw cleanupError;
+      } catch {
+        return jsonResponse({ error: "Account setup did not finish and cleanup could not be confirmed. Ask your administrator to review this username before trying again." }, 500);
+      }
     }
 
     return jsonResponse({

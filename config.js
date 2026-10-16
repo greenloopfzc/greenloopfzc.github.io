@@ -89,7 +89,7 @@ window.GREENLOOP_CONFIG = Object.freeze({
               const calls=[];let result;
               const execute=()=>result ||= (async()=>{
                 await window.GREENLOOP_ACCESS_READY;
-                if(!window.GREENLOOP_PAGE_ACCESS?.canEdit)return {data:null,error:{code:'42501',message:'View Only Access'}};
+                if(!window.GREENLOOP_TABLE_WRITE_ALLOWED?.(String(fromArgs[0]),property))return {data:null,error:{code:'42501',message:'This action is not allowed for your account.'}};
                 let query=target[property](...writeArgs);
                 for(const [method,args] of calls)query=query[method](...args);
                 return await query;
@@ -110,18 +110,21 @@ window.GREENLOOP_CONFIG = Object.freeze({
         const invoke = sharedClient.functions.invoke.bind(sharedClient.functions);
         sharedClient.functions.invoke = async (...args) => {
           await window.GREENLOOP_ACCESS_READY;
-          if (!window.GREENLOOP_PAGE_ACCESS?.canEdit) return {data:null,error:{code:'42501',message:'View Only Access'}};
+          if (!window.GREENLOOP_CAN?.('create_users','user_access')) return {data:null,error:{code:'42501',message:'Add Greenloop User permission is required.'}};
           return invoke(...args);
         };
       }
       const rpc = sharedClient.rpc.bind(sharedClient);
       sharedClient.rpc = async (name, ...args) => {
-        // Capture guards also cover automatic saves and scanner callbacks that
-        // never pass through a button click. The database must enforce this too.
-        const writes = /^(add_|apply_|approve_|archive_|assign_|cancel_|close_|complete_|confirm_|consume_|correct_|create_|delete_|ensure_|execute_|finish_|issue_|mark_|move_|verify_|pause_|receive_|record_|remove_|request_|reset_|restore_|resume_|return_|review_|route_|save_|scan_|send_|set_|start_|transfer_|transition_|update_|get_or_create_)/;
-        if (writes.test(name)) {
-          await window.GREENLOOP_ACCESS_READY;
-          if (!window.GREENLOOP_PAGE_ACCESS?.canEdit) return { data: null, error: { code: "42501", message: "Entry Allowed permission is required to make changes on this page." } };
+        // Versioned RPC requirements distinguish independent page actions.
+        // The bootstrap readers must finish before accessReady can resolve.
+        const bootstrap = new Set(['get_my_page_access_v2','get_my_page_access','get_my_page_capabilities_v1','get_my_damage_tv_settings_v1','get_my_partner_name_access','has_role']);
+        if (!bootstrap.has(name)) {
+          const requirement = window.GREENLOOP_RPC_CAPABILITY?.(name,args[0] || {});
+          if (requirement) {
+            await window.GREENLOOP_ACCESS_READY;
+            if (!window.GREENLOOP_RPC_ALLOWED?.(name,args[0] || {})) return {data:null,error:{code:'42501',message:'This action is not allowed for your account.'}};
+          }
         }
         return rpc(name, ...args);
       };
@@ -407,76 +410,6 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     main.querySelector("#retry-page-access").addEventListener("click", () => window.location.reload());
   }
 
-  function makePageViewOnly(main, pageKey) {
-    window.GREENLOOP_PAGE_ACCESS = { pageKey, accessLevel: "view", canEdit: false };
-    document.documentElement.dataset.pageAccess = "view";
-    const fields = 'input:not([type="hidden"]),select,textarea,[contenteditable]';
-    const actions = 'button,input[type="submit"],input[type="button"],input[type="reset"],a[role="button"],[role="button"]';
-    const controls = fields + ',' + actions;
-    const entrySelectors = '[data-entry-only],[data-save-row],[data-order-parts],[data-complete-lab],[data-complete-frame],[data-add-choice],[data-remove-choice],[data-review-return],[data-delete],.master-add,.master-remove,.danger-button,[data-dm-mode],[data-dm-scope],[data-correction-edit],[data-access-section="add-greenloop-user"]';
-    const readSelectors = '#queue-count,.cdd-retry,[data-technician-id],[data-export-box],[data-audit-details-index],[data-audit-view],[data-back-box],[data-return-report],[data-dm-audit],[data-dm-audit-refresh],[data-dm-home],[data-close-pending],.report-tab,[data-accounts-view],[data-access-section="login-activity"],[data-access-section="greenloop-accounts"],[data-sr-detail],[data-sr-print],[data-sr-close],[data-sr-back],[data-print-box],[data-close-box],[data-open-box],[data-view-imei-stage],[data-receipt-more],[data-open-deleted-history],#damage-pdf-toggle,#damage-pdf-view,#damage-pdf-download,#damage-pdf-close,#open-menu,#close-menu,#global-logout';
-    const readLabel = /^(view(?:\s|$)|show (?:more|details|all|history|records)|open (?:box|report|damage report|pdf|details|history)|print(?:\s|$)|download (?:pdf|report)|refresh(?:\s|$)|reload(?:\s|$)|previous(?:\s|$)|next(?:\s|$)|back(?:\s|$)|close(?:\s|$)|dismiss(?:\s|$)|logout$|sign out$)/i;
-    const mutationLabel = /\b(save|create|add|remove|delete|reset|receive|issue|install|approve|verify|reject|complete|route|pass|fail|submit|update|edit|correct|start|scan|connect|import|upload|assign|transfer|send|handover|confirm)\b/i;
-    function blocked(control) {
-      if (!control || control.matches('input[type="hidden"]')) return false;
-      if (control.matches(fields)) return true;
-      if (control.matches(entrySelectors)) return true;
-      // Explicit navigation destinations are safe, including report tabs whose
-      // titles contain words such as Complete or Deleted. No generic bypass
-      // is granted by data-search-read-only: that attribute also marks filters.
-      if (control.matches(readSelectors)) return false;
-      const label = (control.getAttribute('aria-label') || control.textContent || control.value || '').trim();
-      if (mutationLabel.test(label)) return true;
-      return !readLabel.test(label);
-    }
-    function lock(control) {
-      if (!blocked(control)) return;
-      if ('disabled' in control && !control.disabled) control.disabled = true;
-      if (control.hasAttribute('contenteditable') && control.getAttribute('contenteditable') !== 'false') control.setAttribute('contenteditable','false');
-      if (control.getAttribute('aria-disabled') !== 'true') control.setAttribute('aria-disabled','true');
-      if (control.dataset.viewOnlyLocked !== 'true') control.dataset.viewOnlyLocked = 'true';
-      if (control.title !== 'View Only Access') control.title = 'View Only Access';
-    }
-    function lockControls(root = document) {
-      if (root.matches?.(controls)) lock(root);
-      root.querySelectorAll?.(controls).forEach(lock);
-    }
-    if (main && !main.querySelector('.view-only-access-banner')) {
-      const banner=document.createElement('div');banner.className='view-only-access-banner';banner.setAttribute('role','status');
-      banner.innerHTML='<span class="view-only-access-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><path d="M12 14v3"/></svg></span><span>View Only Access</span>';
-      (main.querySelector('.page-content') || main).prepend(banner);
-    }
-    lockControls();
-    // Only observe attributes relevant to locking, and write only when the
-    // value differs. Module loading states can re-enable controls without
-    // creating an observer loop or leaving the control editable.
-    new MutationObserver(changes => {
-      const roots=new Set();
-      changes.forEach(change => {
-        if(change.type==='attributes') roots.add(change.target);
-        else { roots.add(change.target);change.addedNodes.forEach(node=>{if(node.nodeType===1)roots.add(node);}); }
-      });
-      roots.forEach(lockControls);
-    }).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['disabled','contenteditable','type','data-entry-only']});
-    function stop(event) { event.preventDefault();event.stopImmediatePropagation(); }
-    // Capture on window runs before page-level click/input handlers, including
-    // programmatic clicks during the microtask before the observer re-locks.
-    ['click','dblclick','beforeinput','input','change','paste','cut','drop'].forEach(type => {
-      window.addEventListener(type,event=>{const control=event.target.closest?.(controls);if(blocked(control)){lock(control);stop(event);}},true);
-    });
-    window.addEventListener('keydown',event=>{
-      const control=event.target.closest?.(controls);
-      if(blocked(control) && !['Tab','Escape'].includes(event.key) && !(event.ctrlKey||event.metaKey)) {lock(control);stop(event);}
-    },true);
-    window.addEventListener('submit',event=>{
-      // A PDF download reads the fixed, displayed range; all data-entry and
-      // filter forms remain blocked, including requestSubmit() calls.
-      if(event.target.id==='damage-pdf-form' && event.submitter?.id==='damage-pdf-download') return;
-      stop(event);
-    },true);
-    window.GREENLOOP_LOCK_VIEW_ONLY_CONTROLS=lockControls;
-  }
-
   async function applyPageAccess() {
     const currentFile = (window.location.pathname.split("/").pop() || "dashboard.html").toLowerCase();
     const currentPageKey = currentFile === "laboratory.html" && window.location.hash.toLowerCase() === "#frame"
@@ -518,9 +451,16 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     if(tvSettings.error || !tvSettings.data || typeof tvSettings.data.tv_only!=="boolean"){showAccessError(navigation,main);return;}
     if(tvSettings.data.tv_only){window.location.replace("tv.html");return;}
 
-    const accessByPage = new Map(accessRows
-      .map((row) => [row.page_key, row.access_level || "view"])
-      .filter(([, level]) => level === "view" || level === "edit"));
+    const capabilities = await client.rpc("get_my_page_capabilities_v1");
+    if (capabilities.error || !capabilities.data || Array.isArray(capabilities.data)
+      || typeof capabilities.data !== "object" || !window.GREENLOOP_CAN
+      || Object.values(capabilities.data).some(value => !Array.isArray(value) || value.some(cap => typeof cap !== "string"))) {
+      showAccessError(navigation,main); return;
+    }
+    window.GREENLOOP_CAPABILITIES = Object.freeze(Object.fromEntries(Object.entries(capabilities.data).map(([key,value]) => [key,Object.freeze([...value])])));
+    const accessByPage = new Map(Object.entries(window.GREENLOOP_CAPABILITIES)
+      .filter(([,caps]) => caps.includes("view"))
+      .map(([key]) => [key,window.GREENLOOP_HAS_WRITE(key) ? "edit" : "view"]));
     // Request, approval and handover staff share one screen. Each action is
     // still authorized independently by the Supplier Returns database API.
     const stockReturnLevels = ["supplier_returns", "supplier_return_approval", "supplier_return_handover"]
@@ -579,7 +519,7 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
       const accessLevel = accessByPage.get(currentPageKey) || "view";
       window.GREENLOOP_PAGE_ACCESS = { pageKey: currentPageKey, accessLevel, canEdit: accessLevel === "edit" };
       document.documentElement.dataset.pageAccess = accessLevel;
-      if (accessLevel !== "edit") makePageViewOnly(main, currentPageKey);
+      window.GREENLOOP_ENFORCE_CAPABILITIES?.(main);
       unlockApplication(main);
       return;
     }

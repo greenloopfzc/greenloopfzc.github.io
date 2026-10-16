@@ -83,6 +83,7 @@
       });
     }
     function open(value){
+      if(value==='payable' && !display.payable())return;
       if(!titles[value] || (/^(today|month|all)$/.test(value) ? !display.get().show_parts : !display.prices()))return;
       hooks.onOpen();scope=value;offset=0;last=null;toggle();text("damage-summary-title",titles[value]);
       text("damage-summary-period",'');text("damage-summary-totals",'');text("damage-summary-table-wrap",'');text("damage-summary-formula",'');text("damage-summary-range",'');
@@ -90,7 +91,7 @@
     }
     function refresh(){
       var ticket=++cardRequest;
-      if(!display.prices()){if(scope)load(offset);return;}
+      if(!display.payable()){if(scope==='payable')close(false);if(scope)load(offset);display.apply();return;}
       api.loadDamageSummary('payable',0,1,function(error,data){
         if(ticket!==cardRequest)return;
         if(error){if(fatal(error))return;text("damage-payable",'Unavailable');text("damage-payable-period",'Select to retry');get("damage-summary-payable").setAttribute("data-stale","true");return;}

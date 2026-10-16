@@ -75,6 +75,8 @@
 
   async function runReportMutation(control, action) {
     if (reportMutationPending || deletionBusy || !window.GREENLOOP_PAGE_ACCESS?.canEdit) return;
+    const required = window.GREENLOOP_CONTROL_CAPABILITY?.(control);
+    if (required && !window.GREENLOOP_CAPABILITY_ALLOWED(required)) return;
     invalidatePendingReportRead();
     reportMutationPending = true;
     const label = control?.textContent;
@@ -466,7 +468,7 @@
   }
 
   function canDeleteScope(scope) {
-    return canManageCorrections && Boolean(window.GREENLOOP_PAGE_ACCESS?.canEdit)
+    return canManageCorrections && window.GREENLOOP_CAN?.(scope === "all" ? "reset" : "delete","reports")
       && (scope === "single" || (scope === "all" && canResetData));
   }
 
@@ -1077,7 +1079,7 @@
     }
     const correctionButton=event.target.closest("[data-box-correct-imei],[data-box-correction]");
     if(correctionButton) {
-      if(!window.GREENLOOP_PAGE_ACCESS?.canEdit){setMessage("Reports Entry Allowed permission is required for Box Correction.");return;}
+      if(!window.GREENLOOP_CAN?.("box_correction","reports")){setMessage("Box Correction permission is required.");return;}
       correctionBoxNumber=selectedExportBox;
       const identifier=correctionButton.dataset.boxCorrectImei || exportBoxImeiFilter;
       activeReport="data_correction";correctionRecord=null;renderActiveReport();
