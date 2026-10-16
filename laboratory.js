@@ -44,6 +44,8 @@
   let rowLoadVersion = 0;
   let editVersion = 0;
 
+  const editable = () => window.GREENLOOP_PAGE_ACCESS?.pageKey === (isFrameMode ? "frame_department" : "lab_glass") && window.GREENLOOP_PAGE_ACCESS.canEdit === true;
+
   function getClient() { return (client ||= window.GREENLOOP_GET_CLIENT()); }
   function escapeHtml(value) { return String(value ?? "").replace(/[&<>'"]/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"})[c]); }
   function normalise(value) { return String(value || "").trim().replace(/\s+/g, " ").toLowerCase(); }
@@ -395,6 +397,7 @@
   }
 
   async function addTechnician() {
+    if (!editable()) return;
     const fullName = window.prompt("Enter the technician name:");
     if (!fullName?.trim()) return;
     setSubmitting(addTechnicianButton, true, "Adding...");
@@ -407,6 +410,7 @@
     showToast("Technician added.");
   }
   async function removeTechnician() {
+    if (!editable()) return;
     const technician = technicians.find((item) => String(item.id) === String(activeTechnicianId));
     if (!technician) return;
     if (Number(technician.pending_count || 0) > 0) throw new Error("Complete or move this technician's pending IMEIs first.");
@@ -464,6 +468,7 @@
     }
   }
   async function runLineAction(button, action) {
+    if (!editable()) return;
     const row = button.closest("tr");
     if (button.disabled || row.dataset.busy === "yes" || row.dataset.saved === "yes") return;
     row.dataset.busy = "yes";
@@ -482,6 +487,7 @@
     }
   }
   async function orderParts(button) {
+    if (!editable()) return;
     const row = button.closest("tr");
     const status = row.querySelector("[data-line-status]");
     const requestId = row.querySelector("[data-return-part-select]")?.value || "";
@@ -532,6 +538,7 @@
     await refreshAll();
   }
   async function completeLab(button) {
+    if (!editable()) return;
     setSubmitting(button, true, "Completing...");
     const { error } = await getClient().rpc("complete_lab_technician_line", { p_work_order_step_id: button.dataset.completeLab });
     setSubmitting(button, false);
@@ -542,6 +549,7 @@
     await refreshAll();
   }
   async function scanTechnicianImei() {
+    if (!editable()) return;
     const imei = technicianImeiScan.value.trim();
     const technicianId = activeTechnicianId;
     if (!technicianId) { setBoardMessage("Select a technician first."); return; }
@@ -575,6 +583,7 @@
     technicianImeiScan.focus();
   }
   async function completeFrame(button) {
+    if (!editable()) return;
     const row = button.closest("tr");
     const result = row.querySelector("[data-frame-result]:checked")?.dataset.frameResult || "";
     if (!result) return;
@@ -607,6 +616,8 @@
     const { data: allowed, error } = await getClient().rpc("has_role", { required_roles: ["super_admin", "owner", "manager", "technician"] });
     if (error) throw error;
     if (!allowed) { permissionMessage.textContent = "Your account does not have Laboratory permission."; permissionMessage.hidden = false; return; }
+    await window.GREENLOOP_ACCESS_READY;
+    if (window.GREENLOOP_PAGE_ACCESS?.pageKey !== (isFrameMode ? "frame_department" : "lab_glass")) return;
     app.hidden = false;
     if (!isFrameMode) await loadPartOptions();
     else await loadFrameGrades();
@@ -639,6 +650,7 @@
   });
   checkTechnicianImei.addEventListener("click",()=>technicianWidget.search({selectExact:true}));
   technicianWorkRows.addEventListener("click", (event) => {
+    if (!editable()) return;
     const add = event.target.closest("[data-add-choice]"); if (add) { addChoice(add); return; }
     const remove = event.target.closest("[data-remove-choice]"); if (remove) {
       const row = remove.closest("tr");
@@ -655,6 +667,7 @@
     const completeFrameButton = event.target.closest("[data-complete-frame]"); if (completeFrameButton) runLineAction(completeFrameButton, completeFrame).catch((error) => setBoardMessage(error.message));
   });
   technicianWorkRows.addEventListener("change", (event) => {
+    if (!editable()) return;
     const choiceSelect = event.target.closest('[data-choice] select');
     if (choiceSelect) {
       addSelectedChoice(choiceSelect);

@@ -27,6 +27,8 @@
   let rowSequence = 0;
   let toastTimer;
 
+  const editable = () => window.GREENLOOP_PAGE_ACCESS?.pageKey === "final_qc" && window.GREENLOOP_PAGE_ACCESS.canEdit === true;
+
   function getClient() {
     return (client ||= window.GREENLOOP_GET_CLIENT());
   }
@@ -263,6 +265,7 @@
   }
 
   async function addFinalGrade(row) {
+    if (!editable()) return;
     const value = window.prompt("Enter a new Final QC grade.");
     if (!value?.trim()) return;
     const { data, error } = await getClient().rpc("add_entry_option", { p_option_group: "grade", p_option_value: value.trim() });
@@ -275,6 +278,7 @@
   }
 
   async function removeFinalGrade(row) {
+    if (!editable()) return;
     const select = row.querySelector("[data-final-grade]");
     const option = select.options[select.selectedIndex];
     const optionId = option?.dataset.optionId;
@@ -291,6 +295,8 @@
   }
 
   async function loadScannedRow(row) {
+    // Scanning receives the phone into QC, so it requires entry permission.
+    if (!editable()) return;
     const input = row.querySelector(".final-row-imei");
     const imei = input.value.trim();
     if (!/^\d{15}$/.test(imei) || row.dataset.loading === "yes" || row.dataset.completed === "yes") return;
@@ -322,6 +328,7 @@
       return;
     }
 
+    if (!editable()) return;
     const { error: receivedError } = await getClient().rpc("receive_final_qc_phone", { p_final_qc_step_id: step.id });
     if (!isCurrent()) return;
     if (receivedError) throw receivedError;
@@ -362,6 +369,7 @@
   }
 
   async function autoPickAllPending() {
+    if (!editable()) return;
     if (autoPickButton.disabled || tableBody.querySelector('tr[data-saving="yes"]')) return;
     setMessage();
     setSubmitting(autoPickButton, true, "Loading...");
@@ -459,6 +467,7 @@
   }
 
   async function saveOneRow(row, progressText = "Saving...") {
+    if (!editable()) return { ok: false, error: "View Only Access" };
     if (!row || !tableBody.contains(row) || row.dataset.loading === "yes" || row.dataset.saving === "yes" || row.dataset.completed === "yes") return { ok: false, error: "This row is already complete." };
     const step = rowSteps.get(row.dataset.rowId);
     if (!step) {
@@ -578,7 +587,7 @@
 
   async function submitAll(event) {
     event.preventDefault();
-    if (document.querySelector("#complete-final-qc").disabled) return;
+    if (!editable() || document.querySelector("#complete-final-qc").disabled) return;
     setMessage();
     const rows = [...tableBody.rows].filter((row) => rowSteps.has(row.dataset.rowId) && row.dataset.completed !== "yes");
     if (!rows.length) {
@@ -658,6 +667,8 @@
     const { data: canInspect, error } = await getClient().rpc("has_role", { required_roles: ["super_admin", "owner", "manager", "final_qc"] });
     if (error) throw error;
     if (!canInspect) throw new Error("Your account does not have Final QC permission.");
+    await window.GREENLOOP_ACCESS_READY;
+    if (window.GREENLOOP_PAGE_ACCESS?.pageKey !== "final_qc") return;
     await Promise.all([loadFinalGrades(), loadQueue()]);
     createRows(10);
     app.hidden = false;
@@ -666,6 +677,7 @@
   }
 
   tableBody.addEventListener("input", (event) => {
+    if (!editable()) return;
     const input = event.target.closest(".final-row-imei");
     if (!input) return;
     input.value = input.value.replace(/\D/g, "").slice(0, 15);
@@ -680,6 +692,7 @@
   });
 
   tableBody.addEventListener("keydown", (event) => {
+    if (!editable()) return;
     const input = event.target.closest(".final-row-imei");
     if (!input || event.key !== "Enter") return;
     event.preventDefault();
@@ -692,6 +705,7 @@
   });
 
   tableBody.addEventListener("change", (event) => {
+    if (!editable()) return;
     const row = event.target.closest("tr");
     if (!row || row.dataset.completed === "yes") return;
     if (event.target.matches("[data-battery-unavailable]")) {
@@ -711,6 +725,7 @@
   });
 
   tableBody.addEventListener("click", (event) => {
+    if (!editable()) return;
     const row = event.target.closest("tr");
     if (!row || row.dataset.completed === "yes") return;
     if (event.target.closest("[data-save-row]")) {

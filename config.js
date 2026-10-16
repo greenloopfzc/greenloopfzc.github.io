@@ -74,11 +74,51 @@ window.GREENLOOP_CONFIG = Object.freeze({
           }
         } }
       });
+      // Direct table mutations receive the same page guard as RPC writes.
+      // Defer the query until permissions resolve, while retaining Supabase's
+      // fluent .select().eq().single() API and ordinary read-only queries.
+      if (typeof sharedClient.from === 'function') {
+        const from=sharedClient.from.bind(sharedClient);
+        sharedClient.from=(...fromArgs)=>{
+          const builder=from(...fromArgs);
+          return new Proxy(builder,{get(target,property){
+            if(!['insert','update','upsert','delete'].includes(property)) {
+              const member=target[property];return typeof member==='function'?member.bind(target):member;
+            }
+            return (...writeArgs)=>{
+              const calls=[];let result;
+              const execute=()=>result ||= (async()=>{
+                await window.GREENLOOP_ACCESS_READY;
+                if(!window.GREENLOOP_PAGE_ACCESS?.canEdit)return {data:null,error:{code:'42501',message:'View Only Access'}};
+                let query=target[property](...writeArgs);
+                for(const [method,args] of calls)query=query[method](...args);
+                return await query;
+              })();
+              const guarded=new Proxy({}, {get(_target,method){
+                if(['then','catch','finally'].includes(method))return (...args)=>execute()[method](...args);
+                if(typeof method==='symbol')return undefined;
+                return (...args)=>{calls.push([method,args]);return guarded;};
+              }});
+              return guarded;
+            };
+          }});
+        };
+      }
+      // The deployed user-creation service also checks the caller's page
+      // permission. Keep the page-level guard here for synthetic UI callbacks.
+      if (typeof sharedClient.functions?.invoke === 'function') {
+        const invoke = sharedClient.functions.invoke.bind(sharedClient.functions);
+        sharedClient.functions.invoke = async (...args) => {
+          await window.GREENLOOP_ACCESS_READY;
+          if (!window.GREENLOOP_PAGE_ACCESS?.canEdit) return {data:null,error:{code:'42501',message:'View Only Access'}};
+          return invoke(...args);
+        };
+      }
       const rpc = sharedClient.rpc.bind(sharedClient);
       sharedClient.rpc = async (name, ...args) => {
         // Capture guards also cover automatic saves and scanner callbacks that
         // never pass through a button click. The database must enforce this too.
-        const writes = /^(add_|archive_|assign_|cancel_|close_|complete_|correct_|create_|delete_|ensure_|issue_|mark_|verify_|pause_|receive_|record_|remove_|request_|reset_|resume_|return_|review_|route_|save_|scan_imei_to_export_box$|send_|set_|start_|transfer_|transition_|update_|get_or_create_open_export_box$)/;
+        const writes = /^(add_|apply_|approve_|archive_|assign_|cancel_|close_|complete_|confirm_|consume_|correct_|create_|delete_|ensure_|execute_|finish_|issue_|mark_|move_|verify_|pause_|receive_|record_|remove_|request_|reset_|restore_|resume_|return_|review_|route_|save_|scan_|send_|set_|start_|transfer_|transition_|update_|get_or_create_)/;
         if (writes.test(name)) {
           await window.GREENLOOP_ACCESS_READY;
           if (!window.GREENLOOP_PAGE_ACCESS?.canEdit) return { data: null, error: { code: "42501", message: "Entry Allowed permission is required to make changes on this page." } };
@@ -370,72 +410,71 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
   function makePageViewOnly(main, pageKey) {
     window.GREENLOOP_PAGE_ACCESS = { pageKey, accessLevel: "view", canEdit: false };
     document.documentElement.dataset.pageAccess = "view";
-    const mutationWords = /\b(save|create|add|remove|delete|receive|issue|install|return|approve|verify|reject|order|complete|route|pass|fail|cancel|submit|update|edit|start|pause)\b/i;
-    const mutationSelector = [
-      "[data-save-row]", "[data-order-parts]", "[data-complete-lab]", "[data-complete-frame]",
-      "[data-add-choice]", "[data-remove-choice]", "[data-review-return]", "[data-delete]",
-      ".master-add", ".master-remove", ".danger-button"
-    ].join(",");
-
-    function isMutationControl(control) {
-      if (!control) return false;
-      // Report-category navigation is read-only, even "Complete Device Details".
-      if (control.matches(".report-tab,[data-sr-print],[data-search-read-only]")) return false;
-      const text = `${control.textContent || ""} ${control.value || ""} ${control.id || ""}`;
-      return control.matches(mutationSelector) || mutationWords.test(text);
+    const fields = 'input:not([type="hidden"]),select,textarea,[contenteditable]';
+    const actions = 'button,input[type="submit"],input[type="button"],input[type="reset"],a[role="button"],[role="button"]';
+    const controls = fields + ',' + actions;
+    const entrySelectors = '[data-entry-only],[data-save-row],[data-order-parts],[data-complete-lab],[data-complete-frame],[data-add-choice],[data-remove-choice],[data-review-return],[data-delete],.master-add,.master-remove,.danger-button,[data-dm-mode],[data-dm-scope],[data-correction-edit],[data-access-section="add-greenloop-user"]';
+    const readSelectors = '#queue-count,.cdd-retry,[data-technician-id],[data-export-box],[data-audit-details-index],[data-audit-view],[data-back-box],[data-return-report],[data-dm-audit],[data-dm-audit-refresh],[data-dm-home],[data-close-pending],.report-tab,[data-accounts-view],[data-access-section="login-activity"],[data-access-section="greenloop-accounts"],[data-sr-detail],[data-sr-print],[data-sr-close],[data-sr-back],[data-print-box],[data-close-box],[data-open-box],[data-view-imei-stage],[data-receipt-more],[data-open-deleted-history],#damage-pdf-toggle,#damage-pdf-view,#damage-pdf-download,#damage-pdf-close,#open-menu,#close-menu,#global-logout';
+    const readLabel = /^(view(?:\s|$)|show (?:more|details|all|history|records)|open (?:box|report|damage report|pdf|details|history)|print(?:\s|$)|download (?:pdf|report)|refresh(?:\s|$)|reload(?:\s|$)|previous(?:\s|$)|next(?:\s|$)|back(?:\s|$)|close(?:\s|$)|dismiss(?:\s|$)|logout$|sign out$)/i;
+    const mutationLabel = /\b(save|create|add|remove|delete|reset|receive|issue|install|approve|verify|reject|complete|route|pass|fail|submit|update|edit|correct|start|scan|connect|import|upload|assign|transfer|send|handover|confirm)\b/i;
+    function blocked(control) {
+      if (!control || control.matches('input[type="hidden"]')) return false;
+      if (control.matches(fields)) return true;
+      if (control.matches(entrySelectors)) return true;
+      // Explicit navigation destinations are safe, including report tabs whose
+      // titles contain words such as Complete or Deleted. No generic bypass
+      // is granted by data-search-read-only: that attribute also marks filters.
+      if (control.matches(readSelectors)) return false;
+      const label = (control.getAttribute('aria-label') || control.textContent || control.value || '').trim();
+      if (mutationLabel.test(label)) return true;
+      return !readLabel.test(label);
     }
-
+    function lock(control) {
+      if (!blocked(control)) return;
+      if ('disabled' in control && !control.disabled) control.disabled = true;
+      if (control.hasAttribute('contenteditable') && control.getAttribute('contenteditable') !== 'false') control.setAttribute('contenteditable','false');
+      if (control.getAttribute('aria-disabled') !== 'true') control.setAttribute('aria-disabled','true');
+      if (control.dataset.viewOnlyLocked !== 'true') control.dataset.viewOnlyLocked = 'true';
+      if (control.title !== 'View Only Access') control.title = 'View Only Access';
+    }
     function lockControls(root = document) {
-      const controls = [];
-      if (root.matches?.("button, input[type='submit'], input[type='button']")) controls.push(root);
-      const descendants = root.querySelectorAll
-        ? root.querySelectorAll("button, input[type='submit'], input[type='button']")
-        : [];
-      controls.push(...descendants);
-      controls.forEach((control) => {
-        if (isMutationControl(control)) {
-          // Do not continuously change the native `disabled` property. Several
-          // page modules update that property while loading; observing and
-          // rewriting it caused a feedback loop that froze view-only accounts.
-          control.setAttribute("aria-disabled", "true");
-          control.title = "View-only access: entries and changes are disabled.";
-          control.dataset.viewOnlyLocked = "true";
-          control.style.opacity = "0.55";
-          control.style.cursor = "not-allowed";
-        }
-      });
+      if (root.matches?.(controls)) lock(root);
+      root.querySelectorAll?.(controls).forEach(lock);
     }
-
-    if (main && !main.querySelector(".view-only-access-banner")) {
-      const banner = document.createElement("div");
-      banner.className = "view-only-access-banner";
-      banner.textContent = "View-only access — you can see this page, but entries and changes are disabled.";
-      const content = main.querySelector(".page-content");
-      (content || main).prepend(banner);
+    if (main && !main.querySelector('.view-only-access-banner')) {
+      const banner=document.createElement('div');banner.className='view-only-access-banner';banner.setAttribute('role','status');
+      banner.innerHTML='<span class="view-only-access-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><path d="M12 14v3"/></svg></span><span>View Only Access</span>';
+      (main.querySelector('.page-content') || main).prepend(banner);
     }
     lockControls();
-    new MutationObserver((changes) => changes.forEach((change) => {
-      change.addedNodes.forEach((node) => {
-        if (node.nodeType === Node.ELEMENT_NODE) lockControls(node);
+    // Only observe attributes relevant to locking, and write only when the
+    // value differs. Module loading states can re-enable controls without
+    // creating an observer loop or leaving the control editable.
+    new MutationObserver(changes => {
+      const roots=new Set();
+      changes.forEach(change => {
+        if(change.type==='attributes') roots.add(change.target);
+        else { roots.add(change.target);change.addedNodes.forEach(node=>{if(node.nodeType===1)roots.add(node);}); }
       });
-    })).observe(document.body, { childList: true, subtree: true });
-
-    document.addEventListener("click", (event) => {
-      const control = event.target.closest?.("button, input[type='submit'], input[type='button']");
-      if (!isMutationControl(control)) return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-    }, true);
-
-    document.addEventListener("submit", (event) => {
-      const formControls = event.target.querySelectorAll
-        ? [...event.target.querySelectorAll("button, input[type='submit'], input[type='button']")]
-        : [];
-      if (formControls.some(isMutationControl)) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-      }
-    }, true);
+      roots.forEach(lockControls);
+    }).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['disabled','contenteditable','type','data-entry-only']});
+    function stop(event) { event.preventDefault();event.stopImmediatePropagation(); }
+    // Capture on window runs before page-level click/input handlers, including
+    // programmatic clicks during the microtask before the observer re-locks.
+    ['click','dblclick','beforeinput','input','change','paste','cut','drop'].forEach(type => {
+      window.addEventListener(type,event=>{const control=event.target.closest?.(controls);if(blocked(control)){lock(control);stop(event);}},true);
+    });
+    window.addEventListener('keydown',event=>{
+      const control=event.target.closest?.(controls);
+      if(blocked(control) && !['Tab','Escape'].includes(event.key) && !(event.ctrlKey||event.metaKey)) {lock(control);stop(event);}
+    },true);
+    window.addEventListener('submit',event=>{
+      // A PDF download reads the fixed, displayed range; all data-entry and
+      // filter forms remain blocked, including requestSubmit() calls.
+      if(event.target.id==='damage-pdf-form' && event.submitter?.id==='damage-pdf-download') return;
+      stop(event);
+    },true);
+    window.GREENLOOP_LOCK_VIEW_ONLY_CONTROLS=lockControls;
   }
 
   async function applyPageAccess() {
@@ -521,7 +560,7 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     // This is a navigation hub, not another saved permission. Either manual
     // damage capability opens it; each destination still enforces its own key.
     if (["damage_report", "tv_manual_entry"].some((key) => accessByPage.has(key))) {
-      accessByPage.set("manual_damage_report", "view");
+      accessByPage.set("manual_damage_report", ["damage_report","tv_manual_entry"].some(key=>accessByPage.get(key)==="edit") ? "edit" : "view");
     }
     const allowedPages = new Set(accessByPage.keys());
     document.querySelectorAll("a[data-page-access]").forEach((link) => {
@@ -540,7 +579,7 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
       const accessLevel = accessByPage.get(currentPageKey) || "view";
       window.GREENLOOP_PAGE_ACCESS = { pageKey: currentPageKey, accessLevel, canEdit: accessLevel === "edit" };
       document.documentElement.dataset.pageAccess = accessLevel;
-      if (accessLevel !== "edit" && currentPageKey !== "manual_damage_report") makePageViewOnly(main, currentPageKey);
+      if (accessLevel !== "edit") makePageViewOnly(main, currentPageKey);
       unlockApplication(main);
       return;
     }

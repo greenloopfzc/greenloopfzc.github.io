@@ -2572,7 +2572,7 @@ input:focus {
     margin-bottom: 19px;
   }
 
-  .quiet-link {
+  .quiet-link:not([data-open-box]) {
     display: none;
   }
 
@@ -2701,7 +2701,14 @@ a[href="stock-out.html"],
 .receiving-channel-panel .form-field { margin: 0; }
 .receiving-channel-panel p { margin: 0 0 11px; color: #64746b; font-size: .78rem; line-height: 1.45; }
 @media (max-width: 640px) { .receiving-channel-panel { grid-template-columns: 1fr; gap: 8px; } .receiving-channel-panel p { margin-bottom: 0; } }
-.view-only-access-banner{margin:0 0 14px;padding:11px 14px;border:1px solid #e8cf91;border-radius:10px;color:#755313;background:#fff7df;font-size:.76rem;font-weight:800}
+.view-only-access-banner{display:inline-flex;width:fit-content;justify-self:start;align-self:start;align-items:center;gap:10px;max-width:100%;margin:0 0 18px;padding:9px 16px 9px 9px;border:1px solid #c8dcd6;border-radius:999px;color:#24594f;background:linear-gradient(145deg,#f5fbf9,#e3efec);box-shadow:3px 3px 7px #b9c9c6,-3px -3px 7px #fff;font-size:.82rem;font-weight:800;letter-spacing:.025em;line-height:1.25;vertical-align:middle}
+.view-only-access-icon{display:grid;place-items:center;flex:0 0 30px;width:30px;height:30px;border-radius:50%;color:#14765e;background:#d4e9e2;box-shadow:inset 1px 1px 3px #a6c6bb,inset -1px -1px 3px #fff}
+.view-only-access-icon svg{width:18px;height:18px}
+html[data-mode="dark"] .view-only-access-banner{color:#d5efe6;border-color:#416157;background:linear-gradient(145deg,#30483f,#22372f);box-shadow:3px 3px 7px #13241e,-2px -2px 6px #3a5148}
+html[data-mode="dark"] .view-only-access-icon{color:#b9ead7;background:#284f40;box-shadow:inset 1px 1px 3px #132c22,inset -1px -1px 3px #47715d}
+html[data-page-access="view"] [data-view-only-locked="true"]{pointer-events:none}
+html[data-page-access="view"] #manual-damage-view-only{display:none!important}
+@media print{.view-only-access-banner{display:none!important}}
 html[data-page-access="view"] [data-view-only-locked="true"]{opacity:.55!important;cursor:not-allowed!important}
 
 /* Shared table rule: keep every heading and cell value visually centered. */

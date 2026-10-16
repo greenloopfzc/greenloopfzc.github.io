@@ -1,0 +1,5 @@
+# The handler validates each POST with Auth getUser, administrator role and
+# User Access edit permission. Only GET installation-version is public.
+# https://supabase.com/docs/guides/functions/auth-legacy-jwt
+[functions.admin-create-user]
+verify_jwt = false
