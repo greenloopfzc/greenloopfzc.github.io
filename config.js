@@ -459,7 +459,7 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     }
     window.GREENLOOP_CAPABILITIES = Object.freeze(Object.fromEntries(Object.entries(capabilities.data).map(([key,value]) => [key,Object.freeze([...value])])));
     const accessByPage = new Map(Object.entries(window.GREENLOOP_CAPABILITIES)
-      .filter(([,caps]) => caps.includes("view"))
+      .filter(([key,caps]) => !window.GREENLOOP_PERMISSION_CATALOG?.byPage[key]?.virtual && caps.includes("view"))
       .map(([key]) => [key,window.GREENLOOP_HAS_WRITE(key) ? "edit" : "view"]));
     // Request, approval and handover staff share one screen. Each action is
     // still authorized independently by the Supplier Returns database API.

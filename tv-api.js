@@ -20,6 +20,19 @@
   var nativeSignIn = false, refreshId = 0;
   var refreshing = false, refreshWaiters = [], refreshTimer = null;
   var api = {};
+  var appearance = { theme: false, display_mode: false };
+
+  function updateAppearance(capabilities) {
+    var grants = capabilities && capabilities.appearance;
+    var valid = Object.prototype.toString.call(grants) === "[object Array]" && grants.indexOf("view") !== -1;
+    var next = { theme: !!valid && grants.indexOf("theme") !== -1, display_mode: !!valid && grants.indexOf("display_mode") !== -1 };
+    var changed = next.theme !== appearance.theme || next.display_mode !== appearance.display_mode;
+    appearance = next;
+    if (changed && typeof api.onAppearanceChanged === "function") api.onAppearanceChanged();
+  }
+  api.canAppearance = function (capability) {
+    return !!session && (capability === "theme" || capability === "display_mode") && appearance[capability] === true;
+  };
 
   function now() { return Math.floor(new Date().getTime() / 1000); }
   function noop() {}
@@ -116,6 +129,7 @@
   }
   function clear(reason, notify, keepStorage) {
     api.display=null;
+    updateAppearance(null);
     generation += 1;
     session = null;
     refreshing = false;
@@ -333,7 +347,12 @@
         if (rows[index].page_key === pageKey && /^(view|edit)$/.test(rows[index].access_level)) allowed = true;
       }
       if (!allowed) { failSession("PERMISSION_DENIED", "Your account does not have permission to open this report. Ask an administrator to check User Access.", callback); return; }
-      callback(null);
+      // Display preferences are independent from operational page access.
+      // Refresh them with each board read so revoked ticks stop working too.
+      authorised("POST", "/rest/v1/rpc/get_my_page_capabilities_v1", {}, function (capabilityError, capabilities) {
+        updateAppearance(capabilityError ? null : capabilities);
+        callback(capabilityError && capabilityError.clearSession ? capabilityError : null);
+      });
     });
   }
   // Best-effort presence uses the authenticated session; never delays or fails TV login.

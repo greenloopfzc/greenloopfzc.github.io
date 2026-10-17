@@ -51,7 +51,7 @@ Deno.serve(async (request) => {
 
   // Read-only installation receipt; no credentials or account data returned.
   if (request.method === "GET") {
-    return jsonResponse({ version: "20261016-page-capabilities-1" });
+    return jsonResponse({ version: "20261017-settings-appearance-1" });
   }
 
   if (request.method !== "POST") {
@@ -156,7 +156,14 @@ Deno.serve(async (request) => {
       || value.length > 0 && !value.includes("view"))) {
     return jsonResponse({ error: "Select View before selecting a page's other permissions." }, 400);
   }
-  const requestedPages = entries.filter(([, value]) => (value as string[]).includes("view")).map(([key]) => key);
+  // Appearance contains personal display choices, not a software page grant.
+  const appearance = (capabilities as Record<string, unknown>).appearance;
+  if (appearance !== undefined && (!Array.isArray(appearance)
+      || appearance.some(key => !["view", "theme", "display_mode"].includes(key)))
+      || Object.prototype.hasOwnProperty.call(pagePermissions, "appearance")) {
+    return jsonResponse({ error: "Refresh User Access and select the account's appearance options again." }, 400);
+  }
+  const requestedPages = entries.filter(([key, value]) => key !== "appearance" && (value as string[]).includes("view")).map(([key]) => key);
 
   if (fullName.length < 2 || fullName.length > 100) {
     return jsonResponse({ error: "Full name must use 2 to 100 characters." }, 400);

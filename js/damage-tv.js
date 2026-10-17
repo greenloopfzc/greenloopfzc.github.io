@@ -207,7 +207,7 @@
       submit.textContent = value ? "Signing in..." : "Sign in to damage report";
     }
     function showLogin(value) {
-      active = false; loading = false; generation++; clear();
+      active = false; loading = false; generation++; syncThemeAccess(); clear();
       get("tv-restoring").style.display = "none"; board.style.display = "none"; login.style.display = "block";
       password.value = ""; password.type = "password";
       get("tv-show-password").textContent = "Show";
@@ -379,15 +379,25 @@
         renderEmployees();
       });
     }
-    api.onDisplayChanged=function(){
+    if (api) api.onDisplayChanged=function(){
       generation++;loading=false;clear();display.apply();
       if(active){message("tv-board-message","Display settings updated. Loading…");refresh();}
     };
     function openBoard() {
-      active = true; loading = false;
+      active = true; loading = false; syncThemeAccess();
       get("tv-restoring").style.display = "none"; login.style.display = "none"; board.style.display = "block";
       message("tv-login-message", ""); message("tv-board-message", "Loading damage report...");
       pauseAuto(); refresh(); clock(); get("damage-all").focus(); wakeControls();
+    }
+    function canChangeDisplayMode() {
+      return !!api && active && typeof api.canAppearance === "function" && api.canAppearance("display_mode");
+    }
+    function syncThemeAccess() {
+      var button = get("tv-theme-toggle"), allowed = canChangeDisplayMode();
+      button.disabled = !allowed;
+      button.hidden = !allowed;
+      button.style.display = allowed ? "" : "none";
+      button.setAttribute("aria-disabled", allowed ? "false" : "true");
     }
     function setTheme(value) {
       theme = value === "dark" ? "dark" : "light";
@@ -398,7 +408,12 @@
     }
     try { theme = window.localStorage.getItem("greenloop-tv-theme") || "light"; } catch (ignore) {}
     setTheme(theme);
-    get("tv-theme-toggle").onclick = function () { pauseAuto(); setTheme(theme === "light" ? "dark" : "light"); };
+    if (api) api.onAppearanceChanged = syncThemeAccess;
+    syncThemeAccess();
+    get("tv-theme-toggle").onclick = function () {
+      if (!canChangeDisplayMode()) { syncThemeAccess(); return; }
+      pauseAuto(); setTheme(theme === "light" ? "dark" : "light");
+    };
     if (!api || typeof api.restore !== "function" || typeof api.login !== "function" || typeof api.logout !== "function" || typeof api.loadDamageCards !== "function" || typeof api.loadEmployeeDamageRows !== "function" || typeof api.loadDamageSummary !== "function" || typeof window.GREENLOOP_DAMAGE_SUMMARY !== "function") {
       showLogin("This page did not finish loading. Reload the page and check the TV internet connection."); submit.disabled = true; return;
     }

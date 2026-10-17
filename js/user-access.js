@@ -10,6 +10,7 @@
   const newPassword = document.querySelector("#new-password");
   const newConfirmPassword = document.querySelector("#new-confirm-password");
   const newRoleOptions = document.querySelector("#new-role-options");
+  const newAppearanceOptions = document.querySelector("#new-appearance-options");
   const createUserMessage = document.querySelector("#create-user-message");
   const createUserButton = document.querySelector("#create-user-button");
   const userList = document.querySelector("#user-list");
@@ -19,6 +20,7 @@
   const username = document.querySelector("#access-username");
   const active = document.querySelector("#access-active");
   const roleOptions = document.querySelector("#role-options");
+  const appearanceOptions = document.querySelector("#appearance-options");
   const message = document.querySelector("#access-message");
   const sidebar = document.querySelector("#sidebar");
   const backdrop = document.querySelector("#menu-backdrop");
@@ -68,7 +70,8 @@
   const catalog = window.GREENLOOP_PERMISSION_CATALOG;
   const can = capability => window.GREENLOOP_CAN?.(capability, "user_access") === true;
   const specialPages = ["supplier_returns", "supplier_return_approval", "supplier_return_handover", "damage_report", "tv_manual_entry", "accounts", "stock_exported"];
-  const pageGuideData = catalog?.pages || [];
+  const capabilityGuideData = catalog?.pages || [];
+  const pageGuideData = capabilityGuideData.filter(page => !page.virtual);
 
   function getClient() {
     return (client ||= window.GREENLOOP_GET_CLIENT());
@@ -103,9 +106,9 @@
   function capabilityObject(value) {
     if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Page permissions could not be verified. Refresh and try again.");
     const result = {};
-    for (const page of pageGuideData) {
+    for (const page of capabilityGuideData) {
       const available = new Set(page.capabilities.map(item => item.key));
-      const selected = value[page.key];
+      const selected = page.virtual && value[page.key] === undefined ? [] : value[page.key];
       if (!Array.isArray(selected) || selected.some(key => !available.has(key))) throw new Error("Page permissions could not be verified. Refresh and try again.");
       result[page.key] = [...new Set(selected)];
       if (result[page.key].length && !result[page.key].includes("view")) throw new Error("Page permissions are incomplete. Refresh and try again.");
@@ -143,8 +146,27 @@
     }).join("") + `<article class="role-option${partnerAccess !== "none" ? " is-selected" : ""}" data-partner-name-option><div class="permission-page-heading"><label class="permission-check"><input type="checkbox" data-partner-names${partnerAccess !== "none" ? " checked" : ""}${permitted ? "" : " disabled"}><strong>Supplier &amp; Customer Names</strong></label><small>Show confidential names. Supplier and customer codes remain visible on allowed pages.</small></div></article>`;
   }
 
+  function renderAppearance(container, selected = {}, isNew = false) {
+    const locked = !can(isNew ? "create_users" : "manage_access");
+    const values = Array.isArray(selected.appearance) ? selected.appearance : [];
+    const choices = [
+      {key:"theme", label:"Change Theme", description:"Classic or raised design"},
+      {key:"display_mode", label:"Change Display Mode", description:"Light or Dark"}
+    ];
+    container.innerHTML = `<fieldset class="appearance-permission-settings"><legend>Settings / Appearance</legend>
+      <p class="permission-help">Allow these display choices independently, including for View Only users. Business records stay protected.</p>
+      <div class="appearance-permission-choices">${choices.map(item => `<label class="permission-capability"><input type="checkbox" data-appearance-capability="${item.key}" aria-label="Settings / Appearance: ${item.label}"${values.includes("view") && values.includes(item.key) ? " checked" : ""}${locked ? " disabled" : ""}><span><strong>${item.label}</strong><small>${item.description}</small></span></label>`).join("")}</div>
+    </fieldset>`;
+  }
+
+  function appearanceSelection(container) {
+    const choices = [...container.querySelectorAll("[data-appearance-capability]:checked")].map(field => field.dataset.appearanceCapability);
+    return choices.length ? ["view", ...choices] : [];
+  }
+
   function collectSelection(container) {
-    const capabilities = Object.fromEntries(pageGuideData.map(page => [page.key, []]));
+    const capabilities = Object.fromEntries(capabilityGuideData.map(page => [page.key, []]));
+    capabilities.appearance = appearanceSelection(container === newRoleOptions ? newAppearanceOptions : appearanceOptions);
     const pagePermissions = Object.fromEntries(specialPages.map(key => [key, "none"]));
     container.querySelectorAll("[data-page-permission]").forEach(card => {
       const key = card.dataset.pagePermission;
@@ -177,6 +199,7 @@
 
   function renderNewUserPages() {
     newRoleOptions.innerHTML = pageCheckboxes({}, "none", true);
+    renderAppearance(newAppearanceOptions, {}, true);
     createUserForm.querySelectorAll(".create-user-fields input").forEach(field => { field.disabled = !can("create_users"); });
     createUserButton.disabled = creatingUser || !can("create_users");
   }
@@ -207,6 +230,7 @@
     username.value = user.login_username || "";
     active.checked = Boolean(user.is_active);
     roleOptions.innerHTML = pageCheckboxes(user.capabilities, user.partner_names_access);
+    renderAppearance(appearanceOptions, user.capabilities);
     [fullName, username, active].forEach(field => { field.disabled = !can("manage_access"); });
     document.querySelector("#save-access").disabled = savingAccess || !can("manage_access");
     const settings=user.tv_display;
@@ -285,7 +309,7 @@
     if (!createUserForm.reportValidity()) return;
     if (newPassword.value !== newConfirmPassword.value) { setMessage(createUserMessage, "Passwords do not match."); newConfirmPassword.focus(); return; }
     const selected = collectSelection(newRoleOptions);
-    if (!Object.values(selected.capabilities).some(values => values.includes("view"))) { setMessage(createUserMessage, "Select View for at least one page."); return; }
+    if (!pageGuideData.some(page => selected.capabilities[page.key].includes("view"))) { setMessage(createUserMessage, "Select View for at least one page."); return; }
     creatingUser = true;
     createUserButton.disabled = true;
     createUserButton.textContent = "Creating...";
@@ -320,7 +344,9 @@
     if(tvOnly.checked && !tvParts.checked && !tvOriginal.checked && !tvCopy.checked){setMessage(message,"Choose at least one TV display option.");return;}
     const selected = collectSelection(roleOptions);
     if (tvOnly.checked) {
-      selected.capabilities = Object.fromEntries(pageGuideData.map(page => [page.key, []]));
+      const appearance = selected.capabilities.appearance;
+      selected.capabilities = Object.fromEntries(capabilityGuideData.map(page => [page.key, []]));
+      selected.capabilities.appearance = appearance;
       selected.capabilities.damage_report = ["view", ...(tvParts.checked ? ["parts_details"] : []), ...(tvOriginal.checked ? ["original_prices"] : []), ...(tvCopy.checked ? ["copy_prices"] : []), ...(tvOriginal.checked || tvCopy.checked ? ["payable"] : [])];
       selected.pagePermissions = {...Object.fromEntries(specialPages.map(key => [key, "none"])), damage_report:"view"};
       selected.partnerNamesAccess = "none";
@@ -442,6 +468,12 @@
   roleOptions.addEventListener("change", (event) => {
     const checkbox = event.target.closest('input[type="checkbox"]');
     if (checkbox) { if (!can("manage_access")) { renderEditor(); return; } syncPermissionCard(checkbox); }
+  });
+  newAppearanceOptions.addEventListener("change", () => {
+    if (!can("create_users")) renderAppearance(newAppearanceOptions, {}, true);
+  });
+  appearanceOptions.addEventListener("change", () => {
+    if (!can("manage_access")) renderAppearance(appearanceOptions, users.find(user => String(user.user_id) === String(selectedUserId))?.capabilities);
   });
   createUserForm.addEventListener("submit", (event) => {
     createUser(event).catch((error) => setMessage(createUserMessage, error.message || "The user account could not be created."));

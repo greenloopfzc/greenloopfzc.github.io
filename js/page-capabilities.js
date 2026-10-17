@@ -58,13 +58,16 @@
   function rule(capability,page) {return {capability,page:page || current()};}
   function targetRule(control) {
     if (!control || control.matches('input[type="hidden"]')) return null;
+    if (control.matches('[data-gl-appearance]')) return {any:[rule('theme','appearance'),rule('display_mode','appearance')]};
+    if (control.closest('#gl-appearance-settings')) {
+      if (control.matches('.gl-settings-close,.gl-settings-done')) return null;
+      if (control.matches('input[name="gl-design"]')) return rule('theme','appearance');
+      if (control.matches('input[name="gl-mode"]')) return rule('display_mode','appearance');
+      return rule('__unknown_appearance_control__','appearance');
+    }
     const explicit=control.closest('[data-capability]');
     if (explicit) return rule(explicit.dataset.capability,explicit.dataset.capabilityPage);
     const page=current(),id=control.id || '',label=(control.getAttribute('aria-label') || control.textContent || control.value || '').trim();
-    if (control.matches('[data-gl-appearance]') || control.closest('#gl-appearance-settings')) {
-      if (control.matches('.gl-settings-close,.gl-settings-done')) return null;
-      return {any:Object.values(catalog()).flatMap(page => page.capabilities.filter(cap=>cap.write).map(cap=>rule(cap.key,page.key)))};
-    }
     if (control.matches('.table-sort-controls *,.table-sort-controls,[data-sort-key],.table-sort-button') || control.closest('.table-sort-controls') || /^Sort by /.test(label)) return rule('sort');
     if (control.matches('#damage-pdf-toggle,#damage-pdf-view,#damage-pdf-download,#damage-pdf-file,#damage-pdf-open')) return rule('download','damage_report');
     if (control.closest('#damage-pdf-form') && control.matches(fieldSelector)) return rule('search','damage_report');

@@ -1213,3 +1213,7 @@ html:is([data-design="neumorphism"],[data-mode="dark"]) :is(.correction-grid lab
 html:is([data-design="neumorphism"],[data-mode="dark"]) :is(.report-status.fail,.report-status.low,.report-status.pending,.manual-lab-parts-toggle[data-state="on"],.qc-skip-lab-button[data-state="on"]) {background:var(--nm-red-bg);color:var(--nm-red);border-color:var(--nm-red);}
 html:is([data-design="neumorphism"],[data-mode="dark"]) :is(.device-details dt,.event-history span,.job-meta,.movement-meta,.cost-cards small,.journey-summary small) {color:var(--nm-muted);}
 html:is([data-design="neumorphism"],[data-mode="dark"]) :is(.journey-empty,.final-pending-empty,.qc-pending-empty) {color:var(--nm-muted) !important;}
+/* Account-controlled appearance options keep their selected preview visible. */
+.gl-appearance-dialog label:has(input:disabled) {cursor:default;opacity:.65;}
+.gl-settings-access-note {margin:10px 0 0;font-size:12px;line-height:1.5;color:var(--nm-muted);}
+.gl-appearance-nav:disabled,.gl-appearance-floating:disabled,.gl-appearance-tv:disabled {cursor:default;opacity:.6;}

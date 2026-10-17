@@ -89,3 +89,14 @@
 .user-access-page-lock { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--nm-inset,#e8eef1); color: var(--nm-muted,#526a76); font-size: .75rem; }
 @media(max-width:1100px){.role-option{grid-template-columns:minmax(0,1fr)}.permission-capabilities{gap:8px}.permission-page-heading{gap:5px}}
 @media(max-width:620px){.permission-capability{flex:1 1 calc(50% - 8px)}.role-option{padding:12px}.permission-check{flex-wrap:wrap}}
+
+/* Preferences are independent of the user's access to business records. */
+.appearance-permission-settings { margin: 22px 0; padding: 18px; border: 1px solid var(--nm-line,#b9cec5); border-radius: 16px; background: var(--nm-raised,#f6faf8); color: var(--nm-ink,#24363d); }
+.appearance-permission-settings legend { padding: 0 8px; font-weight: 750; font-size: .9rem; }
+.appearance-permission-settings .permission-help { line-height: 1.6; }
+.appearance-permission-choices { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.appearance-permission-choices .permission-capability { gap: 11px; padding: 14px; align-items: flex-start; }
+.appearance-permission-choices input { width: 19px; height: 19px; min-height: 19px; margin: 0; flex: 0 0 19px; accent-color: #087b5b; }
+.appearance-permission-choices strong { display: block; font-size: .77rem; }
+.appearance-permission-choices small { display: block; margin-top: 6px; color: var(--nm-muted,#526a76); font-size: .69rem; line-height: 1.4; }
+@media(max-width:620px) { .appearance-permission-choices { grid-template-columns: minmax(0,1fr); } }

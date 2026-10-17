@@ -1,5 +1,5 @@
 {
-  "version": "20261016-page-capabilities-1",
+  "version": "20261017-settings-appearance-1",
   "pages": [
     {
       "key": "overview",
@@ -764,6 +764,30 @@
           "key": "manage_access",
           "label": "Edit users & permissions",
           "write": true
+        }
+      ]
+    },
+    {
+      "key": "appearance",
+      "label": "Settings / Appearance",
+      "description": "Allow personal display changes without granting entry or edit access.",
+      "virtual": true,
+      "section": "preferences",
+      "capabilities": [
+        {
+          "key": "view",
+          "label": "Settings access",
+          "write": false
+        },
+        {
+          "key": "theme",
+          "label": "Change Theme",
+          "write": false
+        },
+        {
+          "key": "display_mode",
+          "label": "Change Display Mode (Light/Dark)",
+          "write": false
         }
       ]
     }

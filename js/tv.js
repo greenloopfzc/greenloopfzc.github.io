@@ -16,7 +16,7 @@
       submit.textContent = value ? "Signing in..." : "Sign in to live board";
     }
     function showLogin(value) {
-      active = false; loading = false; generation++;
+      active = false; loading = false; generation++; syncThemeAccess();
       if (renderer) renderer.clear();
       board.style.display = "none"; login.style.display = "block";
       password.value = ""; password.type = "password";
@@ -56,13 +56,23 @@
       });
     }
     function openBoard() {
-      active = true; loading = false;
+      active = true; loading = false; syncThemeAccess();
       login.style.display = "none"; board.style.display = "block";
       message("tv-login-message", ""); message("tv-board-message", "Loading live board...");
       get("tv-refresh").disabled = false;
       renderer.setAuto(false);
       refresh();
       get("tv-full-view").focus();
+    }
+    function canChangeDisplayMode() {
+      return !!api && active && typeof api.canAppearance === "function" && api.canAppearance("display_mode");
+    }
+    function syncThemeAccess() {
+      var button = get("tv-theme-toggle"), allowed = canChangeDisplayMode();
+      button.disabled = !allowed;
+      button.hidden = !allowed;
+      button.style.display = allowed ? "" : "none";
+      button.setAttribute("aria-disabled", allowed ? "false" : "true");
     }
     function setTheme(value) {
       theme = value === "dark" ? "dark" : "light";
@@ -71,6 +81,7 @@
       try { window.localStorage.setItem("greenloop-tv-theme", theme); } catch (ignore) {}
     }
     if (!api || !renderer) {
+      syncThemeAccess();
       message("tv-login-message", "This page did not finish loading. Reload the page and check the TV internet connection.");
       submit.disabled = true;
       return;
@@ -81,7 +92,12 @@
     };
     try { theme = window.localStorage.getItem("greenloop-tv-theme") || "light"; } catch (ignore) {}
     setTheme(theme);
-    get("tv-theme-toggle").onclick = function () { setTheme(theme === "light" ? "dark" : "light"); };
+    if (api) api.onAppearanceChanged = syncThemeAccess;
+    syncThemeAccess();
+    get("tv-theme-toggle").onclick = function () {
+      if (!canChangeDisplayMode()) { syncThemeAccess(); return; }
+      setTheme(theme === "light" ? "dark" : "light");
+    };
     get("tv-show-password").onclick = function () {
       var show = password.type === "password";
       password.type = show ? "text" : "password";
