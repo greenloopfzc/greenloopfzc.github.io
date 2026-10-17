@@ -35,7 +35,15 @@
     const bar = node('div', 'table-filters'); bar.id = id;
     bar.setAttribute('role', 'search'); bar.setAttribute('aria-label', options.label || 'Filter records');
     const controls = new Map(), fields = options.fields || [];
-    let applied = {}, source = [], sourceRows = [], latestOptions = options, busy = false, pendingChange = null, live;
+    let applied = {}, source = [], sourceRows = [], latestOptions = options, busy = false, pendingChange = null, live, external = [];
+    const toolbar = node('div', 'table-filter-toolbar');
+    const panel = node('div', 'table-filter-panel'); panel.id = id + '-panel'; panel.hidden = true;
+    const chips = node('div', 'table-filter-chips'); chips.hidden = true;
+    const actions = node('div', 'table-filter-actions');
+    const toggle = node('button', 'secondary-button table-filter-toggle', 'Filters');
+    toggle.type = 'button'; toggle.setAttribute('aria-controls', panel.id); toggle.setAttribute('aria-expanded', 'false');
+    const close = node('button', 'secondary-button table-filter-close', 'Done'); close.type = 'button';
+    bar.append(toolbar, chips, panel);
     function control(key, label, type) {
       const wrap = node('label', 'table-filter-field');
       wrap.append(node('span', '', label));
@@ -43,17 +51,54 @@
       input.id = id + '-' + key; input.dataset.searchReadOnly = '';
       input.setAttribute('aria-label', label); if (type !== 'select') input.type = type;
       if (type === 'search') { input.placeholder = options.placeholder || 'Type to search…'; input.maxLength = 160; }
-      wrap.append(input); bar.append(wrap); controls.set(key, input);
+      wrap.append(input); (type === 'search' ? toolbar : panel).append(wrap); controls.set(key, input);
+      if (type === 'search') wrap.classList.add('table-filter-search');
     }
     if (options.searchInput) controls.set('_search', options.searchInput);
     else if (options.search !== false) control('_search', 'Search', 'search');
     if (options.dateKey) { control('_from', 'From date', 'date'); control('_to', 'To date', 'date'); for (const key of ['_from', '_to']) controls.get(key).title = (options.dateLabel || 'Record') + ' date range'; }
     fields.forEach(([key, label]) => control(key, label, 'select'));
-    const actions = node('div', 'table-filter-actions');
-    const apply = node('button', 'primary-button', 'Search'); apply.type = 'button'; apply.dataset.searchReadOnly = '';
+    const panelActions = node('div', 'table-filter-panel-actions');
+    const apply = node('button', 'primary-button table-filter-apply', 'Apply filters'); apply.type = 'button'; apply.dataset.searchReadOnly = '';
     const clear = node('button', 'secondary-button', 'Clear filters'); clear.type = 'button'; clear.dataset.searchReadOnly = '';
-    actions.append(apply, clear); bar.append(actions);
-    const status = node('p', 'table-filter-status'); status.setAttribute('role', 'status'); bar.append(status);
+    panelActions.append(apply, clear, close); panel.append(panelActions);
+    actions.append(toggle); toolbar.append(actions);
+    const status = node('p', 'table-filter-status'); status.setAttribute('role', 'status'); toolbar.append(status);
+    function setOpen(open) { panel.hidden = !open; toggle.setAttribute('aria-expanded', String(open)); }
+    toggle.addEventListener('click', () => setOpen(panel.hidden));
+    close.addEventListener('click', () => { setOpen(false); toggle.focus(); });
+    bar.addEventListener('keydown', e => { if (e.key === 'Escape' && !panel.hidden) { e.stopPropagation(); setOpen(false); toggle.focus(); } });
+    function externalFilters() { return latestOptions.externalFilters ? latestOptions.externalFilters() || [] : external; }
+    function refreshLayout() {
+      const extra = externalFilters().filter(item => item && item.value);
+      const active = [...controls].filter(([key]) => key !== '_search' && applied[key]);
+      const count = active.length + extra.length;
+      toggle.textContent = count ? `Filters (${count})` : 'Filters';
+      toggle.hidden = ![...controls].some(([key, input]) => key !== '_search' && !input.closest('label')?.hidden) && !panel.querySelector('.table-filter-native');
+      apply.hidden = ![...controls].some(([key, input]) => key !== '_search' && !input.closest('label')?.hidden);
+      clear.disabled = busy || (!Object.keys(applied).length && !extra.length);
+      chips.replaceChildren();
+      function chip(label, value, remove) {
+        if (typeof remove !== 'function') { chips.append(node('span', 'table-filter-chip', `${label}: ${value}`)); return; }
+        const button = node('button', 'table-filter-chip', `${label}: ${value} ×`); button.type = 'button'; button.dataset.searchReadOnly = '';
+        button.setAttribute('aria-label', `Remove ${label} filter`); button.disabled = busy;
+        button.addEventListener('click', async () => { if (busy) return; try { await remove(); refreshLayout(); } catch (e) { status.textContent = e.message || 'Could not clear this filter.'; } });
+        chips.append(button);
+      }
+      for (const [key, input] of active) {
+        const label = key === '_from' ? 'From' : key === '_to' ? 'To' : fields.find(([name]) => name === key)?.[1] || key;
+        const value = input.tagName === 'SELECT' ? [...input.options].find(option => option.value === applied[key])?.textContent || applied[key] : applied[key];
+        chip(label, value, async () => { input.value = ''; delete applied[key]; await latestOptions.onChange?.(); });
+      }
+      for (const item of extra) chip(item.label, item.value, item.clear);
+      chips.hidden = chips.children.length === 0;
+      window.GREENLOOP_LOCK_VIEW_ONLY_CONTROLS?.(bar);
+    }
+    function adopt(target) {
+      const elements = typeof target === 'string' ? document.querySelectorAll(target) : target instanceof Element ? [target] : target || [];
+      for (const el of elements) { if (el === panel || el.contains(panel)) continue; el.classList.add('table-filter-native'); el.hidden = false; panel.insertBefore(el, panelActions); }
+      refreshLayout();
+    }
     const sorting = window.GREENLOOP_SORTING.create(id, bar, options, async () => {
       try { await latestOptions.onChange?.(); }
       catch (e) { status.textContent = e.message || 'Could not sort records. Try again.'; }
@@ -102,16 +147,22 @@
         if (value) next._search = value;
       } else for (const [key, input] of controls) if (!reset && input.value.trim()) next[key] = input.value.trim();
       if (next._from && next._to && next._from > next._to) { status.textContent = 'From date must be on or before To date.'; return; }
-      if (reset) { for (const input of controls.values()) input.value = ''; sorting.clear(); }
+      if (reset) for (const input of controls.values()) input.value = '';
       applied = next;
-      try { await latestOptions.onChange?.(); }
+      refreshLayout();
+      try {
+        if (reset) for (const item of externalFilters().filter(item => item?.value)) await item.clear?.();
+        await latestOptions.onChange?.();
+        refreshLayout();
+      }
       catch (e) { status.textContent = e.message || 'Could not load filtered records. Try again.'; }
     }
     if (controls.has('_search')) live = liveSearch(controls.get('_search'), () => change(false, true));
     apply.addEventListener('click',()=>change(false)); clear.addEventListener('click',()=>change(true));
-    bar.addEventListener('keydown',e=>{if(e.key === 'Enter' && !e.isComposing && e.target.tagName !== 'BUTTON'){e.preventDefault();e.stopPropagation();change(false);}});
+    bar.addEventListener('keydown',e=>{if(e.key === 'Enter' && !e.isComposing && e.target.tagName !== 'BUTTON' && !e.target.closest('.table-filter-native')){e.preventDefault();e.stopPropagation();change(false);}});
     const api = {
-      bar, controls,
+      bar, controls, panel, toolbar, actions, refreshLayout, adopt,
+      externalFilters(items) { external = items || []; refreshLayout(); },
       query: () => ({...applied}),
       sortArgs: () => sorting.args(),
       sortRows: rows => sorting.sort(rows),
@@ -124,10 +175,13 @@
         const target = typeof opts.before === 'string' ? document.querySelector(opts.before) : opts.before;
         if (target && !bar.isConnected) target.before(bar);
         bar.hidden = false;
+        if (opts.nativeControls) adopt(opts.nativeControls);
+        refreshLayout();
       },
       apply(rows, opts = latestOptions) {
         api.mount(opts); sourceRows = rows; source = rows.map(get);
         updateFacets(Object.fromEntries(fields.map(([key])=>[key,source.map(r=>fieldValue(r,key))])));
+        refreshLayout();
         const result = rows.filter(matches);
         status.textContent = `${result.length} of ${rows.length} records`;
         highlight();
@@ -150,6 +204,7 @@
       },
       result(data) {
         updateFacets(data.facets || {});
+        refreshLayout();
         status.textContent = pendingChange ? 'Searching…' : `${data.total} matching records`;
         highlight();
         queueMicrotask(sorting.decorate);
@@ -159,6 +214,7 @@
         busy = value; bar.setAttribute('aria-busy', String(value));
         for (const el of [apply,clear,...controls.values()]) el.disabled = value && el !== controls.get('_search');
         sorting.setBusy(value);
+        refreshLayout();
         if (!value && pendingChange) queueMicrotask(() => {
           if (!busy && pendingChange) { const next = pendingChange; change(next.reset, next.searchOnly); }
         });
@@ -182,8 +238,15 @@
     filter.offset = 0;
     let total = 0, version = 0;
     const previous = node('button','secondary-button','Previous'), next = node('button','secondary-button','Next');
-    [previous,next].forEach(b=>{b.type='button';b.dataset.searchReadOnly='';filter.bar.append(b);});
-    const count = node('span','table-filter-status');filter.bar.append(count);
+    const pagination = node('nav','table-filter-pagination'); pagination.setAttribute('aria-label', 'Record pages');
+    [previous,next].forEach(b=>{b.type='button';b.dataset.searchReadOnly='';pagination.append(b);});
+    const count = node('span','table-filter-page-count');pagination.append(count);
+    function mountPager() {
+      const ref = options.sortTarget || options.before;
+      const target = typeof ref === 'string' ? document.querySelector(ref) : ref;
+      if (target && pagination.previousElementSibling !== target) target.after(pagination);
+    }
+    mountPager();
     const size = options.pageSize || 50;
     function pager(busy) { previous.disabled=busy||filter.offset===0;next.disabled=busy||filter.offset+size>=total; }
     previous.onclick=()=>{filter.offset=Math.max(0,filter.offset-size);filter.load().catch(()=>{});};
@@ -198,7 +261,7 @@
         total=Number(data.total);
         if(filter.offset && filter.offset>=total){filter.offset=Math.max(0,Math.floor(Math.max(0,total-1)/size)*size);return filter.load();}
         filter.result(data);count.textContent=total?`${filter.offset+1}–${Math.min(filter.offset+size,total)} of ${total}`:'0 records';
-        options.onResult(data);return data;
+        options.onResult(data);mountPager();return data;
       } catch(e) {
         if(token===version){total=0;count.textContent='Unavailable';filter.fail(e.message||'Could not load records.');options.onError?.(e);}
         throw e;
@@ -206,5 +269,5 @@
     };
     return filter;
   }
-  window.GREENLOOP_FILTERS = {get,use,day,all,remote,liveSearch};
+  window.GREENLOOP_FILTERS = {get,use,day,all,remote,liveSearch,find:id=>instances.get(id)};
 })();

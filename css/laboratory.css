@@ -126,6 +126,27 @@ body:not(.frame-mode) .technician-lines-table > tbody > tr > td { border-right: 
 .frame-result { display: inline-flex; border-radius: 999px; padding: 3px 7px; font-size: .58rem; font-weight: 850; }
 .frame-result.pass { color: #087451; background: #e4f6eb; }
 .frame-result.fail { color: #b13026; background: #fff0ee; }
+
+/* Frame queue and history share one work area, preserving each table's state. */
+.frame-view-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.frame-view-tabs[hidden] { display: none; }
+.frame-view-tab { display: inline-flex; align-items: center; gap: 9px; min-height: 44px; padding: 9px 16px; border: 1px solid var(--nm-line, #d8e6dd); border-radius: 12px; color: var(--nm-ink, #173426); background: var(--nm-card, #fff); box-shadow: var(--nm-shadow-sm, 0 3px 8px #17342612); font: 700 .88rem 'DM Sans', sans-serif; cursor: pointer; }
+.frame-view-tab[aria-selected="true"] { border-color: var(--nm-accent, #087451); color: var(--nm-accent, #087451); background: var(--nm-green-bg, #e9f5ed); }
+.frame-view-tab span { display: inline-flex; min-width: 1.7em; justify-content: center; padding: 2px 6px; border-radius: 7px; color: var(--nm-ink, #173426); background: var(--nm-well, #e3eee8); font-size: .78rem; }
+.frame-mode .technician-lines-heading { padding: 13px 16px; }
+.frame-mode .frame-report-heading { padding: 13px 16px; }
+.frame-mode .frame-report-heading .panel-kicker { display: none; }
+.frame-mode .technician-lines-table { min-width: 1120px; table-layout: auto; font-size: .78rem; }
+.frame-mode .technician-lines-table th, .frame-mode .technician-lines-table td { padding: 9px 8px; white-space: nowrap; overflow-wrap: normal; }
+.frame-mode .frame-final-grade { min-width: 112px; font-size: .76rem; }
+.frame-mode .line-imei { white-space: nowrap; }
+.frame-mode .frame-report-scroll table { min-width: 760px; font-size: .78rem; }
+.frame-mode .frame-report-scroll th { font-size: .65rem; }
+.frame-mode .frame-report-scroll td { white-space: nowrap; }
+.lab-workflow-help { padding: 4px 2px; color: var(--nm-muted, #61766a); font-size: .78rem; }
+.lab-workflow-help summary { width: fit-content; cursor: pointer; font-weight: 700; }
+.lab-workflow-help p { max-width: 1000px; margin: 10px 0 0; line-height: 1.6; }
+@media (max-width: 650px) { .frame-view-tab { flex: 1; justify-content: center; padding-inline: 10px; } }
 @media(max-width:1200px){.lab-static-grid{grid-template-columns:repeat(4,1fr)}.lab-static-field{border-bottom:1px solid #dce7df}.lab-edit-grid{grid-template-columns:repeat(2,1fr)}.lab-line-actions{grid-column:1/-1;grid-template-columns:repeat(2,minmax(120px,220px))}.lab-line-actions .line-status{grid-column:1/-1;text-align:left}}
 @media(max-width:800px){.technician-board-heading,.technician-lines-heading{align-items:flex-start;flex-direction:column}.technician-line-tools{width:100%;align-items:stretch;flex-direction:column}.technician-imei-scan{width:100%;min-width:0}.technician-board-actions{width:100%}.technician-board-actions button{flex:1}.lab-rule-card{flex-direction:column}.lab-static-grid,.lab-edit-grid{grid-template-columns:1fr 1fr}.frame-mode .technician-lines-table{min-width:960px}}
 @media(max-width:560px){.lab-static-grid,.lab-edit-grid{grid-template-columns:1fr}.lab-line-actions{grid-template-columns:1fr}.lab-static-field,.lab-edit-field{border-right:0}}

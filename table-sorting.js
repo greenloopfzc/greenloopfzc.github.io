@@ -43,15 +43,18 @@
   function create(id, bar, initialOptions, changed) {
     let options=initialOptions, columns=[], by='', direction='asc', busy=false;
     const group=document.createElement('div'); group.className='table-sort-controls';
+    const menu=document.createElement('details');menu.className='table-sort-menu';
+    const summary=document.createElement('summary');summary.textContent='Sort';menu.append(summary);
+    const menuBody=document.createElement('div');menuBody.className='table-sort-menu-body';menu.append(menuBody);group.append(menu);
     const make=(name,label) => {
       const wrap=document.createElement('label');wrap.className='table-filter-field';
       const caption=document.createElement('span');caption.textContent=label;
       const select=document.createElement('select');select.id=id+'-sort-'+name;select.dataset.searchReadOnly='';select.setAttribute('aria-label',label);
-      wrap.append(caption,select);group.append(wrap);return select;
+      wrap.append(caption,select);menuBody.append(wrap);return select;
     };
     const field=make('by','Sort by'), order=make('order','Order');
-    const reset=document.createElement('button');reset.className='secondary-button';reset.type='button';reset.textContent='Clear sorting';reset.dataset.searchReadOnly='';group.append(reset);
-    bar.append(group);
+    const reset=document.createElement('button');reset.className='table-sort-reset';reset.type='button';reset.textContent='Clear sorting';reset.dataset.searchReadOnly='';reset.title='Restore default order';group.append(reset);
+    (bar.querySelector('.table-filter-toolbar') || bar).append(group);
     function current(){return columns.find(c=>c.key===by);}
     function sync(){
       field.value=by;
@@ -59,6 +62,8 @@
       const names=!by?['Default order']:type==='date'?['Oldest first','Newest first']:type==='number'?['Smallest first','Largest first']:['A–Z','Z–A'];
       order.replaceChildren(...names.map((label,i)=>new Option(label,i?'desc':'asc')));order.value=direction;
       field.disabled=busy;order.disabled=busy||!by;reset.disabled=busy||!by;
+      reset.hidden=!by;reset.textContent=by?`${current()?.label || by} ${direction==='asc'?'↑':'↓'} ×`:'Clear sorting';
+      reset.setAttribute('aria-label','Clear sorting');
     }
     async function choose(key,dir){
       if(busy || (key && !columns.some(c=>c.key===key)))return;
@@ -75,7 +80,7 @@
       columns=[...new Map(definitions.map(([key,label,type])=>[key,{key,label,type:type || typeOf(key)}])).values()];
       if(by && !columns.some(c=>c.key===by)){by='';direction='asc';}
       field.replaceChildren(new Option('Default order',''),...columns.map(c=>new Option(c.label,c.key)));
-      group.hidden=columns.length===0 || options.sorting===false;sync();
+      sync();
       queueMicrotask(decorate);
     }
     function sort(rows,project=options.project){
@@ -95,9 +100,13 @@
     }
     function target(){const t=options.sortTarget || options.before;return typeof t==='string'?document.querySelector(t):t;}
     function decorate(){
-      if(group.hidden)return;
-      const root=target();if(!root)return;
-      root.querySelectorAll('thead th').forEach(th=>{
+      const root=target();
+      const headings=root ? [...root.querySelectorAll('thead th')] : [];
+      const hasTable=Boolean(root && (root.matches('table') || root.querySelector('table')));
+      menu.hidden=hasTable;
+      group.hidden=columns.length===0 || options.sorting===false || (hasTable&&!by);
+      if(!root || columns.length===0 || options.sorting===false)return;
+      headings.forEach(th=>{
         const label=th.dataset.sortLabel || th.textContent.trim();
         const column=columns.find(c=>clean(c.label)===clean(label)||clean(c.key)===clean(label)||(aliases[c.key]||[]).includes(clean(label)));
         if(!column)return;
@@ -108,12 +117,14 @@
         }
         th.setAttribute('aria-sort',by===column.key?(direction==='asc'?'ascending':'descending'):'none');
         button.textContent=label+' '+(by===column.key?(direction==='asc'?'↑':'↓'):'↕');button.disabled=busy;
-        button.setAttribute('aria-label','Sort by '+label);
-        button.onclick=()=>choose(column.key,by===column.key&&direction==='asc'?'desc':'asc');
+        const next=by!==column.key?'ascending':direction==='asc'?'descending':'default';
+        button.setAttribute('aria-label',`Sort by ${label}: ${next} order`);
+        button.title=next==='default'?'Restore default order':`Sort ${next}`;
+        button.onclick=()=>choose(by===column.key&&direction==='desc'?'':column.key,by===column.key&&direction==='asc'?'desc':'asc');
       });
     }
     refresh();
-    return {sort,refresh,decorate,clear(){by='';direction='asc';sync();},args:()=>({p_sort_by:by||null,p_sort_direction:direction}),setBusy(value){busy=value;sync();decorate();}};
+    return {sort,refresh,decorate,clear(){by='';direction='asc';sync();decorate();},args:()=>({p_sort_by:by||null,p_sort_direction:direction}),setBusy(value){busy=value;sync();decorate();}};
   }
   function table(id, table, rows, fields) {
     if(!table || !rows.length)return;

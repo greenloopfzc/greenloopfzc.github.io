@@ -253,43 +253,76 @@ document.addEventListener("click", (event) => {
   });
 })();
 
-// Pages can opt out of the shared top-centre IMEI search.
+// Cross-page lookup opens on demand; table search stays beside its table.
 (() => {
   const topbar = document.querySelector(".topbar");
   if (!topbar) return;
-
-  if (document.documentElement.dataset.globalImeiSearch === "off") {
-    topbar.querySelectorAll(".search-box").forEach((search) => search.remove());
-    return;
-  }
-
-  let search = topbar.querySelector(".search-box");
-  if (!search) {
-    search = document.createElement("form");
-    search.className = "search-box global-imei-search";
-    search.innerHTML = '<label class="sr-only" for="global-imei-search">Search by IMEI or device number</label><span aria-hidden="true">⌕</span><input id="global-imei-search" type="search" autocomplete="off" placeholder="Search IMEI or device number"><kbd>Enter</kbd>';
-    const actions = topbar.querySelector(".topbar-actions");
-    topbar.insertBefore(search, actions || null);
-  } else {
-    search.classList.add("global-imei-search");
-    const input = search.querySelector("input");
-    if (input) input.placeholder = "Search IMEI or device number";
-  }
-
-  const input = search.querySelector("input");
-  if (!input) return;
-  input.placeholder = "Search IMEI, invoice, device, model…";
-  input.maxLength = 120;
-  input.setAttribute("aria-label", "Search devices and stock receipts");
-  const connect = async () => {
-    await window.GREENLOOP_ACCESS_READY;
-    if (!window.GREENLOOP_CAN_SEARCH) { search.hidden = true; return; }
-    const widget = window.GREENLOOP_RECORD_SEARCH.attach(input);
-    if (search.tagName === "FORM") search.addEventListener("submit", event => { event.preventDefault(); widget.search({selectExact:true}); });
+  const operationalPages = new Set(["stock-entry.html", "imei-entry.html", "initial-qc.html", "parts.html", "inventory.html", "laboratory.html", "final-qc.html", "ready-stock.html", "export-box.html", "stock-out.html"]);
+  const file = (location.pathname.split("/").pop() || "").toLowerCase();
+  topbar.querySelectorAll(".search-box").forEach(search => {
+    const dashboardInput = search.querySelector("#dashboard-search");
+    if (dashboardInput) {
+      const field = document.createElement("label"); field.className = "table-filter-field table-filter-search dashboard-local-search";
+      const caption = document.createElement("span"); caption.textContent = "Search queue";
+      dashboardInput.placeholder = "Search IMEI, job or model…"; field.append(caption, dashboardInput);
+      document.querySelector(".priority-table-wrap")?.prepend(field);
+    }
+    search.remove();
+  });
+  window.GREENLOOP_MOUNT_HEADER_LOOKUP = (form, permissionPage) => {
+    const host = document.createElement("div"); host.className = "gl-header-lookup"; host.hidden = true;
+    const trigger = document.createElement("button"); trigger.type = "button"; trigger.className = "secondary-button gl-header-search-trigger";
+    trigger.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="m15 15 6 6"/></svg><span>Find record</span>';
+    trigger.setAttribute("aria-haspopup", "dialog"); trigger.setAttribute("aria-expanded", "false");
+    const panel = document.createElement("div"); panel.className = "gl-header-search-panel"; panel.id = form.id + "-panel"; panel.hidden = true;
+    panel.setAttribute("role", "dialog"); panel.setAttribute("aria-label", "Find a record"); trigger.setAttribute("aria-controls", panel.id);
+    const close = document.createElement("button"); close.className = "gl-header-search-close"; close.type = "button"; close.textContent = "Close";
+    panel.append(form, close); host.append(trigger, panel);
+    topbar.insertBefore(host, topbar.querySelector(".topbar-actions"));
+    function dismiss(restoreFocus = false) {
+      if (panel.hidden) return;
+      panel.hidden = true; trigger.setAttribute("aria-expanded", "false");
+      form.dispatchEvent(new Event("greenloop:close-lookup"));
+      if (restoreFocus) trigger.focus();
+    }
+    function allowedPage() { return window.GREENLOOP_PAGE_ACCESS ? permissionPage() : null; }
+    function sync() {
+      const page = allowedPage(); host.hidden = !page;
+      for (const control of [form, trigger]) { control.dataset.capability = "search"; control.dataset.capabilityPage = page || window.GREENLOOP_PAGE_ACCESS?.pageKey || "imei_search"; }
+      // The access resolver can switch from the cross-page finder to local
+      // records. Reconcile only this finder's controls after that decision.
+      if (page) for (const control of [trigger, ...form.querySelectorAll('input,button')]) {
+        const required = window.GREENLOOP_CONTROL_CAPABILITY?.(control);
+        if (control.dataset.viewOnlyLocked === 'true' && required && window.GREENLOOP_CAPABILITY_ALLOWED?.(required)) {
+          control.disabled = false; control.removeAttribute('aria-disabled'); delete control.dataset.viewOnlyLocked;
+          if (control.title === 'Access not granted') control.removeAttribute('title');
+        }
+      }
+      if (!page) dismiss();
+    }
+    trigger.addEventListener("click", () => {
+      if (!allowedPage()) return;
+      if (!panel.hidden) { dismiss(); return; }
+      panel.hidden = false; trigger.setAttribute("aria-expanded", "true"); form.querySelector("input")?.focus();
+    });
+    close.addEventListener("click", () => dismiss(true));
+    window.addEventListener("keydown", event => { if (event.key === "Escape" && !panel.hidden && host.contains(event.target)) { event.preventDefault(); event.stopImmediatePropagation(); dismiss(true); } }, true);
+    document.addEventListener("pointerdown", event => { if (!host.contains(event.target) && !event.target.closest?.(".gl-record-search-list")) dismiss(); });
+    window.addEventListener("greenloop:access-ready", sync); queueMicrotask(sync);
+    return host;
+  };
+  // Operational pages retain their in-page IMEI selection handler below.
+  if (operationalPages.has(file) || file === "imei-search.html") return;
+  const search = document.createElement("form"); search.id = "global-record-lookup"; search.className = "global-imei-search";
+  search.innerHTML = '<label for="global-imei-search">Find a device or receipt</label><input id="global-imei-search" type="search" autocomplete="off" maxlength="120" placeholder="IMEI, invoice, device or model">';
+  const host = window.GREENLOOP_MOUNT_HEADER_LOOKUP(search, () => window.GREENLOOP_CAN?.("search", "imei_search") ? "imei_search" : null);
+  const connect = () => {
+    const widget = window.GREENLOOP_RECORD_SEARCH.attach(search.querySelector("input"));
+    search.addEventListener("greenloop:close-lookup", () => widget.close());
+    search.addEventListener("submit", event => { event.preventDefault(); if (!host.hidden) widget.search({selectExact:true}); });
   };
   if (window.GREENLOOP_RECORD_SEARCH) connect();
   else window.addEventListener("greenloop:record-search-ready", connect, {once:true});
-
 })();
 
 document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
@@ -555,7 +588,7 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     scanner.id = "greenloop-quick-imei-scanner";
     scanner.className = "greenloop-quick-scan";
     scanner.innerHTML = '<strong>⌕ Find record</strong><input type="search" autocomplete="off" maxlength="120" aria-label="Search IMEI, invoice, device number or phone details" placeholder="IMEI, invoice, device number or details"><button type="button" data-search-read-only hidden>Show all lines</button><small>Type any part of a number or name, then choose a matching record.</small>';
-    anchor.prepend(scanner);
+    window.GREENLOOP_MOUNT_HEADER_LOOKUP?.(scanner, () => window.GREENLOOP_CAN?.("search", "imei_search") ? "imei_search" : window.GREENLOOP_CAN?.("search") ? window.GREENLOOP_PAGE_ACCESS.pageKey : null);
     const input = scanner.querySelector("input");
     const clearFilter = scanner.querySelector("button");
     const scannerStatus = scanner.querySelector("small");
@@ -594,13 +627,14 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
       scannerStatus.textContent = "All current page lines are shown.";
     });
     let searchWidget;
+    scanner.addEventListener("greenloop:close-lookup", () => searchWidget?.close());
     const connectSearch = () => {
       const search = window.GREENLOOP_RECORD_SEARCH;
       if (!search || searchWidget) return;
       searchWidget = search.attach(input, {
         lookup: async (term, offset = 0) => {
           await window.GREENLOOP_ACCESS_READY;
-          if (window.GREENLOOP_CAN_SEARCH) return search.lookup(term, offset);
+          if (window.GREENLOOP_CAN?.("search", "imei_search")) return search.lookup(term, offset);
           // A page-only user can search only records already visible to that
           // page. Never call the cross-page lookup without its permission.
           const records = [...anchor.querySelectorAll("tbody tr")].map((row, index) => {

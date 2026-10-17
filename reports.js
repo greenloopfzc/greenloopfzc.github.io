@@ -1142,7 +1142,8 @@
       filter.setSelectionRange(filter.value.length, filter.value.length);
     }
   });
-  reportContent.addEventListener("change", (event) => {
+  // Supplier selection may live in the shared Filters panel outside reportContent.
+  app.addEventListener("change", (event) => {
     if (event.target.id !== "supplier-progress-filter") return;
     selectedSupplier = event.target.value || "all";
     renderSupplierProgress();

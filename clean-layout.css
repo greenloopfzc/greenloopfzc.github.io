@@ -1,0 +1,99 @@
+/* Screen-only spacing. Existing raised surfaces, entry controls and print layouts stay native. */
+@media screen {
+  body.app-page.gl-clean-layout .page-content { padding-top:20px; padding-bottom:28px; }
+  body.app-page.gl-clean-layout .page-heading { align-items:center; gap:14px; margin-bottom:16px; }
+  body.app-page.gl-clean-layout .page-heading h1 { font-size:clamp(1.5rem,2.1vw,1.9rem); line-height:1.2; letter-spacing:-.035em; }
+  body.app-page.gl-clean-layout .page-heading .eyebrow { margin:0 0 4px; font-size:.65rem; }
+  body.app-page.gl-clean-layout .page-heading .heading-subtitle { margin:6px 0 0; }
+  body.app-page.gl-clean-layout :is(.form-panel-heading,.access-panel-heading,.report-panel-heading,.lab-live-panel-heading) { gap:12px; padding:13px 16px; }
+  body.app-page.gl-clean-layout :is(.form-panel-heading,.access-panel-heading,.report-panel-heading) h2 { font-size:1.02rem; }
+  body.app-page.gl-clean-layout :is(.qc-bulk-toolbar,.final-bulk-toolbar,.parts-summary) { gap:14px; padding:14px 16px; margin-bottom:14px; }
+  body.app-page.gl-clean-layout :is(.qc-bulk-toolbar,.final-bulk-toolbar) h2 { margin:2px 0; font-size:1rem; }
+  body.app-page.gl-clean-layout :is(.qc-bulk-toolbar-actions,.final-bulk-toolbar-actions) { gap:8px; }
+  body.app-page.gl-clean-layout .gl-clean-help { margin:4px 0; color:var(--nm-muted,var(--muted)); font-size:.76rem; }
+  body.app-page.gl-clean-layout .gl-clean-help > summary { width:fit-content; padding:4px 0; color:var(--nm-accent,var(--green-700)); cursor:pointer; font-size:.72rem; font-weight:700; }
+  body.app-page.gl-clean-layout .gl-clean-help > :not(summary) { max-width:100%; margin:5px 0 8px; font-size:.76rem; line-height:1.5; }
+  body.app-page.gl-clean-layout .gl-clean-help > summary:focus-visible,
+  body.app-page.gl-clean-layout .gl-secondary-tool > summary:focus-visible { outline:3px solid var(--nm-accent,var(--green-700)); outline-offset:3px; }
+  body.app-page.gl-clean-layout .gl-secondary-tool { margin:14px 0; border:1px solid var(--nm-line,var(--line)); border-radius:16px; background:var(--nm-raised,var(--surface)); box-shadow:var(--nm-shadow-sm,0 3px 9px #18372a0d); }
+  body.app-page.gl-clean-layout .gl-secondary-tool > summary { padding:13px 16px; color:var(--nm-ink,var(--ink)); cursor:pointer; font-size:.83rem; font-weight:700; }
+  body.app-page.gl-clean-layout .gl-secondary-tool > :not(summary) { margin:0; border:0; box-shadow:none; }
+  body.app-page.gl-clean-layout .receiving-layout.gl-work-first { grid-template-columns:minmax(0,1fr); }
+  body.app-page.gl-clean-layout .gl-workflow-help .receiving-side { padding:0 14px 14px; grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr)); }
+  body.app-page.gl-clean-layout .gl-workflow-help .side-card { padding:16px; }
+
+  /* Keep navigation distinct while reducing the large card rows above data. */
+  body.app-page.gl-clean-layout .report-tabs { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+  body.app-page.gl-clean-layout .report-tab { display:flex; align-items:center; gap:8px; min-height:42px; padding:8px 11px; border-radius:12px; font-size:.74rem; }
+  body.app-page.gl-clean-layout .report-tab-icon { width:23px; height:23px; flex:0 0 23px; font-size:.85rem; }
+  body.app-page.gl-clean-layout .report-tab-label { overflow-wrap:normal; }
+  body.app-page.gl-clean-layout .accounts-sections { gap:12px; margin-bottom:16px; }
+  body.app-page.gl-clean-layout .accounts-section-card { grid-template-columns:32px 1fr; gap:4px 10px; align-items:center; padding:12px 16px; border-radius:16px; }
+  body.app-page.gl-clean-layout .accounts-section-card strong { font-size:.98rem; }
+  body.app-page.gl-clean-layout .accounts-section-card small { grid-column:2; font-size:.72rem; line-height:1.3; }
+  body.app-page.gl-clean-layout .accounts-card-icon { grid-row:1 / 3; width:32px; height:32px; border-radius:10px; font-size:1.15rem; }
+  body.app-page.gl-clean-layout .accounts-stock-heading { margin:14px 0 10px; }
+  body.app-page.gl-clean-layout .accounts-stock-heading h2 { font-size:1.15rem; }
+  body.app-page.gl-clean-layout .box-queue-card { padding:14px; margin-bottom:16px; }
+  body.app-page.gl-clean-layout .user-access-sections { gap:14px; margin:8px 0 18px; }
+  body.app-page.gl-clean-layout .user-access-section { gap:9px; padding:18px; }
+  body.app-page.gl-clean-layout .user-access-section-icon { width:38px; height:38px; border-radius:12px; }
+  body.app-page.gl-clean-layout .user-access-section-icon svg { width:23px; height:23px; }
+  body.app-page.gl-clean-layout .user-access-section small { font-size:.77rem; line-height:1.4; }
+  body.app-page.gl-clean-layout .manual-damage-module-card { min-height:180px; padding:20px; }
+  body.app-page.gl-clean-layout .manual-damage-module-icon { width:40px; height:40px; border-radius:12px; font-size:1.3rem; }
+  body.app-page.gl-clean-layout .manual-damage-module-card h2 { margin:14px 0 8px; font-size:1.08rem; }
+  body.app-page.gl-clean-layout .manual-damage-module-card p { margin-bottom:18px; font-size:.8rem; line-height:1.5; }
+  body.app-page.gl-clean-layout .manual-damage-panel { padding:18px; margin-bottom:16px; }
+  body.app-page.gl-clean-layout .manual-damage-panel-heading { gap:12px; margin-bottom:14px; }
+
+  /* Summaries stay readable in a short strip above their table. */
+  body.app-page.gl-clean-layout :is(.inventory-stats,.accounts-stock-totals) { gap:10px; margin:0 0 14px; }
+  body.app-page.gl-clean-layout :is(.inventory-stats > article,.accounts-stock-totals > div) { min-height:0; padding:11px 14px; gap:4px; border-radius:14px; }
+  body.app-page.gl-clean-layout :is(.inventory-stats,.accounts-stock-totals) strong { font-size:1.2rem; }
+  body.app-page.gl-clean-layout .report-metric { min-height:90px; padding:13px; }
+  body.app-page.gl-clean-layout .report-metric strong { font-size:1.4rem; margin:6px 0; }
+  body.app-page.gl-clean-layout .journey-summary { display:flex; flex-wrap:wrap; align-items:center; gap:7px 12px; width:auto; padding:10px 14px; margin:0 0 12px; border-radius:14px; }
+  body.app-page.gl-clean-layout .journey-summary strong { font-size:1.25rem; }
+  body.app-page.gl-clean-layout .journey-summary small { margin-left:auto; }
+  body.app-page.gl-clean-layout .journey-live-status { margin:0 0 9px; font-size:.73rem; }
+  body.app-page.gl-clean-layout .gl-work-tabs { display:flex; flex-wrap:wrap; gap:10px; margin:0 0 16px; }
+  body.app-page.gl-clean-layout .inventory-app { gap:14px; }
+  body.app-page.gl-clean-layout .inventory-app :is(.inventory-stats,.gl-work-tabs) { margin-bottom:0; }
+  body.app-page.gl-clean-layout :is(.inventory-stock-panel,.inventory-history-panel) { padding:0; }
+  body.app-page.gl-clean-layout :is(.inventory-stock-panel,.inventory-history-panel) .form-panel-heading { margin:0; }
+  body.app-page.gl-clean-layout .inventory-stats article:last-child strong { font-size:.9rem; letter-spacing:0; }
+  body.app-page.gl-clean-layout .gl-work-tab { min-height:40px; }
+  body.app-page.gl-clean-layout .gl-work-tab[aria-selected="true"] { background:var(--nm-accent-soft,var(--green-100)); color:var(--nm-accent,var(--green-800)); border-color:var(--nm-accent,var(--green-700)); box-shadow:var(--nm-inset,inset 0 0 0 1px var(--green-700)); }
+
+  /* Existing native date forms sit inside the shared Filters expansion. */
+  body.app-page.gl-clean-layout .table-filter-panel .gl-native-filter-content { display:flex; flex-wrap:wrap; align-items:end; gap:12px; width:100%; margin:0; padding:0; border:0; border-radius:0; background:none; box-shadow:none; }
+  body.app-page.gl-clean-layout .table-filter-panel .gl-native-filter-content .form-field { width:auto; min-width:160px; margin:0; }
+  body.app-page.gl-clean-layout .table-filter-panel .gl-native-filter-content > label { display:grid; gap:5px; min-width:150px; font-size:.75rem; font-weight:700; }
+  body.app-page.gl-clean-layout .table-filter-panel .ready-stock-filter-heading { flex-basis:100%; }
+  body.app-page.gl-clean-layout .table-filter-panel .ready-stock-filter-heading span { font-size:.74rem; }
+  body.app-page.gl-clean-layout .gl-native-search { flex:1 1 280px; min-width:0; margin:0; padding:0; border:0; background:none; box-shadow:none; }
+  body.app-page.gl-clean-layout .gl-native-search > label { display:block; margin-bottom:5px; font-size:.75rem; font-weight:700; }
+  body.app-page.gl-clean-layout .gl-native-search > div { display:block; }
+  body.app-page.gl-clean-layout .gl-native-search input { width:100%; max-width:none; min-height:40px; }
+  body.app-page.gl-clean-layout .gl-native-filters { display:block; padding:12px 14px; }
+  body.app-page.gl-clean-layout .gl-native-filters .table-filter-toolbar { display:flex; gap:12px; align-items:end; }
+  body.app-page.gl-clean-layout .gl-native-filters .table-filter-field { flex:1; }
+  body.app-page.gl-clean-layout .gl-native-filters .table-filter-panel { display:flex; flex-wrap:wrap; gap:12px; align-items:end; margin-top:12px; padding-top:12px; border-top:1px solid var(--nm-line,var(--line)); }
+  body.app-page.gl-clean-layout .gl-native-filters .table-filter-chips { font-size:.74rem; margin-top:8px; color:var(--nm-muted,var(--muted)); }
+  body.app-page.gl-clean-layout .supplier-report-tools { gap:10px; padding:10px 16px; }
+  body.app-page.gl-clean-layout .supplier-report-tools:empty { display:none; }
+  @media (max-width:700px) {
+    body.app-page.gl-clean-layout .report-tabs { flex-wrap:nowrap; overflow-x:auto; padding:6px 4px 10px; margin:-6px -4px 10px; }
+    body.app-page.gl-clean-layout .report-tab { flex:0 0 auto; white-space:nowrap; }
+    body.app-page.gl-clean-layout .inventory-stats { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    body.app-page.gl-clean-layout .page-content { padding:16px 14px 24px; }
+    body.app-page.gl-clean-layout .page-heading { flex-wrap:wrap; }
+    body.app-page.gl-clean-layout .accounts-sections { grid-template-columns:1fr; gap:8px; }
+    body.app-page.gl-clean-layout .accounts-section-card { padding:10px 14px; }
+    body.app-page.gl-clean-layout .accounts-section-card small { font-size:.7rem; }
+    body.app-page.gl-clean-layout .gl-native-filters .table-filter-toolbar { align-items:end; }
+    body.app-page.gl-clean-layout .table-filter-panel .gl-native-filter-content .form-field { flex:1 1 140px; min-width:0; }
+    body.app-page.gl-clean-layout .journey-summary small { width:100%; margin:0; }
+  }
+}

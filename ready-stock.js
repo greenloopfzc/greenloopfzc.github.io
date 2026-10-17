@@ -25,7 +25,7 @@
   const reworkView = document.querySelector("#ready-stock-rework-view");
   const pageTitle = document.querySelector("#ready-stock-title");
   const pageSubtitle = document.querySelector("#ready-stock-subtitle");
-  const stockSubtitle = pageSubtitle.textContent;
+  let appliedReadyRange = {from: null, to: null};
   const singleModeButton = document.querySelector("#ready-rework-single-mode");
   const bulkModeButton = document.querySelector("#ready-rework-bulk-mode");
   const bulkInput = document.querySelector("#ready-rework-imeis");
@@ -61,10 +61,14 @@
     document.querySelector("#open-ready-stock-rework").hidden = isRework;
     document.querySelector("#back-to-ready-stock").hidden = !isRework;
     document.querySelector("#ready-stock-table-actions").hidden = isRework;
-    const stockScanner = document.querySelector("#greenloop-quick-imei-scanner");
-    if (stockScanner) stockScanner.hidden = isRework;
-    pageTitle.textContent = isRework ? "Send for rework" : "Final QC passed stock";
-    pageSubtitle.textContent = isRework ? "Send one or more Ready Stock phones to Laboratory or Frame Department for further work." : stockSubtitle;
+    document.querySelector("#ready-stock-summary").hidden = isRework;
+    document.querySelector(".ready-stock-actions-menu").open = false;
+    pageTitle.textContent = isRework ? "Send for rework" : "Ready Stock";
+    // Keep the range status node in place while navigating to the rework form.
+    rangeLabel.hidden = isRework;
+    let reworkHelp = pageSubtitle.querySelector('.ready-stock-rework-help');
+    if (!reworkHelp) { reworkHelp = document.createElement('span'); reworkHelp.className = 'ready-stock-rework-help'; reworkHelp.textContent = 'Send one or more phones to Laboratory or Frame Department.'; pageSubtitle.append(reworkHelp); }
+    reworkHelp.hidden = !isRework;
     document.querySelector("#ready-stock-breadcrumb").textContent = isRework ? "Send for rework" : "Ready Stock";
     document.title = isRework ? "Send for rework | Greenloop" : "Ready Stock | Greenloop";
     if (moveFocus) {
@@ -83,12 +87,21 @@
     return String(value || "").trim().replace(/\s+/g, " ").toLocaleLowerCase("en");
   }
 
-  function dubaiDate() {
-    const parts = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Asia/Dubai", year: "numeric", month: "2-digit", day: "2-digit"
-    }).formatToParts(new Date());
-    const value = Object.fromEntries(parts.map(({ type, value: partValue }) => [type, partValue]));
-    return `${value.year}-${value.month}-${value.day}`;
+  function shortDate(value) {
+    if (!value) return "";
+    return new Date(value + "T00:00:00Z").toLocaleDateString("en-GB", {timeZone:"UTC",day:"2-digit",month:"short",year:"numeric"});
+  }
+
+  function readyRangeFilters() {
+    return appliedReadyRange.from && appliedReadyRange.to
+      ? [{label:"Final QC pass", value:`${shortDate(appliedReadyRange.from)} – ${shortDate(appliedReadyRange.to)}`, clear:clearReadyRange}]
+      : [];
+  }
+
+  async function clearReadyRange() {
+    rangeFrom.value = "";
+    rangeTo.value = "";
+    return loadReadyStock();
   }
 
   function formatDateTime(value) {
@@ -148,7 +161,7 @@
   }
 
   function render(data) {
-    const flatRows = window.GREENLOOP_FILTERS.use('ready-stock-filters', Array.isArray(data?.rows) ? data.rows : [], {before:tableBody.closest('.ready-stock-table-wrap'),sortAfterGroup:true,sortFields:[['model','Model'],['latest','Latest Final QC pass','date'],['total','Total Qty','number']],fields:[['model','Model'],['final_grade','Grade']],onChange:()=>render(data),searchFields:['model','final_grade']});
+    const flatRows = window.GREENLOOP_FILTERS.use('ready-stock-filters', Array.isArray(data?.rows) ? data.rows : [], {before:tableBody.closest('.ready-stock-table-wrap'),nativeControls:'#ready-stock-date-controls',externalFilters:readyRangeFilters,sortAfterGroup:true,sortFields:[['model','Model'],['latest','Latest Final QC pass','date'],['total','Total Qty','number']],fields:[['model','Model'],['final_grade','Grade']],onChange:()=>render(data),searchFields:['model','final_grade']});
     const filteredTotal = flatRows.reduce((sum,row)=>sum+Number(row.quantity||0),0);
     const grades = buildGradeList(data, flatRows);
     const rows = window.GREENLOOP_FILTERS.get('ready-stock-filters').sortRows(pivotRows(flatRows, grades));
@@ -157,10 +170,14 @@
       grades.forEach((grade) => gradeTotals.set(grade.key, Number(gradeTotals.get(grade.key) || 0) + Number(row.grades.get(grade.key) || 0)));
     });
 
-    total.textContent = `${filteredTotal} pcs`;
-    rangeLabel.textContent = data?.date_from && data?.date_to
-      ? `Current Ready Stock passed Final QC from ${data.date_from} to ${data.date_to}`
-      : "Final-QC-passed devices still held by Greenloop";
+    const filters = window.GREENLOOP_FILTERS.get('ready-stock-filters');
+    const refresh = document.querySelector('#refresh-ready-stock');
+    if (filters.toolbar && refresh.parentElement !== filters.toolbar) filters.toolbar.append(refresh);
+    filters.refreshLayout?.();
+    total.textContent = `${filteredTotal} phone${filteredTotal === 1 ? "" : "s"}`;
+    rangeLabel.textContent = appliedReadyRange.from && appliedReadyRange.to
+      ? `Final QC pass: ${shortDate(appliedReadyRange.from)} – ${shortDate(appliedReadyRange.to)}`
+      : "All current Ready Stock";
     tableHead.innerHTML = `<tr><th>Model</th>${grades.map((grade) => `<th>${escapeHtml(grade.label)}</th>`).join("")}<th>Latest Final QC pass</th><th>Total Qty</th></tr>`;
     tableBody.innerHTML = rows.length
       ? rows.map((row) => `<tr><td>${escapeHtml(row.model)}</td>${grades.map((grade) => `<td>${escapeHtml(row.grades.get(grade.key) || 0)}</td>`).join("")}<td>${escapeHtml(formatDateTime(row.latest))}</td><td>${escapeHtml(row.total || 0)}</td></tr>`).join("")
@@ -176,7 +193,7 @@
     const to = rangeTo.value || null;
     if ((from && !to) || (!from && to) || (from && to && from > to)) {
       refresh.disabled = false;
-      refresh.textContent = "Refresh table";
+      refresh.textContent = "Refresh";
       throw new Error("Select a valid From date and To date, or clear both dates.");
     }
     const generation = ++readyGeneration;
@@ -187,8 +204,9 @@
     });
     if (generation !== readyGeneration) return;
     if (error) throw error;
+    appliedReadyRange = {from, to};
     render(Array.isArray(data) ? data[0] : data);
-    } finally { if (generation === readyGeneration) { refresh.disabled = false; refresh.textContent = "Refresh table"; } }
+    } finally { if (generation === readyGeneration) { refresh.disabled = false; refresh.textContent = "Refresh"; } }
   }
 
   function renderUnconfirmedPhones() {
@@ -421,9 +439,8 @@
     }
     app.hidden = false;
     showReadyStockView();
-    const today = dubaiDate();
-    rangeFrom.value = today;
-    rangeTo.value = today;
+    rangeFrom.value = "";
+    rangeTo.value = "";
     await Promise.all([loadReadyStock(), loadReworkTechnicians()]);
     syncReworkTechnician();
   }
@@ -433,11 +450,7 @@
   backdrop.addEventListener("click", () => setMenu(false));
   document.querySelector("#refresh-ready-stock").addEventListener("click", () => loadReadyStock().catch((error) => showToast(error.message || "Ready Stock could not be loaded.")));
   document.querySelector("#apply-ready-stock-range").addEventListener("click", () => loadReadyStock().catch((error) => showToast(error.message || "Ready Stock could not be loaded.")));
-  document.querySelector("#clear-ready-stock-range").addEventListener("click", () => {
-    rangeFrom.value = "";
-    rangeTo.value = "";
-    loadReadyStock().catch((error) => showToast(error.message || "Ready Stock could not be loaded."));
-  });
+  document.querySelector("#clear-ready-stock-range").addEventListener("click", () => clearReadyRange().catch((error) => showToast(error.message || "Ready Stock could not be loaded.")));
   reworkImei.addEventListener("input", () => { reworkImei.value = reworkImei.value.replace(/\D/g, "").slice(0, 15); });
   reworkDepartment.addEventListener("change", syncReworkTechnician);
   singleModeButton.addEventListener("click", () => setReworkMode("single"));

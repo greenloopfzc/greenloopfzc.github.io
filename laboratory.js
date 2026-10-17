@@ -22,6 +22,8 @@
   const technicianImeiScanWrap = document.querySelector("#technician-imei-scan-wrap");
   const technicianImeiScan = document.querySelector("#technician-imei-scan");
   const checkTechnicianImei = document.querySelector("#check-technician-imei");
+  const framePendingPanel = document.querySelector("#frame-pending-panel");
+  const frameViewTabs = document.querySelector("#frame-view-tabs");
   const frameReportPanel = document.querySelector("#frame-report-panel");
   const frameReportRows = document.querySelector("#frame-report-rows");
   const framePassCount = document.querySelector("#frame-pass-count");
@@ -59,7 +61,7 @@
 
   const workFilters=window.GREENLOOP_FILTERS.get('lab-work-filters',{
     before:technicianWorkRows.closest('.technician-lines-scroll'),
-    fields:[['model','Model'],['storage_gb','GB'],['color','Color'],['supplier_code','Supplier code'],['department','Department']],
+    fields:[['model','Model'],['storage_gb','GB'],['color','Color'],['supplier_code','Supplier code'],...(!isFrameMode ? [['department','Department']] : [])],
     searchFields:['imei','device_number','serial_number','model','supplier_code','invoice_number'],
     onChange:applyWorkFilters
   });
@@ -76,18 +78,36 @@
     document.title = "Frame Department | Greenloop";
     document.querySelector("#breadcrumb-stage").textContent = "Frame Department";
     document.querySelector("#page-title").textContent = "Frame Department";
-    document.querySelector("#page-subtitle").textContent = "Phones selected as Frame in Final QC appear here. Frame Department decides Final Grade before sending a Pass to Ready Stock.";
+    document.querySelector("#page-subtitle").textContent = "Complete pending phones or review previous results.";
     document.querySelector(".lab-heading .quiet-link").href = "final-qc.html";
     document.querySelector(".lab-heading .quiet-link").textContent = "← Back to Final QC";
     technicianBoard.hidden = true;
     technicianImeiScanWrap.hidden = true;
-    frameReportPanel.hidden = false;
-    linesKicker.textContent = "Frame queue";
-    technicianLinesTitle.textContent = "Phones waiting for Frame completion";
-    technicianLinesHelp.textContent = "Select Pass or Fail. A Frame Pass requires Final Grade and sends the phone directly to Ready Stock.";
+    frameViewTabs.hidden = false;
+    framePendingPanel.setAttribute('role', 'tabpanel');
+    framePendingPanel.setAttribute('aria-labelledby', 'frame-pending-tab');
+    frameReportPanel.setAttribute('role', 'tabpanel');
+    frameReportPanel.setAttribute('aria-labelledby', 'frame-history-tab');
+    showFrameView('pending');
+    linesKicker.hidden = true;
+    technicianLinesTitle.textContent = "Pending work";
+    technicianLinesHelp.textContent = "Select Final Grade and Pass, or choose Fail.";
     refreshFrameButton.hidden = false;
     linesHead.innerHTML = "<th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>BH</th><th>Supplier code</th><th>Supplier grade</th><th>Initial grade</th><th>Final grade</th><th>Pass</th><th>Fail</th><th>Save</th>";
     document.querySelector("#workflow-rule-text").textContent = "Frame Department decides the Final Grade. Frame Pass sends the phone directly to Ready Stock. Frame Fail keeps it pending in Frame and adds to the permanent failure report.";
+  }
+
+  function showFrameView(view, moveFocus = false) {
+    if (!isFrameMode) return;
+    const history = view === 'history';
+    framePendingPanel.hidden = history;
+    frameReportPanel.hidden = !history;
+    frameViewTabs.querySelectorAll('[data-frame-view]').forEach(button => {
+      const active = button.dataset.frameView === (history ? 'history' : 'pending');
+      button.setAttribute('aria-selected', String(active));
+      button.tabIndex = active ? 0 : -1;
+      if (active && moveFocus) button.focus();
+    });
   }
 
   function renderTechnicianCards() {
@@ -272,6 +292,7 @@
 
   function renderFrameLines() {
     technicianLinesCount.textContent = `${technicianRows.length} waiting`;
+    document.querySelector("#frame-pending-tab-count").textContent = technicianRows.length;
     if (!technicianRows.length) {
       technicianWorkRows.innerHTML = '<tr><td colspan="12" class="technician-lines-empty">No phones are waiting in Frame.</td></tr>';
       return;
@@ -305,6 +326,7 @@
     before:frameReportRows.closest('.frame-report-scroll'),source:'frame_results',dateKey:'reviewed_at',dateLabel:'Checked',
     fields:[['supplier_code','Supplier code'],['model','Model'],['result','Result'],['reviewed_by_name','Checked by']],
     onResult:data=>{const rows=data.rows;
+    document.querySelector("#frame-history-tab-count").textContent = data.total ?? rows.length;
     framePassCount.textContent = `${data.totals.pass} Pass`;
     frameFailCount.textContent = `${data.totals.fail} Fail`;
     frameReportRows.innerHTML = rows.length ? rows.map((row) => `<tr><td>${escapeHtml(formatDateTime(row.reviewed_at))}</td><td><strong>${escapeHtml(row.imei || "—")}</strong></td><td>${escapeHtml(row.supplier_code || "—")}</td><td>${escapeHtml(row.model || "—")}</td><td><span class="frame-result ${escapeHtml(row.result)}">${escapeHtml(String(row.result || "").toUpperCase())}</span></td><td>${escapeHtml(row.reviewed_by_name || "System")}</td></tr>`).join("") : '<tr><td colspan="6" class="technician-lines-empty">No Frame results recorded yet.</td></tr>';
@@ -634,6 +656,18 @@
       }, 12000);
     }
   }
+
+  frameViewTabs.addEventListener('click', event => {
+    const button = event.target.closest('[data-frame-view]');
+    if (button) showFrameView(button.dataset.frameView);
+  });
+  frameViewTabs.addEventListener('keydown', event => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const current = frameViewTabs.querySelector('[aria-selected="true"]')?.dataset.frameView;
+    const next = event.key === 'Home' ? 'pending' : event.key === 'End' ? 'history' : current === 'pending' ? 'history' : 'pending';
+    showFrameView(next, true);
+  });
 
   document.querySelector("#open-menu").addEventListener("click", () => setMenu(true));
   document.querySelector("#close-menu").addEventListener("click", () => setMenu(false));
