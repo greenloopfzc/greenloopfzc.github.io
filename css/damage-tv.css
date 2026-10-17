@@ -197,7 +197,7 @@
 }
 .tv-dark .damage-compact-card.damage-has-damage, .tv-dark .damage-employee.damage-has-damage {
   border-color: #886267;
-  background: #f0d3cf;
+  background: #412c34;
   background-image: none;
   -webkit-animation-name: damage-card-dark-pulse;
   animation-name: damage-card-dark-pulse;
@@ -217,12 +217,12 @@
   50% { background-color: #df8580; }
 }
 @-webkit-keyframes damage-card-dark-pulse {
-  0%, 100% { background-color: #f0d3cf; }
-  50% { background-color: #df8580; }
+  0%, 100% { background-color: #412c34; }
+  50% { background-color: #743c46; }
 }
 @keyframes damage-card-dark-pulse {
-  0%, 100% { background-color: #f0d3cf; }
-  50% { background-color: #df8580; }
+  0%, 100% { background-color: #412c34; }
+  50% { background-color: #743c46; }
 }
 @media (prefers-reduced-motion: reduce) {
   .damage-compact-card.damage-has-damage, .damage-employee.damage-has-damage,

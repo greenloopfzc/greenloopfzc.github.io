@@ -65,11 +65,52 @@
 .tv-dark .damage-tv-page .damage-stat { background: #2c434e; background: linear-gradient(140deg,#354d58,#243843); box-shadow: 5px 6px 12px #14232c,-3px -3px 8px #3d525d; }
 .tv-dark .damage-tv-page .damage-summary .damage-stat strong { color: #d9f2e6; }
 .tv-dark .damage-tv-page .damage-compact-card:not(.damage-has-damage) { background: #2b424b; background: linear-gradient(140deg,#354e56,#263b46); border-color: #4a6468; box-shadow: 5px 6px 10px #14242e,-3px -3px 8px #3c535e; }
+.tv-dark .damage-tv-page .damage-detail .damage-employee { border-color: #4a606a; }
 .tv-dark .damage-card-state { color: #c0dace; }
-.tv-dark .damage-has-damage .damage-card-state { color: #461b1b; }
+.tv-dark .damage-has-damage .damage-card-state { color: #efd6d4; }
+.tv-dark .damage-has-damage .damage-card-avatar { color: #fff1ee; background: #302830; box-shadow: inset 1px 1px 3px #201d24; }
 .tv-dark .damage-tv-page .damage-compact-value { background: rgba(0,0,0,.12); box-shadow: inset 1px 2px 3px rgba(0,0,0,.25); color: #d6eee0; }
-.tv-dark .damage-tv-page .damage-has-damage .damage-compact-value { background: rgba(255,255,255,.4); color: #411616; }
-.tv-dark .damage-tv-page .damage-compact-card.damage-has-damage { background-color: #f0d3cf; }
+.tv-dark .damage-tv-page .damage-has-damage .damage-compact-value { background: #302830; color: #fff1ee; box-shadow: inset 1px 2px 3px #201d24, inset -1px -1px 2px #57404a; }
+/* Dark damage surfaces keep their raised edge without a white halo.
+   The background-only pulse uses a readable maroon range in damage-tv.css. */
+.tv-dark .damage-tv-page .damage-compact-card.damage-has-damage,
+.tv-dark .damage-tv-page .damage-detail .damage-employee.damage-has-damage {
+  background-color: #412c34; border-color: #aa6067;
+  box-shadow: 4px 5px 10px #14242e, -2px -2px 6px #3c454f, inset 0 1px 0 #90555e;
+}
+.tv-dark .damage-tv-page .damage-has-damage .damage-compact-name,
+.tv-dark .damage-tv-page .damage-has-damage .damage-compact-total,
+.tv-dark .damage-tv-page .damage-has-damage .damage-compact-total strong,
+.tv-dark .damage-tv-page .damage-detail .damage-has-damage .damage-employee-header h2,
+.tv-dark .damage-tv-page .damage-detail .damage-has-damage .damage-employee-total span,
+.tv-dark .damage-tv-page .damage-detail .damage-has-damage .damage-employee-total strong { color: #fff1ee; }
+.tv-dark .damage-tv-page .damage-has-damage .damage-compact-unpriced,
+.tv-dark .damage-tv-page .damage-has-damage .damage-identity-label,
+.tv-dark .damage-tv-page .damage-has-damage .damage-history-range,
+.tv-dark .damage-tv-page .damage-has-damage .damage-history-range small,
+.tv-dark .damage-tv-page .damage-has-damage .damage-history-message { color: #efd6d4; }
+/* The single-employee view and Auto View use the same dark inset surfaces. */
+.tv-dark .damage-tv-page .damage-detail .damage-employee-total,
+.tv-dark .damage-tv-page .damage-detail .damage-value-summary,
+.tv-dark .damage-tv-page .damage-avatar {
+  background: #263943; border-color: #4a606a; color: #e1eee7;
+  box-shadow: inset 2px 2px 5px #192a33, inset -1px -1px 3px #40545e;
+}
+.tv-dark .damage-tv-page .damage-detail .damage-has-damage .damage-employee-total,
+.tv-dark .damage-tv-page .damage-detail .damage-has-damage .damage-value-summary,
+.tv-dark .damage-tv-page .damage-has-damage .damage-avatar {
+  background: #302830; border-color: #80505c; color: #fff1ee;
+  box-shadow: inset 2px 2px 5px #201d24, inset -1px -1px 3px #57404a;
+}
+.tv-dark .damage-tv-page .damage-detail .damage-employee-total strong { color: #e1eee7; }
+.tv-dark .damage-tv-page .damage-employee-total small,
+.tv-dark .damage-tv-page .damage-record-count { color: #c0d3ca; }
+.tv-dark .damage-tv-page .damage-has-damage .damage-employee-total small,
+.tv-dark .damage-tv-page .damage-has-damage .damage-record-count { color: #efd6d4; }
+.tv-dark .damage-tv-page .damage-auto-caption { background: #263943; border-color: #4a606a; color: #e1eee7; }
+.tv-dark .damage-tv-page .damage-auto-progress { background: #20313b; box-shadow: inset 1px 1px 3px #14242e; }
+.tv-dark .damage-tv-page .damage-table-shell { border-color: #4a606a; box-shadow: 3px 4px 9px #192a33, -2px -2px 5px #40545e; }
+.tv-dark .damage-tv-page .damage-zero-symbol { background: #2d4b43; border-color: #51766a; color: #c6e4d3; box-shadow: 3px 4px 8px #192a33, -2px -2px 5px #40545e; }
 .tv-dark .damage-tv-page .damage-detail .damage-employee:not(.damage-has-damage) .damage-employee-header h2,.tv-dark .damage-tv-page .damage-detail .damage-employee:not(.damage-has-damage) .damage-identity-label { color: #d4eee0; }
 .tv-dark .damage-tv-page .damage-table thead { background: #233a43; }
 .tv-dark .damage-tv-page .damage-table th { color: #c2ddcf; }

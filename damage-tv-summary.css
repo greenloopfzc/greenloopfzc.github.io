@@ -1,9 +1,12 @@
+/* Stretch each row to its tallest summary, including two price valuations.
+   Inline-block widths remain the fallback on older TV browsers. */
+.damage-tv-page .damage-summary { display: -webkit-flex; display: flex; -webkit-flex-wrap: wrap; flex-wrap: wrap; align-items: stretch; }
 /* Larger readable ticker and raised, remote-accessible summary buttons. */
 .damage-tv-page .damage-live-updates {padding-top:11px;padding-bottom:11px;}
 .damage-tv-page .damage-live-viewport {min-height:38px;line-height:38px;}
 .damage-tv-page .damage-live-group {font-size:23px;font-weight:500;}
 .damage-tv-page .damage-live-title {padding-top:9px;}
-.damage-tv-page .damage-summary .damage-stat {width:20%;font-family:inherit;cursor:pointer;min-height:96px;}
+.damage-tv-page .damage-summary .damage-stat {width:20%;font-family:inherit;cursor:pointer;min-height:96px;display:-webkit-flex;display:flex;-webkit-flex-direction:column;flex-direction:column;align-items:center;justify-content:space-between;}
 .damage-tv-page .damage-summary .damage-stat:hover,.damage-tv-page .damage-summary .damage-stat[aria-expanded="true"] {border-top-color:#09684f;background:#deeee6;}
 .damage-tv-page .damage-summary .damage-stat:focus {outline:3px solid #b87a13;outline-offset:1px;}
 .damage-tv-page .damage-stat-payable {border-top-color:#426eb4;}
@@ -108,3 +111,14 @@
 /* Available summary cards share the width when the administrator hides fields. */
 body[data-tv-parts="false"] .damage-table col,body[data-tv-prices="false"] .damage-table col{width:auto}
 body[data-tv-parts="false"] .damage-compact-name{margin-top:12px}
+
+/* Slightly larger prices on dark screens, without increasing the TV card rows. */
+@media (min-width:651px) and (max-width:1599px) {
+ .tv-dark .damage-tv-page .damage-compact-value { font-size:12px; }
+ .tv-dark .damage-tv-page .damage-compact-card { display:-webkit-flex; display:flex; -webkit-flex-direction:column; flex-direction:column; justify-content:center; padding-top:1px; padding-bottom:1px; }
+ .tv-dark .damage-tv-page .damage-compact-name { line-height:1.1; }
+ .tv-dark .damage-tv-page .damage-compact-total { line-height:1; }
+}
+@media (min-width:1600px) {
+ .tv-dark .damage-tv-page .damage-compact-value { font-size:16px; }
+}
