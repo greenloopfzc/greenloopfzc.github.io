@@ -1,5 +1,5 @@
 /* Shared topbar search only; the dedicated IMEI Search page opts out. */
-html:not([data-global-imei-search="off"]) .topbar .global-imei-search {
+html:not([data-global-imei-search="off"]) .topbar > .global-imei-search {
   position: static;
   transform: none;
   width: 520px;
@@ -13,7 +13,7 @@ html:not([data-global-imei-search="off"]) .topbar .global-imei-search {
   border-radius: 12px;
   box-sizing: border-box;
 }
-html:not([data-global-imei-search="off"]) .topbar .global-imei-search input {
+html:not([data-global-imei-search="off"]) .topbar > .global-imei-search input {
   height: 36px;
   min-height: 36px;
   padding: 0 10px;
@@ -21,11 +21,11 @@ html:not([data-global-imei-search="off"]) .topbar .global-imei-search input {
   font-size: 14px;
   line-height: normal;
 }
-html:not([data-global-imei-search="off"]) .topbar .global-imei-search > span {
+html:not([data-global-imei-search="off"]) .topbar > .global-imei-search > span {
   flex: 0 0 auto;
   font-size: 22px;
 }
-html:not([data-global-imei-search="off"]) .topbar .global-imei-search kbd {
+html:not([data-global-imei-search="off"]) .topbar > .global-imei-search kbd {
   flex: 0 0 auto;
   font-size: 11px;
 }
@@ -44,7 +44,7 @@ html:not([data-global-imei-search="off"]) .topbar > .topbar-actions {
     padding-top: 10px;
     padding-bottom: 10px;
   }
-  html:not([data-global-imei-search="off"]) .topbar .global-imei-search {
+  html:not([data-global-imei-search="off"]) .topbar > .global-imei-search {
     position: static;
     order: 3;
     width: 100%;
@@ -55,7 +55,7 @@ html:not([data-global-imei-search="off"]) .topbar > .topbar-actions {
   }
 }
 @media (max-width: 590px) {
-  html:not([data-global-imei-search="off"]) .topbar .global-imei-search input::placeholder {
+  html:not([data-global-imei-search="off"]) .topbar > .global-imei-search input::placeholder {
     color: var(--nm-muted, #7d8a82);
     opacity: 1;
   }
