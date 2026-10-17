@@ -184,7 +184,8 @@ document.addEventListener("click", (event) => {
     "Ready Stock Journey": "ready-stock-journey.html",
     "Stock Journey": "ready-stock-journey.html",
     "Reports": "reports.html",
-    "User Access": "user-access.html"
+    "User Access": "user-access.html",
+    "Suspicious Activity": "suspicious-activity.html"
   };
 
   const route = routes[button.dataset.module];
@@ -223,6 +224,7 @@ document.addEventListener("click", (event) => {
     item("Stock Journey", "ready-stock-journey.html", "≡", page === "ready-stock-journey.html"),
     '<p class="nav-label">Control</p>',
     item("Reports", "reports.html", "▤", page === "reports.html"),
+    item("Suspicious Activity", "suspicious-activity.html", "◇", page === "suspicious-activity.html"),
     item("User Access", "user-access.html", "☷", page === "user-access.html")
   ].join("");
 
@@ -369,7 +371,8 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     stock_exported: "stock-exported.html",
     ready_stock_journey: "ready-stock-journey.html",
     reports: "reports.html",
-    user_access: "user-access.html"
+    user_access: "user-access.html",
+    suspicious_activity: "suspicious-activity.html"
   });
 
   const filePageKeys = Object.freeze({
@@ -398,7 +401,8 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     "stock-out.html": "export_boxes",
     "ready-stock-journey.html": "ready_stock_journey",
     "reports.html": "reports",
-    "user-access.html": "user_access"
+    "user-access.html": "user_access",
+    "suspicious-activity.html": "suspicious_activity"
   });
 
   function pageKeyForLink(link) {

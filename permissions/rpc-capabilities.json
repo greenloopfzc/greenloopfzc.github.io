@@ -1,5 +1,5 @@
 {
-  "version": "20261016-page-capabilities-1",
+  "version": "20261017-suspicious-activity-1",
   "rpcs": {
     "add_accounts_customer_v1": {
       "page": "accounts",
@@ -545,6 +545,21 @@
       "capability": "login_activity",
       "read": true
     },
+    "get_suspicious_alerts_v1": {
+      "page": "suspicious_activity",
+      "capability": "view",
+      "read": true
+    },
+    "get_suspicious_detail_v1": {
+      "page": "suspicious_activity",
+      "capability": "view",
+      "read": true
+    },
+    "get_suspicious_summary_v1": {
+      "page": "suspicious_activity",
+      "capability": "view",
+      "read": true
+    },
     "get_user_page_capabilities_v1": {
       "page": "user_access",
       "capability": "view",
@@ -719,6 +734,10 @@
       "page": "parts",
       "capability": "return"
     },
+    "review_suspicious_alert_v1": {
+      "page": "suspicious_activity",
+      "capability": "review"
+    },
     "route_final_qc_pass_to_frame": {
       "page": "final_qc",
       "capability": "entry"
@@ -766,6 +785,10 @@
           "capability": "entry"
         }
       ]
+    },
+    "save_suspicious_rule_v1": {
+      "page": "suspicious_activity",
+      "capability": "manage_rules"
     },
     "save_user_access": {
       "page": "user_access",

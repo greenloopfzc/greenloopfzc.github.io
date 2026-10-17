@@ -1,5 +1,5 @@
 {
-  "version": "20261017-settings-appearance-1",
+  "version": "20261017-suspicious-activity-1",
   "pages": [
     {
       "key": "overview",
@@ -726,6 +726,43 @@
         {
           "key": "settle",
           "label": "Record replacement / credit / refund",
+          "write": true
+        }
+      ]
+    },
+    {
+      "key": "suspicious_activity",
+      "label": "Suspicious Activity",
+      "description": "Review sensitive activity with recorded evidence and reasons.",
+      "capabilities": [
+        {
+          "key": "view",
+          "label": "View alerts & evidence",
+          "write": false
+        },
+        {
+          "key": "search",
+          "label": "Search & date filters",
+          "write": false
+        },
+        {
+          "key": "sort",
+          "label": "Sort alerts",
+          "write": false
+        },
+        {
+          "key": "review",
+          "label": "Review / resolve alerts",
+          "write": true
+        },
+        {
+          "key": "download",
+          "label": "Download alert report",
+          "write": false
+        },
+        {
+          "key": "manage_rules",
+          "label": "Manage detection rules",
           "write": true
         }
       ]

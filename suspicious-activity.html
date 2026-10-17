@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en" data-global-imei-search="off">
+  <head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="css/table-filters.css?v=20261017-clean-layout-1">
+  <link rel="stylesheet" href="css/search-highlights.css?v=20261013-search-tv-1">
+  <script defer src="js/search-highlights.js?v=20261013-search-tv-1"></script>
+  <script defer src="js/table-sorting.js?v=20261017-clean-layout-1"></script>
+  <script defer src="js/table-filters.js?v=20261017-clean-layout-1"></script>
+  <script src="js/appearance.js?v=20261017-settings-appearance-1"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0d5c43">
+    <meta name="description" content="Review unusual activity, recorded evidence and investigation outcomes.">
+    <title>Suspicious Activity | Greenloop</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css?v=20261016-strict-view-only-1">
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="js/imei-stage-notice.js?v=20261003-qc-duplicate-stage-1"></script>
+  <script defer src="js/permission-catalog.js?v=20261017-suspicious-activity-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261017-suspicious-activity-1"></script>
+<script defer src="js/page-capabilities.js?v=20261017-clean-layout-1"></script>
+<script defer src="js/config.js?v=20261017-suspicious-activity-1"></script>
+  <script defer src="js/login-activity.js?v=20261013-search-tv-1"></script>
+  <link rel="stylesheet" href="css/record-search.css?v=20261017-find-record-popup-1">
+  <script defer src="js/record-search.js?v=20261013-search-tv-1"></script>
+    <script defer src="js/part-notifications.js?v=20261017-workflow-notifications-1"></script>
+      <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
+    <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261003-qc-duplicate-stage-1">
+  <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
+  <link rel="stylesheet" href="css/sidebar-compact.css?v=20261009-sidebar-pdf-1">
+  <script defer src="js/sidebar-compact.js?v=20261009-sidebar-pdf-1"></script>
+  <link rel="stylesheet" href="css/clean-layout.css?v=20261017-clean-layout-1">
+  <script defer src="js/clean-layout.js?v=20261017-clean-layout-1"></script>
+  <link rel="stylesheet" href="css/suspicious-activity.css?v=20261017-suspicious-activity-1">
+  <script defer src="js/suspicious-activity.js?v=20261017-suspicious-activity-1"></script>
+  <script defer src="js/suspicious-badge.js?v=20261017-suspicious-activity-1"></script>
+</head>
+    <body class="app-page suspicious-page">
+    <div class="app-shell">
+      <aside id="sidebar" class="sidebar" aria-label="Main navigation">
+        <div class="sidebar-top"><a class="app-brand" href="dashboard.html"><span class="gl-wordmark"><img src="assets/greenloop-fzc-logo.jpg" alt="Greenloop FZC" width="1280" height="427"></span></a><button id="close-menu" hidden aria-hidden="true" tabindex="-1" class="icon-button close-menu" type="button" aria-label="Close menu">×</button></div>
+        <nav class="sidebar-nav"></nav>
+        <div class="sidebar-user"><span class="user-avatar">SA</span><span><strong>System Admin</strong><small>Super Admin</small></span></div>
+      </aside>
+      <div id="menu-backdrop" class="menu-backdrop" hidden></div>
+      <main class="app-main">
+        <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Dashboard</a><span aria-hidden="true">/</span><strong>Suspicious Activity</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
+        <div class="page-content sa-content">
+          <header class="sa-hero">
+            <div class="sa-emblem" aria-hidden="true"><svg viewBox="0 0 80 90"><path d="M40 5 70 17v25c0 21-17 34-30 42C27 76 10 63 10 42V17Z"/><path d="M40 27v23m0 10v2"/></svg></div>
+            <div><p class="sa-eyebrow">GREENLOOP · ACTIVITY INTELLIGENCE</p><h1>Suspicious Activity</h1><p>See the signal. Understand the reason. Review the evidence.</p></div>
+            <div class="sa-monitor"><span id="sa-connection">Connecting…</span><small id="sa-updated">Checking monitoring status</small></div>
+          </header>
+          <p id="sa-message" class="sa-message" role="status" hidden></p>
+          <nav class="sa-stats" aria-label="Alert summary">
+            <button data-capability="search" data-sa-preset="new" class="sa-stat"><span>New alerts</span><strong id="sa-new">—</strong><small>Awaiting review</small></button>
+            <button data-capability="search" data-sa-preset="high" class="sa-stat sa-high"><span>High priority</span><strong id="sa-high">—</strong><small>Open alerts</small></button>
+            <button data-capability="search" data-sa-preset="investigating" class="sa-stat"><span>Under review</span><strong id="sa-investigating">—</strong><small>Investigation in progress</small></button>
+            <div class="sa-stat"><span>Reviewed</span><strong id="sa-closed">—</strong><small>Resolved or valid activity</small></div>
+          </nav>
+          <section class="sa-feed" aria-labelledby="sa-feed-title">
+            <div class="sa-toolbar"><div><h2 id="sa-feed-title">Activity watchlist</h2><p id="sa-result">Loading recorded alerts…</p></div><div class="sa-tools">
+              <button id="sa-filters-toggle" class="secondary-button" data-capability="search" aria-expanded="false" aria-controls="sa-filters">Filters <span id="sa-filter-count"></span></button>
+              <button id="sa-refresh" class="secondary-button" data-capability="view">Refresh</button>
+              <button id="sa-download" class="secondary-button" data-capability="download">Download CSV</button>
+              <button id="sa-rules-open" class="secondary-button" data-capability="manage_rules">Detection rules</button>
+            </div></div>
+            <form id="sa-filters" class="sa-filters" data-capability="search" hidden>
+              <label class="sa-query">Search<input name="query" type="search" maxlength="160" placeholder="User, IMEI, box or reason…"></label>
+              <label>From<input name="from" type="date"></label><label>To<input name="to" type="date"></label>
+              <label>Status<select name="status"><option value="">All statuses</option><option value="open">Open alerts</option><option value="new">New</option><option value="investigating">Under review</option><option value="valid">Valid activity</option><option value="resolved">Resolved</option></select></label>
+              <label>Priority<select name="priority"><option value="">All priorities</option><option value="high">High</option><option value="medium">Medium</option></select></label>
+              <label>Activity<select name="rule" id="sa-rule-filter"><option value="">All activities</option></select></label>
+              <label>Department<select name="department"><option value="">All departments</option><option>Login</option><option>Ready Stock</option><option>Accounts</option><option>Damage Report</option><option>IMEI Correction</option></select></label>
+              <button id="sa-clear" type="button" class="secondary-button">Clear filters</button>
+            </form>
+            <div class="sa-table-wrap"><table class="sa-table" aria-label="Suspicious activity alerts"><thead><tr>
+              <th aria-sort="descending"><button data-capability="sort" data-sa-sort="time">Date &amp; time ↓</button></th>
+              <th><button data-capability="sort" data-sa-sort="priority">Priority ↕</button></th>
+              <th>Activity / why flagged</th><th><button data-capability="sort" data-sa-sort="name">User ↕</button></th><th>IMEI / box / employee</th><th>Status</th><th>Evidence</th>
+            </tr></thead><tbody id="sa-rows"><tr><td colspan="7" class="sa-empty">Loading alerts…</td></tr></tbody></table></div>
+            <footer class="sa-pagination"><button id="sa-prev" class="secondary-button" data-capability="view">Previous</button><span id="sa-page">—</span><button id="sa-next" class="secondary-button" data-capability="view">Next</button></footer>
+          </section>
+          <details class="sa-coverage"><summary>Monitoring coverage &amp; context</summary><div><p id="sa-started"></p><p>Alerts highlight records that need a human review. They do not establish misconduct and never deduct pay or block a phone automatically.</p><p>Successful login browser/device type, configured working hours, Ready Stock workflow, IMEI corrections, damage corrections and verified box corrections are monitored. First login establishes a baseline. Failed passwords, exact device identity and location are not monitored by this release.</p><p>Only new activity after installation is monitored. Historical imports need a separately designed import workflow so old transactions are not treated as live operations.</p><div id="sa-coverage-rules"></div><p id="sa-health"></p></div></details>
+        </div>
+      </main>
+    </div>
+    <dialog id="sa-detail" class="sa-dialog" aria-labelledby="sa-detail-title"><header><p class="sa-eyebrow">ACTIVITY EVIDENCE</p><button class="sa-close" data-capability="view" data-sa-close aria-label="Close details">×</button><h2 id="sa-detail-title">Alert details</h2></header><div id="sa-detail-body"></div></dialog>
+    <dialog id="sa-rules" class="sa-dialog" aria-labelledby="sa-rules-title"><header><p class="sa-eyebrow">MONITORING CONTROLS</p><button class="sa-close" data-capability="view" data-sa-close aria-label="Close detection rules">×</button><h2 id="sa-rules-title">Detection rules</h2></header><p>Changes apply to new activity. Existing evidence and review decisions stay recorded.</p><div id="sa-rules-body"></div></dialog>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  </body>
+</html>
