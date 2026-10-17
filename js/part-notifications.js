@@ -1,5 +1,7 @@
 (() => {
   "use strict";
+  if (window.GREENLOOP_NOTIFICATIONS_STARTED) return;
+  window.GREENLOOP_NOTIFICATIONS_STARTED = true;
 
   const config = window.GREENLOOP_CONFIG || {};
   const stages = [
@@ -10,7 +12,10 @@
     { file: "laboratory.html#frame", key: "frame", badgeKey: "frame", label: "Frame Department" }
   ];
   let supabaseClient;
-  let refreshTimer;
+  let refreshTimer, pollTimer, channel, authSubscription;
+  let inFlight = false, dirty = false, connected = false, stopped = false;
+  let lastStarted = -Infinity, failures = 0, epoch = 0, userId = null;
+  const minimumGap = 200; // Leading refresh, with a bounded trailing refresh for bulk writes.
   let autoPickTimer;
   let manualImeiAction = false;
 
@@ -73,13 +78,81 @@
     });
   }
 
-  async function refreshWorkflowNotifications() {
+  function disconnect() {
+    connected = false;
+    const oldChannel = channel;
+    channel = null;
+    if (oldChannel) Promise.resolve(getClient()?.removeChannel(oldChannel)).catch(() => {});
+  }
+
+  function pollLater() {
+    window.clearTimeout(pollTimer);
+    if (stopped || document.hidden) return;
+    const delay = failures ? Math.min(30000, 5000 * 2 ** Math.min(failures - 1, 3)) : connected ? 30000 : 5000;
+    pollTimer = window.setTimeout(refreshWorkflowNotifications, delay);
+  }
+
+  function connect(client) {
+    if (channel || !userId || document.hidden || stopped || typeof client.channel !== 'function') return;
+    try {
+      const next = client.channel('greenloop-workflow-notifications-v1');
+      channel = next;
+      next.on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'workflow_notification_signal' }, () => {
+        if (channel === next) refreshWorkflowNotifications();
+      }).subscribe((status) => {
+        if (channel !== next) return;
+        connected = status === 'SUBSCRIBED';
+        if (connected) refreshWorkflowNotifications(); // Catch changes during connection/reconnection.
+        pollLater();
+      });
+    } catch (_) { disconnect(); }
+  }
+
+  function refreshWorkflowNotifications() {
+    dirty = true;
+    if (stopped || document.hidden || inFlight || refreshTimer) return;
+    refreshTimer = window.setTimeout(runRefresh, Math.max(0, minimumGap - (performance.now() - lastStarted)));
+  }
+
+  async function withDeadline(promise) {
+    let timer;
+    try {
+      return await Promise.race([promise, new Promise((_, reject) => {
+        timer = window.setTimeout(() => reject(new Error('Notification request timed out')), 10000);
+      })]);
+    } finally { window.clearTimeout(timer); }
+  }
+
+  async function runRefresh() {
+    refreshTimer = null;
+    if (stopped || document.hidden || inFlight) return;
     const client = getClient();
-    if (!client) return;
-    const { data: sessionData } = await client.auth.getSession();
-    if (!sessionData?.session) { hideAllBadges(); return; }
-    const { data, error } = await client.rpc("get_workflow_notification_counts");
-    if (error) { hideAllBadges(); return; }
+    if (!client) { pollLater(); return; }
+    inFlight = true; dirty = false; lastStarted = performance.now();
+    const requestEpoch = epoch;
+    try {
+      const { data: sessionData } = await withDeadline(client.auth.getSession());
+      if (requestEpoch !== epoch || stopped || document.hidden) return;
+      const nextUser = sessionData?.session?.user?.id || null;
+      if (nextUser !== userId) { disconnect(); hideAllBadges(); userId = nextUser; }
+      if (!userId) { hideAllBadges(); return; }
+      connect(client);
+      const { data, error } = await withDeadline(client.rpc('get_workflow_notification_counts'));
+      if (requestEpoch !== epoch || stopped || document.hidden) return;
+      if (error) throw error;
+      failures = 0;
+      renderCounts(data);
+    } catch (_) {
+      // A temporary connection failure must not make pending work disappear.
+      failures += 1;
+    } finally {
+      inFlight = false;
+      pollLater();
+      if (dirty) refreshWorkflowNotifications();
+    }
+  }
+
+  function renderCounts(data) {
     const counts = Array.isArray(data) ? (data[0] || {}) : (data || {});
     stages.forEach((stage) => {
       const badge = createBadge(stage);
@@ -129,11 +202,35 @@
     refreshWorkflowNotifications();
     window.GREENLOOP_REFRESH_NOTIFICATIONS = refreshWorkflowNotifications;
     document.addEventListener("greenloop:notifications-changed", refreshWorkflowNotifications);
-    window.clearInterval(refreshTimer);
-    refreshTimer = window.setInterval(refreshWorkflowNotifications, 20000);
-    document.addEventListener("visibilitychange", () => {
-      if (!document.hidden) { updateDashboardGreeting(); refreshWorkflowNotifications(); }
+    document.addEventListener('greenloop:workflow-committed', refreshWorkflowNotifications);
+    window.addEventListener('storage', (event) => {
+      if (event.key === 'greenloop-workflow-commit-v1') refreshWorkflowNotifications();
     });
+    window.addEventListener('online', refreshWorkflowNotifications);
+    window.addEventListener('focus', refreshWorkflowNotifications);
+    const auth = getClient()?.auth;
+    authSubscription = auth?.onAuthStateChange?.((event, session) => {
+      // Never call Supabase from inside its auth lock.
+      if ((session?.user?.id || null) !== userId || event === 'SIGNED_OUT') {
+        epoch += 1; userId = session?.user?.id || null;
+        disconnect(); hideAllBadges();
+      }
+      refreshWorkflowNotifications();
+    })?.data?.subscription;
+    document.addEventListener("visibilitychange", () => {
+      epoch += 1;
+      if (document.hidden) {
+        window.clearTimeout(refreshTimer); refreshTimer = null;
+        window.clearTimeout(pollTimer); disconnect();
+      } else { updateDashboardGreeting(); refreshWorkflowNotifications(); }
+    });
+    window.addEventListener('pagehide', () => {
+      stopped = true; epoch += 1;
+      window.clearTimeout(refreshTimer); refreshTimer = null;
+      window.clearTimeout(pollTimer); window.clearInterval(autoPickTimer);
+      disconnect();
+    });
+    window.addEventListener('pageshow', () => { stopped = false; refreshWorkflowNotifications(); });
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initialize);

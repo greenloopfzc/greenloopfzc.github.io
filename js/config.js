@@ -8,6 +8,12 @@ window.GREENLOOP_CONFIG = Object.freeze({
 // survive page navigation without leaving the token in persistent storage.
 (() => {
   let sharedClient;
+  // Publish only a token after a confirmed write. Every tab reads its own
+  // authorized counts; no IMEI, payload or credentials go into this signal.
+  const announceWorkflowCommit = () => {
+    try { document.dispatchEvent(new Event('greenloop:workflow-committed')); } catch (_) {}
+    try { window.localStorage.setItem('greenloop-workflow-commit-v1', `${Date.now()}-${Math.random()}`); } catch (_) {}
+  };
   const modeKey = "greenloop-session-mode";
   const authKey = `sb-${new URL(window.GREENLOOP_CONFIG.supabaseUrl).hostname.split(".")[0]}-auth-token`;
   const authKeys = [authKey, `${authKey}-code-verifier`, `${authKey}-user`];
@@ -92,7 +98,9 @@ window.GREENLOOP_CONFIG = Object.freeze({
                 if(!window.GREENLOOP_TABLE_WRITE_ALLOWED?.(String(fromArgs[0]),property))return {data:null,error:{code:'42501',message:'This action is not allowed for your account.'}};
                 let query=target[property](...writeArgs);
                 for(const [method,args] of calls)query=query[method](...args);
-                return await query;
+                const response = await query;
+                if (response && !response.error) announceWorkflowCommit();
+                return response;
               })();
               const guarded=new Proxy({}, {get(_target,method){
                 if(['then','catch','finally'].includes(method))return (...args)=>execute()[method](...args);
@@ -126,7 +134,10 @@ window.GREENLOOP_CONFIG = Object.freeze({
             if (!window.GREENLOOP_RPC_ALLOWED?.(name,args[0] || {})) return {data:null,error:{code:'42501',message:'This action is not allowed for your account.'}};
           }
         }
-        return rpc(name, ...args);
+        const response = await rpc(name, ...args);
+        const rule = window.GREENLOOP_RPC_CAPABILITIES?.[name];
+        if (response && !response.error && rule && !rule.read) announceWorkflowCommit();
+        return response;
       };
     }
     return sharedClient;
