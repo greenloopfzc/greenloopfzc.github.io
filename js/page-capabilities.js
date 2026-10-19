@@ -34,6 +34,7 @@
       if (rule.dynamic==='operational_removal') rule=value==='all'?rule.all:rule.otherwise;
       else if (rule.dynamic==='damage_removal') rule=value==null?rule.null:rule.otherwise;
       else if (rule.dynamic==='supplier_return') rule=rule.actions[value] || {page:current(),capability:'__unknown_action__'};
+      else if (rule.dynamic==='daily_production_entry') rule=value==='remove'?rule.remove:rule.add;
       else if (rule.dynamic==='box_print') rule=current()==='accounts'?rule.accounts:rule.draft;
       else if (rule.dynamic==='accounts_stock') rule=rule[value] || {page:'accounts',capability:'__unknown_section__'};
       else if (rule.dynamic==='filter_source') rule=rule[value] || {page:current(),capability:'view'};

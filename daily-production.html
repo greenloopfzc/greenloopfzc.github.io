@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en" data-global-imei-search="off">
+  <head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="css/table-filters.css?v=20261017-clean-layout-1">
+  <link rel="stylesheet" href="css/search-highlights.css?v=20261013-search-tv-1">
+  <script defer src="js/search-highlights.js?v=20261013-search-tv-1"></script>
+  <script src="js/appearance.js?v=20261017-settings-appearance-1"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0d5c43">
+    <meta name="description" content="Independent manual stock and daily production by model and grade.">
+    <title>Daily Production Report | Greenloop</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css?v=20261016-strict-view-only-1">
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="js/imei-stage-notice.js?v=20261003-qc-duplicate-stage-1"></script>
+  <script defer src="js/permission-catalog.js?v=20261019-daily-production-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261019-daily-production-1"></script>
+<script defer src="js/page-capabilities.js?v=20261019-daily-production-1"></script>
+<script defer src="js/config.js?v=20261019-daily-production-1"></script>
+  <script defer src="js/login-activity.js?v=20261013-search-tv-1"></script>
+  <link rel="stylesheet" href="css/record-search.css?v=20261017-find-record-popup-1">
+  <script defer src="js/record-search.js?v=20261013-search-tv-1"></script>
+    <script defer src="js/part-notifications.js?v=20261017-workflow-notifications-1"></script>
+      <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
+    <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261003-qc-duplicate-stage-1">
+  <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
+  <link rel="stylesheet" href="css/sidebar-compact.css?v=20261009-sidebar-pdf-1">
+  <script defer src="js/sidebar-compact.js?v=20261009-sidebar-pdf-1"></script>
+  <link rel="stylesheet" href="css/clean-layout.css?v=20261017-clean-layout-1">
+  <script defer src="js/clean-layout.js?v=20261017-clean-layout-1"></script>
+  <link rel="stylesheet" href="css/daily-production.css?v=20261019-daily-production-1">
+  <script defer src="js/daily-production.js?v=20261019-daily-production-1"></script>
+  <script defer src="js/suspicious-badge.js?v=20261017-suspicious-activity-1"></script>
+</head>
+    <body class="app-page dp-page">
+    <div class="app-shell">
+      <aside id="sidebar" class="sidebar" aria-label="Main navigation">
+        <div class="sidebar-top"><a class="app-brand" href="dashboard.html"><span class="gl-wordmark"><img src="assets/greenloop-fzc-logo.jpg" alt="Greenloop FZC" width="1280" height="427"></span></a><button id="close-menu" hidden aria-hidden="true" tabindex="-1" class="icon-button close-menu" type="button" aria-label="Close menu">×</button></div>
+        <nav class="sidebar-nav"></nav>
+        <div class="sidebar-user"><span class="user-avatar">SA</span><span><strong>System Admin</strong><small>Super Admin</small></span></div>
+      </aside>
+      <div id="menu-backdrop" class="menu-backdrop" hidden></div>
+      <main class="app-main">
+        <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Dashboard</a><span aria-hidden="true">/</span><strong>Daily Production Report</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
+        <div class="page-content dp-content">
+          <header class="dp-heading"><div><p class="eyebrow">MANUAL STOCK REGISTER</p><h1>Daily Production Report</h1><p>Record production and available stock by model and grade.</p></div><div class="dp-tools"><button id="dp-add" class="primary-button" data-capability="entry">＋ Add stock</button><button id="dp-remove" class="secondary-button" data-capability="adjust">− Remove stock</button></div></header>
+          <p id="dp-message" class="dp-message" role="status" hidden></p>
+          <div class="dp-stats" aria-label="Stock summary">
+            <div><span>Current stock</span><strong id="dp-current">—</strong><small>All recorded dates</small></div>
+            <div><span>Added today</span><strong id="dp-added">—</strong><small>Daily production</small></div>
+            <div><span>Removed today</span><strong id="dp-removed">—</strong><small>Dispatches &amp; adjustments</small></div>
+            <div><span>Opening stock today</span><strong id="dp-opening">—</strong><small>Existing stock entered today</small></div>
+          </div>
+          <section class="dp-panel" aria-label="Production records">
+            <div class="dp-toolbar"><nav class="dp-tabs" aria-label="Report view"><button data-dp-view="stock" data-capability="view" aria-pressed="true">Current Stock</button><button data-dp-view="daily" data-capability="view" aria-pressed="false">Daily Production</button><button data-dp-view="history" data-capability="view" aria-pressed="false">Entry History</button></nav><div class="dp-tools"><button id="dp-filters-toggle" class="secondary-button" data-capability="search" aria-expanded="false" aria-controls="dp-filters">Filters <span id="dp-filter-count"></span></button><button id="dp-options-open" class="secondary-button" data-capability="manage_options">Models &amp; grades</button><button id="dp-download" class="secondary-button" data-capability="download">Download CSV</button><button id="dp-refresh" class="secondary-button" data-capability="view">Refresh</button></div></div>
+            <form id="dp-filters" class="dp-filters" data-capability="search" hidden>
+              <label>Search<input name="query" type="search" maxlength="100" placeholder="Type a model or keyword…"></label>
+              <label>Model<select name="model"><option value="">All models</option></select></label><label>Grade<select name="grade"><option value="">All grades</option></select></label>
+              <label data-dp-date-filter hidden>From<input name="from" type="date"></label><label data-dp-date-filter hidden>To<input name="to" type="date"></label>
+              <button id="dp-clear" type="button" class="secondary-button">Clear filters</button>
+            </form>
+            <div class="dp-caption"><p id="dp-result">Loading stock…</p><span id="dp-updated"></span></div>
+            <div class="dp-table-wrap"><table id="dp-table" aria-label="Current stock by model and grade"><thead id="dp-head"></thead><tbody id="dp-rows"><tr><td>Loading records…</td></tr></tbody></table></div>
+            <footer class="dp-pagination"><button id="dp-prev" class="secondary-button" data-capability="view">Previous</button><span id="dp-page"></span><button id="dp-next" class="secondary-button" data-capability="view">Next</button></footer>
+          </section>
+          <p class="dp-footnote">This register is entered manually. IMEI, QC, boxes and workflow Ready Stock are recorded separately. Dates and times use UAE time.</p>
+        </div>
+      </main>
+    </div>
+    <dialog id="dp-entry-dialog" class="dp-dialog" aria-labelledby="dp-entry-title"><header><h2 id="dp-entry-title">Add stock</h2><button type="button" data-dp-close data-capability="view" aria-label="Close entry">×</button></header>
+      <form id="dp-entry-form" data-capability="entry">
+        <div class="dp-form-grid"><label>Model<select name="model" required></select></label><label>Grade<select name="grade" required></select></label><label>Date<input name="date" type="date" required min="2000-01-01"></label><label>Entry type<select name="kind"><option value="add">Daily production</option><option value="opening">Opening stock</option><option value="remove">Remove stock / correction</option></select></label></div>
+        <label class="dp-quantity-label">Quantity<div class="dp-stepper"><button type="button" data-step="-1" aria-label="Decrease quantity">−</button><input name="quantity" type="number" min="1" max="1000000" step="1" required inputmode="numeric" value="1"><button type="button" data-step="1" aria-label="Increase quantity">＋</button></div></label>
+        <p id="dp-entry-help" class="dp-help"></p><label>Note / reason<textarea name="note" rows="2" maxlength="1000" placeholder="Optional note"></textarea></label><p id="dp-entry-error" class="dp-message" role="status" hidden></p>
+        <button id="dp-entry-save" class="primary-button" type="submit">Save entry</button>
+      </form>
+    </dialog>
+    <dialog id="dp-options-dialog" class="dp-dialog" aria-labelledby="dp-options-title"><header><h2 id="dp-options-title">Models &amp; grades</h2><button type="button" data-dp-close data-capability="view" aria-label="Close models and grades">×</button></header>
+      <form id="dp-option-form" class="dp-option-form" data-capability="manage_options"><label>Category<select name="kind"><option value="model">Model</option><option value="grade">Grade</option></select></label><label>Name<input name="name" required maxlength="100" placeholder="e.g. 16 Pro Max 256 GB"></label><button type="submit" class="primary-button">＋ Add</button></form>
+      <p class="dp-help">Remove unused choices with −. Recorded history stays available. Choices with stock must reach zero first.</p><p id="dp-options-error" class="dp-message" role="status" hidden></p><div id="dp-options-list"></div>
+    </dialog>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  </body>
+</html>

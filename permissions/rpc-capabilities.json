@@ -1,5 +1,5 @@
 {
-  "version": "20261017-suspicious-activity-1",
+  "version": "20261019-daily-production-1",
   "rpcs": {
     "add_accounts_customer_v1": {
       "page": "accounts",
@@ -899,6 +899,31 @@
     "verify_box_v2": {
       "page": "accounts",
       "capability": "verify"
+    },
+    "get_daily_production_v1": {
+      "page": "daily_production",
+      "capability": "view",
+      "read": true
+    },
+    "save_daily_production_option_v1": {
+      "page": "daily_production",
+      "capability": "manage_options"
+    },
+    "archive_daily_production_option_v1": {
+      "page": "daily_production",
+      "capability": "manage_options"
+    },
+    "record_daily_production_v1": {
+      "dynamic": "daily_production_entry",
+      "parameter": "p_kind",
+      "add": {
+        "page": "daily_production",
+        "capability": "entry"
+      },
+      "remove": {
+        "page": "daily_production",
+        "capability": "adjust"
+      }
     }
   }
 }

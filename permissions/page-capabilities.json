@@ -1,5 +1,5 @@
 {
-  "version": "20261017-suspicious-activity-1",
+  "version": "20261019-daily-production-1",
   "pages": [
     {
       "key": "overview",
@@ -228,6 +228,48 @@
         {
           "key": "payable",
           "label": "Show payable amounts",
+          "write": false
+        }
+      ]
+    },
+    {
+      "key": "daily_production",
+      "label": "Daily Production Report",
+      "description": "Independent manual stock and daily production by model and grade.",
+      "capabilities": [
+        {
+          "key": "view",
+          "label": "View stock & daily reports",
+          "write": false
+        },
+        {
+          "key": "search",
+          "label": "Search & date filters",
+          "write": false
+        },
+        {
+          "key": "sort",
+          "label": "Sort table headings",
+          "write": false
+        },
+        {
+          "key": "entry",
+          "label": "Add production / opening stock",
+          "write": true
+        },
+        {
+          "key": "adjust",
+          "label": "Remove stock / corrections",
+          "write": true
+        },
+        {
+          "key": "manage_options",
+          "label": "Add / remove models & grades",
+          "write": true
+        },
+        {
+          "key": "download",
+          "label": "Download reports",
           "write": false
         }
       ]
