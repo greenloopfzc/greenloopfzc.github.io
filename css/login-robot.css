@@ -1,26 +1,60 @@
-/* The mascot is decorative: it never covers or delays the sign-in controls. */
-.auth-page .gl-welcome-scene { position:relative;width:fit-content;max-width:100%;padding-top:185px;isolation:isolate; }
-.auth-page .gl-robot-viewport { position:absolute;inset:0 0 auto;height:191px;overflow:hidden;pointer-events:none;z-index:-1; }
-.auth-page .gl-welcome-robot { position:absolute;display:block;width:250px;height:203px;left:50%;bottom:-19px;transform:translateX(-50%);overflow:visible;filter:drop-shadow(0 5px 4px #214d392b); }
-.auth-page .gl-welcome-scene h2 { position:relative;z-index:1; }
-.auth-page .gl-robot-rise { transform:translateY(255px); }
-.auth-page .gl-robot-head { transform-origin:160px 120px; }
-.auth-page .gl-robot-wave { transform-origin:160px 177px; }
-.auth-page .gl-greeting-ready .gl-robot-rise { animation:gl-robot-emerge 850ms 100ms cubic-bezier(.2,.8,.3,1) both; }
-.auth-page .gl-greeting-ready .gl-robot-wave { animation:gl-robot-board-wave 1.15s 850ms ease-in-out 3 both; }
-.auth-page .gl-greeting-ready .gl-robot-head { animation:gl-robot-head-tilt 3.45s 850ms ease-in-out both; }
-.auth-page .gl-greeting-ready .gl-robot-eyes { transform-origin:160px 76px;animation:gl-robot-blink 4.4s 100ms ease-in-out both; }
-html[data-mode="dark"] .auth-page .gl-welcome-robot { filter:drop-shadow(0 5px 5px #061c1980); }
-@keyframes gl-robot-emerge { 0%{transform:translateY(255px)} 75%{transform:translateY(-5px)} 100%{transform:translateY(0)} }
-@keyframes gl-robot-board-wave { 0%,100%{transform:rotate(0)} 25%{transform:rotate(-7deg) translateY(-2px)} 75%{transform:rotate(7deg) translateY(-2px)} }
-@keyframes gl-robot-head-tilt { 0%,100%{transform:rotate(0)} 20%,70%{transform:rotate(-4deg)} 45%,85%{transform:rotate(4deg)} }
-@keyframes gl-robot-blink { 0%,37%,43%,100%{transform:scaleY(1)} 40%{transform:scaleY(.12)} }
-@media(max-width:550px),(max-height:780px) {
- .auth-page .gl-welcome-scene { padding-top:151px; }
- .auth-page .gl-robot-viewport { height:156px; }
- .auth-page .gl-welcome-robot { width:205px;height:167px;bottom:-19px; }
- .auth-page .auth-header { margin-bottom:25px; }
+/* The actual card edge is the wall: the body clips behind it, the grip sits on it. */
+.auth-page .auth-card { position:relative;isolation:isolate;margin-top:120px; }
+.auth-page .gl-welcome-scene { --gl-robot-size:104px;--gl-roam:54px;position:absolute;inset:0 0 auto;height:0;z-index:3;pointer-events:none; }
+.auth-page .gl-robot-viewport { position:absolute;left:8px;right:8px;bottom:0;height:126px;overflow:hidden;pointer-events:none; }
+.auth-page .gl-robot-travel { position:absolute;left:calc(50% - var(--gl-robot-size)/2);bottom:0;width:var(--gl-robot-size);height:var(--gl-robot-size); }
+.auth-page .gl-welcome-robot { display:block;width:100%;height:100%;overflow:visible; }
+.auth-page .gl-robot-lift { transform:translateY(245px); }
+.auth-page .gl-robot-head { transform-origin:120px 103px; }
+.auth-page .gl-robot-left-leg { transform-origin:103px 181px; }
+.auth-page .gl-robot-right-leg { transform-origin:137px 181px; }
+.auth-page .gl-robot-board { opacity:0;transform-origin:120px 156px; }
+.auth-page .gl-robot-wave { transform-origin:120px 156px; }
+.auth-page .gl-robot-rest-arms,.auth-page .gl-robot-climb-arms,.auth-page .gl-robot-shadow { opacity:0; }
+.auth-page .gl-robot-rim-hands { position:absolute;width:var(--gl-robot-size);height:calc(var(--gl-robot-size)*52/240);left:calc(50% - var(--gl-robot-size)/2);bottom:-6px;opacity:0; }
+.auth-page .gl-greeting-ready .gl-robot-lift { animation:gl-peek-and-climb 15s ease-in-out both; }
+.auth-page .gl-greeting-ready .gl-robot-rim-hands { animation:gl-grip-ledge 15s ease-in-out both; }
+.auth-page .gl-greeting-ready .gl-robot-climb-arms { animation:gl-climb-arms 15s linear both; }
+.auth-page .gl-greeting-ready .gl-grip-left { animation:gl-pull-left 15s ease-in-out both; }
+.auth-page .gl-greeting-ready .gl-grip-right { animation:gl-pull-right 15s ease-in-out both; }
+.auth-page .gl-greeting-ready .gl-robot-rest-arms { animation:gl-rest-arms 15s linear both; }
+.auth-page .gl-greeting-ready .gl-robot-travel { animation:gl-walk-ledge 15s ease-in-out both; }
+.auth-page .gl-greeting-ready .gl-robot-head { animation:gl-look-around 15s ease-in-out both; }
+.auth-page .gl-greeting-ready .gl-robot-eyes { animation:gl-glance 15s ease-in-out both; }
+.auth-page .gl-greeting-ready .gl-robot-board { animation:gl-raise-board 15s ease-in-out both; }
+.auth-page .gl-greeting-ready .gl-robot-wave { animation:gl-wave-board 15s ease-in-out both; }
+.auth-page .gl-greeting-ready .gl-robot-left-leg { animation:gl-step-left .6s 6.6s linear 8 both; }
+.auth-page .gl-greeting-ready .gl-robot-right-leg { animation:gl-step-right .6s 6.6s linear 8 both; }
+.auth-page .gl-greeting-ready .gl-robot-shadow { animation:gl-land-shadow 15s linear both; }
+/* One continuous sequence: crown, eyes, grip, pull, land, patrol, greeting. */
+@keyframes gl-peek-and-climb {
+ 0%,4%{transform:translateY(245px)} 10%,12%{transform:translateY(205px)}
+ 18%,24%{transform:translateY(159px)} 32%{transform:translateY(52px)}
+ 36%{transform:translateY(-9px)} 39%,100%{transform:translateY(0)}
+}
+@keyframes gl-grip-ledge {
+ 0%,19%{opacity:0;transform:translateY(12px)} 22%,31%{opacity:1;transform:translateY(0)}
+ 34%{opacity:0;transform:translateY(-6px)} 100%{opacity:0;transform:translateY(-6px)}
+}
+@keyframes gl-climb-arms {0%,19%{opacity:0}22%,31%{opacity:1}34%,100%{opacity:0}}
+@keyframes gl-pull-left {0%,24%{d:path('M87 127 Q57 109 80 78')}32%,100%{d:path('M87 127 Q56 167 80 185')}}
+@keyframes gl-pull-right {0%,24%{d:path('M153 127 Q183 109 160 78')}32%,100%{d:path('M153 127 Q184 167 160 185')}}
+@keyframes gl-rest-arms {0%,32%{opacity:0}34%,39%{opacity:1}43%,100%{opacity:0}}
+@keyframes gl-land-shadow {0%,34%{opacity:0}39%,100%{opacity:.2}}
+@keyframes gl-raise-board {0%,39%{opacity:0;transform:translateY(40px) rotate(-8deg)}44%,100%{opacity:1;transform:translateY(0) rotate(0)}}
+@keyframes gl-walk-ledge {0%,44%{transform:translateX(0)}52%,54%{transform:translateX(calc(-1*var(--gl-roam)))}66%,68%{transform:translateX(var(--gl-roam))}76%,100%{transform:translateX(0)}}
+@keyframes gl-look-around {0%,17%{transform:rotate(0)}19%,21%{transform:rotate(-8deg)}23%,39%{transform:rotate(0)}44%,53%{transform:rotate(-9deg)}57%,67%{transform:rotate(9deg)}72%{transform:rotate(-5deg)}76%,100%{transform:rotate(0)}}
+@keyframes gl-glance {0%,17%{transform:translateX(0)}19%,21%{transform:translateX(-4px)}23%,39%{transform:translateX(0)}44%,53%{transform:translateX(-5px)}57%,67%{transform:translateX(5px)}72%{transform:translateX(-3px)}76%,100%{transform:translateX(0)}}
+@keyframes gl-step-left {0%,50%,100%{transform:translate(0,0) rotate(0)}25%{transform:translate(-3px,-7px) rotate(-9deg)}75%{transform:translate(3px,0) rotate(3deg)}}
+@keyframes gl-step-right {0%,50%,100%{transform:translate(0,0) rotate(0)}25%{transform:translate(3px,0) rotate(3deg)}75%{transform:translate(-3px,-7px) rotate(-9deg)}}
+@keyframes gl-wave-board {0%,76%,100%{transform:rotate(0)}79%,85%,91%{transform:rotate(-10deg)}82%,88%,94%{transform:rotate(10deg)}97%{transform:rotate(0)}}
+@media(max-width:550px) {
+ .auth-page .auth-card { margin-top:110px; }
+ .auth-page .gl-welcome-scene { --gl-robot-size:96px;--gl-roam:37px; }
 }
 @media(prefers-reduced-motion:reduce) {
- .auth-page .gl-welcome-scene :is(.gl-robot-rise,.gl-robot-head,.gl-robot-wave,.gl-robot-eyes) { animation:none!important;transform:none!important; }
+ .auth-page .gl-welcome-scene * { animation:none!important;transform:none!important; }
+ .auth-page .gl-robot-lift,.auth-page .gl-robot-board { opacity:1; }
+ .auth-page .gl-robot-shadow { opacity:.2; }
+ .auth-page .gl-robot-rim-hands,.auth-page .gl-robot-climb-arms,.auth-page .gl-robot-rest-arms { opacity:0; }
 }

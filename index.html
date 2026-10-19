@@ -32,8 +32,8 @@
       <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
     <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
   <script defer src="js/suspicious-badge.js?v=20261017-suspicious-activity-1"></script>
-  <link rel="stylesheet" href="css/login-robot.css?v=20261019-login-robot-1">
-  <script defer src="js/login-robot.js?v=20261019-login-robot-1"></script>
+  <link rel="stylesheet" href="css/login-robot.css?v=20261019-login-robot-climb-1">
+  <script defer src="js/login-robot.js?v=20261019-login-robot-climb-1"></script>
 </head>
   <body class="auth-page">
 <main class="auth-shell">
@@ -70,55 +70,77 @@
 
       <section class="auth-panel" aria-labelledby="sign-in-title">
         <div class="auth-card">
+          <div class="gl-welcome-scene" id="login-greeting" data-greeting="hello" aria-hidden="true">
+            <div class="gl-robot-viewport">
+              <div class="gl-robot-travel">
+                <svg class="gl-welcome-robot" viewBox="0 0 240 240" fill="none" focusable="false">
+                  <defs>
+                    <linearGradient id="gl-robot-shell" x1="70" y1="30" x2="172" y2="210" gradientUnits="userSpaceOnUse"><stop stop-color="#fff"/><stop offset=".45" stop-color="#e0eee7"/><stop offset="1" stop-color="#89b5a2"/></linearGradient>
+                    <linearGradient id="gl-robot-sign" x1="30" y1="120" x2="205" y2="178" gradientUnits="userSpaceOnUse"><stop stop-color="#257d5e"/><stop offset="1" stop-color="#0b4635"/></linearGradient>
+                    <linearGradient id="gl-robot-face" x1="84" y1="48" x2="158" y2="99" gradientUnits="userSpaceOnUse"><stop stop-color="#264a40"/><stop offset="1" stop-color="#102c27"/></linearGradient>
+                  </defs>
+                  <ellipse class="gl-robot-shadow" cx="120" cy="238" rx="50" ry="2" fill="#315d4b" opacity=".2"/>
+                  <g class="gl-robot-lift">
+                    <g class="gl-robot-left-leg">
+                      <path d="M103 178v39" stroke="#4f7c68" stroke-width="20" stroke-linecap="round"/>
+                      <rect x="93" y="193" width="21" height="34" rx="9" fill="url(#gl-robot-shell)" stroke="#739e89" stroke-width="2"/>
+                      <rect x="81" y="221" width="35" height="18" rx="7" fill="url(#gl-robot-shell)" stroke="#567e6c" stroke-width="2"/>
+                      <path d="M85 237h27" stroke="#496c5a" stroke-width="3" stroke-linecap="round"/>
+                    </g>
+                    <g class="gl-robot-right-leg">
+                      <path d="M137 178v39" stroke="#4f7c68" stroke-width="20" stroke-linecap="round"/>
+                      <rect x="126" y="193" width="21" height="34" rx="9" fill="url(#gl-robot-shell)" stroke="#739e89" stroke-width="2"/>
+                      <rect x="124" y="221" width="35" height="18" rx="7" fill="url(#gl-robot-shell)" stroke="#567e6c" stroke-width="2"/>
+                      <path d="M128 237h27" stroke="#496c5a" stroke-width="3" stroke-linecap="round"/>
+                    </g>
+                    <g class="gl-robot-climb-arms" stroke="#9ec3b0" stroke-width="15" stroke-linecap="round">
+                      <path class="gl-grip-left" d="M87 127 Q57 109 80 83"/><path class="gl-grip-right" d="M153 127 Q183 109 160 83"/>
+                    </g>
+                    <g class="gl-robot-rest-arms" stroke="url(#gl-robot-shell)" stroke-width="17" stroke-linecap="round"><path d="M86 125q-17 16-15 42m83-42q17 16 15 42"/></g>
+                    <rect x="83" y="108" width="74" height="81" rx="25" fill="url(#gl-robot-shell)" stroke="#719b86" stroke-width="2"/>
+                    <rect x="105" y="101" width="30" height="15" rx="6" fill="#68927d"/>
+                    <path d="M106 132q-10-10-15 0t15 0q10-10 15 0t-15 0" transform="translate(14 5)" stroke="#2f8b65" stroke-width="4" stroke-linecap="round"/>
+                    <path d="M105 178h30" stroke="#719e87" stroke-width="3" stroke-linecap="round"/>
+                    <g class="gl-robot-head">
+                      <path d="M120 29V13" stroke="#709d88" stroke-width="5" stroke-linecap="round"/>
+                      <circle cx="120" cy="8" r="6" fill="#58b98b" stroke="#effff5" stroke-width="2"/>
+                      <rect x="59" y="56" width="14" height="29" rx="7" fill="url(#gl-robot-shell)" stroke="#739e89" stroke-width="2"/>
+                      <rect x="167" y="56" width="14" height="29" rx="7" fill="url(#gl-robot-shell)" stroke="#739e89" stroke-width="2"/>
+                      <rect x="69" y="26" width="102" height="81" rx="28" fill="url(#gl-robot-shell)" stroke="#76a18a" stroke-width="2"/>
+                      <path d="M87 34h46" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+                      <rect x="79" y="44" width="82" height="51" rx="19" fill="url(#gl-robot-face)" stroke="#4e7864" stroke-width="2"/>
+                      <g class="gl-robot-eyes" fill="#a5f5c9"><rect x="92" y="58" width="10" height="15" rx="5"/><rect x="138" y="58" width="10" height="15" rx="5"/></g>
+                      <path d="M109 82q11 10 22 0" stroke="#a5f5c9" stroke-width="3" stroke-linecap="round"/>
+                    </g>
+                    <g class="gl-robot-board">
+                      <g class="gl-robot-wave">
+                        <path d="M87 128q-30-7-44 17m110-17q30-7 44 17" stroke="#719d88" stroke-width="16" stroke-linecap="round"/>
+                        <rect x="28" y="125" width="184" height="59" rx="12" fill="url(#gl-robot-sign)" stroke="#94d2b0" stroke-width="2"/>
+                        <rect x="34" y="131" width="172" height="47" rx="8" stroke="#b9ebcf" stroke-opacity=".3"/>
+                        <text id="login-robot-sign" x="120" y="165" text-anchor="middle" fill="#f5fff7" font-family="Manrope, Arial, sans-serif" font-size="31" font-weight="800">Hiii</text>
+                        <rect x="23" y="146" width="20" height="25" rx="8" fill="url(#gl-robot-shell)" stroke="#719d88" stroke-width="2"/>
+                        <rect x="197" y="146" width="20" height="25" rx="8" fill="url(#gl-robot-shell)" stroke="#719d88" stroke-width="2"/>
+                        <path d="M28 153h9m-9 6h9m166-6h9m-9 6h9" stroke="#97bca7" stroke-width="2" stroke-linecap="round"/>
+                      </g>
+                    </g>
+                  </g>
+                </svg>
+              </div>
+            </div>
+            <svg class="gl-robot-rim-hands" viewBox="0 0 240 52" fill="none" focusable="false">
+              <g fill="#dbece1" stroke="#749d87" stroke-width="2">
+                <rect x="67" y="18" width="26" height="31" rx="10"/><rect x="147" y="18" width="26" height="31" rx="10"/>
+                <path d="M73 28h14m-14 7h14m66-7h14m-14 7h14" stroke="#91b6a0" stroke-linecap="round"/>
+              </g>
+            </svg>
+          </div>
           <div class="mobile-brand">
             <span class="gl-wordmark"><img src="assets/greenloop-fzc-logo.jpg" alt="Greenloop FZC" width="1280" height="427"></span>
           </div>
 
           <header class="auth-header">
             <p class="eyebrow">Secure access</p>
-            <div class="gl-welcome-scene" id="login-greeting" data-greeting="hello">
-              <div class="gl-robot-viewport" aria-hidden="true">
-                <svg class="gl-welcome-robot" viewBox="0 0 320 260" fill="none" focusable="false">
-                  <defs>
-                    <linearGradient id="gl-robot-shell" x1="85" y1="40" x2="226" y2="214" gradientUnits="userSpaceOnUse"><stop stop-color="#fff"/><stop offset=".45" stop-color="#e1eee8"/><stop offset="1" stop-color="#8fbaaa"/></linearGradient>
-                    <linearGradient id="gl-robot-metal" x1="70" y1="140" x2="240" y2="220" gradientUnits="userSpaceOnUse"><stop stop-color="#eef9f3"/><stop offset="1" stop-color="#6c9d8a"/></linearGradient>
-                    <linearGradient id="gl-robot-sign" x1="65" y1="145" x2="246" y2="212" gradientUnits="userSpaceOnUse"><stop stop-color="#227b5c"/><stop offset="1" stop-color="#0c4637"/></linearGradient>
-                    <linearGradient id="gl-robot-face" x1="115" y1="60" x2="197" y2="111" gradientUnits="userSpaceOnUse"><stop stop-color="#213e3b"/><stop offset="1" stop-color="#102a28"/></linearGradient>
-                  </defs>
-                  <g class="gl-robot-rise">
-                    <path d="M137 221v24m46-24v24" stroke="#83ad9b" stroke-width="21" stroke-linecap="round"/>
-                    <rect x="108" y="129" width="104" height="106" rx="34" fill="url(#gl-robot-shell)" stroke="#6b9e8b" stroke-width="2"/>
-                    <path d="M129 226h62" stroke="#5c927e" stroke-width="3" stroke-linecap="round"/>
-                    <rect x="144" y="118" width="32" height="20" rx="8" fill="#648f7f"/>
-                    <g class="gl-robot-head">
-                      <path d="M160 31V15" stroke="#6d9988" stroke-width="5" stroke-linecap="round"/>
-                      <circle cx="160" cy="10" r="8" fill="#69cba0" stroke="#e9fff1" stroke-width="3"/>
-                      <rect x="83" y="65" width="16" height="35" rx="8" fill="url(#gl-robot-metal)" stroke="#76a28e" stroke-width="2"/>
-                      <rect x="221" y="65" width="16" height="35" rx="8" fill="url(#gl-robot-metal)" stroke="#76a28e" stroke-width="2"/>
-                      <rect x="94" y="30" width="132" height="99" rx="35" fill="url(#gl-robot-shell)" stroke="#76a28e" stroke-width="2"/>
-                      <path d="M116 40h72" stroke="#fff" stroke-opacity=".85" stroke-width="4" stroke-linecap="round"/>
-                      <rect x="107" y="52" width="106" height="62" rx="23" fill="url(#gl-robot-face)" stroke="#446c60" stroke-width="2"/>
-                      <g class="gl-robot-eyes" stroke="#9ef7c8" stroke-width="7" stroke-linecap="round"><path d="M126 77q7-10 14 0m40 0q7-10 14 0"/></g>
-                      <path d="M148 94q12 12 24 0" stroke="#9ef7c8" stroke-width="4" stroke-linecap="round"/>
-                      <path d="M118 91h9m66 0h9" stroke="#609c87" stroke-width="3" stroke-linecap="round"/>
-                    </g>
-                    <g class="gl-robot-wave">
-                      <path d="M112 146q-37-5-45 30m141-30q37-5 45 30" stroke="#587e70" stroke-width="19" stroke-linecap="round"/>
-                      <path d="M112 143q-37-5-45 30m141-30q37-5 45 30" stroke="url(#gl-robot-metal)" stroke-width="15" stroke-linecap="round"/>
-                      <rect x="61" y="151" width="198" height="66" rx="14" fill="#092f25" fill-opacity=".25"/>
-                      <rect x="61" y="145" width="198" height="66" rx="14" fill="url(#gl-robot-sign)" stroke="#88c9a9" stroke-width="2"/>
-                      <rect x="68" y="152" width="184" height="52" rx="9" stroke="#b4ebce" stroke-opacity=".32"/>
-                      <path d="m85 164 2 4 4 2-4 2-2 4-2-4-4-2 4-2Zm149 22 2 4 4 2-4 2-2 4-2-4-4-2 4-2Z" fill="#bcebd3"/>
-                      <text id="login-robot-sign" x="160" y="189" text-anchor="middle" fill="#f7fff8" font-family="Manrope, Arial, sans-serif" font-size="29" font-weight="800" letter-spacing="-.7">Hiiiiii…</text>
-                      <rect x="50" y="170" width="23" height="30" rx="10" fill="url(#gl-robot-shell)" stroke="#719e89" stroke-width="2"/>
-                      <rect x="247" y="170" width="23" height="30" rx="10" fill="url(#gl-robot-shell)" stroke="#719e89" stroke-width="2"/>
-                      <path d="M55 180h11m-11 7h11m187-7h11m-11 7h11" stroke="#9bbbab" stroke-width="2" stroke-linecap="round"/>
-                    </g>
-                  </g>
-                </svg>
-              </div>
-              <h2 id="sign-in-title">Welcome back</h2>
-            </div>
+            <h2 id="sign-in-title">Welcome back</h2>
             <p>Sign in with your assigned Greenloop account.</p>
           </header>
 

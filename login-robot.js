@@ -16,13 +16,13 @@
     }
   } catch (_) {}
   scene.dataset.greeting = goodbye ? 'bye' : 'hello';
-  sign.textContent = goodbye ? 'Bye bye…' : 'Hiiiiii…';
+  sign.textContent = goodbye ? 'Bye Bye' : 'Hiii';
   scene.classList.add('gl-greeting-ready');
 
   // A restored browser-history page is a new welcome, not a repeated logout.
   window.addEventListener('pageshow', event => {
     if (!event.persisted) return;
     scene.dataset.greeting = 'hello';
-    sign.textContent = 'Hiiiiii…';
+    sign.textContent = 'Hiii';
   });
 })();
