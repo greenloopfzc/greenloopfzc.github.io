@@ -261,7 +261,7 @@ document.addEventListener("click", (event) => {
         await client.auth.signOut({ scope: "local" });
       }
     } finally {
-      try { window.GREENLOOP_CLEAR_SESSION(); } finally { window.location.replace("index.html"); }
+      try { window.GREENLOOP_CLEAR_SESSION(); } finally { window.location.replace("index.html?greeting=bye"); }
     }
   });
 })();

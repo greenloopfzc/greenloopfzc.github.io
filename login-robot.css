@@ -1,0 +1,26 @@
+/* The mascot is decorative: it never covers or delays the sign-in controls. */
+.auth-page .gl-welcome-scene { position:relative;width:fit-content;max-width:100%;padding-top:185px;isolation:isolate; }
+.auth-page .gl-robot-viewport { position:absolute;inset:0 0 auto;height:191px;overflow:hidden;pointer-events:none;z-index:-1; }
+.auth-page .gl-welcome-robot { position:absolute;display:block;width:250px;height:203px;left:50%;bottom:-19px;transform:translateX(-50%);overflow:visible;filter:drop-shadow(0 5px 4px #214d392b); }
+.auth-page .gl-welcome-scene h2 { position:relative;z-index:1; }
+.auth-page .gl-robot-rise { transform:translateY(255px); }
+.auth-page .gl-robot-head { transform-origin:160px 120px; }
+.auth-page .gl-robot-wave { transform-origin:160px 177px; }
+.auth-page .gl-greeting-ready .gl-robot-rise { animation:gl-robot-emerge 850ms 100ms cubic-bezier(.2,.8,.3,1) both; }
+.auth-page .gl-greeting-ready .gl-robot-wave { animation:gl-robot-board-wave 1.15s 850ms ease-in-out 3 both; }
+.auth-page .gl-greeting-ready .gl-robot-head { animation:gl-robot-head-tilt 3.45s 850ms ease-in-out both; }
+.auth-page .gl-greeting-ready .gl-robot-eyes { transform-origin:160px 76px;animation:gl-robot-blink 4.4s 100ms ease-in-out both; }
+html[data-mode="dark"] .auth-page .gl-welcome-robot { filter:drop-shadow(0 5px 5px #061c1980); }
+@keyframes gl-robot-emerge { 0%{transform:translateY(255px)} 75%{transform:translateY(-5px)} 100%{transform:translateY(0)} }
+@keyframes gl-robot-board-wave { 0%,100%{transform:rotate(0)} 25%{transform:rotate(-7deg) translateY(-2px)} 75%{transform:rotate(7deg) translateY(-2px)} }
+@keyframes gl-robot-head-tilt { 0%,100%{transform:rotate(0)} 20%,70%{transform:rotate(-4deg)} 45%,85%{transform:rotate(4deg)} }
+@keyframes gl-robot-blink { 0%,37%,43%,100%{transform:scaleY(1)} 40%{transform:scaleY(.12)} }
+@media(max-width:550px),(max-height:780px) {
+ .auth-page .gl-welcome-scene { padding-top:151px; }
+ .auth-page .gl-robot-viewport { height:156px; }
+ .auth-page .gl-welcome-robot { width:205px;height:167px;bottom:-19px; }
+ .auth-page .auth-header { margin-bottom:25px; }
+}
+@media(prefers-reduced-motion:reduce) {
+ .auth-page .gl-welcome-scene :is(.gl-robot-rise,.gl-robot-head,.gl-robot-wave,.gl-robot-eyes) { animation:none!important;transform:none!important; }
+}
