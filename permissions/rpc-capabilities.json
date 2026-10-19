@@ -1,5 +1,5 @@
 {
-  "version": "20261019-daily-production-1",
+  "version": "20261019-closing-stock-1",
   "rpcs": {
     "add_accounts_customer_v1": {
       "page": "accounts",
@@ -924,6 +924,58 @@
         "page": "daily_production",
         "capability": "adjust"
       }
+    },
+    "get_closing_stock_home_v1": {
+      "page": "daily_production",
+      "capability": "view",
+      "read": true
+    },
+    "get_closing_stock_selection_v1": {
+      "page": "daily_production",
+      "capability": "entry",
+      "read": true
+    },
+    "save_closing_stock_v1": {
+      "page": "daily_production",
+      "capability": "entry",
+      "read": false
+    },
+    "save_closing_stock_option_v1": {
+      "page": "daily_production",
+      "capability": "manage_options",
+      "read": false
+    },
+    "archive_closing_stock_option_v1": {
+      "page": "daily_production",
+      "capability": "manage_options",
+      "read": false
+    },
+    "get_closing_stock_report_v1": {
+      "page": "daily_production",
+      "capability": "view",
+      "read": true
+    },
+    "get_closing_stock_access_catalog_v1": {
+      "any": [
+        {
+          "page": "user_access",
+          "capability": "view"
+        },
+        {
+          "page": "user_access",
+          "capability": "manage_access"
+        },
+        {
+          "page": "user_access",
+          "capability": "create_users"
+        }
+      ],
+      "read": true
+    },
+    "undo_closing_stock_count_v1": {
+      "page": "daily_production",
+      "capability": "entry",
+      "read": false
     }
   }
 }

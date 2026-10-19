@@ -1,5 +1,5 @@
 {
-  "version": "20261019-daily-production-1",
+  "version": "20261019-closing-stock-1",
   "pages": [
     {
       "key": "overview",
@@ -235,16 +235,31 @@
     {
       "key": "daily_production",
       "label": "Daily Production Report",
-      "description": "Independent manual stock and daily production by model and grade.",
+      "description": "Daily closing stock, grade reports and independent manual entry.",
       "capabilities": [
         {
           "key": "view",
-          "label": "View stock & daily reports",
+          "label": "Open Daily Production",
           "write": false
         },
         {
+          "key": "entry",
+          "label": "Daily Data Entry / Save box counts",
+          "write": true
+        },
+        {
+          "key": "total_stock",
+          "label": "Total Stock report (all grades)",
+          "write": false
+        },
+        {
+          "key": "manage_options",
+          "label": "Add / remove Model, GB and Grade",
+          "write": true
+        },
+        {
           "key": "search",
-          "label": "Search & date filters",
+          "label": "Search / Report date",
           "write": false
         },
         {
@@ -253,23 +268,8 @@
           "write": false
         },
         {
-          "key": "entry",
-          "label": "Add production / opening stock",
-          "write": true
-        },
-        {
-          "key": "adjust",
-          "label": "Remove stock / corrections",
-          "write": true
-        },
-        {
-          "key": "manage_options",
-          "label": "Add / remove models & grades",
-          "write": true
-        },
-        {
           "key": "download",
-          "label": "Download reports",
+          "label": "Download permitted reports",
           "write": false
         }
       ]

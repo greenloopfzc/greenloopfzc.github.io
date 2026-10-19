@@ -51,7 +51,7 @@ Deno.serve(async (request) => {
 
   // Read-only installation receipt; no credentials or account data returned.
   if (request.method === "GET") {
-    return jsonResponse({ version: "20261017-settings-appearance-1" });
+    return jsonResponse({ version: "20261019-closing-stock-1" });
   }
 
   if (request.method !== "POST") {
@@ -151,7 +151,7 @@ Deno.serve(async (request) => {
   }
   const entries = Object.entries(capabilities as Record<string, unknown>);
   if (!entries.length || entries.length > 100 || entries.some(([key, value]) =>
-      !/^[a-z][a-z_]{0,60}$/.test(key) || !Array.isArray(value) || value.length > 30
+      !/^[a-z][a-z_]{0,60}$/.test(key) || !Array.isArray(value) || value.length > (key === "daily_production" ? 512 : 30)
       || value.some(capability => typeof capability !== "string" || !/^[a-z][a-z_]{0,60}$/.test(capability))
       || value.length > 0 && !value.includes("view"))) {
     return jsonResponse({ error: "Select View before selecting a page's other permissions." }, 400);

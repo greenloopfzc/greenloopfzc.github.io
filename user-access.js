@@ -266,8 +266,22 @@
   }
   tvOnly.addEventListener("change", tvModeChanged);
 
+  async function loadProductionCatalog() {
+    const {data, error} = await getClient().rpc("get_closing_stock_access_catalog_v1");
+    if (error) throw error;
+    if (!Array.isArray(data) || !data.some(c => c.key === "view") || data.some(c => !/^[a-z][a-z_]{0,60}$/.test(c.key) || typeof c.label !== "string" || typeof c.write !== "boolean")) throw new Error("Grade permission choices could not be loaded. Refresh before saving access.");
+    catalog.byPage.daily_production.capabilities = data;
+    const card = newRoleOptions.querySelector('[data-page-permission="daily_production"]');
+    if (card) {
+      const visible = card.querySelector('[data-page-view]').checked;
+      const values = [...card.querySelectorAll('[data-access-capability]:checked')].map(c => c.dataset.accessCapability);
+      card.querySelector('.permission-capabilities').innerHTML = data.filter(c => c.key !== "view").map(c => capabilityCheckbox(catalog.byPage.daily_production, c, values, visible, !can("create_users"), true)).join("");
+    }
+  }
+
   async function loadUsers(preferredUserId = selectedUserId) {
     if (!can("view")) return;
+    await loadProductionCatalog();
     const [matrixResult, capabilityResult, tvResult, partnerResult] = await Promise.all([
       getClient().rpc("get_user_page_access_matrix_v2"),
       getClient().rpc("get_user_page_capabilities_v1"),
@@ -423,6 +437,7 @@
     if (superAdminError) throw superAdminError;
     currentUserIsSuperAdmin = Boolean(isSuperAdmin);
 
+    await loadProductionCatalog();
     app.hidden = false;
     applySectionPermissions();
     showAccessSection();

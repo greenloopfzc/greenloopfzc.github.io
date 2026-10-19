@@ -16,8 +16,8 @@
     <link rel="stylesheet" href="css/styles.css?v=20261016-strict-view-only-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="js/imei-stage-notice.js?v=20261003-qc-duplicate-stage-1"></script>
-  <script defer src="js/permission-catalog.js?v=20261019-daily-production-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261019-daily-production-1"></script>
+  <script defer src="js/permission-catalog.js?v=20261019-closing-stock-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261019-closing-stock-1"></script>
 <script defer src="js/page-capabilities.js?v=20261019-daily-production-1"></script>
 <script defer src="js/config.js?v=20261019-daily-production-1"></script>
   <script defer src="js/login-activity.js?v=20261013-search-tv-1"></script>
@@ -31,8 +31,8 @@
   <script defer src="js/sidebar-compact.js?v=20261009-sidebar-pdf-1"></script>
   <link rel="stylesheet" href="css/clean-layout.css?v=20261017-clean-layout-1">
   <script defer src="js/clean-layout.js?v=20261017-clean-layout-1"></script>
-  <link rel="stylesheet" href="css/daily-production.css?v=20261019-daily-production-1">
-  <script defer src="js/daily-production.js?v=20261019-daily-production-1"></script>
+  <link rel="stylesheet" href="css/daily-production.css?v=20261019-closing-stock-1">
+  <script defer src="js/daily-production.js?v=20261019-closing-stock-1"></script>
   <script defer src="js/suspicious-badge.js?v=20261017-suspicious-activity-1"></script>
 </head>
     <body class="app-page dp-page">
@@ -46,41 +46,36 @@
       <main class="app-main">
         <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Dashboard</a><span aria-hidden="true">/</span><strong>Daily Production Report</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
         <div class="page-content dp-content">
-          <header class="dp-heading"><div><p class="eyebrow">MANUAL STOCK REGISTER</p><h1>Daily Production Report</h1><p>Record production and available stock by model and grade.</p></div><div class="dp-tools"><button id="dp-add" class="primary-button" data-capability="entry">＋ Add stock</button><button id="dp-remove" class="secondary-button" data-capability="adjust">− Remove stock</button></div></header>
+          <header class="dp-heading"><div><p class="eyebrow">MANUAL STOCK REGISTER</p><h1>Daily Production Report</h1><p>Count today's stock box by box. Compare with the previous closing balance.</p></div><button id="dp-refresh" class="secondary-button" data-capability="view">Refresh</button></header>
           <p id="dp-message" class="dp-message" role="status" hidden></p>
-          <div class="dp-stats" aria-label="Stock summary">
-            <div><span>Current stock</span><strong id="dp-current">—</strong><small>All recorded dates</small></div>
-            <div><span>Added today</span><strong id="dp-added">—</strong><small>Daily production</small></div>
-            <div><span>Removed today</span><strong id="dp-removed">—</strong><small>Dispatches &amp; adjustments</small></div>
-            <div><span>Opening stock today</span><strong id="dp-opening">—</strong><small>Existing stock entered today</small></div>
-          </div>
-          <section class="dp-panel" aria-label="Production records">
-            <div class="dp-toolbar"><nav class="dp-tabs" aria-label="Report view"><button data-dp-view="stock" data-capability="view" aria-pressed="true">Current Stock</button><button data-dp-view="daily" data-capability="view" aria-pressed="false">Daily Production</button><button data-dp-view="history" data-capability="view" aria-pressed="false">Entry History</button></nav><div class="dp-tools"><button id="dp-filters-toggle" class="secondary-button" data-capability="search" aria-expanded="false" aria-controls="dp-filters">Filters <span id="dp-filter-count"></span></button><button id="dp-options-open" class="secondary-button" data-capability="manage_options">Models &amp; grades</button><button id="dp-download" class="secondary-button" data-capability="download">Download CSV</button><button id="dp-refresh" class="secondary-button" data-capability="view">Refresh</button></div></div>
-            <form id="dp-filters" class="dp-filters" data-capability="search" hidden>
-              <label>Search<input name="query" type="search" maxlength="100" placeholder="Type a model or keyword…"></label>
-              <label>Model<select name="model"><option value="">All models</option></select></label><label>Grade<select name="grade"><option value="">All grades</option></select></label>
-              <label data-dp-date-filter hidden>From<input name="from" type="date"></label><label data-dp-date-filter hidden>To<input name="to" type="date"></label>
-              <button id="dp-clear" type="button" class="secondary-button">Clear filters</button>
-            </form>
-            <div class="dp-caption"><p id="dp-result">Loading stock…</p><span id="dp-updated"></span></div>
-            <div class="dp-table-wrap"><table id="dp-table" aria-label="Current stock by model and grade"><thead id="dp-head"></thead><tbody id="dp-rows"><tr><td>Loading records…</td></tr></tbody></table></div>
-            <footer class="dp-pagination"><button id="dp-prev" class="secondary-button" data-capability="view">Previous</button><span id="dp-page"></span><button id="dp-next" class="secondary-button" data-capability="view">Next</button></footer>
+          <section class="dp-entry-section" id="dp-entry-section" hidden>
+            <button id="dp-entry-toggle" class="dp-entry-tile" data-capability="entry" aria-expanded="false" aria-controls="dp-entry-panel"><span class="dp-card-icon">＋</span><span><strong>Daily Data Entry</strong><small>Model · GB · Grade · Box quantity</small></span><span aria-hidden="true">→</span></button>
+            <div id="dp-entry-panel" class="dp-panel dp-entry-panel" hidden>
+              <div class="dp-caption"><strong id="dp-entry-date">Today</strong><span>Enter this box's quantity. Matching entries add together for today: 10 + 20 = 30.</span></div>
+              <form id="dp-entry-form" class="dp-entry-line" data-capability="entry">
+                <label>Model<span class="dp-option-input"><select name="model" required aria-label="Model"><option value="">Choose model</option></select><button type="button" data-manage="model" data-action="add" data-capability="manage_options" aria-label="Add model">＋</button><button type="button" data-manage="model" data-action="remove" data-capability="manage_options" aria-label="Remove model">−</button></span></label>
+                <label>GB<span class="dp-option-input"><select name="gb" required aria-label="GB"><option value="">Choose GB</option></select><button type="button" data-manage="gb" data-action="add" data-capability="manage_options" aria-label="Add GB">＋</button><button type="button" data-manage="gb" data-action="remove" data-capability="manage_options" aria-label="Remove GB">−</button></span></label>
+                <label>Grade<span class="dp-option-input"><select name="grade" required aria-label="Grade"><option value="">Choose grade</option></select><button type="button" data-manage="grade" data-action="add" data-capability="manage_options" aria-label="Add grade">＋</button><button type="button" data-manage="grade" data-action="remove" data-capability="manage_options" aria-label="Remove grade">−</button></span></label>
+                <label>Box Qty<input name="quantity" type="number" min="0" max="1000000" step="1" inputmode="numeric" required placeholder="Box qty" aria-label="Box quantity"></label><button id="dp-save" class="primary-button" type="submit">Save</button>
+              </form><p id="dp-selection" class="dp-help" aria-live="polite"></p><button id="dp-undo" type="button" class="secondary-button" data-capability="entry" hidden>Undo last count</button>
+            </div>
           </section>
-          <p class="dp-footnote">This register is entered manually. IMEI, QC, boxes and workflow Ready Stock are recorded separately. Dates and times use UAE time.</p>
+          <div class="dp-card-heading"><h2>Stock reports</h2><button id="dp-manage-open" class="secondary-button" data-capability="manage_options" hidden>Manage choices</button></div>
+          <section id="dp-cards" class="dp-cards" aria-label="Grade and total stock reports"><p class="dp-help">Loading reports…</p></section>
+          <section id="dp-report" class="dp-panel" hidden>
+            <header class="dp-toolbar"><div><h2 id="dp-report-title">Stock report</h2><p id="dp-period" class="dp-help"></p></div><div class="dp-tools"><button id="dp-filter-toggle" class="secondary-button" data-capability="search" aria-expanded="false" aria-controls="dp-filters">Filters</button><button id="dp-download" class="secondary-button" data-capability="download">Download CSV</button><button id="dp-report-close" class="secondary-button" data-capability="view">Close</button></div></header>
+            <form id="dp-filters" class="dp-filters" data-capability="search" hidden><label>Search<input name="query" type="search" maxlength="100" placeholder="Model, GB or grade…"></label><label>Report date<input name="date" type="date" min="2000-01-01"></label><button id="dp-clear" type="button" class="secondary-button">Today / Clear</button></form>
+            <div class="dp-table-wrap"><table id="dp-table"><thead id="dp-head"></thead><tbody id="dp-rows"></tbody><tfoot id="dp-totals"></tfoot></table></div>
+            <footer class="dp-pagination"><span id="dp-result"></span><button id="dp-prev" class="secondary-button" data-capability="view">Previous</button><span id="dp-page"></span><button id="dp-next" class="secondary-button" data-capability="view">Next</button></footer>
+            <p class="dp-report-note">Today's matching box counts form the closing total. Production and Out compare that total with the previous closing balance. Uncounted stock carries forward; enter 0 when no stock remains.</p>
+          </section>
+          <p class="dp-footnote">Independent manual stock. Dates and daily closing balances use UAE time.</p>
         </div>
       </main>
     </div>
-    <dialog id="dp-entry-dialog" class="dp-dialog" aria-labelledby="dp-entry-title"><header><h2 id="dp-entry-title">Add stock</h2><button type="button" data-dp-close data-capability="view" aria-label="Close entry">×</button></header>
-      <form id="dp-entry-form" data-capability="entry">
-        <div class="dp-form-grid"><label>Model<select name="model" required></select></label><label>Grade<select name="grade" required></select></label><label>Date<input name="date" type="date" required min="2000-01-01"></label><label>Entry type<select name="kind"><option value="add">Daily production</option><option value="opening">Opening stock</option><option value="remove">Remove stock / correction</option></select></label></div>
-        <label class="dp-quantity-label">Quantity<div class="dp-stepper"><button type="button" data-step="-1" aria-label="Decrease quantity">−</button><input name="quantity" type="number" min="1" max="1000000" step="1" required inputmode="numeric" value="1"><button type="button" data-step="1" aria-label="Increase quantity">＋</button></div></label>
-        <p id="dp-entry-help" class="dp-help"></p><label>Note / reason<textarea name="note" rows="2" maxlength="1000" placeholder="Optional note"></textarea></label><p id="dp-entry-error" class="dp-message" role="status" hidden></p>
-        <button id="dp-entry-save" class="primary-button" type="submit">Save entry</button>
-      </form>
-    </dialog>
-    <dialog id="dp-options-dialog" class="dp-dialog" aria-labelledby="dp-options-title"><header><h2 id="dp-options-title">Models &amp; grades</h2><button type="button" data-dp-close data-capability="view" aria-label="Close models and grades">×</button></header>
-      <form id="dp-option-form" class="dp-option-form" data-capability="manage_options"><label>Category<select name="kind"><option value="model">Model</option><option value="grade">Grade</option></select></label><label>Name<input name="name" required maxlength="100" placeholder="e.g. 16 Pro Max 256 GB"></label><button type="submit" class="primary-button">＋ Add</button></form>
-      <p class="dp-help">Remove unused choices with −. Recorded history stays available. Choices with stock must reach zero first.</p><p id="dp-options-error" class="dp-message" role="status" hidden></p><div id="dp-options-list"></div>
+    <dialog id="dp-options-dialog" class="dp-dialog" aria-labelledby="dp-options-title"><header><h2 id="dp-options-title">Manage choices</h2><button id="dp-options-close" type="button" data-capability="view" aria-label="Close choices">×</button></header>
+      <form id="dp-option-form" class="dp-option-form" data-capability="manage_options"><label>Category<select name="kind"><option value="model">Model</option><option value="gb">GB</option><option value="grade">Grade</option></select></label><label>Name<input name="name" required maxlength="100" placeholder="Enter name"></label><button type="submit" class="primary-button">＋ Add</button></form>
+      <p class="dp-help">Remove unused choices with −. Choices with stock must reach zero first. Previous records stay available.</p><p id="dp-options-error" class="dp-message" role="status" hidden></p><div id="dp-options-list"></div>
     </dialog>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   </body>
