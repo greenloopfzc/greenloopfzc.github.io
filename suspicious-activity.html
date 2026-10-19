@@ -33,8 +33,8 @@
   <script defer src="js/sidebar-compact.js?v=20261009-sidebar-pdf-1"></script>
   <link rel="stylesheet" href="css/clean-layout.css?v=20261017-clean-layout-1">
   <script defer src="js/clean-layout.js?v=20261017-clean-layout-1"></script>
-  <link rel="stylesheet" href="css/suspicious-activity.css?v=20261017-suspicious-activity-1">
-  <script defer src="js/suspicious-activity.js?v=20261017-suspicious-activity-1"></script>
+  <link rel="stylesheet" href="css/suspicious-activity.css?v=20261019-security-console-1">
+  <script defer src="js/suspicious-activity.js?v=20261019-security-console-1"></script>
   <script defer src="js/suspicious-badge.js?v=20261017-suspicious-activity-1"></script>
 </head>
     <body class="app-page suspicious-page">
@@ -55,13 +55,13 @@
           </header>
           <p id="sa-message" class="sa-message" role="status" hidden></p>
           <nav class="sa-stats" aria-label="Alert summary">
-            <button data-capability="search" data-sa-preset="new" class="sa-stat"><span>New alerts</span><strong id="sa-new">—</strong><small>Awaiting review</small></button>
-            <button data-capability="search" data-sa-preset="high" class="sa-stat sa-high"><span>High priority</span><strong id="sa-high">—</strong><small>Open alerts</small></button>
-            <button data-capability="search" data-sa-preset="investigating" class="sa-stat"><span>Under review</span><strong id="sa-investigating">—</strong><small>Investigation in progress</small></button>
-            <div class="sa-stat"><span>Reviewed</span><strong id="sa-closed">—</strong><small>Resolved or valid activity</small></div>
+            <button data-capability="search" data-sa-preset="new" class="sa-stat sa-new-card"><span class="sa-stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M6.3 6.3a8 8 0 0 0 0 11.4m11.4-11.4a8 8 0 0 1 0 11.4M3.5 3.5a12 12 0 0 0 0 17m17-17a12 12 0 0 1 0 17"/></svg></span><span class="sa-stat-label">New alerts</span><strong id="sa-new">—</strong><small>Awaiting review</small></button>
+            <button data-capability="search" data-sa-preset="high" class="sa-stat sa-high"><span class="sa-stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 8 3v6c0 4-4 7-8 9-4-2-8-5-8-9V6Z"/><path d="M12 8v5m0 3v.1"/></svg></span><span class="sa-stat-label">High priority</span><strong id="sa-high">—</strong><small>Open alerts</small></button>
+            <button data-capability="search" data-sa-preset="investigating" class="sa-stat sa-investigating-card"><span class="sa-stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6"/><path d="m15 15 6 6M10 7v3l2 1"/></svg></span><span class="sa-stat-label">Under review</span><strong id="sa-investigating">—</strong><small>Investigation in progress</small></button>
+            <div class="sa-stat sa-reviewed-card"><span class="sa-stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h10M9 12l3 3L21 5"/></svg></span><span class="sa-stat-label">Reviewed</span><strong id="sa-closed">—</strong><small>Resolved or valid activity</small></div>
           </nav>
           <section class="sa-feed" aria-labelledby="sa-feed-title">
-            <div class="sa-toolbar"><div><h2 id="sa-feed-title">Activity watchlist</h2><p id="sa-result">Loading recorded alerts…</p></div><div class="sa-tools">
+            <div class="sa-toolbar"><div><p class="sa-section-label">INCIDENT REGISTER</p><h2 id="sa-feed-title">Activity watchlist</h2><p id="sa-result">Loading recorded alerts…</p></div><div class="sa-tools">
               <button id="sa-filters-toggle" class="secondary-button" data-capability="search" aria-expanded="false" aria-controls="sa-filters">Filters <span id="sa-filter-count"></span></button>
               <button id="sa-refresh" class="secondary-button" data-capability="view">Refresh</button>
               <button id="sa-download" class="secondary-button" data-capability="download">Download CSV</button>
