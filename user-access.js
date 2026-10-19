@@ -126,7 +126,7 @@
   function capabilityCheckbox(page, item, values, visible, locked, payableEnabled) {
     const qualifier = capabilityRoleQualifier(page.key, item.key);
     const checked = visible && values.includes(item.key) && (item.key !== "payable" || payableEnabled);
-    const disabled = locked || !visible || item.key === "payable" && !payableEnabled;
+    const disabled = locked || !visible || item.key === "payable" && !payableEnabled || page.key === "daily_production" && item.key === "voice_entry" && !values.includes("entry");
     return `<label class="permission-capability"><input type="checkbox" data-access-capability="${escapeHtml(item.key)}" aria-label="${escapeHtml(page.label)}: ${escapeHtml(item.label)}${qualifier ? ` (${escapeHtml(qualifier)})` : ""}"${checked ? " checked" : ""}${disabled ? " disabled" : ""}><span>${escapeHtml(item.label)}${qualifier ? `<span class="permission-capability-role">${escapeHtml(qualifier)}</span>` : ""}</span></label>`;
   }
 
@@ -194,6 +194,11 @@
       payable.disabled = !view.checked || !priced;
       payable.closest("label").title = priced ? "" : "Select Original or Copy prices to show payable amounts.";
     }
+    if (card.dataset.pagePermission === "daily_production") {
+      const voice = card.querySelector('[data-access-capability="voice_entry"]');
+      const entry = card.querySelector('[data-access-capability="entry"]');
+      if (voice) { voice.disabled = !view.checked || !entry.checked; if (!entry.checked) voice.checked = false; }
+    }
     card.querySelector(".permission-selection-count").textContent = card.querySelectorAll("[data-access-capability]:checked").length + " additional actions selected";
   }
 
@@ -255,6 +260,10 @@
       const view = card.querySelector("[data-page-view]");
       view.disabled = pageLocked;
       card.querySelectorAll("[data-access-capability]").forEach(field => { field.disabled = pageLocked || !view.checked; });
+      if (card.dataset.pagePermission === "daily_production") {
+        const voice = card.querySelector('[data-access-capability="voice_entry"]');
+        if (voice) voice.disabled = pageLocked || !view.checked || !card.querySelector('[data-access-capability="entry"]').checked;
+      }
       if (card.dataset.pagePermission === "damage_report") {
         const payable = card.querySelector('[data-access-capability="payable"]');
         const priced = card.querySelector('[data-access-capability="original_prices"]').checked || card.querySelector('[data-access-capability="copy_prices"]').checked;

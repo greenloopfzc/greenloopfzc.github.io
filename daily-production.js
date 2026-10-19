@@ -6,7 +6,7 @@
  const num=v=>Number(v||0).toLocaleString('en-GB');
  const date=v=>new Intl.DateTimeFormat('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'}).format(new Date(v+'T12:00:00Z'));
  const rpc=async(name,args={})=>{const r=await window.GREENLOOP_GET_CLIENT().rpc(name,args);if(r.error)throw new Error(r.error.message||'Request failed. Try again.');return r.data;};
- const f=$('dp-entry-form'),filter=$('dp-filters');let home=null,selection=null,scope=null,grade=null,reportName='',query='',day=null,sort='default',offset=0,total=0,busy=false,pending=null,lastSaved=null,selectionSeq=0,reportSeq=0,timer;
+ const f=$('dp-entry-form'),filter=$('dp-filters');let home=null,selection=null,scope=null,grade=null,reportName='',query='',day=null,sort='default',offset=0,total=0,busy=false,pending=null,lastSaved=null,selectionSeq=0,reportSeq=0,timer,voice;
  function message(text='',success=false,id='dp-message'){const e=$(id);e.textContent=text;e.hidden=!text;e.dataset.state=success?'success':'error';}
  function lock(){document.querySelectorAll('[data-capability]').forEach(e=>{if(!can(e.dataset.capability)&&e.matches('button,input,select,textarea'))e.disabled=true;});window.GREENLOOP_LOCK_VIEW_ONLY_CONTROLS?.();}
  const options=kind=>(home?.options||[]).filter(o=>o.kind===kind);
@@ -16,20 +16,20 @@
   $('dp-entry-section').hidden=!can('entry');$('dp-manage-open').hidden=!can('manage_options');document.querySelectorAll('[data-manage]').forEach(e=>e.hidden=!can('manage_options'));
   $('dp-cards').innerHTML=(home.total?card({quantity:home.total.quantity},true):'')+home.cards.map(c=>card(c)).join('');
   if(!$('dp-cards').children.length)$('dp-cards').innerHTML='<p class="dp-help">No grade reports are available for your account yet. Grade cards appear after their first saved entry.</p>';
-  lock();
+  lock();voice?.refresh();
  }
  async function readSelection(){selection=null;pending=null;const seq=++selectionSeq;$('dp-selection').textContent='';if(!['model','gb','grade'].every(k=>f.elements[k].value))return;
   const ids={p_model:f.elements.model.value,p_gb:f.elements.gb.value,p_grade:f.elements.grade.value};$('dp-selection').textContent='Checking current stock…';
   try{const s=await rpc('get_closing_stock_selection_v1',ids);if(seq!==selectionSeq)return;selection={...s,...ids};$('dp-selection').textContent=`Counted today: ${num(s.counted_today)} pcs. Enter only this box's quantity; yesterday's stock is not added.`;}catch(e){if(seq===selectionSeq)message(e.message);}
  }
  for(const key of ['model','gb','grade'])f.elements[key].addEventListener('change',readSelection);
- $('dp-entry-toggle').addEventListener('click',()=>{const open=$('dp-entry-panel').hidden;$('dp-entry-panel').hidden=!open;$('dp-entry-toggle').setAttribute('aria-expanded',String(open));if(open)f.elements.model.focus();});
- function setEntryBusy(value){busy=value;f.querySelectorAll('input,select,button').forEach(e=>e.disabled=value);lock();$('dp-save').textContent=value?'Saving…':'Save';}
+ $('dp-entry-toggle').addEventListener('click',()=>{const open=$('dp-entry-panel').hidden;$('dp-entry-panel').hidden=!open;$('dp-entry-toggle').setAttribute('aria-expanded',String(open));if(open)f.elements.model.focus();else voice?.cancel();});
+ function setEntryBusy(value,label='Saving…'){busy=value;f.querySelectorAll('input,select,button').forEach(e=>e.disabled=value);lock();$('dp-save').textContent=value?label:'Save';voice?.refresh();}
  f.addEventListener('submit',async e=>{e.preventDefault();if(busy||!can('entry')||!f.reportValidity())return;if(!selection)return message('Select Model, GB and Grade, then wait for the current stock check.');
   const qty=Number(f.elements.quantity.value);if(!Number.isSafeInteger(qty)||qty<0||qty>1000000)return message('Enter a whole quantity from 0 to 1,000,000.');
   const args={p_model:selection.p_model,p_gb:selection.p_gb,p_grade:selection.p_grade,p_day:selection.date,p_quantity:qty,p_revision:selection.revision};const sig=JSON.stringify(args);if(pending?.sig!==sig)pending={sig,id:crypto.randomUUID()};args.p_request=pending.id;
   setEntryBusy(true);message();let saved=false;
-  try{const result=await rpc('save_closing_stock_v1',args);saved=true;lastSaved=args.p_request;$('dp-undo').hidden=false;f.reset();selection=null;pending=null;++selectionSeq;$('dp-selection').textContent='';await loadHome();if(scope)await loadReport();message(`Count saved: ${num(qty)} pcs. Today’s total for this Model / GB / Grade: ${num(result.quantity)} pcs. Ready for the next box.`,true);}
+  try{const result=await rpc('save_closing_stock_v1',args);saved=true;voice?.clear();lastSaved=args.p_request;$('dp-undo').hidden=false;f.reset();selection=null;pending=null;++selectionSeq;$('dp-selection').textContent='';await loadHome();if(scope)await loadReport();message(`Count saved: ${num(qty)} pcs. Today’s total for this Model / GB / Grade: ${num(result.quantity)} pcs. Ready for the next box.`,true);}
   catch(err){message(saved?'Stock was saved. Use Refresh to reload the report.':err.message);}
   finally{setEntryBusy(false);if(saved)f.elements.model.focus();}
  });
@@ -52,13 +52,19 @@
  function filterReport(){if(!can('search'))return;query=filter.elements.query.value.trim();day=filter.elements.date.value||null;offset=0;runReport();}
  filter.addEventListener('submit',e=>{e.preventDefault();clearTimeout(timer);filterReport();});filter.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(filterReport,220);});$('dp-clear').addEventListener('click',()=>{filter.reset();filterReport();});
  $('dp-prev').addEventListener('click',()=>{if(offset){offset-=50;runReport();}});$('dp-next').addEventListener('click',()=>{if(offset+50<total){offset+=50;runReport();}});
- async function refresh(){message();try{await loadHome();if(scope)await loadReport();if(selection)await readSelection();}catch(e){message(e.message);}}
+ async function refresh(){if(busy)return;message();try{await loadHome();if(scope)await loadReport();if(selection)await readSelection();}catch(e){message(e.message);}}
  $('dp-refresh').addEventListener('click',refresh);
  function renderOptions(){const kind=$('dp-option-form').elements.kind.value;$('dp-options-list').innerHTML=options(kind).map(o=>`<div class="dp-option-row"><span>${esc(o.name)}${o.active?'':'<small>Removed · history preserved</small>'}</span><button data-capability="manage_options" data-option="${esc(o.id)}" data-action="${o.active?'remove':'restore'}">${o.active?'− Remove':'＋ Restore'}</button></div>`).join('')||'<p class="dp-help">No choices yet.</p>';lock();}
- function openOptions(kind='model',action='add'){if(!can('manage_options'))return;$('dp-option-form').elements.kind.value=kind;message('',false,'dp-options-error');renderOptions();$('dp-options-dialog').showModal();if(action==='add')$('dp-option-form').elements.name.focus();}
+ function openOptions(kind='model',action='add'){if(busy||!can('manage_options'))return;$('dp-option-form').elements.kind.value=kind;message('',false,'dp-options-error');renderOptions();$('dp-options-dialog').showModal();if(action==='add')$('dp-option-form').elements.name.focus();}
  document.querySelectorAll('[data-manage]').forEach(b=>b.addEventListener('click',()=>openOptions(b.dataset.manage,b.dataset.action)));$('dp-manage-open').addEventListener('click',()=>openOptions());$('dp-options-close').addEventListener('click',()=>{if(!busy)$('dp-options-dialog').close();});$('dp-options-dialog').addEventListener('cancel',e=>{if(busy)e.preventDefault();});$('dp-option-form').elements.kind.addEventListener('change',renderOptions);
- $('dp-option-form').addEventListener('submit',async e=>{e.preventDefault();if(busy||!can('manage_options'))return;const form=e.currentTarget,b=form.querySelector('button');busy=true;b.disabled=true;message('',false,'dp-options-error');try{await rpc('save_closing_stock_option_v1',{p_kind:form.elements.kind.value,p_name:form.elements.name.value});form.elements.name.value='';await loadHome();renderOptions();}catch(err){message(err.message,false,'dp-options-error');}finally{busy=false;b.disabled=false;}});
- $('dp-options-list').addEventListener('click',async e=>{const b=e.target.closest('[data-option]');if(!b||busy||!can('manage_options'))return;const o=home.options.find(x=>x.id===b.dataset.option);if(!o)return;busy=true;b.disabled=true;message('',false,'dp-options-error');try{if(b.dataset.action==='remove')await rpc('archive_closing_stock_option_v1',{p_id:o.id});else await rpc('save_closing_stock_option_v1',{p_kind:o.kind,p_name:o.name});await loadHome();renderOptions();selection=null;++selectionSeq;await readSelection();}catch(err){message(err.message,false,'dp-options-error');}finally{busy=false;b.disabled=false;}});
+ $('dp-option-form').addEventListener('submit',async e=>{e.preventDefault();if(busy||!can('manage_options'))return;const form=e.currentTarget,b=form.querySelector('button');busy=true;b.disabled=true;message('',false,'dp-options-error');try{await rpc('save_closing_stock_option_v1',{p_kind:form.elements.kind.value,p_name:form.elements.name.value});form.elements.name.value='';await loadHome();renderOptions();}catch(err){message(err.message,false,'dp-options-error');}finally{busy=false;b.disabled=false;voice?.refresh();}});
+ $('dp-options-list').addEventListener('click',async e=>{const b=e.target.closest('[data-option]');if(!b||busy||!can('manage_options'))return;const o=home.options.find(x=>x.id===b.dataset.option);if(!o)return;busy=true;b.disabled=true;message('',false,'dp-options-error');try{if(b.dataset.action==='remove')await rpc('archive_closing_stock_option_v1',{p_id:o.id});else await rpc('save_closing_stock_option_v1',{p_kind:o.kind,p_name:o.name});await loadHome();renderOptions();selection=null;++selectionSeq;await readSelection();}catch(err){message(err.message,false,'dp-options-error');}finally{busy=false;b.disabled=false;voice?.refresh();}});
  $('dp-download').addEventListener('click',async()=>{if(!can('download')||!scope)return;const b=$('dp-download');b.disabled=true;try{const r=await rpc('get_closing_stock_report_v1',reportArgs(true));const lines=[['Date','Model','GB','Grade','Previous closing','Stock','Production','Out'],...r.rows.map(x=>[r.date,x.model,x.gb,x.grade,x.previous,x.quantity,x.production,x.stock_out]),[r.date,'Total','','',r.stats.previous,r.stats.quantity,r.stats.production,r.stats.stock_out]];const cell=v=>'"'+String(v??'').replace(/^[\s]*[=+@-]/,"'$&").replaceAll('"','""')+'"';const url=URL.createObjectURL(new Blob(['\ufeff'+lines.map(r=>r.map(cell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download=`Greenloop-Closing-Stock-${scope}-${r.date}.csv`;a.dataset.capability='download';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(e){message(e.message);}finally{b.disabled=false;}});
+ voice=window.GREENLOOP_PRODUCTION_VOICE?.create({
+  canUse:()=>can('entry')&&can('voice_entry'),isBusy:()=>busy,options:()=>home?.options||[],
+  authorize:async()=>{if(await rpc('get_production_voice_access_v1')!==true)throw new Error('Voice Entry access could not be verified.');},setBusy:value=>setEntryBusy(value,'Save'),
+  draft:()=>JSON.stringify(['model','gb','grade','quantity'].map(k=>f.elements[k].value)),
+  apply:async value=>{for(const key of ['model','gb','grade','quantity'])f.elements[key].value=value[key];message();await readSelection();}
+ });
  (async()=>{await window.GREENLOOP_ACCESS_READY;if(can('view'))await refresh();})();
 })();

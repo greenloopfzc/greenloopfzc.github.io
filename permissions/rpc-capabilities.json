@@ -1,5 +1,5 @@
 {
-  "version": "20261019-closing-stock-1",
+  "version": "20261020-production-voice-1",
   "rpcs": {
     "add_accounts_customer_v1": {
       "page": "accounts",
@@ -976,6 +976,19 @@
       "page": "daily_production",
       "capability": "entry",
       "read": false
+    },
+    "get_production_voice_access_v1": {
+      "all": [
+        {
+          "page": "daily_production",
+          "capability": "entry"
+        },
+        {
+          "page": "daily_production",
+          "capability": "voice_entry"
+        }
+      ],
+      "read": true
     }
   }
 }

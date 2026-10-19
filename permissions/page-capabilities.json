@@ -1,5 +1,5 @@
 {
-  "version": "20261019-closing-stock-1",
+  "version": "20261020-production-voice-1",
   "pages": [
     {
       "key": "overview",
@@ -246,6 +246,11 @@
           "key": "entry",
           "label": "Daily Data Entry / Save box counts",
           "write": true
+        },
+        {
+          "key": "voice_entry",
+          "label": "Voice Entry (requires Daily Data Entry)",
+          "write": false
         },
         {
           "key": "total_stock",

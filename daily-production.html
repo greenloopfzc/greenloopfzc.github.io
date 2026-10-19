@@ -16,8 +16,8 @@
     <link rel="stylesheet" href="css/styles.css?v=20261016-strict-view-only-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="js/imei-stage-notice.js?v=20261003-qc-duplicate-stage-1"></script>
-  <script defer src="js/permission-catalog.js?v=20261019-closing-stock-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261019-closing-stock-1"></script>
+  <script defer src="js/permission-catalog.js?v=20261020-production-voice-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261020-production-voice-1"></script>
 <script defer src="js/page-capabilities.js?v=20261019-daily-production-1"></script>
 <script defer src="js/config.js?v=20261019-daily-production-1"></script>
   <script defer src="js/login-activity.js?v=20261013-search-tv-1"></script>
@@ -31,8 +31,9 @@
   <script defer src="js/sidebar-compact.js?v=20261009-sidebar-pdf-1"></script>
   <link rel="stylesheet" href="css/clean-layout.css?v=20261017-clean-layout-1">
   <script defer src="js/clean-layout.js?v=20261017-clean-layout-1"></script>
-  <link rel="stylesheet" href="css/daily-production.css?v=20261019-closing-stock-1">
-  <script defer src="js/daily-production.js?v=20261019-closing-stock-1"></script>
+  <link rel="stylesheet" href="css/daily-production.css?v=20261020-production-voice-1">
+  <script defer src="js/production-voice.js?v=20261020-production-voice-1"></script>
+  <script defer src="js/daily-production.js?v=20261020-production-voice-1"></script>
   <script defer src="js/suspicious-badge.js?v=20261017-suspicious-activity-1"></script>
 </head>
     <body class="app-page dp-page">
@@ -52,6 +53,10 @@
             <button id="dp-entry-toggle" class="dp-entry-tile" data-capability="entry" aria-expanded="false" aria-controls="dp-entry-panel"><span class="dp-card-icon">＋</span><span><strong>Daily Data Entry</strong><small>Model · GB · Grade · Box quantity</small></span><span aria-hidden="true">→</span></button>
             <div id="dp-entry-panel" class="dp-panel dp-entry-panel" hidden>
               <div class="dp-caption"><strong id="dp-entry-date">Today</strong><span>Enter this box's quantity. Matching entries add together for today: 10 + 20 = 30.</span></div>
+              <div id="dp-voice" class="dp-voice" hidden data-capability="voice_entry">
+                <div class="dp-voice-controls"><button id="dp-voice-start" class="secondary-button dp-voice-button" type="button" aria-pressed="false">Voice Entry</button><label class="dp-voice-language">Speech language<select id="dp-voice-language" aria-label="Speech language"><option value="en-US">English</option><option value="ur-PK">Urdu</option></select></label><button id="dp-voice-cancel" class="secondary-button" type="button" hidden>Cancel voice</button></div>
+                <div class="dp-voice-guidance"><p id="dp-voice-status" role="status" aria-live="polite">Say one model, storage, grade and box quantity.</p><p id="dp-voice-heard" class="dp-help"></p><small>Your browser may process speech online. Review the fields, then click Save.</small></div>
+              </div>
               <form id="dp-entry-form" class="dp-entry-line" data-capability="entry">
                 <label>Model<span class="dp-option-input"><select name="model" required aria-label="Model"><option value="">Choose model</option></select><button type="button" data-manage="model" data-action="add" data-capability="manage_options" aria-label="Add model">＋</button><button type="button" data-manage="model" data-action="remove" data-capability="manage_options" aria-label="Remove model">−</button></span></label>
                 <label>GB<span class="dp-option-input"><select name="gb" required aria-label="GB"><option value="">Choose GB</option></select><button type="button" data-manage="gb" data-action="add" data-capability="manage_options" aria-label="Add GB">＋</button><button type="button" data-manage="gb" data-action="remove" data-capability="manage_options" aria-label="Remove GB">−</button></span></label>
