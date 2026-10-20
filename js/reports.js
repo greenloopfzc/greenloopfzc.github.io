@@ -95,6 +95,11 @@
       description: "Correct a damage entry or delete manual damage history. Every change is permanently audited.",
       columns: []
     },
+    production_correction: {
+      title: "Daily Production Correction",
+      description: "Review saved box entries, correct Model, GB, Grade or quantity, and delete an incorrect entry with an audit trail.",
+      columns: []
+    },
     stock_returns: {
       title: "Stock Return",
       description: "Returned stock by supplier receipt. The selected date range uses the return date in UAE time.",
@@ -904,7 +909,18 @@
       tab.setAttribute("aria-pressed", String(selected));
     });
     const liveDetails = activeReport === "complete_device_details";
-    filterForm.hidden = liveDetails || activeReport === "restricted_data" || activeReport === "data_correction" || activeReport === "manual_damage";
+    filterForm.hidden = liveDetails || activeReport === "restricted_data" || activeReport === "data_correction" || activeReport === "manual_damage" || activeReport === "production_correction";
+    window.GREENLOOP_PRODUCTION_CORRECTION?.unmount();
+    if (activeReport === "production_correction") {
+      window.GREENLOOP_DAMAGE_MANAGEMENT?.unmount();
+      window.GREENLOOP_COMPLETE_DEVICE_DETAILS?.unmount();
+      panelKicker.textContent = "Manual stock";
+      panelTitle.textContent = reports.production_correction.title;
+      panelDescription.textContent = reports.production_correction.description;
+      rowCount.textContent = "Audited box entries";
+      window.GREENLOOP_PRODUCTION_CORRECTION?.mount(reportContent);
+      return;
+    }
     if (activeReport === "manual_damage") {
       window.GREENLOOP_COMPLETE_DEVICE_DETAILS?.unmount();
       panelKicker.textContent = "Manual damage";
@@ -1012,15 +1028,16 @@
     const { data: resetPermission } = await getClient().rpc("has_role", { required_roles: ["super_admin", "owner"] });
     canResetData = Boolean(resetPermission);
     document.querySelectorAll('[data-report="data_correction"], [data-report="restricted_data"]').forEach((tab) => { tab.hidden = !canManageCorrections; });
+    document.querySelector('[data-report="production_correction"]').hidden = !['production_view','production_edit','production_delete'].some(cap=>window.GREENLOOP_CAN?.(cap,'reports'));
     const reportQuery = new URLSearchParams(window.location.search).get("report");
     const requestedReport = reportQuery === "supplier_returns" ? "stock_returns" : reportQuery;
-    if (requestedReport && reports[requestedReport] && (!["data_correction", "restricted_data"].includes(requestedReport) || canManageCorrections)) activeReport = requestedReport;
+    if (requestedReport && reports[requestedReport] && (!["data_correction", "restricted_data"].includes(requestedReport) || canManageCorrections) && (requestedReport !== 'production_correction' || ['production_view','production_edit','production_delete'].some(cap=>window.GREENLOOP_CAN?.(cap,'reports')))) activeReport = requestedReport;
     const now = new Date();
     dateFrom.value = localDate(new Date(now.getFullYear(), now.getMonth(), 1));
     dateTo.value = localDate(now);
     app.hidden = false;
     renderActiveReport();
-    if (activeReport !== "manual_damage") await loadReports();
+    if (activeReport !== "manual_damage" && activeReport !== "production_correction") await loadReports();
     if (externalRefreshPending) queueExternalReportRefresh();
   }
 
@@ -1046,7 +1063,7 @@
     activeReport = tab.dataset.report;
     if (activeReport === "manual_damage") invalidatePendingReportRead();
     renderActiveReport();
-    if (activeReport !== "manual_damage" && !hasReportSummary(reportData)) loadReports();
+    if (activeReport !== "manual_damage" && activeReport !== "production_correction" && !hasReportSummary(reportData)) loadReports();
   });
   reportContent.addEventListener("click", (event) => {
     const savedDataButton = event.target.closest('[data-audit-details-index]');

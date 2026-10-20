@@ -35,6 +35,7 @@
       else if (rule.dynamic==='damage_removal') rule=value==null?rule.null:rule.otherwise;
       else if (rule.dynamic==='supplier_return') rule=rule.actions[value] || {page:current(),capability:'__unknown_action__'};
       else if (rule.dynamic==='daily_production_entry') rule=value==='remove'?rule.remove:rule.add;
+      else if (rule.dynamic==='production_correction') rule=rule[value] || {page:'reports',capability:'__unknown_action__'};
       else if (rule.dynamic==='box_print') rule=current()==='accounts'?rule.accounts:rule.draft;
       else if (rule.dynamic==='accounts_stock') rule=rule[value] || {page:'accounts',capability:'__unknown_section__'};
       else if (rule.dynamic==='filter_source') rule=rule[value] || {page:current(),capability:'view'};
@@ -71,6 +72,12 @@
     const explicit=control.closest('[data-capability]');
     if (explicit) return rule(explicit.dataset.capability,explicit.dataset.capabilityPage);
     const page=current(),id=control.id || '',label=(control.getAttribute('aria-label') || control.textContent || control.value || '').trim();
+    if (control.closest('.pc-shell')) {
+      if (control.matches('[data-pc-action="edit"]') || control.closest('.pc-edit')) return rule('production_edit','reports');
+      if (control.matches('[data-pc-action="delete"],[data-pc-confirm]')) return rule('production_delete','reports');
+      return {any:[rule('production_view','reports'),rule('production_edit','reports'),rule('production_delete','reports')]};
+    }
+    if (control.closest('#dp-dates')) return rule('date_report','daily_production');
     if (control.matches('.table-sort-controls *,.table-sort-controls,[data-sort-key],.table-sort-button') || control.closest('.table-sort-controls') || /^Sort by /.test(label)) return rule('sort');
     if (control.matches('#damage-pdf-toggle,#damage-pdf-view,#damage-pdf-download,#damage-pdf-file,#damage-pdf-open')) return rule('download','damage_report');
     if (control.closest('#damage-pdf-form') && control.matches(fieldSelector)) return rule('search','damage_report');

@@ -1,5 +1,5 @@
 {
-  "version": "20261020-production-voice-1",
+  "version": "20261020-production-corrections-1",
   "pages": [
     {
       "key": "overview",
@@ -255,6 +255,11 @@
         {
           "key": "total_stock",
           "label": "Total Stock report (all grades)",
+          "write": false
+        },
+        {
+          "key": "date_report",
+          "label": "Date-wise stock report",
           "write": false
         },
         {
@@ -667,6 +672,21 @@
         {
           "key": "damage_correction",
           "label": "Damage data correction",
+          "write": true
+        },
+        {
+          "key": "production_view",
+          "label": "Daily Production entry history",
+          "write": false
+        },
+        {
+          "key": "production_edit",
+          "label": "Correct Daily Production entries",
+          "write": true
+        },
+        {
+          "key": "production_delete",
+          "label": "Delete Daily Production entries",
           "write": true
         },
         {

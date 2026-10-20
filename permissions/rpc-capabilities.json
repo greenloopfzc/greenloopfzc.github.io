@@ -1,5 +1,5 @@
 {
-  "version": "20261020-production-voice-1",
+  "version": "20261020-production-corrections-1",
   "rpcs": {
     "add_accounts_customer_v1": {
       "page": "accounts",
@@ -989,6 +989,57 @@
         }
       ],
       "read": true
+    },
+    "get_closing_stock_date_report_v1": {
+      "page": "daily_production",
+      "capability": "date_report",
+      "read": true
+    },
+    "get_closing_stock_entries_v1": {
+      "any": [
+        {
+          "page": "reports",
+          "capability": "production_view"
+        },
+        {
+          "page": "reports",
+          "capability": "production_edit"
+        },
+        {
+          "page": "reports",
+          "capability": "production_delete"
+        }
+      ],
+      "read": true
+    },
+    "get_closing_stock_entry_changes_v1": {
+      "any": [
+        {
+          "page": "reports",
+          "capability": "production_view"
+        },
+        {
+          "page": "reports",
+          "capability": "production_edit"
+        },
+        {
+          "page": "reports",
+          "capability": "production_delete"
+        }
+      ],
+      "read": true
+    },
+    "correct_closing_stock_entry_v1": {
+      "dynamic": "production_correction",
+      "parameter": "p_action",
+      "edit": {
+        "page": "reports",
+        "capability": "production_edit"
+      },
+      "delete": {
+        "page": "reports",
+        "capability": "production_delete"
+      }
     }
   }
 }
