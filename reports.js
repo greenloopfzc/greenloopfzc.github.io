@@ -97,7 +97,7 @@
     },
     production_correction: {
       title: "Daily Production Correction",
-      description: "Review saved box entries, correct Model, GB, Grade or quantity, and delete an incorrect entry with an audit trail.",
+      description: "Review saved box counts and Stock Out entries. Corrections and deletions keep an audit trail.",
       columns: []
     },
     stock_returns: {
@@ -1028,10 +1028,10 @@
     const { data: resetPermission } = await getClient().rpc("has_role", { required_roles: ["super_admin", "owner"] });
     canResetData = Boolean(resetPermission);
     document.querySelectorAll('[data-report="data_correction"], [data-report="restricted_data"]').forEach((tab) => { tab.hidden = !canManageCorrections; });
-    document.querySelector('[data-report="production_correction"]').hidden = !['production_view','production_edit','production_delete'].some(cap=>window.GREENLOOP_CAN?.(cap,'reports'));
+    document.querySelector('[data-report="production_correction"]').hidden = !['production_view','production_edit','production_delete','stock_out_view','stock_out_edit','stock_out_delete'].some(cap=>window.GREENLOOP_CAN?.(cap,'reports'));
     const reportQuery = new URLSearchParams(window.location.search).get("report");
     const requestedReport = reportQuery === "supplier_returns" ? "stock_returns" : reportQuery;
-    if (requestedReport && reports[requestedReport] && (!["data_correction", "restricted_data"].includes(requestedReport) || canManageCorrections) && (requestedReport !== 'production_correction' || ['production_view','production_edit','production_delete'].some(cap=>window.GREENLOOP_CAN?.(cap,'reports')))) activeReport = requestedReport;
+    if (requestedReport && reports[requestedReport] && (!["data_correction", "restricted_data"].includes(requestedReport) || canManageCorrections) && (requestedReport !== 'production_correction' || ['production_view','production_edit','production_delete','stock_out_view','stock_out_edit','stock_out_delete'].some(cap=>window.GREENLOOP_CAN?.(cap,'reports')))) activeReport = requestedReport;
     const now = new Date();
     dateFrom.value = localDate(new Date(now.getFullYear(), now.getMonth(), 1));
     dateTo.value = localDate(now);

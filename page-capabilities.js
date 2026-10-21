@@ -73,9 +73,12 @@
     if (explicit) return rule(explicit.dataset.capability,explicit.dataset.capabilityPage);
     const page=current(),id=control.id || '',label=(control.getAttribute('aria-label') || control.textContent || control.value || '').trim();
     if (control.closest('.pc-shell')) {
-      if (control.matches('[data-pc-action="edit"]') || control.closest('.pc-edit')) return rule('production_edit','reports');
-      if (control.matches('[data-pc-action="delete"],[data-pc-confirm]')) return rule('production_delete','reports');
-      return {any:[rule('production_view','reports'),rule('production_edit','reports'),rule('production_delete','reports')]};
+      const out=control.closest('.pc-shell').dataset.entryKind==='out';
+      if(out&&(control.id==='pc-filter-toggle'||control.closest('.pc-filter')))return rule('search','reports');
+      if(control.matches('[data-pc-kind]'))return {any:['production_view','production_edit','production_delete','stock_out_view','stock_out_edit','stock_out_delete'].map(k=>rule(k,'reports'))};
+      if (control.matches('[data-pc-action="edit"]') || control.closest('.pc-edit')) return rule(out?'stock_out_edit':'production_edit','reports');
+      if (control.matches('[data-pc-action="delete"],[data-pc-confirm]')) return rule(out?'stock_out_delete':'production_delete','reports');
+      return {any:(out?['stock_out_view','stock_out_edit','stock_out_delete']:['production_view','production_edit','production_delete']).map(k=>rule(k,'reports'))};
     }
     if (control.closest('#dp-dates')) return rule('date_report','daily_production');
     if (control.matches('.table-sort-controls *,.table-sort-controls,[data-sort-key],.table-sort-button') || control.closest('.table-sort-controls') || /^Sort by /.test(label)) return rule('sort');

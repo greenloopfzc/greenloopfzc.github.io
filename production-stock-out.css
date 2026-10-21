@@ -1,0 +1,7 @@
+.dpo-section .dp-card-icon{background:var(--nm-amber-bg,#fff4d6);color:var(--nm-amber,#a46d17)}
+.dpo-entry-line{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1.3fr auto;gap:12px;align-items:end}
+.dpo-entry-line label{display:grid;gap:7px;font-size:12px;font-weight:700;min-width:0}
+.dpo-entry-line input,.dpo-entry-line select{min-width:0;width:100%;min-height:44px;padding:10px;border:1px solid var(--nm-line);border-radius:12px;background:var(--nm-card);color:var(--nm-ink);font:inherit}
+.dpo-entry-line button{min-height:44px}.dpp-pending{display:block;color:var(--nm-amber,#946200);font-size:11px;font-weight:600;margin-top:5px;white-space:normal}
+@media(max-width:1100px){.dpo-entry-line{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:650px){.dpo-entry-line{grid-template-columns:minmax(0,1fr)}}

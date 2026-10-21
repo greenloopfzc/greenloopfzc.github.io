@@ -1,5 +1,5 @@
 {
-  "version": "20261021-production-periods-1",
+  "version": "20261021-production-stock-out-1",
   "pages": [
     {
       "key": "overview",
@@ -286,6 +286,11 @@
           "key": "download",
           "label": "Download permitted reports",
           "write": false
+        },
+        {
+          "key": "stock_out_entry",
+          "label": "Stock Out Entry / Save manual out quantities",
+          "write": true
         }
       ]
     },
@@ -712,6 +717,21 @@
         {
           "key": "damage_reset",
           "label": "Reset damage report",
+          "write": true
+        },
+        {
+          "key": "stock_out_view",
+          "label": "Daily Production Stock Out history",
+          "write": false
+        },
+        {
+          "key": "stock_out_edit",
+          "label": "Correct Daily Production Stock Out",
+          "write": true
+        },
+        {
+          "key": "stock_out_delete",
+          "label": "Delete Daily Production Stock Out",
           "write": true
         }
       ]
