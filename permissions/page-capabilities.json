@@ -1,5 +1,5 @@
 {
-  "version": "20261021-production-delete-all-1",
+  "version": "20261022-production-choice-deletion-1",
   "pages": [
     {
       "key": "overview",
@@ -269,7 +269,7 @@
         },
         {
           "key": "manage_options",
-          "label": "Add / remove Model, GB and Grade",
+          "label": "Add / delete Model, GB and Grade",
           "write": true
         },
         {

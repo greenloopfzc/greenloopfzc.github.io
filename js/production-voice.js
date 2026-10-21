@@ -93,7 +93,7 @@
   if(matches.size>1)return {ambiguous:true,error:'More than one saved choice matches this entry. Say the full model, storage unit or grade, or select the fields manually.'};
   if(!foundModel)return {progress:0,error:'The model did not match a saved choice. Say its number and version, for example 13 Pro Max.'};
   if(!foundStorage)return {progress:1,error:'The storage was unclear or is not a saved choice. Say it after the model, for example one two eight.'};
-  if(!foundGrade)return {progress:2,error:'The grade was unclear or is not a saved choice. Say the full grade after the storage, for example A, B, Bulges A or Bulges B.'};
+  if(!foundGrade)return {progress:2,error:'The grade was unclear or is not a saved choice. Say the full grade after the storage, for example A, B or a saved custom grade.'};
   return {progress:3,error:'The quantity was unclear. Say a whole number after the grade, for example fifty, five zero or pachaas.'};
  }
  function parse(transcript,options){

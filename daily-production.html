@@ -16,8 +16,8 @@
     <link rel="stylesheet" href="css/styles.css?v=20261016-strict-view-only-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="js/imei-stage-notice.js?v=20261003-qc-duplicate-stage-1"></script>
-  <script defer src="js/permission-catalog.js?v=20261021-production-delete-all-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261021-production-delete-all-1"></script>
+  <script defer src="js/permission-catalog.js?v=20261022-production-choice-deletion-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261022-production-choice-deletion-1"></script>
 <script defer src="js/page-capabilities.js?v=20261021-production-delete-all-1"></script>
 <script defer src="js/config.js?v=20261019-daily-production-1"></script>
   <script defer src="js/login-activity.js?v=20261013-search-tv-1"></script>
@@ -32,10 +32,10 @@
   <link rel="stylesheet" href="css/clean-layout.css?v=20261017-clean-layout-1">
   <script defer src="js/clean-layout.js?v=20261017-clean-layout-1"></script>
   <link rel="stylesheet" href="css/daily-production.css?v=20261021-requested-rollback-1">
-  <script defer src="js/production-voice.js?v=20261020-voice-recognition-fix-1"></script>
+  <script defer src="js/production-voice.js?v=20261022-production-choice-deletion-1"></script>
   <link rel="stylesheet" href="css/production-period.css?v=20261021-requested-rollback-1">
   <script defer src="js/production-period.js?v=20261021-production-period-totals-1"></script>
-  <script defer src="js/daily-production.js?v=20261022-keep-production-fields-1"></script>
+  <script defer src="js/daily-production.js?v=20261022-production-choice-deletion-1"></script>
   <script defer src="js/suspicious-badge.js?v=20261017-suspicious-activity-1"></script>
 </head>
     <body class="app-page dp-page">
@@ -87,7 +87,7 @@
     </div>
     <dialog id="dp-options-dialog" class="dp-dialog" aria-labelledby="dp-options-title"><header><h2 id="dp-options-title">Manage choices</h2><button id="dp-options-close" type="button" data-capability="view" aria-label="Close choices">×</button></header>
       <form id="dp-option-form" class="dp-option-form" data-capability="manage_options"><label>Category<select name="kind"><option value="model">Model</option><option value="gb">GB</option><option value="grade">Grade</option></select></label><label>Name<input name="name" required maxlength="100" placeholder="Enter name"></label><button type="submit" class="primary-button">＋ Add</button></form>
-      <p class="dp-help">Remove unused choices with −. Choices with stock must reach zero first. Previous records stay available.</p><p id="dp-options-error" class="dp-message" role="status" hidden></p><div id="dp-options-list"></div>
+      <p class="dp-help">Delete a choice with −. It disappears from dropdowns and this list. Previous entries stay available in Reports.</p><p id="dp-options-error" class="dp-message" role="status" hidden></p><div id="dp-options-list"></div>
     </dialog>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
     <dialog id="dp-pdf-dialog" class="dp-dialog dp-pdf-dialog" aria-labelledby="dp-pdf-title"><header><h2 id="dp-pdf-title">Daily Production PDF</h2><button id="dp-pdf-close" type="button" data-capability="view" aria-label="Close PDF">×</button></header><div class="dp-pdf-actions"><a id="dp-pdf-open" class="secondary-button" target="_blank" rel="noopener" data-capability="download">Open PDF</a><a id="dp-pdf-download" class="primary-button" data-capability="download" download>Download PDF</a><span id="dp-pdf-status" class="dp-help"></span></div><div id="dp-pdf-frame" role="region" aria-label="Daily Production PDF preview"></div></dialog>

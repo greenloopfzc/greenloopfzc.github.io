@@ -1,5 +1,5 @@
 {
-  "version": "20261021-production-delete-all-1",
+  "version": "20261022-production-choice-deletion-1",
   "rpcs": {
     "add_accounts_customer_v1": {
       "page": "accounts",
@@ -1133,6 +1133,10 @@
           "capability": "production_delete_all"
         }
       ]
+    },
+    "delete_production_option_v1": {
+      "page": "daily_production",
+      "capability": "manage_options"
     }
   }
 }
