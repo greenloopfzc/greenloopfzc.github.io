@@ -1028,10 +1028,10 @@
     const { data: resetPermission } = await getClient().rpc("has_role", { required_roles: ["super_admin", "owner"] });
     canResetData = Boolean(resetPermission);
     document.querySelectorAll('[data-report="data_correction"], [data-report="restricted_data"]').forEach((tab) => { tab.hidden = !canManageCorrections; });
-    document.querySelector('[data-report="production_correction"]').hidden = !['production_view','production_edit','production_delete','production_restore'].some(cap=>window.GREENLOOP_CAN?.(cap,'reports'));
+    document.querySelector('[data-report="production_correction"]').hidden = !['production_view','production_edit','production_delete','production_restore','production_delete_all'].some(cap=>window.GREENLOOP_CAN?.(cap,'reports'));
     const reportQuery = new URLSearchParams(window.location.search).get("report");
     const requestedReport = reportQuery === "supplier_returns" ? "stock_returns" : reportQuery;
-    if (requestedReport && reports[requestedReport] && (!["data_correction", "restricted_data"].includes(requestedReport) || canManageCorrections) && (requestedReport !== 'production_correction' || ['production_view','production_edit','production_delete','production_restore'].some(cap=>window.GREENLOOP_CAN?.(cap,'reports')))) activeReport = requestedReport;
+    if (requestedReport && reports[requestedReport] && (!["data_correction", "restricted_data"].includes(requestedReport) || canManageCorrections) && (requestedReport !== 'production_correction' || ['production_view','production_edit','production_delete','production_restore','production_delete_all'].some(cap=>window.GREENLOOP_CAN?.(cap,'reports')))) activeReport = requestedReport;
     const now = new Date();
     dateFrom.value = localDate(new Date(now.getFullYear(), now.getMonth(), 1));
     dateTo.value = localDate(now);

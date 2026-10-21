@@ -1,5 +1,5 @@
 {
-  "version": "20261021-production-period-totals-1",
+  "version": "20261021-production-delete-all-1",
   "rpcs": {
     "add_accounts_customer_v1": {
       "page": "accounts",
@@ -1012,6 +1012,10 @@
         {
           "page": "reports",
           "capability": "production_restore"
+        },
+        {
+          "page": "reports",
+          "capability": "production_delete_all"
         }
       ],
       "read": true
@@ -1033,6 +1037,10 @@
         {
           "page": "reports",
           "capability": "production_restore"
+        },
+        {
+          "page": "reports",
+          "capability": "production_delete_all"
         }
       ],
       "read": true
@@ -1101,6 +1109,30 @@
       "page": "daily_production",
       "capability": "production_report",
       "read": true
+    },
+    "review_all_production_deletion_v1": {
+      "all": [
+        {
+          "page": "reports",
+          "capability": "view"
+        },
+        {
+          "page": "reports",
+          "capability": "production_delete_all"
+        }
+      ]
+    },
+    "delete_all_production_entries_v1": {
+      "all": [
+        {
+          "page": "reports",
+          "capability": "view"
+        },
+        {
+          "page": "reports",
+          "capability": "production_delete_all"
+        }
+      ]
     }
   }
 }
