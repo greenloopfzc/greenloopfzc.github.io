@@ -16,8 +16,8 @@
     <link rel="stylesheet" href="css/styles.css?v=20261016-strict-view-only-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="js/imei-stage-notice.js?v=20261003-qc-duplicate-stage-1"></script>
-  <script defer src="js/permission-catalog.js?v=20261020-production-corrections-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261020-production-corrections-1"></script>
+  <script defer src="js/permission-catalog.js?v=20261021-production-periods-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261021-production-periods-1"></script>
 <script defer src="js/page-capabilities.js?v=20261020-production-corrections-1"></script>
 <script defer src="js/config.js?v=20261019-daily-production-1"></script>
   <script defer src="js/login-activity.js?v=20261013-search-tv-1"></script>
@@ -33,7 +33,9 @@
   <script defer src="js/clean-layout.js?v=20261017-clean-layout-1"></script>
   <link rel="stylesheet" href="css/daily-production.css?v=20261020-production-pdf-1">
   <script defer src="js/production-voice.js?v=20261020-voice-recognition-fix-1"></script>
-  <script defer src="js/daily-production.js?v=20261020-production-pdf-1"></script>
+  <link rel="stylesheet" href="css/production-period.css?v=20261021-production-periods-1">
+  <script defer src="js/production-period.js?v=20261021-production-periods-1"></script>
+  <script defer src="js/daily-production.js?v=20261021-production-periods-1"></script>
   <script defer src="js/suspicious-badge.js?v=20261017-suspicious-activity-1"></script>
 </head>
     <body class="app-page dp-page">
@@ -67,6 +69,7 @@
           </section>
           <div class="dp-card-heading"><h2>Stock reports</h2><button id="dp-manage-open" class="secondary-button" data-capability="manage_options" hidden>Manage choices</button></div>
           <section id="dp-cards" class="dp-cards" aria-label="Grade and total stock reports"><p class="dp-help">Loading reports…</p></section>
+          <section id="dpp-panel" class="dp-panel" hidden aria-label="Daily Production"></section>
           <section id="dp-dates" class="dp-panel" hidden>
             <header class="dp-toolbar"><div><h2>Date-wise Report</h2><p class="dp-help">Previous closing, current closing, production and stock out for each UAE date.</p></div><button id="dp-dates-toggle" class="secondary-button" type="button" aria-expanded="false" aria-controls="dp-dates-body">View dates</button></header>
             <div id="dp-dates-body" hidden><form id="dp-dates-form" class="dp-date-form"><label>Stock report<select name="scope" aria-label="Stock report"></select></label><label>From<input name="from" type="date" required></label><label>To<input name="to" type="date" required></label><button type="submit" class="primary-button">Show report</button></form><div class="dp-table-wrap"><table class="dp-date-table"><thead><tr><th>Date</th><th>Previous closing</th><th>Closing stock</th><th>Production</th><th>Out</th></tr></thead><tbody id="dp-date-rows"></tbody></table></div><footer class="dp-pagination"><span id="dp-date-result"></span><button id="dp-date-prev" class="secondary-button" type="button">Previous</button><button id="dp-date-next" class="secondary-button" type="button">Next</button></footer></div>

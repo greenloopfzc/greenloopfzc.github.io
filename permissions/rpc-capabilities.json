@@ -1,5 +1,5 @@
 {
-  "version": "20261020-production-corrections-1",
+  "version": "20261021-production-periods-1",
   "rpcs": {
     "add_accounts_customer_v1": {
       "page": "accounts",
@@ -1040,6 +1040,11 @@
         "page": "reports",
         "capability": "production_delete"
       }
+    },
+    "get_production_period_report_v1": {
+      "page": "daily_production",
+      "capability": "production_report",
+      "read": true
     }
   }
 }
