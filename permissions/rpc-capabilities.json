@@ -1,5 +1,5 @@
 {
-  "version": "20261021-production-periods-1",
+  "version": "20261021-production-restore-1",
   "rpcs": {
     "add_accounts_customer_v1": {
       "page": "accounts",
@@ -1008,6 +1008,10 @@
         {
           "page": "reports",
           "capability": "production_delete"
+        },
+        {
+          "page": "reports",
+          "capability": "production_restore"
         }
       ],
       "read": true
@@ -1025,6 +1029,10 @@
         {
           "page": "reports",
           "capability": "production_delete"
+        },
+        {
+          "page": "reports",
+          "capability": "production_restore"
         }
       ],
       "read": true
@@ -1054,6 +1062,10 @@
       "page": "daily_production",
       "capability": "production_report",
       "read": true
+    },
+    "restore_closing_stock_entry_v1": {
+      "page": "reports",
+      "capability": "production_restore"
     }
   }
 }

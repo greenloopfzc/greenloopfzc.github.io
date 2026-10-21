@@ -1,5 +1,5 @@
 {
-  "version": "20261021-production-periods-1",
+  "version": "20261021-production-restore-1",
   "pages": [
     {
       "key": "overview",
@@ -692,6 +692,11 @@
         {
           "key": "production_delete",
           "label": "Delete Daily Production entries",
+          "write": true
+        },
+        {
+          "key": "production_restore",
+          "label": "Restore deleted Daily Production entries",
           "write": true
         },
         {

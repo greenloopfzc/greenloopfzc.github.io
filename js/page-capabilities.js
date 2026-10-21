@@ -73,9 +73,10 @@
     if (explicit) return rule(explicit.dataset.capability,explicit.dataset.capabilityPage);
     const page=current(),id=control.id || '',label=(control.getAttribute('aria-label') || control.textContent || control.value || '').trim();
     if (control.closest('.pc-shell')) {
+      if (control.matches('[data-pc-action="restore"],[data-pc-restore-confirm]')) return rule('production_restore','reports');
       if (control.matches('[data-pc-action="edit"]') || control.closest('.pc-edit')) return rule('production_edit','reports');
       if (control.matches('[data-pc-action="delete"],[data-pc-confirm]')) return rule('production_delete','reports');
-      return {any:[rule('production_view','reports'),rule('production_edit','reports'),rule('production_delete','reports')]};
+      return {any:[rule('production_view','reports'),rule('production_edit','reports'),rule('production_delete','reports'),rule('production_restore','reports')]};
     }
     if (control.closest('#dp-dates')) return rule('date_report','daily_production');
     if (control.matches('.table-sort-controls *,.table-sort-controls,[data-sort-key],.table-sort-button') || control.closest('.table-sort-controls') || /^Sort by /.test(label)) return rule('sort');
