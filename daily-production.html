@@ -16,9 +16,9 @@
     <link rel="stylesheet" href="css/styles.css?v=20261016-strict-view-only-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="js/imei-stage-notice.js?v=20261003-qc-duplicate-stage-1"></script>
-  <script defer src="js/permission-catalog.js?v=20261021-production-stock-out-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261021-production-stock-out-1"></script>
-<script defer src="js/page-capabilities.js?v=20261021-production-stock-out-1"></script>
+  <script defer src="js/permission-catalog.js?v=20261021-requested-rollback-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261021-requested-rollback-1"></script>
+<script defer src="js/page-capabilities.js?v=20261021-requested-rollback-1"></script>
 <script defer src="js/config.js?v=20261019-daily-production-1"></script>
   <script defer src="js/login-activity.js?v=20261013-search-tv-1"></script>
   <link rel="stylesheet" href="css/record-search.css?v=20261017-find-record-popup-1">
@@ -31,13 +31,11 @@
   <script defer src="js/sidebar-compact.js?v=20261009-sidebar-pdf-1"></script>
   <link rel="stylesheet" href="css/clean-layout.css?v=20261017-clean-layout-1">
   <script defer src="js/clean-layout.js?v=20261017-clean-layout-1"></script>
-  <link rel="stylesheet" href="css/daily-production.css?v=20261020-production-pdf-1">
+  <link rel="stylesheet" href="css/daily-production.css?v=20261021-requested-rollback-1">
   <script defer src="js/production-voice.js?v=20261020-voice-recognition-fix-1"></script>
-  <link rel="stylesheet" href="css/production-period.css?v=20261021-production-periods-1">
-  <link rel="stylesheet" href="css/production-stock-out.css?v=20261021-production-stock-out-1">
-  <script defer src="js/production-stock-out.js?v=20261021-production-stock-out-1"></script>
-  <script defer src="js/production-period.js?v=20261021-production-stock-out-1"></script>
-  <script defer src="js/daily-production.js?v=20261021-production-stock-out-1"></script>
+  <link rel="stylesheet" href="css/production-period.css?v=20261021-requested-rollback-1">
+  <script defer src="js/production-period.js?v=20261021-requested-rollback-1"></script>
+  <script defer src="js/daily-production.js?v=20261021-requested-rollback-1"></script>
   <script defer src="js/suspicious-badge.js?v=20261017-suspicious-activity-1"></script>
 </head>
     <body class="app-page dp-page">
@@ -73,15 +71,15 @@
           <section id="dp-cards" class="dp-cards" aria-label="Grade and total stock reports"><p class="dp-help">Loading reports…</p></section>
           <section id="dpp-panel" class="dp-panel" hidden aria-label="Daily Production"></section>
           <section id="dp-dates" class="dp-panel" hidden>
-            <header class="dp-toolbar"><div><h2>Date-wise Report</h2><p class="dp-help">Calendar closing stock and net stock changes. Actual production is shown in Daily Production.</p></div><button id="dp-dates-toggle" class="secondary-button" type="button" aria-expanded="false" aria-controls="dp-dates-body">View dates</button></header>
-            <div id="dp-dates-body" hidden><form id="dp-dates-form" class="dp-date-form"><label>Stock report<select name="scope" aria-label="Stock report"></select></label><label>From<input name="from" type="date" required></label><label>To<input name="to" type="date" required></label><button type="submit" class="primary-button">Show report</button></form><div class="dp-table-wrap"><table class="dp-date-table"><thead><tr><th>Date</th><th>Previous closing</th><th>Closing stock</th><th>Net increase</th><th>Net decrease</th></tr></thead><tbody id="dp-date-rows"></tbody></table></div><footer class="dp-pagination"><span id="dp-date-result"></span><button id="dp-date-prev" class="secondary-button" type="button">Previous</button><button id="dp-date-next" class="secondary-button" type="button">Next</button></footer></div>
+            <header class="dp-toolbar"><div><h2>Date-wise Report</h2><p class="dp-help">Previous closing, current closing, production and stock out for each UAE date.</p></div><button id="dp-dates-toggle" class="secondary-button" type="button" aria-expanded="false" aria-controls="dp-dates-body">View dates</button></header>
+            <div id="dp-dates-body" hidden><form id="dp-dates-form" class="dp-date-form"><label>Stock report<select name="scope" aria-label="Stock report"></select></label><label>From<input name="from" type="date" required></label><label>To<input name="to" type="date" required></label><button type="submit" class="primary-button">Show report</button></form><div class="dp-table-wrap"><table class="dp-date-table"><thead><tr><th>Date</th><th>Previous closing</th><th>Closing stock</th><th>Production</th><th>Out</th></tr></thead><tbody id="dp-date-rows"></tbody></table></div><footer class="dp-pagination"><span id="dp-date-result"></span><button id="dp-date-prev" class="secondary-button" type="button">Previous</button><button id="dp-date-next" class="secondary-button" type="button">Next</button></footer></div>
           </section>
           <section id="dp-report" class="dp-panel" hidden>
             <header class="dp-toolbar"><div><h2 id="dp-report-title">Stock report</h2><p id="dp-period" class="dp-help"></p></div><div class="dp-tools"><button id="dp-filter-toggle" class="secondary-button" data-capability="search" aria-expanded="false" aria-controls="dp-filters">Filters</button><button id="dp-download" class="secondary-button" data-capability="download">Download CSV</button><button id="dp-pdf" class="secondary-button" data-capability="download" type="button">PDF View / Download</button><button id="dp-report-close" class="secondary-button" data-capability="view">Close</button></div></header>
             <form id="dp-filters" class="dp-filters" data-capability="search" hidden><label>Search<input name="query" type="search" maxlength="100" placeholder="Model, GB or grade…"></label><label>Report date<input name="date" type="date" min="2000-01-01"></label><button id="dp-clear" type="button" class="secondary-button">Today / Clear</button></form>
             <div class="dp-table-wrap"><table id="dp-table"><thead id="dp-head"></thead><tbody id="dp-rows"></tbody><tfoot id="dp-totals"></tfoot></table></div>
             <footer class="dp-pagination"><span id="dp-result"></span><button id="dp-prev" class="secondary-button" data-capability="view">Previous</button><span id="dp-page"></span><button id="dp-next" class="secondary-button" data-capability="view">Next</button></footer>
-            <p class="dp-report-note">Stock comparisons show net changes. Open Daily Production for production including recorded Stock Out. Uncounted stock carries forward; enter 0 when none remain.</p>
+            <p class="dp-report-note">Today's matching box counts form the closing total. Production and Out compare that total with the previous closing balance. Uncounted stock carries forward; enter 0 when no stock remains.</p>
           </section>
           <p class="dp-footnote">Independent manual stock. Dates and daily closing balances use UAE time.</p>
         </div>

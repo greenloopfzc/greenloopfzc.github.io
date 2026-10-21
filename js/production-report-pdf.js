@@ -5,16 +5,15 @@
   if(!report||!Array.isArray(report.rows)||!report.stats||report.total!==report.rows.length)throw new Error('The complete stock report could not be verified. Narrow the filters and retry.');
   const pdf=await lib.PDFDocument.create(),regular=await pdf.embedFont(lib.StandardFonts.Helvetica),bold=await pdf.embedFont(lib.StandardFonts.HelveticaBold);
   pdf.setTitle('Daily Production - '+options.title);pdf.setAuthor('Greenloop FZC');
-  const detail=options.kind==='period_detail',summary=options.kind==='period_summary',accounted=report.calculation_basis==='closing_plus_out';
-  const W=595.276,H=841.89,M=30,widths=detail?(accounted?[180,45,50,60,60,60,80.276]:[290,70,75,100.276]):summary?(accounted?[285,55,75,120.276]:[330,80,125.276]):[180,48,56,70,70,60,51.276],size=9,lineHeight=12;
+  const detail=options.kind==='period_detail',summary=options.kind==='period_summary';
+  const W=595.276,H=841.89,M=30,widths=detail?[290,70,75,100.276]:summary?[330,80,125.276]:[180,48,56,70,70,60,51.276],size=9,lineHeight=12;
   const c={ink:lib.rgb(.08,.16,.20),green:lib.rgb(0,.4,.3),line:lib.rgb(.72,.79,.81),pale:lib.rgb(.93,.96,.95),white:lib.rgb(1,1,1),muted:lib.rgb(.3,.38,.42)};
   const fmt=v=>Number(v||0).toLocaleString('en-GB'),day=v=>new Intl.DateTimeFormat('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'}).format(new Date(v+'T12:00:00Z'));
   function text(v){const s=String(v??'').replace(/[\r\n\t]+/g,' ').trim();try{regular.encodeText(s);}catch{throw new Error('A saved name contains characters this PDF font cannot display. Use Latin characters in Model, GB and Grade names. No rows were omitted.');}return s;}
   function wrap(value,width,face=regular,fontSize=size){let lines=[],line='';for(const word of text(value).split(' ')){let candidate=(line?line+' ':'')+word;if(face.widthOfTextAtSize(candidate,fontSize)<=width){line=candidate;continue;}if(line){lines.push(line);line='';}for(const ch of word){if(line&&face.widthOfTextAtSize(line+ch,fontSize)>width){lines.push(line);line='';}line+=ch;}}if(line||!lines.length)lines.push(line);return lines;}
   const range=d=>{const other=new Date(d+'T12:00:00Z'),start=report.date_basis==='start';other.setUTCDate(other.getUTCDate()+(start?1:-1));return day(start?d:other.toISOString().slice(0,10))+', 6:00 PM - '+day(start?other.toISOString().slice(0,10):d)+', 6:00 PM';};
-  const prod=v=>v===null?'Pending':fmt(v);
-  const labels=detail?(accounted?['Model','GB','Grade','Opening','Closing','Stock Out','Production']:['Model','GB','Grade','Production']):summary?(accounted?['Production date / period (UAE)','Models','Stock Out','Production']:['Production date / period (UAE)','Models','Production']):['Model','GB','Grade','Previous closing',report.date===report.today?'Current stock':'Closing stock','Net increase','Net decrease'];
-  const prepared=report.rows.map(r=>(detail?(accounted?[r.model,r.gb,r.grade,fmt(r.opening),r.closing===null?'Not counted':fmt(r.closing),fmt(r.stock_out),prod(r.production)+(r.issue?" - "+r.issue:"")]:[r.model,r.gb,r.grade,fmt(r.production)]):summary?(accounted?[(report.date_basis==='start'?day(r.day)+' | ':'')+range(r.day),fmt(r.models),fmt(r.stock_out),prod(r.production)+(r.pending_count?" - "+fmt(r.pending_count)+" check"+(r.pending_count===1?"":"s"):"")]:[(report.date_basis==='start'?day(r.day)+' | ':'')+range(r.day),fmt(r.models),fmt(r.production)]):[r.model,r.gb,r.grade,fmt(r.previous),fmt(r.quantity),fmt(r.production),fmt(r.stock_out)]).map((s,i)=>wrap(s,widths[i]-12)));
+  const labels=detail?['Model','GB','Grade','Production']:summary?['Production date / period (UAE)','Models','Production']:['Model','GB','Grade','Previous closing',report.date===report.today?'Current stock':'Closing stock','Production','Out'];
+  const prepared=report.rows.map(r=>(detail?[r.model,r.gb,r.grade,fmt(r.production)]:summary?[(report.date_basis==='start'?day(r.day)+' | ':'')+range(r.day),fmt(r.models),fmt(r.production)]:[r.model,r.gb,r.grade,fmt(r.previous),fmt(r.quantity),fmt(r.production),fmt(r.stock_out)]).map((s,i)=>wrap(s,widths[i]-12)));
   let logo=null;if(options.logo)logo=await pdf.embedJpg(options.logo);
   let page,y,ops;const previewPages=[],title=text(options.title||'Total Stock');
   const subtitle=`${day(report.date)} | UAE (UTC+4)`;
@@ -25,13 +24,12 @@
    draw('Daily Production Report',M,H-76,15,bold);draw(subtitle,W-M-regular.widthOfTextAtSize(subtitle,9),H-79,9,regular,c.green);
    const heading=wrap(title,W-2*M,bold,11);heading.forEach((s,i)=>draw(s,M,H-101-i*14,11,bold));y=H-125-(heading.length-1)*14;
    if(options.periodLabel){const lines=wrap(options.periodLabel,W-2*M,regular,9);lines.forEach((s,i)=>draw(s,M,y-i*12,9,regular,c.muted));y-=lines.length*12+8;}
-   if(accounted){const note='Production = Closing - Opening + recorded Stock Out.'+(report.stats.pending_count?' Pending: '+fmt(report.stats.pending_count)+' closing / reconciliation check'+(report.stats.pending_count===1?'':'s')+'.':'');const lines=wrap(note,W-2*M,regular,8);lines.forEach((s,i)=>draw(s,M,y-i*11,8,regular,c.muted));y-=lines.length*11+8;}
    if(options.query){const lines=wrap('Search: '+options.query,W-2*M,regular,9);lines.forEach((s,i)=>draw(s,M,y-i*12,9,regular,c.muted));y-=lines.length*12+8;}
    row(labels.map((s,i)=>wrap(s,widths[i]-12,bold)),true);
   }
   newPage();for(const cells of prepared)row(cells);
   if(!prepared.length)row(labels.map((_,i)=>wrap(i===0?'No matching records':'',widths[i]-12)));
-  const totals=detail?(accounted?['Total','','',fmt(report.stats.opening),report.stats.pending_count?'Pending':fmt(report.stats.closing),fmt(report.stats.stock_out),prod(report.stats.production)]:['Total production','','',fmt(report.stats.production)]):summary?(accounted?['Total','',fmt(report.stats.stock_out),prod(report.stats.production)]:['Total production','',fmt(report.stats.production)]):['Total','','',fmt(report.stats.previous),fmt(report.stats.quantity),fmt(report.stats.production),fmt(report.stats.stock_out)];
+  const totals=detail?['Total production','','',fmt(report.stats.production)]:summary?['Total production','',fmt(report.stats.production)]:['Total','','',fmt(report.stats.previous),fmt(report.stats.quantity),fmt(report.stats.production),fmt(report.stats.stock_out)];
   row(totals.map((s,i)=>wrap(s,widths[i]-12,bold)),false,true);
   const pages=pdf.getPages();pages.forEach((p,i)=>{page=p;ops=previewPages[i].ops;draw('Independent manual stock | Quantities in pcs',M,31,8,regular,c.muted);const label=`Page ${i+1} of ${pages.length}`;draw(label,W-M-regular.widthOfTextAtSize(label,8),31,8,regular,c.muted);});
   return {bytes:await pdf.save(),pages:pages.length,previewPages,filename:`Greenloop-Daily-Production-${title.replace(/[^a-z0-9]+/gi,'-')}-${report.date}.pdf`};

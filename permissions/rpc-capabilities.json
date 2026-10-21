@@ -1054,66 +1054,6 @@
       "page": "daily_production",
       "capability": "production_report",
       "read": true
-    },
-    "get_production_period_report_v3": {
-      "page": "daily_production",
-      "capability": "production_report",
-      "read": true
-    },
-    "get_production_stock_out_context_v1": {
-      "page": "daily_production",
-      "capability": "stock_out_entry",
-      "read": true
-    },
-    "save_production_stock_out_v1": {
-      "page": "daily_production",
-      "capability": "stock_out_entry"
-    },
-    "get_production_stock_out_entries_v1": {
-      "any": [
-        {
-          "page": "reports",
-          "capability": "stock_out_view"
-        },
-        {
-          "page": "reports",
-          "capability": "stock_out_edit"
-        },
-        {
-          "page": "reports",
-          "capability": "stock_out_delete"
-        }
-      ],
-      "read": true
-    },
-    "get_production_stock_out_changes_v1": {
-      "any": [
-        {
-          "page": "reports",
-          "capability": "stock_out_view"
-        },
-        {
-          "page": "reports",
-          "capability": "stock_out_edit"
-        },
-        {
-          "page": "reports",
-          "capability": "stock_out_delete"
-        }
-      ],
-      "read": true
-    },
-    "correct_production_stock_out_v1": {
-      "dynamic": "production_correction",
-      "parameter": "p_action",
-      "edit": {
-        "page": "reports",
-        "capability": "stock_out_edit"
-      },
-      "delete": {
-        "page": "reports",
-        "capability": "stock_out_delete"
-      }
     }
   }
 }
