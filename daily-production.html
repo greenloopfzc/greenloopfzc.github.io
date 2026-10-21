@@ -17,7 +17,7 @@
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="js/imei-stage-notice.js?v=20261003-qc-duplicate-stage-1"></script>
   <script defer src="js/permission-catalog.js?v=20261021-production-restore-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261021-production-restore-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261021-production-period-totals-1"></script>
 <script defer src="js/page-capabilities.js?v=20261021-production-restore-1"></script>
 <script defer src="js/config.js?v=20261019-daily-production-1"></script>
   <script defer src="js/login-activity.js?v=20261013-search-tv-1"></script>
@@ -34,8 +34,8 @@
   <link rel="stylesheet" href="css/daily-production.css?v=20261021-requested-rollback-1">
   <script defer src="js/production-voice.js?v=20261020-voice-recognition-fix-1"></script>
   <link rel="stylesheet" href="css/production-period.css?v=20261021-requested-rollback-1">
-  <script defer src="js/production-period.js?v=20261021-requested-rollback-1"></script>
-  <script defer src="js/daily-production.js?v=20261021-requested-rollback-1"></script>
+  <script defer src="js/production-period.js?v=20261021-production-period-totals-1"></script>
+  <script defer src="js/daily-production.js?v=20261021-production-period-totals-1"></script>
   <script defer src="js/suspicious-badge.js?v=20261017-suspicious-activity-1"></script>
 </head>
     <body class="app-page dp-page">
@@ -49,12 +49,12 @@
       <main class="app-main">
         <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Dashboard</a><span aria-hidden="true">/</span><strong>Daily Production Report</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
         <div class="page-content dp-content">
-          <header class="dp-heading"><div><p class="eyebrow">MANUAL STOCK REGISTER</p><h1>Daily Production Report</h1><p>Count today's stock box by box. Compare with the previous closing balance.</p></div><button id="dp-refresh" class="secondary-button" data-capability="view">Refresh</button></header>
+          <header class="dp-heading"><div><p class="eyebrow">MANUAL STOCK REGISTER</p><h1>Daily Production Report</h1><p>Count stock box by box within each 6 PM–6 PM production day.</p></div><button id="dp-refresh" class="secondary-button" data-capability="view">Refresh</button></header>
           <p id="dp-message" class="dp-message" role="status" hidden></p>
           <section class="dp-entry-section" id="dp-entry-section" hidden>
             <button id="dp-entry-toggle" class="dp-entry-tile" data-capability="entry" aria-expanded="false" aria-controls="dp-entry-panel"><span class="dp-card-icon">＋</span><span><strong>Daily Data Entry</strong><small>Model · GB · Grade · Box quantity</small></span><span aria-hidden="true">→</span></button>
             <div id="dp-entry-panel" class="dp-panel dp-entry-panel" hidden>
-              <div class="dp-caption"><strong id="dp-entry-date">Today</strong><span>Enter this box's quantity. Matching entries add together for today: 10 + 20 = 30.</span></div>
+              <div class="dp-caption"><strong id="dp-entry-date">Today</strong><span>Enter this box's quantity. Matching entries add together in this production day: 10 + 20 = 30.</span></div>
               <div id="dp-voice" class="dp-voice" hidden data-capability="voice_entry">
                 <div class="dp-voice-controls"><button id="dp-voice-start" class="secondary-button dp-voice-button" type="button" aria-pressed="false">Voice Entry</button><label class="dp-voice-language">Speech language<select id="dp-voice-language" aria-label="Speech language"><option value="en-US">English</option><option value="ur-PK">Urdu</option></select></label><button id="dp-voice-cancel" class="secondary-button" type="button" hidden>Cancel voice</button></div>
                 <div class="dp-voice-guidance"><p id="dp-voice-status" role="status" aria-live="polite">Say: 13, one two eight, A, five zero.</p><p id="dp-voice-heard" class="dp-help"></p><p id="dp-voice-matched" class="dp-voice-matched" aria-live="polite"></p><small>Order: Model → Storage → Grade → Quantity. Labels are optional. Your browser may process speech online. Review, then Save.</small></div>
@@ -71,17 +71,17 @@
           <section id="dp-cards" class="dp-cards" aria-label="Grade and total stock reports"><p class="dp-help">Loading reports…</p></section>
           <section id="dpp-panel" class="dp-panel" hidden aria-label="Daily Production"></section>
           <section id="dp-dates" class="dp-panel" hidden>
-            <header class="dp-toolbar"><div><h2>Date-wise Report</h2><p class="dp-help">Previous closing, current closing, production and stock out for each UAE date.</p></div><button id="dp-dates-toggle" class="secondary-button" type="button" aria-expanded="false" aria-controls="dp-dates-body">View dates</button></header>
-            <div id="dp-dates-body" hidden><form id="dp-dates-form" class="dp-date-form"><label>Stock report<select name="scope" aria-label="Stock report"></select></label><label>From<input name="from" type="date" required></label><label>To<input name="to" type="date" required></label><button type="submit" class="primary-button">Show report</button></form><div class="dp-table-wrap"><table class="dp-date-table"><thead><tr><th>Date</th><th>Previous closing</th><th>Closing stock</th><th>Production</th><th>Out</th></tr></thead><tbody id="dp-date-rows"></tbody></table></div><footer class="dp-pagination"><span id="dp-date-result"></span><button id="dp-date-prev" class="secondary-button" type="button">Previous</button><button id="dp-date-next" class="secondary-button" type="button">Next</button></footer></div>
+            <header class="dp-toolbar"><div><h2>Date-wise Report</h2><p class="dp-help">Saved quantities for each 6 PM–6 PM production day.</p></div><button id="dp-dates-toggle" class="secondary-button" type="button" aria-expanded="false" aria-controls="dp-dates-body">View dates</button></header>
+            <div id="dp-dates-body" hidden><form id="dp-dates-form" class="dp-date-form"><label>Stock report<select name="scope" aria-label="Stock report"></select></label><label>From<input name="from" type="date" required></label><label>To<input name="to" type="date" required></label><button type="submit" class="primary-button">Show report</button></form><div class="dp-table-wrap"><table class="dp-date-table"><thead><tr><th>Production date</th><th>Models</th><th>Quantity</th></tr></thead><tbody id="dp-date-rows"></tbody></table></div><footer class="dp-pagination"><span id="dp-date-result"></span><button id="dp-date-prev" class="secondary-button" type="button">Previous</button><button id="dp-date-next" class="secondary-button" type="button">Next</button></footer></div>
           </section>
           <section id="dp-report" class="dp-panel" hidden>
             <header class="dp-toolbar"><div><h2 id="dp-report-title">Stock report</h2><p id="dp-period" class="dp-help"></p></div><div class="dp-tools"><button id="dp-filter-toggle" class="secondary-button" data-capability="search" aria-expanded="false" aria-controls="dp-filters">Filters</button><button id="dp-download" class="secondary-button" data-capability="download">Download CSV</button><button id="dp-pdf" class="secondary-button" data-capability="download" type="button">PDF View / Download</button><button id="dp-report-close" class="secondary-button" data-capability="view">Close</button></div></header>
             <form id="dp-filters" class="dp-filters" data-capability="search" hidden><label>Search<input name="query" type="search" maxlength="100" placeholder="Model, GB or grade…"></label><label>Report date<input name="date" type="date" min="2000-01-01"></label><button id="dp-clear" type="button" class="secondary-button">Today / Clear</button></form>
             <div class="dp-table-wrap"><table id="dp-table"><thead id="dp-head"></thead><tbody id="dp-rows"></tbody><tfoot id="dp-totals"></tfoot></table></div>
             <footer class="dp-pagination"><span id="dp-result"></span><button id="dp-prev" class="secondary-button" data-capability="view">Previous</button><span id="dp-page"></span><button id="dp-next" class="secondary-button" data-capability="view">Next</button></footer>
-            <p class="dp-report-note">Today's matching box counts form the closing total. Production and Out compare that total with the previous closing balance. Uncounted stock carries forward; enter 0 when no stock remains.</p>
+            <p class="dp-report-note">This report adds the active box entries saved within the selected production day.</p>
           </section>
-          <p class="dp-footnote">Independent manual stock. Dates and daily closing balances use UAE time.</p>
+          <p class="dp-footnote">Independent manual stock · Production days run from 6 PM to 6 PM UAE.</p>
         </div>
       </main>
     </div>

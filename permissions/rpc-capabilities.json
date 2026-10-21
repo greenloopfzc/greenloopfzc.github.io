@@ -1,5 +1,5 @@
 {
-  "version": "20261021-production-restore-1",
+  "version": "20261021-production-period-totals-1",
   "rpcs": {
     "add_accounts_customer_v1": {
       "page": "accounts",
@@ -1066,6 +1066,41 @@
     "restore_closing_stock_entry_v1": {
       "page": "reports",
       "capability": "production_restore"
+    },
+    "get_period_stock_home_v1": {
+      "page": "daily_production",
+      "capability": "view",
+      "read": true
+    },
+    "get_period_stock_selection_v1": {
+      "page": "daily_production",
+      "capability": "entry",
+      "read": true
+    },
+    "save_period_stock_v1": {
+      "page": "daily_production",
+      "capability": "entry",
+      "read": false
+    },
+    "undo_period_stock_v1": {
+      "page": "daily_production",
+      "capability": "entry",
+      "read": false
+    },
+    "get_period_stock_report_v1": {
+      "page": "daily_production",
+      "capability": "view",
+      "read": true
+    },
+    "get_period_stock_dates_v1": {
+      "page": "daily_production",
+      "capability": "date_report",
+      "read": true
+    },
+    "get_entered_production_report_v1": {
+      "page": "daily_production",
+      "capability": "production_report",
+      "read": true
     }
   }
 }
