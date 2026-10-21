@@ -30,6 +30,7 @@
   let currentUserIsSuperAdmin = false;
   let savingAccess = false;
   let creatingUser = false;
+  let tvEmployeeChoices = [];
 
   const accessSections = {
     "login-activity": ["access-login-view", "Login Activity"],
@@ -243,6 +244,7 @@
     tvOnly.disabled=settings.protected_account || !can("manage_access");
     [tvParts,tvOriginal,tvCopy].forEach(field => { field.disabled = !can("manage_access"); });
     tvParts.checked=settings.show_parts;tvOriginal.checked=settings.show_original;tvCopy.checked=settings.show_copy;
+    renderTvEmployees(user.tv_employee_keys);
     document.querySelector("#damage-tv-mode-help").textContent=settings.protected_account ? "Administrator account: use a separate staff account for the TV." : "Open the damage wall directly. Entry, PDF and other software pages are blocked for this account.";
     tvModeChanged();
   }
@@ -251,9 +253,35 @@
   const tvParts = document.querySelector("#access-tv-parts");
   const tvOriginal = document.querySelector("#access-tv-original");
   const tvCopy = document.querySelector("#access-tv-copy");
+  const tvEmployeeList = document.querySelector("#tv-employee-list");
+  const tvEmployeeAll = document.querySelector("#tv-employees-future");
+  function tvEmployeeCount() {
+    const count = tvEmployeeList.querySelectorAll("input:checked").length;
+    document.querySelector("#tv-employee-count").textContent = tvEmployeeAll.checked ? `All ${tvEmployeeChoices.length} employees selected · New employees included automatically` : count ? `${count} of ${tvEmployeeChoices.length} selected · New employees stay hidden until selected` : "No employees selected · This TV will show no employee damage or payable totals";
+  }
+  function renderTvEmployees(keys) {
+    tvEmployeeAll.checked = keys === null;
+    const locked = !can("manage_access");
+    tvEmployeeAll.disabled = locked;
+    document.querySelector("#tv-employees-all").disabled = locked;
+    document.querySelector("#tv-employees-none").disabled = locked;
+    tvEmployeeList.innerHTML = tvEmployeeChoices.map(employee => `<label class="tv-employee-choice"><input type="checkbox" data-tv-employee="${escapeHtml(employee.key)}"${keys === null || keys.includes(employee.key) ? " checked" : ""}${locked ? " disabled" : ""}><span>${escapeHtml(employee.name)}${employee.archived ? '<small>Archived / historical</small>' : ""}</span></label>`).join("") || '<p class="permission-help">No employees have been added yet.</p>';
+    tvEmployeeCount();
+  }
+  function setAllTvEmployees(all) {
+    if (!can("manage_access")) return;
+    tvEmployeeAll.checked = all;
+    tvEmployeeList.querySelectorAll("input").forEach(field => { field.checked = all; });
+    tvEmployeeCount();
+  }
+  document.querySelector("#tv-employees-all").addEventListener("click", () => setAllTvEmployees(true));
+  document.querySelector("#tv-employees-none").addEventListener("click", () => setAllTvEmployees(false));
+  tvEmployeeAll.addEventListener("change", () => { if (tvEmployeeAll.checked) setAllTvEmployees(true); else tvEmployeeCount(); });
+  tvEmployeeList.addEventListener("change", () => { tvEmployeeAll.checked = false; tvEmployeeCount(); });
   function tvModeChanged() {
     const locked = tvOnly.checked;
     document.querySelector("#damage-tv-choices").hidden = !locked;
+    document.querySelector("#tv-employee-selection").hidden = !locked;
     document.querySelector("#access-page-permissions").hidden=locked;
     roleOptions.querySelectorAll("[data-page-permission]").forEach(card => {
       const pageLocked = locked || !can("manage_access") || card.dataset.pagePermission === "user_access" && !currentUserIsSuperAdmin;
@@ -291,17 +319,23 @@
   async function loadUsers(preferredUserId = selectedUserId) {
     if (!can("view")) return;
     await loadProductionCatalog();
-    const [matrixResult, capabilityResult, tvResult, partnerResult] = await Promise.all([
+    const [matrixResult, capabilityResult, tvResult, partnerResult, employeesResult] = await Promise.all([
       getClient().rpc("get_user_page_access_matrix_v2"),
       getClient().rpc("get_user_page_capabilities_v1"),
       getClient().rpc("get_user_damage_tv_settings_v1"),
-      getClient().rpc("get_user_partner_name_access_matrix")
+      getClient().rpc("get_user_partner_name_access_matrix"),
+      getClient().rpc("get_damage_tv_employee_access_v1")
     ]);
-    for (const result of [matrixResult, capabilityResult, tvResult, partnerResult]) if (result.error) throw result.error;
+    for (const result of [matrixResult, capabilityResult, tvResult, partnerResult, employeesResult]) if (result.error) throw result.error;
+    const employeeAccess = employeesResult.data;
+    if (!Array.isArray(employeeAccess?.employees) || !Array.isArray(employeeAccess?.accounts) || employeeAccess.employees.some(e => typeof e.key !== "string" || typeof e.name !== "string")) throw new Error("TV employee choices could not be verified. Refresh before saving.");
+    tvEmployeeChoices = employeeAccess.employees;
+    const employeeSettings = new Map(employeeAccess.accounts.map(row => [String(row.user_id), row.employee_keys]));
     const tvSettings = new Map((tvResult.data || []).map(row => [String(row.user_id), row]));
     const capabilitySettings = new Map((capabilityResult.data || []).map(row => [String(row.user_id), capabilityObject(row.capabilities)]));
     const partnerSettings = new Map((partnerResult.data || []).map(row => [String(row.user_id), ["view", "edit"].includes(row.access_level) || row.can_view === true ? "view" : "none"]));
-    const nextUsers = (matrixResult.data || []).map(user => ({...user, tv_display:tvSettings.get(String(user.user_id)), capabilities:capabilitySettings.get(String(user.user_id)), partner_names_access:partnerSettings.get(String(user.user_id)) || "none"}));
+    const nextUsers = (matrixResult.data || []).map(user => ({...user, tv_employee_keys:employeeSettings.get(String(user.user_id)), tv_display:tvSettings.get(String(user.user_id)), capabilities:capabilitySettings.get(String(user.user_id)), partner_names_access:partnerSettings.get(String(user.user_id)) || "none"}));
+    if (nextUsers.some(user => user.tv_employee_keys !== null && (!Array.isArray(user.tv_employee_keys) || user.tv_employee_keys.some(key => typeof key !== "string")))) throw new Error("TV employee selections could not be verified. Refresh before saving.");
     if (nextUsers.some(user => !user.tv_display || !user.capabilities)) throw new Error("Account permissions could not be verified. Refresh the account list.");
     users = nextUsers;
     const preferred = String(preferredUserId || "");
@@ -384,7 +418,7 @@
     button.textContent = "Saving...";
     let pagesSaved = false;
     try {
-    const { data: saved, error } = await getClient().rpc("save_user_access_capabilities_v1", {
+    const { data: saved, error } = await getClient().rpc("save_user_access_tv_employees_v1", {
       p_user_id: targetUserId,
       p_full_name: fullName.value.trim(),
       p_login_username: username.value.trim(),
@@ -393,6 +427,7 @@
       p_capabilities: selected.capabilities,
       p_partner_names_access: partnerNamesAccess,
       p_tv_only: tvOnly.checked,p_show_parts:tvParts.checked,p_show_original:tvOriginal.checked,p_show_copy:tvCopy.checked,
+      p_employee_keys:tvEmployeeAll.checked ? null : [...tvEmployeeList.querySelectorAll("input:checked")].map(field => field.dataset.tvEmployee),
       p_expected_revision:users.find(user=>String(user.user_id)===String(targetUserId)).tv_display.revision
     });
 

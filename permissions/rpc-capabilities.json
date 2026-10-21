@@ -1045,6 +1045,10 @@
       "page": "daily_production",
       "capability": "production_report",
       "read": true
+    },
+    "save_user_access_tv_employees_v1": {
+      "page": "user_access",
+      "capability": "manage_access"
     }
   }
 }
