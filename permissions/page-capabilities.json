@@ -1,5 +1,5 @@
 {
-  "version": "20261022-production-choice-deletion-1",
+  "version": "20261022-production-last-day-1",
   "pages": [
     {
       "key": "overview",
@@ -260,6 +260,11 @@
         {
           "key": "production_report",
           "label": "Daily Production (all grades; 6 PM cutoff)",
+          "write": false
+        },
+        {
+          "key": "last_day_report",
+          "label": "Last Day Total Stock (all grades; completed 6 PM day)",
           "write": false
         },
         {

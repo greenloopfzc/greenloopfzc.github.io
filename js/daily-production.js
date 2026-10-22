@@ -7,6 +7,11 @@
  const date=v=>new Intl.DateTimeFormat('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'}).format(new Date(v+'T12:00:00Z'));
  const rpc=async(name,args={})=>{const r=await window.GREENLOOP_GET_CLIENT().rpc(name,args);if(r.error)throw Object.assign(new Error(r.error.message||'Request failed. Try again.'),{code:r.error.code});if(name.startsWith('get_period_stock_')&&(r.data?.calculation_basis!=='period_entries'||r.data?.date_basis!=='start'))throw new Error('Finish installing the 6 PM period totals update, then refresh.');return r.data;};
  const f=$('dp-entry-form'),filter=$('dp-filters');let home=null,selection=null,scope=null,grade=null,reportName='',query='',day=null,sort='default',offset=0,total=0,busy=false,pending=null,lastSaved=null,selectionSeq=0,reportSeq=0,timer,voice,cutoffTimer,homeSeq=0;
+ let selectedCard=null;
+ const cardKey=b=>b.id||`${b.dataset.report}:${b.dataset.grade||''}`;
+ function syncSelectedCard(){for(const b of $('dp-cards').querySelectorAll('.dp-stock-card')){const active=cardKey(b)===selectedCard;b.classList.toggle('dp-card-selected',active);b.setAttribute('aria-pressed',String(active));}}
+ const cardObserver=new MutationObserver(syncSelectedCard);cardObserver.observe($('dp-cards'),{childList:true});
+ document.addEventListener('click',e=>{const b=e.target.closest('.dp-stock-card');if(b&&b.closest('#dp-cards')&&!b.disabled){selectedCard=cardKey(b);syncSelectedCard();if(!b.dataset.report){scope=null;++reportSeq;$('dp-report').hidden=true;}if(b.id!=='dpp-open')$('dpp-panel').hidden=true;if(b.id!=='dpl-open'&&$('dpl-panel'))$('dpl-panel').hidden=true;}if(['dp-report-close','dpp-close','dpl-close'].includes(e.target.closest('button')?.id)){selectedCard=null;syncSelectedCard();}},true);
  function message(text='',success=false,id='dp-message'){const e=$(id);e.textContent=text;e.hidden=!text;e.dataset.state=success?'success':'error';}
  function lock(){document.querySelectorAll('[data-capability]').forEach(e=>{if(!can(e.dataset.capability)&&e.matches('button,input,select,textarea'))e.disabled=true;});window.GREENLOOP_LOCK_VIEW_ONLY_CONTROLS?.();}
  const next=d=>{const n=new Date(d+'T12:00:00Z');n.setUTCDate(n.getUTCDate()+1);return n.toISOString().slice(0,10);};
@@ -18,10 +23,10 @@
   clearTimeout(cutoffTimer);const delay=new Date(home.current_period_end)-new Date(home.server_now)+100;if(delay>0&&delay<90000000)cutoffTimer=setTimeout(refresh,delay);
   $('dp-entry-section').hidden=!can('entry');$('dp-manage-open').hidden=!can('manage_options');document.querySelectorAll('[data-manage]').forEach(e=>e.hidden=!can('manage_options'));
   $('dp-cards').innerHTML=(home.total?card({quantity:home.total.quantity},true):'')+home.cards.map(c=>card(c)).join('');
-  if(!$('dp-cards').children.length&&!can('production_report'))$('dp-cards').innerHTML='<p class="dp-help">Grade reports appear after their first saved entry.</p>';
+  if(!$('dp-cards').children.length&&!can('production_report')&&!can('last_day_report'))$('dp-cards').innerHTML='<p class="dp-help">Grade reports appear after their first saved entry.</p>';
   $('dp-dates').hidden=!can('date_report')||!home.total&&!home.cards.length;
   if(!$('dp-dates').hidden){const el=$('dp-dates-form').elements,selected=el.scope.value;el.scope.innerHTML=(home.total?'<option value="total">Total Stock</option>':'')+home.cards.map(c=>`<option value="${esc(c.id)}">Grade ${esc(c.name)}</option>`).join('');if([...el.scope.options].some(o=>o.value===selected))el.scope.value=selected;el.from.max=el.to.max=home.today;if(oldDay&&oldDay!==home.today&&el.to.value===oldDay)el.to.value=home.today;}
-  lock();voice?.refresh();window.GREENLOOP_PRODUCTION_PERIOD?.refresh();
+  lock();voice?.refresh();window.GREENLOOP_PRODUCTION_PERIOD?.refresh();window.GREENLOOP_LAST_PRODUCTION?.refresh();
  }
  async function readSelection({preservePending=false}={}){selection=null;if(!preservePending)pending=null;const seq=++selectionSeq;$('dp-selection').textContent='';if(!['model','gb','grade'].every(k=>f.elements[k].value))return;
   const ids={p_model:f.elements.model.value,p_gb:f.elements.gb.value,p_grade:f.elements.grade.value};$('dp-selection').textContent='Checking current stock…';
