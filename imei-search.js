@@ -367,11 +367,12 @@ function buildStageSections(sortedRows) {
     const values=[
       ["Model",[device.brand,device.model].map(scalar).filter(Boolean).join(" · ")],["Color",device.color],
       ["GB",number(device.storage_gb)===null ? "" : `${device.storage_gb} GB`],["Supplier",supplierName || supplierCode],
-      ["IMEI",device.imei_1],["Supplier code",supplierCode],
-      ["Serial number",device.serial_number],["Device number",device.device_number]
+      ["IMEI 1",device.imei_1],["IMEI 2",device.imei_2],
+      ["Serial number",device.serial_number],["Supplier code",supplierCode],
+      ["Device number",device.device_number]
     ];
     if(scalar(device.region))values.push(["Current location",place(device.current_location)],["Phone region",device.region]);
-    const cells=values.map(([name,value])=>`<th scope="row">${escapeHtml(name)}</th><td>${safe(value)}</td>`);
+    const cells=values.map(([name,value],index)=>`<th scope="row">${escapeHtml(name)}</th><td${index===values.length-1 && values.length%2 ? ' colspan="3"' : ""}>${safe(value)}</td>`);
     header.innerHTML=`<div class="history-basic-heading"><h2 id="history-device-name">Device details</h2>${badge(currentStage(device))}</div><table class="history-basic-table"><caption class="history-sr-only">Basic phone and supplier details</caption><tbody>${cells.reduce((html,cell,index)=>html+(index%2===0 ? "<tr>" : "")+cell+(index%2===1 || index===cells.length-1 ? "</tr>" : ""),"")}</tbody></table>`;
   }
   function renderHistory(data) {
