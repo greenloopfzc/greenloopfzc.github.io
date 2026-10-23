@@ -1,5 +1,5 @@
 {
-  "version": "20261022-production-last-day-1",
+  "version": "20261023-production-recent-entries-1",
   "rpcs": {
     "add_accounts_customer_v1": {
       "page": "accounts",
@@ -1141,6 +1141,10 @@
     "get_last_day_production_v1": {
       "page": "daily_production",
       "capability": "last_day_report"
+    },
+    "get_my_recent_production_entries_v1": {
+      "page": "daily_production",
+      "capability": "entry"
     }
   }
 }
