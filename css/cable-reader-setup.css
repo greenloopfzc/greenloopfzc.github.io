@@ -1,0 +1,20 @@
+.reader-setup-toolbar { display: flex; align-items: center; gap: .6rem; flex-shrink: 0; }
+.reader-setup-toolbar[data-state="ready"] button { color: var(--primary, #087554); }
+.reader-setup-dialog { width: min(660px, calc(100vw - 32px)); max-height: calc(100dvh - 40px); box-sizing: border-box; padding: 24px; border: 1px solid #b6c9d1; border-radius: 24px; color: var(--text, #17354b); background: var(--surface, #edf3f7); box-shadow: 8px 12px 28px #102c4060, inset 1px 1px 2px #ffffff99; }
+.reader-setup-dialog::backdrop { background: #0b233a80; backdrop-filter: blur(3px); }
+.reader-setup-dialog header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.reader-setup-dialog h2 { margin: 4px 0 16px; font-size: 1.5rem; }
+.reader-setup-dialog .panel-kicker { margin: 0; font-size: .72rem; letter-spacing: .07em; }
+.reader-setup-state { padding: 14px; border-radius: 12px; border: 1px solid #dfbf79; background: #fff2d7; color: #6c4a0f; line-height: 1.5; }
+.reader-setup-state[data-state="ready"] { border-color: #81bd9f; background: #def1e6; color: #145d40; }
+.reader-setup-dialog ol { padding-left: 24px; }
+.reader-setup-dialog li { padding: 8px 0; line-height: 1.5; }
+.reader-setup-dialog li span { display: block; font-size: .9rem; margin-top: 3px; }
+.reader-setup-note, .reader-setup-platform, .reader-setup-dialog footer { font-size: .83rem; line-height: 1.5; }
+.reader-setup-actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 18px 0; }
+.reader-setup-actions a { text-decoration: none; }
+.reader-setup-dialog footer a { color: inherit; }
+html[data-mode="dark"] .reader-setup-dialog { background: #233b47; color: #e0edf3; border-color: #4f6875; box-shadow: 8px 12px 28px #06151e90, inset 1px 1px 2px #ffffff22; }
+html[data-mode="dark"] .reader-setup-state { background: #493c25; color: #ffe1a5; }
+html[data-mode="dark"] .reader-setup-state[data-state="ready"] { background: #1d443b; color: #c4f2db; }
+@media (max-width: 600px) { .reader-setup-dialog { padding: 18px; } .reader-setup-dialog header { flex-wrap: wrap; } .reader-setup-toolbar button { white-space: normal; } }

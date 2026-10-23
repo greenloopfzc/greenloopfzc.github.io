@@ -1,0 +1,77 @@
+{
+  "version": "20261023-cable-setup-1",
+  "payloadSha256": "da3053f81825dabd9a096988c099beae081d63b777ef5c5c766135d7a144dd6f",
+  "files": [
+    {
+      "path": "Greenloop-Cable-Reader-Setup.exe",
+      "sha256": "ab4185c4f26f3425c0ce4a87d6807f63a1c1c5f96cb0aa9eae2678156dcd23d0",
+      "bytes": 2985472
+    },
+    {
+      "path": "reader-sources.zip",
+      "sha256": "ba88e3a1750bc011f15b00fec683d95deff408d8700e32c8a887b457043620b6",
+      "bytes": 56526058
+    }
+  ],
+  "sources": [
+    {
+      "package": "mingw-w64-ucrt-x86_64-libimobiledevice-1.3.0-17",
+      "source": "https://mirror.msys2.org/mingw/sources/mingw-w64-libimobiledevice-1.3.0-17.src.tar.zst",
+      "sha256": "ae03257e0b03ded7399b28cb9e794c5fda67c622a51f5a928fc23a1e5a6e9738",
+      "base": "mingw-w64-libimobiledevice",
+      "version": "1.3.0-17",
+      "license": "spdx:LGPL-2.1-or-later",
+      "files": [
+        "idevicediagnostics.exe",
+        "libimobiledevice-1.0.dll",
+        "ideviceinfo.exe",
+        "idevice_id.exe"
+      ]
+    },
+    {
+      "package": "mingw-w64-ucrt-x86_64-libimobiledevice-glue-1.3.2-1",
+      "source": "https://mirror.msys2.org/mingw/sources/mingw-w64-libimobiledevice-glue-1.3.2-1.src.tar.zst",
+      "sha256": "ee156ff49a69840c1e919d50de5d06d935765882bd24fe74ff496f535f0fcdc3",
+      "base": "mingw-w64-libimobiledevice-glue",
+      "version": "1.3.2-1",
+      "license": "spdx:LGPL-2.1-or-later",
+      "files": [
+        "libimobiledevice-glue-1.0.dll"
+      ]
+    },
+    {
+      "package": "mingw-w64-ucrt-x86_64-libplist-2.7.0-4",
+      "source": "https://mirror.msys2.org/mingw/sources/mingw-w64-libplist-2.7.0-4.src.tar.zst",
+      "sha256": "0170254ac2a3e4fa0c88ec974a4e6d6a1e1b91d3da14d91b9b147a336c09a015",
+      "base": "mingw-w64-libplist",
+      "version": "2.7.0-4",
+      "license": "spdx:GPL-2.0-or-later AND spdx:LGPL-2.1-or-later",
+      "files": [
+        "libplist-2.0.dll"
+      ]
+    },
+    {
+      "package": "mingw-w64-ucrt-x86_64-libusbmuxd-2.1.1-1",
+      "source": "https://mirror.msys2.org/mingw/sources/mingw-w64-libusbmuxd-2.1.1-1.src.tar.zst",
+      "sha256": "d5d11d66e65e3926892b9f1301b8c75a4472f68184f86b21874026bcd4c28797",
+      "base": "mingw-w64-libusbmuxd",
+      "version": "2.1.1-1",
+      "license": "spdx:LGPL-2.1-or-later",
+      "files": [
+        "libusbmuxd-2.0.dll"
+      ]
+    },
+    {
+      "package": "mingw-w64-ucrt-x86_64-openssl-3.6.4-1",
+      "source": "https://mirror.msys2.org/mingw/sources/mingw-w64-openssl-3.6.4-1.src.tar.zst",
+      "sha256": "b60a8978d0e45f433ee8db7825d9ba90cc38956c89ab52055c05546f421942f9",
+      "base": "mingw-w64-openssl",
+      "version": "3.6.4-1",
+      "license": "spdx:Apache-2.0",
+      "files": [
+        "libssl-3-x64.dll",
+        "libcrypto-3-x64.dll"
+      ]
+    }
+  ]
+}

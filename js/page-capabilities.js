@@ -62,6 +62,10 @@
     if (!control || control.matches('input[type="hidden"]')) return null;
     // Opening controls or switching the visible table does not grant its edits.
     if (control.matches('.table-filter-toggle,.table-filter-close,.frame-view-tab,.gl-work-tab,.gl-header-search-close') || control.closest('.table-filter-pagination')) return null;
+    if (control.closest('.reader-setup-dialog,.reader-setup-toolbar')) {
+      if (control.matches('.reader-setup-close')) return null;
+      return rule(current()==='ready_stock_journey'?'edit':'entry');
+    }
     if (control.matches('[data-gl-appearance]')) return {any:[rule('theme','appearance'),rule('display_mode','appearance')]};
     if (control.closest('#gl-appearance-settings')) {
       if (control.matches('.gl-settings-close,.gl-settings-done')) return null;
