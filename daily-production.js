@@ -10,8 +10,9 @@
  let selectedCard=null;
  const cardKey=b=>b.id||`${b.dataset.report}:${b.dataset.grade||''}`;
  function syncSelectedCard(){for(const b of $('dp-cards').querySelectorAll('.dp-stock-card')){const active=cardKey(b)===selectedCard;b.classList.toggle('dp-card-selected',active);b.setAttribute('aria-pressed',String(active));}}
+ document.addEventListener('greenloop:production-card-hidden',e=>{if(selectedCard===e.detail?.id){selectedCard=null;syncSelectedCard();}});
  const cardObserver=new MutationObserver(syncSelectedCard);cardObserver.observe($('dp-cards'),{childList:true});
- document.addEventListener('click',e=>{const b=e.target.closest('.dp-stock-card');if(b&&b.closest('#dp-cards')&&!b.disabled){selectedCard=cardKey(b);syncSelectedCard();if(!b.dataset.report){scope=null;++reportSeq;$('dp-report').hidden=true;}if(b.id!=='dpp-open')$('dpp-panel').hidden=true;if(b.id!=='dpl-open'&&$('dpl-panel'))$('dpl-panel').hidden=true;}if(['dp-report-close','dpp-close','dpl-close'].includes(e.target.closest('button')?.id)){selectedCard=null;syncSelectedCard();}},true);
+ document.addEventListener('click',e=>{const b=e.target.closest('.dp-stock-card');if(b&&b.closest('#dp-cards')&&!b.disabled&&!b.hidden){selectedCard=cardKey(b);syncSelectedCard();if(!b.dataset.report){scope=null;++reportSeq;$('dp-report').hidden=true;}if(b.id!=='dpp-open')$('dpp-panel').hidden=true;if(b.id!=='dpl-open'&&$('dpl-panel'))$('dpl-panel').hidden=true;}if(['dp-report-close','dpp-close','dpl-close'].includes(e.target.closest('button')?.id)){selectedCard=null;syncSelectedCard();}},true);
  function message(text='',success=false,id='dp-message'){const e=$(id);e.textContent=text;e.hidden=!text;e.dataset.state=success?'success':'error';}
  function lock(){document.querySelectorAll('[data-capability]').forEach(e=>{if(!can(e.dataset.capability)&&e.matches('button,input,select,textarea'))e.disabled=true;});window.GREENLOOP_LOCK_VIEW_ONLY_CONTROLS?.();}
  const next=d=>{const n=new Date(d+'T12:00:00Z');n.setUTCDate(n.getUTCDate()+1);return n.toISOString().slice(0,10);};
