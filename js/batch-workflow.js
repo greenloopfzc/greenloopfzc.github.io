@@ -225,7 +225,7 @@
           cableRows.delete(`${currentBatch.batch_id}:${row.dataset.cableConnectionId}`);
           row.dataset.cableConnectionId = "";
           row.dataset.cableImei = "";
-          row.dataset.serialNumber = "";
+          row.dataset.serialNumber = ""; row.dataset.imei2 = ""; row.dataset.identitySchemaVersion = "";
           row.dataset.phoneRegion = "";
           row.querySelectorAll(".batch-row-model, .batch-row-storage, .batch-row-color, .batch-row-battery").forEach((field) => { field.value = ""; });
           row.querySelector(".batch-row-battery-unavailable").checked = false;
@@ -244,7 +244,7 @@
         const row = input.closest("tr");
         if (input.classList.contains("batch-row-platform")) {
           if (row.dataset.cableConnectionId) ignoredConnections.add(row.dataset.cableConnectionId);
-          row.dataset.cableConnectionId = ""; row.dataset.cableImei = ""; row.dataset.serialNumber = ""; row.dataset.phoneRegion = "";
+          row.dataset.cableConnectionId = ""; row.dataset.cableImei = ""; row.dataset.serialNumber = ""; row.dataset.imei2 = ""; row.dataset.identitySchemaVersion = ""; row.dataset.phoneRegion = "";
           row.querySelectorAll(".batch-row-model, .batch-row-storage, .batch-row-color, .batch-row-battery").forEach((field) => { field.value = ""; });
         }
         syncRowKind(row); scheduleRowSave(row);
@@ -302,11 +302,15 @@
       button.disabled = true;
       setRowStatus(row, "Saving...", "is-saving");
       try {
+      if (row.dataset.cableConnectionId && platform === "ios" && row.dataset.identitySchemaVersion !== "2") {setRowStatus(row,"Update the Greenloop cable reader for dual IMEI support, reconnect, then save.","is-error");return;}
       if (typeof window.GREENLOOP_CHECK_IMEI_DUPLICATE !== "function") throw new Error("IMEI check is not ready. Refresh the page before saving.");
       if (await window.GREENLOOP_CHECK_IMEI_DUPLICATE(imei, { force: !automatic })) { setRowStatus(row, "Duplicate IMEI — see popup", "is-error"); return; }
-      const { error } = await api().rpc("receive_stock_batch_imei_with_plan_v2", {
+      const { error } = await api().rpc("receive_stock_batch_imei_with_identity_v1", {
         p_batch_id: batchId,
         p_imei_1: imei,
+        p_imei_2: row.dataset.cableConnectionId && row.dataset.cableImei === imei ? row.dataset.imei2 || null : null,
+        p_serial_number: row.dataset.cableConnectionId && row.dataset.cableImei === imei ? row.dataset.serialNumber || null : null,
+        p_specification_region: row.dataset.cableConnectionId && row.dataset.cableImei === imei ? row.dataset.phoneRegion || null : null,
         p_model: model,
         p_storage_gb: Number(storage),
         p_color: color,
@@ -321,12 +325,7 @@
       row.querySelectorAll("input, select").forEach((control) => { control.disabled = true; });
       button.textContent = "Saved";
       setRowStatus(row, "Sent to Initial QC", "is-saved");
-      if (row.dataset.cableConnectionId && (!row.dataset.cableImei || row.dataset.cableImei === imei) && (row.dataset.serialNumber || row.dataset.phoneRegion)) {
-        const { error: detailsError } = await api().rpc("save_stock_device_cable_details", {
-          p_imei_1: imei, p_serial_number: row.dataset.serialNumber || null, p_specification_region: row.dataset.phoneRegion || null
-        });
-        if (detailsError) setRowStatus(row, `IMEI saved; serial/region not saved: ${detailsError.message}`, "is-error");
-      }
+
       const nextRow = row.nextElementSibling;
       const nextControl = nextRow?.querySelector(".batch-row-imei:not(:disabled)") || panel.querySelector("tr:not(.batch-saved-row) .batch-row-battery:not(:disabled)");
       nextControl?.focus();
@@ -410,6 +409,8 @@
       cableRows.set(rowKey, row);
       row.dataset.cableConnectionId = connection;
       row.dataset.cableImei = connectedImei;
+      if (device.identitySchemaVersion) row.dataset.identitySchemaVersion = String(device.identitySchemaVersion);
+      if (device.imei2) row.dataset.imei2 = device.imei2;
       if (device.serialNumber) row.dataset.serialNumber = device.serialNumber;
       if (device.phoneRegion) row.dataset.phoneRegion = device.phoneRegion;
       const setSelect = (selector, value) => {

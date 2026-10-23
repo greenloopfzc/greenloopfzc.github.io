@@ -576,6 +576,8 @@
     const technicianId = activeTechnicianId;
     if (!technicianId) { setBoardMessage("Select a technician first."); return; }
     if (!/^\d{15}$/.test(imei)) { setBoardMessage("Scan a valid 15-digit IMEI."); return; }
+    const scanCurrent=()=>activeTechnicianId===technicianId && technicianImeiScan.value.trim()===imei;
+    if (!await window.GREENLOOP_IMEI_STAGE_NOTICE.checkPrimary(imei,{isCurrent:scanCurrent})) {if(scanCurrent())setBoardMessage("Duplicate phone — use IMEI 1.");return;}
     const { data, error } = await getClient().rpc("resolve_lab_imei_for_technician", {
       p_technician_id: technicianId,
       p_imei: imei

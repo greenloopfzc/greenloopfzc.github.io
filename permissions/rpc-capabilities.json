@@ -1,5 +1,5 @@
 {
-  "version": "20261023-production-recent-entries-1",
+  "version": "20261023-dual-imei-1",
   "rpcs": {
     "add_accounts_customer_v1": {
       "page": "accounts",
@@ -1145,6 +1145,26 @@
     "get_my_recent_production_entries_v1": {
       "page": "daily_production",
       "capability": "entry"
+    },
+    "receive_stock_batch_imei_with_identity_v1": {
+      "page": "imei_entry",
+      "capability": "entry"
+    },
+    "save_stock_device_identity_v1": {
+      "any": [
+        {
+          "page": "imei_entry",
+          "capability": "entry"
+        },
+        {
+          "page": "ready_stock_journey",
+          "capability": "edit"
+        },
+        {
+          "page": "stock_received",
+          "capability": "entry"
+        }
+      ]
     }
   }
 }

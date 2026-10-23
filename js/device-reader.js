@@ -8,6 +8,7 @@
   let polling = false;
   let failedReads = 0;
   let readerState = "";
+  let cableIdentityCheck = null;
   window.GREENLOOP_GET_CONNECTED_DEVICE = () =>
     Date.now() - (window.GREENLOOP_LAST_DEVICE_AT || 0) < 30000 ? window.GREENLOOP_LAST_DEVICE : null;
   const appleSalesRegions = new Map([
@@ -37,6 +38,8 @@
     const serialNumber = String(source.serialNumber || source.serial_number || "").trim();
     return {
       imei: /^\d{15}$/.test(imei) ? imei : "",
+      imei2: /^\d{15}$/.test(String(source.imei2 || source.imei_2 || "").trim()) && String(source.imei2 || source.imei_2).trim() !== imei ? String(source.imei2 || source.imei_2).trim() : "",
+      identitySchemaVersion: Number(source.identitySchemaVersion || 0),
       platform,
       brand: String(source.brand || (platform === "ios" ? "Apple" : "")).trim(),
       connectionId: String(source.connectionId || (source.udid ? `ios:${source.udid}` : platform === "ios" && /^\d{15}$/.test(imei) ? `ios:${imei}` : "")),
@@ -76,6 +79,7 @@
       return {
         ...device,
         color: fallback.color || device.color,
+        imei2: device.imei2 || fallback.imei2,
         serialNumber: device.serialNumber || fallback.serialNumber,
         phoneRegion: device.phoneRegion || fallback.phoneRegion
       };
@@ -92,7 +96,7 @@
       // Late/partial USB responses enrich the same phone, never erase good data.
       device = { ...device };
       const missingBattery = device.batteryHealth === "" || device.batteryHealth == null;
-      for (const key of ["imei", "brand", "model", "storageGb", "color", "batteryHealth", "serialNumber", "phoneRegion"]) {
+      for (const key of ["imei", "imei2", "brand", "model", "storageGb", "color", "batteryHealth", "serialNumber", "phoneRegion"]) {
         if (device[key] === "" || device[key] == null) device[key] = previous[key];
       }
       if (missingBattery) device.batteryHealthSource = previous.batteryHealthSource;
@@ -146,11 +150,16 @@
       }
       if (!device || (!/^\d{15}$/.test(device.imei) && !(device.platform === "android" && device.connectionId))) {
         failedReads += 1;
+        cableIdentityCheck = null;
         forgetConnection();
         publishReaderState(readerResponded ? "waiting" : "offline", readerResponded ? readerMessage : "Cable reader unavailable. Start Greenloop Cable Reader; allow local-network access if your browser asks.");
         return;
       }
       failedReads = 0;
+      if (window.GREENLOOP_IMEI_STAGE_NOTICE?.checkPrimary && cableIdentityCheck?.imei !== device.imei) cableIdentityCheck={imei:device.imei,allowed:await window.GREENLOOP_IMEI_STAGE_NOTICE.checkPrimary(device.imei)};
+      if (cableIdentityCheck?.allowed === false) {
+        forgetConnection();publishReaderState("waiting","Duplicate phone — the cable IMEI belongs to this phone's main IMEI. Use IMEI 1.");return;
+      }
       publishReaderState("ready");
       publishDevice(device);
       if (device.platform !== "android" && !device.color) {
@@ -168,7 +177,7 @@
 
   window.addEventListener("beforeunload", () => { stopped = true; });
   window.addEventListener("focus", poll);
-  window.addEventListener("greenloop:retry-device", () => { lastFingerprint = ""; window.GREENLOOP_CABLE_CONNECTION_ID = (window.GREENLOOP_CABLE_CONNECTION_ID || 0) + 1; poll(); });
+  window.addEventListener("greenloop:retry-device", () => { cableIdentityCheck = null; lastFingerprint = ""; window.GREENLOOP_CABLE_CONNECTION_ID = (window.GREENLOOP_CABLE_CONNECTION_ID || 0) + 1; poll(); });
   document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
   window.setInterval(poll, 900);
   window.setTimeout(poll, 100);

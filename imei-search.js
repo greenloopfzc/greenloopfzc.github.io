@@ -370,7 +370,7 @@ function buildStageSections(sortedRows) {
       ["IMEI",device.imei_1],["Supplier code",supplierCode],
       ["Serial number",device.serial_number],["Device number",device.device_number]
     ];
-    if(scalar(device.imei_2) || scalar(device.region))values.push([scalar(device.imei_2) ? "IMEI 2" : "Current location",scalar(device.imei_2) || place(device.current_location)],["Phone region",device.region]);
+    if(scalar(device.region))values.push(["Current location",place(device.current_location)],["Phone region",device.region]);
     const cells=values.map(([name,value])=>`<th scope="row">${escapeHtml(name)}</th><td>${safe(value)}</td>`);
     header.innerHTML=`<div class="history-basic-heading"><h2 id="history-device-name">Device details</h2>${badge(currentStage(device))}</div><table class="history-basic-table"><caption class="history-sr-only">Basic phone and supplier details</caption><tbody>${cells.reduce((html,cell,index)=>html+(index%2===0 ? "<tr>" : "")+cell+(index%2===1 || index===cells.length-1 ? "</tr>" : ""),"")}</tbody></table>`;
   }

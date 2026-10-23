@@ -46,13 +46,13 @@
     }
     return pending.get(value);
   }
-  async function show({ imei, title = "Duplicate phone", message = "This phone already exists in the system.", isCurrent = () => true, onlyIfFound = false } = {}) {
+  async function show({ imei, title = "Duplicate phone", message = "This phone already exists in the system.", isCurrent = () => true, onlyIfFound = false, knownRecord = null } = {}) {
     const ticket = ++revision;
     const valid = () => ticket === revision && isCurrent();
     // A newer scan owns the notice. Close an older one while the new lookup
     // is pending; a late native close event must not cancel the new lookup.
     if (dialog?.open) dialog.close();
-    const result = lookup(imei);
+    const result = knownRecord ? Promise.resolve(knownRecord) : lookup(imei);
     let record;
     if (onlyIfFound) {
       record = await result;
@@ -72,6 +72,11 @@
       if (ticket === revision && modal.open) modal.close();
       return false;
     }
+    if (record?.matched_type === "secondary" && /^\d{15}$/.test(record.primary_imei || "")) {
+      modal.querySelector("#duplicate-imei-title").textContent = "Duplicate phone";
+      modal.querySelector(":scope > p").textContent = `This is IMEI 2 of IMEI 1 ${record.primary_imei}. Both belong to the same phone. Use IMEI 1 to continue.`;
+      modal.querySelector("[data-notice-imei]").textContent = record.primary_imei;
+    }
     modal.querySelector("[data-notice-stage]").textContent = record?.found && record.current_stage
       ? record.current_stage : "Current stage could not be checked. Please try again.";
     return true;
@@ -81,5 +86,12 @@
     const details = document.querySelector(".gl-imei-stage-details");
     if (details) details.hidden = true;
   }
-  window.GREENLOOP_IMEI_STAGE_NOTICE = { show, clear };
+  async function checkPrimary(imei, {isCurrent = () => true} = {}) {
+    const value=String(imei || "").trim();if(!/^\d{15}$/.test(value))return true;
+    const r=await lookup(value);if(!isCurrent())return false;
+    if(!r || r.found && !["primary","secondary"].includes(r.matched_type))throw new Error("Phone identity could not be verified. Refresh before continuing.");
+    if(r.matched_type === "secondary"){await show({imei:value,isCurrent,knownRecord:r});return false;}
+    return true;
+  }
+  window.GREENLOOP_IMEI_STAGE_NOTICE = { show, clear, checkPrimary };
 })();

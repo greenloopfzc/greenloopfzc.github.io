@@ -6,7 +6,7 @@
   const groups = [
     ['01', 'Phone identity', [
       ['brand', 'Brand'], ['platform', 'Phone platform'], ['phoneName', 'Phone Name'], ['model', 'Model'], ['storageGb', 'Storage / GB'], ['color', 'Colour'],
-      ['serialNumber', 'Serial Number'], ['region', 'Region'], ['imei1', 'IMEI 1'], ['imei2', 'IMEI 2']
+      ['serialNumber', 'Serial Number'], ['region', 'Region'], ['imei1', 'IMEI 1']
     ]],
     ['02', 'Battery & power', [
       ['batteryHealth', 'Battery Health'], ['batteryCycleCount', 'Battery Cycle Count'],

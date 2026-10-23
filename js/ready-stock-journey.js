@@ -65,12 +65,12 @@
   function applyConnectedDevice(device = {}) {
     const imei = String(device.imei || "").replace(/\D/g, "").slice(0, 15);
     if (!/^\d{15}$/.test(imei)) return;
-    connectedDevice = { imei, serialNumber: String(device.serialNumber || "").trim(), phoneRegion: String(device.phoneRegion || "").trim() };
+    connectedDevice = { imei, platform:device.platform, identitySchemaVersion:device.identitySchemaVersion, imei2: String(device.imei2 || ""), serialNumber: String(device.serialNumber || "").trim(), phoneRegion: String(device.phoneRegion || "").trim() };
     cableImei.textContent = imei;
     cableSerial.textContent = connectedDevice.serialNumber || "Not read";
     cableRegion.textContent = connectedDevice.phoneRegion || "Not read";
-    saveCableDetails.disabled = savingCableDetails || !window.GREENLOOP_PAGE_ACCESS?.canEdit || (!connectedDevice.serialNumber && !connectedDevice.phoneRegion);
-    cableStatus.textContent = saveCableDetails.disabled ? "Phone connected, but Serial Number and Region were not provided by the phone." : "Connected phone ready. Save only this phone's Serial Number and Region.";
+    saveCableDetails.disabled = savingCableDetails || !window.GREENLOOP_PAGE_ACCESS?.canEdit || (!connectedDevice.serialNumber && !connectedDevice.phoneRegion && !connectedDevice.imei2);
+    cableStatus.textContent = saveCableDetails.disabled ? "Phone connected, but no additional identity details were provided." : "Connected phone ready. Save available details to this IMEI.";
   }
 
   function clearConnectedDevice() {
@@ -87,12 +87,13 @@
       clearConnectedDevice(); showToast("Connect the phone again before saving."); return;
     }
     const device = { ...connectedDevice };
+    if (device.platform !== "android" && device.identitySchemaVersion !== 2) {showToast("Update the Greenloop cable reader for dual IMEI support, then reconnect this iPhone.");return;}
     savingCableDetails = true;
     saveCableDetails.disabled = true;
     saveCableDetails.textContent = "Saving...";
     try {
-      const { error } = await getClient().rpc("save_stock_device_cable_details", {
-        p_imei_1: device.imei, p_serial_number: device.serialNumber || null,
+      const { error } = await getClient().rpc("save_stock_device_identity_v1", {
+        p_imei_1: device.imei, p_imei_2: device.imei2 || null, p_serial_number: device.serialNumber || null,
         p_specification_region: device.phoneRegion || null
       });
       if (error) throw error;
@@ -102,7 +103,7 @@
     } finally {
       savingCableDetails = false;
       saveCableDetails.textContent = "Save to this IMEI";
-      saveCableDetails.disabled = !window.GREENLOOP_PAGE_ACCESS?.canEdit || !connectedDevice || (!connectedDevice.serialNumber && !connectedDevice.phoneRegion);
+      saveCableDetails.disabled = !window.GREENLOOP_PAGE_ACCESS?.canEdit || !connectedDevice || (!connectedDevice.serialNumber && !connectedDevice.phoneRegion && !connectedDevice.imei2);
     }
   }
 

@@ -170,6 +170,7 @@
         return order(a) - order(b);
       });
       for (const [key, entry] of entries) {
+        if (["imei_2","imei2","p_imei_2"].includes(key)) continue;
         if (reference(key, entry)) {
           refs.push(field(friendly(key), valueHtml(entry, key)));
           const resolved = references.get(String(entry));

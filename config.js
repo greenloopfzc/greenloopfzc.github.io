@@ -135,6 +135,13 @@ window.GREENLOOP_CONFIG = Object.freeze({
           }
         }
         const response = await rpc(name, ...args);
+        if (response?.error?.code === '23505') {
+          let detail;try { detail=JSON.parse(response.error.details || '{}'); } catch (_) {}
+          if(detail?.reason === 'secondary_imei' && /^\d{15}$/.test(detail.primary_imei || '')) {
+            const scanned=args[0]?.p_imei || args[0]?.p_imei_1 || args[0]?.p_identifier || '';
+            void window.GREENLOOP_IMEI_STAGE_NOTICE?.show({imei:scanned,knownRecord:{found:true,matched_type:'secondary',primary_imei:detail.primary_imei,current_stage:null}});
+          }
+        }
         const rule = window.GREENLOOP_RPC_CAPABILITIES?.[name];
         if (response && !response.error && rule && !rule.read) announceWorkflowCommit();
         return response;

@@ -288,6 +288,7 @@
 
     if (!/^\d{15}$/.test(imei)) return;
 
+    if (!await window.GREENLOOP_IMEI_STAGE_NOTICE.checkPrimary(imei,{isCurrent:()=>version===duplicateVersion && imieOneInput.value.trim()===imei})) return;
     const { data, error } = await getClient()
       .from("devices")
       .select("device_number, model, storage_gb, color, battery_health, current_owner_type, current_owner_customer_id, current_status")
@@ -415,6 +416,7 @@
     receiving = true;
     let saved = false;
     try {
+    if (!await window.GREENLOOP_IMEI_STAGE_NOTICE.checkPrimary(imeiOne)) return;
     const channel = stockChannelInput.value;
     if (channel === "retail_shop_out") {
       setSubmitting(receiveButton, true, "Sending...");

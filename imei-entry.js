@@ -42,6 +42,7 @@
   let boundConnection = "";
   let ignoredConnection = "";
   let boundImei = "";
+  let boundIdentity = null;
   const savedImeis = window.GREENLOOP_SAVED_ENTRY_IMEIS ||= new Set();
   const savingImeis = window.GREENLOOP_SAVING_ENTRY_IMEIS ||= new Set();
   const duplicateChecks = new Map();
@@ -330,12 +331,15 @@
       boundConnection = connection;
       ignoredConnection = "";
       boundImei = connectedImei;
+      boundIdentity = null;
       imei.setCustomValidity("");
       syncDeviceKind();
     }
     cableMirror = true;
+    boundIdentity = {...device,imei2:device.imei2 || boundIdentity?.imei2 || ""};
     if (connectedImei && imei.value && imei.value !== connectedImei) {
       boundImei = connectedImei;
+      boundIdentity = null;
       imei.setCustomValidity("The connected phone has a different IMEI. Check the entered IMEI before saving.");
       setMessage("The connected phone has a different IMEI. Check the entered IMEI before saving.");
       return;
@@ -412,6 +416,10 @@
     const unavailable = platform.value === "android" && batteryUnavailable.checked;
     const receiptDetails = { p_batch_id: batch.batch_id, p_imei_1: scannedImei, p_model: model.value, p_storage_gb: Number(storage.value), p_color: color.value, p_battery_health: unavailable ? null : Number(battery.value), p_brand: brand.value.trim(), p_platform: platform.value, p_battery_health_unavailable: unavailable };
     const cableDetails = { serial: serialNumber?.value.trim() || null, region: phoneRegion?.value.trim() || null };
+    const liveDevice = boundIdentity;
+    if (cableMirror && platform.value === "ios" && liveDevice?.identitySchemaVersion !== 2) {setMessage("Update the Greenloop cable reader for dual IMEI support, reconnect the iPhone, then save.");return;}
+    receiptDetails.p_imei_2 = cableMirror && liveDevice?.imei === scannedImei && boundConnection === liveDevice.connectionId ? liveDevice.imei2 || null : null;
+    receiptDetails.p_serial_number = cableDetails.serial;receiptDetails.p_specification_region = cableDetails.region;
     const controls = [...form.querySelectorAll("input, select, textarea, button")].map((control) => [control, control.disabled]);
     controls.forEach(([control]) => { control.disabled = true; });
     saving = true;
@@ -419,18 +427,14 @@
     setBusy(submit, true, automatic ? "Saving automatically..." : "Saving IMEI...");
     try {
     if (await checkDuplicateImei(scannedImei, { force: !automatic })) return;
-    const { data, error } = await api().rpc("receive_stock_batch_imei_with_plan_v2", receiptDetails);
+    const { data, error } = await api().rpc("receive_stock_batch_imei_with_identity_v1", receiptDetails);
     if (error) { setMessage(window.GREENLOOP_SHOW_IMEI_SAVE_ERROR(error, scannedImei)); return; }
     savedImeis.add(scannedImei);
     window.dispatchEvent(new CustomEvent("greenloop:imei-entry-saved", { detail: { imei: scannedImei } }));
     const result = data?.[0];
-    const { error: cableDetailsError } = await api().rpc("save_stock_device_cable_details", {
-      p_imei_1: scannedImei,
-      p_serial_number: cableDetails.serial,
-      p_specification_region: cableDetails.region
-    });
+
     setMessage(`IMEI saved. ${result?.entered_quantity || 0} of ${result?.planned_quantity || batch.planned_quantity} devices entered and sent to Initial QC.`, "success");
-    if (cableDetailsError) showToast(`IMEI saved, but serial/region was not saved: ${cableDetailsError.message || "Please verify it."}`);
+
     sessionStorage.setItem("greenloop-next-initial-qc-imei", scannedImei);
     imei.value = "";
     if (boundConnection) ignoredConnection = boundConnection;
@@ -491,6 +495,7 @@
       ignoredConnection = boundConnection;
       boundConnection = "";
       boundImei = "";
+      boundIdentity = null;
       clearPhoneFields();
       setMessage("IMEI changed. Enter the details for this phone before saving.");
     }

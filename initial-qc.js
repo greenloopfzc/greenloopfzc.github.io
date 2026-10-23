@@ -308,6 +308,7 @@
     row.dataset.loading = "yes";
     setRowState(row, "Loading...", "is-loading");
     try {
+    if (!await window.GREENLOOP_IMEI_STAGE_NOTICE.checkPrimary(imei,{isCurrent})) {if(isCurrent())setRowState(row,"Duplicate phone — use IMEI 1","is-error");return;}
     const { data, error } = await getClient().rpc("get_initial_qc_job_by_identifier", { p_identifier: imei });
     if (!isCurrent()) return;
     if (error) {

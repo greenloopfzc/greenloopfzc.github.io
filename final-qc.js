@@ -314,6 +314,7 @@
     row.dataset.loading = "yes";
     setRowState(row, "Loading...", "is-loading");
     try {
+    if (!await window.GREENLOOP_IMEI_STAGE_NOTICE.checkPrimary(imei,{isCurrent})) {if(isCurrent())setRowState(row,"Duplicate phone — use IMEI 1","is-error");return;}
     let step = queueSteps.find((candidate) => String(getDevice(candidate)?.imei_1 || "") === imei);
     if (!step || String(getDevice(step)?.imei_1 || "") !== row.querySelector(".final-row-imei").value.trim()) {
       await loadQueue();
