@@ -15,7 +15,7 @@
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="js/imei-stage-notice.js?v=20261023-dual-imei-1"></script>
   <script defer src="js/permission-catalog.js?v=20261024-office-access-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261024-office-access-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261024-box-recheck-1"></script>
 <script defer src="js/page-capabilities.js?v=20261024-office-access-1"></script>
 <link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
 <script defer src="js/office-access.js?v=20261024-office-access-1"></script>
@@ -35,6 +35,11 @@
   <link rel="stylesheet" href="css/clean-layout.css?v=20261017-clean-layout-1">
   <script defer src="js/clean-layout.js?v=20261017-clean-layout-1"></script>
   <script defer src="js/suspicious-badge.js?v=20261017-suspicious-activity-1"></script>
+  <link rel="stylesheet" href="css/box-status.css?v=20261024-box-recheck-1">
+  <link rel="stylesheet" href="css/table-filters.css?v=20261017-clean-layout-1">
+  <script defer src="js/table-sorting.js?v=20261017-clean-layout-1"></script>
+  <script defer src="js/table-filters.js?v=20261017-clean-layout-1"></script>
+  <script defer src="js/box-status.js?v=20261024-box-recheck-1"></script>
 </head>
   <body class="app-page">
     <div class="app-shell">
@@ -50,6 +55,8 @@
           <section class="page-heading export-box-heading"><div><p class="eyebrow dashboard-eyebrow">Ready Stock Export</p><h1>Box Entry</h1><p class="heading-subtitle">Scan as many phones as required. Scanned phones are reserved in the box. Print, confirm printing, then save to Accounts.</p></div><a class="quiet-link" href="ready-stock.html">← Ready Stock</a></section>
           <div id="permission-message" class="access-message" hidden></div>
           <section id="export-box-app" class="export-box-app" hidden>
+            <nav class="box-entry-views" role="tablist" aria-label="Box Entry views"><button type="button" class="box-entry-view is-active" data-box-entry-view="entry" role="tab" aria-selected="true" data-capability="view" data-capability-page="export_boxes" data-search-read-only><span aria-hidden="true">▣</span><div><strong>Box Entry</strong><small>Scan, print and save</small></div></button><button type="button" class="box-entry-view" data-box-entry-view="status" role="tab" aria-selected="false" data-capability="view" data-capability-page="export_boxes" data-search-read-only><span aria-hidden="true">✓</span><div><strong>Box Status</strong><small>Dates · Pending · Recheck · Verified</small></div></button></nav>
+            <div id="box-entry-workspace">
             <section class="export-box-control">
               <div class="export-box-number"><span>Current export box</span><strong id="export-box-number">Loading…</strong><small id="export-box-status">Preparing box</small></div>
               <div class="export-box-progress"><div class="export-box-progress-top"><strong id="export-box-count">0 phones</strong><span id="export-box-remaining">Ready to scan</span></div><div class="export-progress-track"><span id="export-progress-bar"></span></div></div>
@@ -65,6 +72,8 @@
               <div class="export-sheet-wrap"><table class="export-sheet"><thead><tr><th>S.No</th><th>IMEI</th><th>Model</th><th>GB</th><th>Grade</th><th>Color</th><th>Box number</th></tr></thead><tbody id="export-box-lines"></tbody></table></div>
               <div class="export-sheet-footer"><span class="gl-wordmark gl-wordmark-small"><img src="assets/greenloop-fzc-logo.jpg" alt="Greenloop FZC" width="1280" height="427"></span><span id="export-sheet-total">0 phones</span><span>Checked by: __________________</span></div>
             </section>
+            </div>
+            <section id="box-status-panel" hidden><div class="br-card"><div class="br-heading"><div><h2>Box Status</h2><p>Saved boxes by date · UAE time</p></div></div><p id="box-status-message" class="form-message" role="status"></p><div id="box-status-list"></div><div class="br-pager"><button id="box-status-prev" class="secondary-button" type="button" data-search-read-only data-capability="view" data-capability-page="export_boxes">Previous</button><span id="box-status-count"></span><button id="box-status-next" class="secondary-button" type="button" data-search-read-only data-capability="view" data-capability-page="export_boxes">Next</button></div></div><section id="box-status-detail" class="br-card" hidden></section></section>
           </section>
         </div>
       </main>

@@ -1182,5 +1182,35 @@
     "get_my_office_access_v1": {
       "read": true
     }
+  },
+  "get_box_status_v1": {
+    "page": "export_boxes",
+    "capability": "view",
+    "read": true
+  },
+  "get_box_entry_review_v1": {
+    "page": "export_boxes",
+    "capability": "view",
+    "read": true
+  },
+  "request_box_recheck_v1": {
+    "page": "accounts",
+    "capability": "verify"
+  },
+  "add_box_recheck_imei_v1": {
+    "page": "export_boxes",
+    "capability": "scan"
+  },
+  "remove_box_recheck_imei_v1": {
+    "page": "export_boxes",
+    "capability": "scan"
+  },
+  "confirm_box_recheck_print_v1": {
+    "page": "export_boxes",
+    "capability": "print"
+  },
+  "resend_box_to_accounts_v1": {
+    "page": "export_boxes",
+    "capability": "save"
   }
 }
