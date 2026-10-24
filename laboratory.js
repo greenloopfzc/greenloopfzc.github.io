@@ -632,6 +632,9 @@
       setBoardMessage(`IMEI ${imei} · ${technician.full_name}`, true);
       target.classList.add("scan-match"); target.scrollIntoView({behavior:"smooth",block:"center"});
       window.setTimeout(() => target.classList.remove("scan-match"), 2600);
+      if (document.activeElement === technicianImeiScan || document.activeElement === checkTechnicianImei) {
+        technicianImeiScan.focus({preventScroll:true}); technicianImeiScan.select();
+      }
     } catch (error) {
       if (scanCurrent()) { renderTechnicianLines(); setBoardMessage(error.message || "The IMEI could not be opened. Try again."); }
     } finally {
