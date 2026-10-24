@@ -126,14 +126,22 @@ do $wrap$declare f record;impl text;ddl text;arguments text;body text;impl_ident
  for f in select p.*,pg_get_functiondef(p.oid) ddl,p.oid::regprocedure::text identity from pg_proc p join pg_language l on l.oid=p.prolang where p.pronamespace='public'::regnamespace and p.prokind='f' and p.prorettype<>'trigger'::regtype and l.lanname in ('sql','plpgsql') and(has_function_privilege('anon',p.oid,'EXECUTE') or has_function_privilege('authenticated',p.oid,'EXECUTE')) and p.proname !~ '^get_.*_version$' and p.proname not in ('get_my_office_access_v1','greenloop_network_allowed_v1','greenloop_office_pre_request','get_office_gateway_probe_v1','get_my_partner_name_access','is_initial_qc_service','get_office_create_context_v1','initialize_user_office_access_v1') and p.oid is distinct from(select to_regprocedure(identity||'()')::oid from greenloop_private.office_previous_hook where singleton) and not exists(select 1 from pg_depend d where d.classid='pg_proc'::regclass and d.objid=p.oid and d.deptype='e') loop
   if strpos(f.prosrc,'greenloop-office-wrapper-196')>0 then continue;end if;
   if f.proowner<>current_user::regrole then raise exception 'Routine owner requires review: %',f.identity;end if;
-  if not f.prosecdef then raise exception 'Invoker routine requires review: %',f.identity;end if;
+  if not f.prosecdef and (f.prolang<>(select oid from pg_language where lanname='plpgsql') or f.prosrc ~ '^[[:space:]]*#') then raise exception 'Unsupported invoker routine requires review: %',f.identity;end if;
   if f.provariadic<>0 or(f.proargmodes is not null and 'b'::"char"=any(f.proargmodes)) then raise exception 'Unsupported public routine requires review: %',f.identity;end if;
   impl:='office_impl_'||f.oid;ddl:=regexp_replace(f.ddl,'FUNCTION public\.'||f.proname||'\(','FUNCTION greenloop_private.'||impl||'(');execute ddl;
   impl_identity:='greenloop_private.'||impl||'('||oidvectortypes(f.proargtypes)||')';
   execute format('revoke all on function %s from public,anon,authenticated',impl_identity);
   select coalesce(string_agg('$'||i,',' order by i),'') into arguments from generate_series(1,f.pronargs)i;
-  body:=E'begin\n -- greenloop-office-wrapper-196\n perform greenloop_private.require_office_network();\n '||case when f.proretset then 'return query select * from ' when f.prorettype='void'::regtype then 'perform ' else 'return ' end||'greenloop_private.'||impl||'('||arguments||E');\nend;';
-  execute format('create or replace function public.%I(%s) returns %s language plpgsql %s security definer set search_path=pg_catalog,public as %L',f.proname,pg_get_function_arguments(f.oid),pg_get_function_result(f.oid),case f.provolatile when 'i' then 'stable' when 's' then 'stable' else 'volatile' end,body);
+  if f.prosecdef then
+   body:=E'begin\n -- greenloop-office-wrapper-196\n perform greenloop_private.require_office_network();\n '||case when f.proretset then 'return query select * from ' when f.prorettype='void'::regtype then 'perform ' else 'return ' end||'greenloop_private.'||impl||'('||arguments||E');\nend;';
+   execute format('create or replace function public.%I(%s) returns %s language plpgsql %s security definer set search_path=pg_catalog,public as %L',f.proname,pg_get_function_arguments(f.oid),pg_get_function_result(f.oid),case f.provolatile when 'i' then 'stable' when 's' then 'stable' else 'volatile' end,body);
+  else
+   -- Keep caller privileges, original configuration and body. Never elevate an invoker.
+   -- A nested original block preserves declaration scope, return values and exceptions.
+   body:=E'begin\n -- greenloop-office-wrapper-196\n if not public.greenloop_network_allowed_v1() then raise exception ''Office access only. Please connect to the office network.'' using errcode=''42501'',detail=''GREENLOOP_OFFICE_ONLY'';end if;\n'||f.prosrc||E'\nend;';
+   if strpos(f.ddl,'AS $function$'||f.prosrc||'$function$')=0 then raise exception 'Invoker body format requires review: %',f.identity;end if;
+   execute replace(f.ddl,'AS $function$'||f.prosrc||'$function$','AS '||quote_literal(body));
+  end if;
   insert into greenloop_private.office_routines values(f.identity,impl_identity,md5(pg_get_functiondef(impl_identity::regprocedure)),md5(pg_get_functiondef(f.oid))) on conflict(identity) do update set implementation=excluded.implementation,original_hash=excluded.original_hash,wrapped_hash=excluded.wrapped_hash;
  end loop;end;$wrap$;
 
