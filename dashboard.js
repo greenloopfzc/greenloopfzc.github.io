@@ -83,6 +83,7 @@
       ["IMEI Entry", workflow.imei_entry, "Waiting for IMEI entry", "imei-entry-stock", "imei-entry.html", "⌕"],
       ["Initial QC", workflow.initial_qc, "Waiting for inspection", "customer-stock", "initial-qc.html", "✓"],
       ["Lab & Glass", workflow.lab_glass, "Waiting for repair", "lab-stock", "laboratory.html", "⌁"],
+      ["Lab & Glass · 2+ Days", null, "Waiting 48 hours or more", "lab-delay-card", "#lab-delay-report", "◷"],
       ["Parts", workflow.parts, "Open part requests", "rma-stock", "parts.html", "▦"],
       ["Final QC", workflow.final_qc, "Waiting for final check", "final-qc-stock", "final-qc.html", "◉"],
       ["Frame Department", workflow.frame, "Waiting for frame work", "frame-stock", "laboratory.html#frame", "□"],
@@ -91,9 +92,9 @@
     ];
 
     document.querySelector(".workflow-metric-grid").innerHTML = cards.map(([label, value, note, style, href, icon]) => `
-      <a class="metric-card metric-card-link ${style}" href="${href}">
+      <a class="metric-card metric-card-link ${style}" href="${href}"${style==='lab-delay-card'?' data-lab-delay-open aria-controls="lab-delay-report" aria-expanded="false"':''}>
         <div class="metric-topline"><span class="metric-icon">${icon}</span><span class="trend up">Live</span></div>
-        <p>${escapeHtml(label)}</p><strong>${escapeHtml(value || 0)}</strong><small>${escapeHtml(note)} <span aria-hidden="true">&rarr;</span></small>
+        <p>${escapeHtml(label)}</p><strong${style==='lab-delay-card'?' data-lab-delay-count':''}>${style==='lab-delay-card'?'…':escapeHtml(value || 0)}</strong><small>${escapeHtml(note)} <span aria-hidden="true">&rarr;</span></small>
       </a>
     `).join("");
   }
@@ -280,6 +281,7 @@
 
     const workflow = Array.isArray(workflowResult.data) ? workflowResult.data[0] : (workflowResult.data || {});
     renderMetrics(workflow);
+    window.GREENLOOP_LAB_DELAY?.refreshDashboard();
     await refreshLiveHeadlines();
     renderQueues(summary, readyTotal);
     renderThroughput(reportData.final_qc || [], days);

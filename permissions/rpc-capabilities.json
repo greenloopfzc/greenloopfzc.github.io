@@ -1212,5 +1212,24 @@
   "resend_box_to_accounts_v1": {
     "page": "export_boxes",
     "capability": "save"
+  },
+  "get_lab_overdue_v1": {
+    "page": "overview",
+    "capability": "view",
+    "read": true
+  },
+  "get_lab_delay_history_v1": {
+    "dynamic": "filter_source",
+    "parameter": "p_page",
+    "imei_search": {
+      "page": "imei_search",
+      "capability": "view",
+      "read": true
+    },
+    "ready_stock_journey": {
+      "page": "ready_stock_journey",
+      "capability": "view",
+      "read": true
+    }
   }
 }

@@ -1,0 +1,24 @@
+/* Shared raised cards and readable pending-age report. */
+.workflow-metric-grid .lab-delay-card { border-top:3px solid #c58b25; }
+.lab-delay-card .metric-icon,.lab-delay-age { background:var(--nm-well,#fff3db); color:var(--nm-ink,#7b4a05); }
+.lab-delay-panel { min-width:0; margin:18px 0; padding:18px; border:1px solid var(--nm-line,#cad8e0); border-radius:22px; background:var(--nm-card,#f3f7fa); box-shadow:var(--nm-shadow,6px 6px 12px #183d4b22,-5px -5px 12px #ffffffb3); scroll-margin-top:14px; }
+.lab-delay-panel[hidden],.lab-delay-history[hidden] { display:none!important; }
+.lab-delay-heading,.lab-delay-footer { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }
+.lab-delay-heading h2 { margin:0 0 4px; font-size:22px; }
+.lab-delay-heading p,.lab-delay-footer { color:var(--nm-muted,#546b77); font-size:13px; }
+.lab-delay-actions { display:flex; gap:8px; }
+.lab-delay-table-wrap { overflow-x:auto; border:1px solid var(--nm-line,#cad8e0); border-radius:12px; }
+.lab-delay-table { width:100%; min-width:1000px; border-collapse:collapse; font-size:13px; }
+.lab-delay-table th,.lab-delay-table td { padding:13px 12px; border-bottom:1px solid var(--nm-line,#cad8e0); text-align:left; color:var(--nm-ink,#24343b); white-space:nowrap; }
+.lab-delay-table th { background:var(--nm-well,#e5edf2); }
+.lab-delay-imei { font-weight:700; font-variant-numeric:tabular-nums; }
+.lab-delay-age { display:inline-block; border:1px solid #c58b2566; border-radius:7px; padding:4px 8px; font-weight:700; font-variant-numeric:tabular-nums; }
+.lab-delay-footer { padding-top:12px; }
+.lab-delay-empty { text-align:center!important; }
+.lab-delay-history { padding:16px; margin:0 0 18px; border:1px solid #c58b2588; border-left:4px solid #c58b25; border-radius:14px; background:var(--nm-card,#f3f7fa); color:var(--nm-ink,#24343b); box-shadow:var(--nm-shadow,0 4px 12px #183d4b14); }
+.lab-delay-history h3 { margin:0 0 10px; font-size:17px; }
+.lab-delay-stay + .lab-delay-stay { border-top:1px solid var(--nm-line,#cad8e0); margin-top:10px; padding-top:10px; }
+.lab-delay-stay p { color:var(--nm-muted,#546b77); font-size:13px; margin:6px 0 0; }
+#lab-delay-message.is-error { color:var(--nm-danger,#b34339); }
+@media(max-width:600px){.lab-delay-panel{padding:12px;}.lab-delay-heading h2{font-size:19px;}.lab-delay-actions{width:100%;}.lab-delay-history{padding:12px;}}
+@media print{.lab-delay-panel{break-inside:avoid;}.lab-delay-actions,.lab-delay-footer{display:none;}}

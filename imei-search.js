@@ -391,6 +391,7 @@ function buildStageSections(sortedRows) {
       ? `<span>${fact("Total cost","Incomplete — part prices missing")}</span><span>${fact("Recorded amount",money(totals.recorded_total_cost))}</span><span class="history-missing">${escapeHtml(unpriced)} manual part${unpriced===1 ? " has" : "s have"} no recorded price and ${unpriced===1 ? "is" : "are"} excluded from the recorded amount.</span>`
       : `<span>${fact("Total recorded cost",money(totals.recorded_total_cost))}</span>`;
     result.hidden=false;
+    window.GREENLOOP_LAB_DELAY?.mountHistory(body,data.device?.imei_1||data.device?.device_number,"imei_search");
   }
 
   function setMessage(text = "") { message.textContent = text; message.classList.toggle("is-visible", Boolean(text)); }

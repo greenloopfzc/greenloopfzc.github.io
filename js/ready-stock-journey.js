@@ -184,6 +184,7 @@
     }).join('') + '</ol>' : '<p>No recorded steps are available for this phone yet.</p>';
     detailBody.innerHTML = window.GREENLOOP_STOCK_JOURNEY.render(records, {escape:escapeHtml,date:journeyDate,money:formatMoney}) +
       (records.length ? '<details class="journey-full-activity"><summary>Full activity ('+records.length+' records)</summary>'+fullActivity+'</details>' : '');
+    window.GREENLOOP_LAB_DELAY?.mountHistory(detailBody,selectedDevice,"ready_stock_journey");
   }
 
   async function loadDetail(deviceId) {
