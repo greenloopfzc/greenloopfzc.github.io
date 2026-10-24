@@ -888,6 +888,11 @@
           "key": "manage_access",
           "label": "Edit users & permissions",
           "write": true
+        },
+        {
+          "key": "office_networks",
+          "label": "Manage office networks",
+          "write": true
         }
       ]
     },

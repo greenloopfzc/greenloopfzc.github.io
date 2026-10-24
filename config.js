@@ -64,6 +64,7 @@ window.GREENLOOP_CONFIG = Object.freeze({
   window.GREENLOOP_GET_CLIENT = () => {
     if (!sharedClient) {
       sharedClient = window.supabase.createClient(window.GREENLOOP_CONFIG.supabaseUrl, window.GREENLOOP_CONFIG.supabaseAnonKey, {
+        global: { fetch: window.GREENLOOP_OFFICE && window.GREENLOOP_OFFICE.fetch },
         auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storage: {
           getItem: (key) => authKeys.includes(key) && clientEpoch !== currentEpoch() ? null : storage().getItem(key),
           setItem: (key, value) => {
@@ -79,6 +80,9 @@ window.GREENLOOP_CONFIG = Object.freeze({
             window.localStorage.removeItem(key); window.sessionStorage.removeItem(key);
           }
         } }
+      });
+      sharedClient.auth.onAuthStateChange((event, session) => {
+        setTimeout(() => { if (event === 'SIGNED_OUT') window.GREENLOOP_OFFICE?.reset(); else if (session?.access_token) window.GREENLOOP_OFFICE?.check(session.access_token, () => {}); }, 0);
       });
       // Direct table mutations receive the same page guard as RPC writes.
       // Defer the query until permissions resolve, while retaining Supabase's
@@ -490,6 +494,8 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
       window.location.replace("index.html");
       return;
     }
+
+    if (!window.GREENLOOP_OFFICE || !(await window.GREENLOOP_OFFICE.check(sessionData.session.access_token))) return;
 
     let { data, error } = await client.rpc("get_my_page_access_v2");
     let accessRows;

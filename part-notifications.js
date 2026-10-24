@@ -88,11 +88,13 @@
   function pollLater() {
     window.clearTimeout(pollTimer);
     if (stopped || document.hidden) return;
-    const delay = failures ? Math.min(30000, 5000 * 2 ** Math.min(failures - 1, 3)) : connected ? 30000 : 5000;
+    const officeOnly = window.GREENLOOP_OFFICE?.state?.mode === 'office';
+    const delay = failures ? Math.min(30000, 5000 * 2 ** Math.min(failures - 1, 3)) : officeOnly ? 2000 : connected ? 30000 : 5000;
     pollTimer = window.setTimeout(refreshWorkflowNotifications, delay);
   }
 
   function connect(client) {
+    if (window.GREENLOOP_OFFICE?.state?.mode === 'office') { disconnect(); return; }
     if (channel || !userId || document.hidden || stopped || typeof client.channel !== 'function') return;
     try {
       const next = client.channel('greenloop-workflow-notifications-v1');

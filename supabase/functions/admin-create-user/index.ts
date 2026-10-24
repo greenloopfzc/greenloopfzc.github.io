@@ -51,7 +51,7 @@ Deno.serve(async (request) => {
 
   // Read-only installation receipt; no credentials or account data returned.
   if (request.method === "GET") {
-    return jsonResponse({ version: "20261019-closing-stock-1" });
+    return jsonResponse({ version: "20261024-office-access-1" });
   }
 
   if (request.method !== "POST") {
@@ -77,13 +77,6 @@ Deno.serve(async (request) => {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  // Run permission checks with the signed-in user's JWT. The secret client is
-  // kept separately for the actual account creation and role assignment.
-  const callerClient = createClient(supabaseUrl, secretKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-    global: { headers: { Authorization: `Bearer ${accessToken}` } },
-  });
-
   const { data: callerData, error: callerError } = await admin.auth.getUser(accessToken);
   const caller = callerData?.user;
 
@@ -91,42 +84,14 @@ Deno.serve(async (request) => {
     return jsonResponse({ error: "Your session is not valid. Sign in again." }, 401);
   }
 
-  const { data: canCreateUsers, error: accessError } = await callerClient.rpc("has_role", {
-    required_roles: ["super_admin", "owner"],
-  });
-
-  if (accessError) {
-    return jsonResponse({
-      error: `Administrator access check failed: ${accessError.message}`,
-    }, 500);
-  }
-
-  if (canCreateUsers !== true) {
-    return jsonResponse({ error: "Only Super Admin and Owner can create users." }, 403);
-  }
-
-  // Creating accounts is distinct from editing existing users' permissions.
-  // Check the signed-in caller before any privileged Auth mutation.
-  const { data: canEditUsers, error: editAccessError } = await callerClient.rpc("has_page_capability_v1", {
-    p_page_key: "user_access",
-    p_capability: "create_users",
-  });
-  if (editAccessError) {
-    return jsonResponse({ error: "User Access permission could not be verified. Try again." }, 503);
-  }
-  if (canEditUsers !== true) {
-    return jsonResponse({ error: "Add Greenloop User permission is required." }, 403);
-  }
-
-  const { data: isSuperAdmin, error: superAdminError } = await callerClient.rpc("has_role", {
-    required_roles: ["super_admin"],
-  });
-
-  if (superAdminError) {
-    return jsonResponse({
-      error: `Super Admin access check failed: ${superAdminError.message}`,
-    }, 500);
-  }
+  // The original client IP comes only from Supabase's Cloudflare edge header.
+  // Never take it from body.network/IP, XFF or caller-editable user metadata.
+  const clientIp = request.headers.get("cf-connecting-ip") || "";
+  const {data: context, error: contextError} = await admin.rpc("get_office_create_context_v1", {p_actor:caller.id,p_client_ip:clientIp});
+  if(contextError || !context || typeof context.allowed !== "boolean" || typeof context.can_create !== "boolean" || typeof context.is_super_admin !== "boolean") return jsonResponse({error:"Office access could not be verified. Try again."},503);
+  if(!context.allowed) return jsonResponse({error:"Office access only. Please connect to the office network."},403);
+  if(!context.can_create) return jsonResponse({error:"Add Greenloop User permission and an administrator role are required."},403);
+  const isSuperAdmin = context.is_super_admin === true;
 
   let body: Record<string, unknown>;
   try {
@@ -138,6 +103,8 @@ Deno.serve(async (request) => {
     return jsonResponse({ error: "The user details are not valid." }, 400);
   }
 
+  const networkMode = body.network_mode === undefined ? "anywhere" : body.network_mode;
+  if(networkMode !== "anywhere" && networkMode !== "office") return jsonResponse({error:"Choose Office Only or Anywhere."},400);
   const fullName = String(body.full_name || "").trim().replace(/\s+/g, " ");
   const username = cleanUsername(body.username);
   const password = String(body.password || "");
@@ -217,8 +184,9 @@ Deno.serve(async (request) => {
     // capability again and sets all initial permissions in one transaction.
     // It cannot be used to edit an existing account. No browser follow-up save
     // is needed, so a create-only administrator never needs manage_access.
-    const { data: accessSaved, error: saveAccessError } = await admin.rpc("initialize_user_capabilities_v1", {
+    const { data: accessSaved, error: saveAccessError } = await admin.rpc("initialize_user_office_access_v1", {
       p_actor_user_id: caller.id,
+      p_network_mode:networkMode,p_client_ip:clientIp,
       p_user_id: createdUserId,
       p_full_name: fullName,
       p_login_username: username,
@@ -237,6 +205,7 @@ Deno.serve(async (request) => {
       full_name: fullName,
       username,
       page_keys: requestedPages,
+      network_mode:networkMode,
     }, 201);
   } catch (error) {
     if (createdUserId) {

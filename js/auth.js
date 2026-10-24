@@ -98,6 +98,9 @@
         throw error;
       }
 
+      const officeSession = await getClient().auth.getSession();
+      if (!window.GREENLOOP_OFFICE || !(await window.GREENLOOP_OFFICE.check(officeSession.data?.session?.access_token))) return;
+
       if (window.GREENLOOP_LOGIN_TRACKER) await Promise.race([window.GREENLOOP_LOGIN_TRACKER.touch(), new Promise(resolve => setTimeout(resolve, 1200))]);
       showMessage("Sign-in successful. Loading your workspace...", "success");
       window.location.assign(await loginDestination());

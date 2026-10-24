@@ -60,6 +60,7 @@
   function rule(capability,page) {return {capability,page:page || current()};}
   function targetRule(control) {
     if (!control || control.matches('input[type="hidden"]')) return null;
+    if (control.closest('.office-access-lock')) return null;
     // Opening controls or switching the visible table does not grant its edits.
     if (control.matches('.table-filter-toggle,.table-filter-close,.frame-view-tab,.gl-work-tab,.gl-header-search-close') || control.closest('.table-filter-pagination')) return null;
     if (control.closest('.reader-setup-dialog,.reader-setup-toolbar')) {
@@ -91,6 +92,7 @@
     if (control.matches('[data-accounts-view="verify"]')) return rule('view','accounts');
     if (control.matches('[data-access-section="login-activity"],.login-activity-link')) return rule('login_activity','user_access');
     if (control.matches('[data-access-section="add-greenloop-user"]') || control.closest('#create-user-form')) return rule('create_users','user_access');
+    if (control.closest('.office-network-settings')) return rule('office_networks','user_access');
     if (control.closest('#access-editor')) return rule('manage_access','user_access');
     if (control.matches('[data-print-box],[data-sr-print],#print-box-sheet,#confirm-box-print,[data-confirm-print]') || /^Print(?:ing)?\b/i.test(label)) return rule('print');
     if (control.matches('a[download]') || /^Download\b/i.test(label)) return rule('download');

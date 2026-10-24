@@ -120,6 +120,7 @@
   function capabilityRoleQualifier(pageKey, capability) {
     if (pageKey === "inventory" && capability === "approve") return "Owner, Manager or Super Admin";
     if (pageKey === "reports" && capability === "damage_reset") return "Owner or Super Admin";
+    if (pageKey === "user_access" && capability === "office_networks") return "Owner or Super Admin";
     if (pageKey === "user_access" && capability === "login_activity") return "Super Admin only";
     return "";
   }
@@ -235,6 +236,7 @@
     fullName.value = user.full_name || "";
     username.value = user.login_username || "";
     active.checked = Boolean(user.is_active);
+    window.GREENLOOP_OFFICE_ADMIN.renderUser(user.office_access);
     roleOptions.innerHTML = pageCheckboxes(user.capabilities, user.partner_names_access);
     renderAppearance(appearanceOptions, user.capabilities);
     [fullName, username, active].forEach(field => { field.disabled = !can("manage_access"); });
@@ -319,14 +321,17 @@
   async function loadUsers(preferredUserId = selectedUserId) {
     if (!can("view")) return;
     await loadProductionCatalog();
-    const [matrixResult, capabilityResult, tvResult, partnerResult, employeesResult] = await Promise.all([
+    const [matrixResult, capabilityResult, tvResult, partnerResult, employeesResult, officeResult] = await Promise.all([
       getClient().rpc("get_user_page_access_matrix_v2"),
       getClient().rpc("get_user_page_capabilities_v1"),
       getClient().rpc("get_user_damage_tv_settings_v1"),
       getClient().rpc("get_user_partner_name_access_matrix"),
-      getClient().rpc("get_damage_tv_employee_access_v1")
+      getClient().rpc("get_damage_tv_employee_access_v1"),
+      getClient().rpc("get_office_access_settings_v1")
     ]);
-    for (const result of [matrixResult, capabilityResult, tvResult, partnerResult, employeesResult]) if (result.error) throw result.error;
+    for (const result of [matrixResult, capabilityResult, tvResult, partnerResult, employeesResult, officeResult]) if (result.error) throw result.error;
+    window.GREENLOOP_OFFICE_ADMIN.update(officeResult.data);
+    const officeAccounts = new Map(officeResult.data.accounts.map(row => [String(row.user_id), row]));
     const employeeAccess = employeesResult.data;
     if (!Array.isArray(employeeAccess?.employees) || !Array.isArray(employeeAccess?.accounts) || employeeAccess.employees.some(e => typeof e.key !== "string" || typeof e.name !== "string")) throw new Error("TV employee choices could not be verified. Refresh before saving.");
     tvEmployeeChoices = employeeAccess.employees;
@@ -334,7 +339,7 @@
     const tvSettings = new Map((tvResult.data || []).map(row => [String(row.user_id), row]));
     const capabilitySettings = new Map((capabilityResult.data || []).map(row => [String(row.user_id), capabilityObject(row.capabilities)]));
     const partnerSettings = new Map((partnerResult.data || []).map(row => [String(row.user_id), ["view", "edit"].includes(row.access_level) || row.can_view === true ? "view" : "none"]));
-    const nextUsers = (matrixResult.data || []).map(user => ({...user, tv_employee_keys:employeeSettings.get(String(user.user_id)), tv_display:tvSettings.get(String(user.user_id)), capabilities:capabilitySettings.get(String(user.user_id)), partner_names_access:partnerSettings.get(String(user.user_id)) || "none"}));
+    const nextUsers = (matrixResult.data || []).map(user => ({...user, office_access:officeAccounts.get(String(user.user_id)), tv_employee_keys:employeeSettings.get(String(user.user_id)), tv_display:tvSettings.get(String(user.user_id)), capabilities:capabilitySettings.get(String(user.user_id)), partner_names_access:partnerSettings.get(String(user.user_id)) || "none"}));
     if (nextUsers.some(user => user.tv_employee_keys !== null && (!Array.isArray(user.tv_employee_keys) || user.tv_employee_keys.some(key => typeof key !== "string")))) throw new Error("TV employee selections could not be verified. Refresh before saving.");
     if (nextUsers.some(user => !user.tv_display || !user.capabilities)) throw new Error("Account permissions could not be verified. Refresh the account list.");
     users = nextUsers;
@@ -371,21 +376,23 @@
     createUserButton.disabled = true;
     createUserButton.textContent = "Creating...";
     let createdAccount;
+    const requestedNetworkMode = window.GREENLOOP_OFFICE_ADMIN.newMode();
     try {
       const {data, error} = await getClient().functions.invoke("admin-create-user", {body:{
         full_name:newFullName.value.trim(), username:newUsername.value.trim(), password:newPassword.value,
-        page_permissions:selected.pagePermissions, capabilities:selected.capabilities, partner_names_access:selected.partnerNamesAccess
+        page_permissions:selected.pagePermissions, capabilities:selected.capabilities, partner_names_access:selected.partnerNamesAccess, network_mode:requestedNetworkMode
       }});
       if (error) throw new Error(await readFunctionError(error));
       if (!data?.success || !data.user_id) throw new Error(data?.error || "The user account could not be created.");
       createdAccount = data;
+      if(data.network_mode !== requestedNetworkMode) throw new Error("The account exists, but its network restriction could not be confirmed. Refresh the account list and check Office Only before giving out its password.");
       createUserForm.reset();
       renderNewUserPages();
       await loadUsers(data.user_id);
       setMessage(createUserMessage, `User @${data.username} was created with the selected permissions.`, "success");
     } catch (error) {
       setMessage(createUserMessage, createdAccount
-        ? `User @${createdAccount.username} was created and permissions were saved, but the account list could not refresh. Refresh the list; do not create the account again. ${error.message || ""}`
+        ? `User @${createdAccount.username} was created. Do not create the account again. ${createdAccount.network_mode === requestedNetworkMode ? "Permissions were saved; refresh the account list. " : ""}${error.message || ""}`
         : error.message || "The user account could not be created.");
     } finally {
       creatingUser = false;
@@ -418,8 +425,9 @@
     button.textContent = "Saving...";
     let pagesSaved = false;
     try {
-    const { data: saved, error } = await getClient().rpc("save_user_access_tv_employees_v1", {
+    const { data: saved, error } = await getClient().rpc("save_user_access_office_v1", {
       p_user_id: targetUserId,
+      p_network_mode:window.GREENLOOP_OFFICE_ADMIN.selection().mode,p_network_revision:window.GREENLOOP_OFFICE_ADMIN.selection().revision,
       p_full_name: fullName.value.trim(),
       p_login_username: username.value.trim(),
       p_is_active: active.checked,

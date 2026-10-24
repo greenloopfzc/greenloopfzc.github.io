@@ -1,5 +1,5 @@
 {
-  "version": "20261023-dual-imei-1",
+  "version": "20261024-office-access-1",
   "rpcs": {
     "add_accounts_customer_v1": {
       "page": "accounts",
@@ -1165,6 +1165,22 @@
           "capability": "entry"
         }
       ]
+    },
+    "save_user_access_office_v1": {
+      "page": "user_access",
+      "capability": "manage_access"
+    },
+    "save_office_network_v1": {
+      "page": "user_access",
+      "capability": "office_networks"
+    },
+    "get_office_access_settings_v1": {
+      "page": "user_access",
+      "capability": "view",
+      "read": true
+    },
+    "get_my_office_access_v1": {
+      "read": true
     }
   }
 }

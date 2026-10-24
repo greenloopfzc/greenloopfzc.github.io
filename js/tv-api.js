@@ -177,6 +177,7 @@
         if (!status) { finish(error("NETWORK", "Cannot reach Greenloop. Check the TV internet connection and try again.")); return; }
         var value = xhr.responseText ? parse(xhr.responseText) : null;
         if (status < 200 || status >= 300) {
+          if(value && value.details === "GREENLOOP_OFFICE_ONLY" && window.GREENLOOP_OFFICE)window.GREENLOOP_OFFICE.lock(value.message);
           var problem = error(status === 429 ? "RATE_LIMIT" : "HTTP", status === 429 ? "Too many sign-in attempts. Please wait and try again." : "Greenloop could not complete this request. Please try again.");
           problem.status = status;
           problem.serverCode = value && typeof value.code === "string" ? value.code : "";
@@ -208,6 +209,7 @@
     return validSession(result) ? result : null;
   }
   function finishRefresh(problem) {
+    if(!problem && session && window.GREENLOOP_OFFICE)window.GREENLOOP_OFFICE.check(session.access_token,function(){});
     var callbacks = refreshWaiters.slice(0), index;
     refreshWaiters = [];
     refreshing = false;
@@ -364,7 +366,11 @@
     window.setInterval(function () { if (!window.document.hidden && syncSession()) loginPresence(false); }, 30000);
     window.document.addEventListener("visibilitychange", function () { if (!window.document.hidden && syncSession()) loginPresence(false); });
   }
-  function signedIn(callback, checkedProfile) {
+  function signedIn(callback, checkedProfile, officeChecked) {
+    if(!officeChecked){
+      if(!window.GREENLOOP_OFFICE){callback(error("OFFICE_ACCESS","Office access verification is unavailable."));return;}
+      window.GREENLOOP_OFFICE.check(session.access_token,function(allowed){if(!allowed){callback(error("OFFICE_ACCESS","Office access only. Please connect to the office network."));return;}signedIn(callback,checkedProfile,true);});return;
+    }
     if(!checkedProfile && pageKey==="lab_live_board") {
       authorised("POST","/rest/v1/rpc/get_my_damage_tv_settings_v1",{},function(problem,d){
         if(problem){callback(problem);return;}
