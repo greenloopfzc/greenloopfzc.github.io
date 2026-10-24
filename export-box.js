@@ -13,7 +13,6 @@
   const progressBar = document.querySelector("#export-progress-bar");
   const startNextButton = document.querySelector("#start-next-box");
   const printButton = document.querySelector("#print-box-sheet");
-  const deleteBoxButton = document.querySelector("#delete-export-box");
   const tableBody = document.querySelector("#export-box-lines");
   const sheetTitle = document.querySelector("#export-sheet-title");
   const sheetDate = document.querySelector("#export-sheet-date");
@@ -83,7 +82,7 @@
       boxStatus.textContent = "View only";
       boxCount.textContent = sheetTotal.textContent = "0 phones";
       boxRemaining.textContent = "No open box to display";
-      startNextButton.disabled = deleteBoxButton.disabled = imeiInput.disabled = printButton.disabled = true;
+      startNextButton.disabled = imeiInput.disabled = printButton.disabled = true;
       tableBody.innerHTML = '<tr><td class="export-sheet-empty" colspan="7">No open export box is available.</td></tr>';
       return;
     }
@@ -99,7 +98,6 @@
     startNextButton.textContent = isFinished ? "Start next box" : "Save Box";
     printButton.disabled = !can("print") || count === 0 || scanning || boxBusy;
     confirmPrintButton.disabled = !can("print") || scanning || boxBusy;
-    deleteBoxButton.disabled = !can("delete") || boxBusy || scanning || !currentBox.box_id;
     imeiInput.disabled = !can("scan") || boxBusy || isFinished || scanning;
     sheetTitle.textContent = `${currentBox.box_number || "Export Box"} - Export packing list`;
     sheetDate.textContent = `Opened: ${formatDateTime(currentBox.opened_at)}`;
@@ -239,34 +237,6 @@
     } finally { boxBusy = false; render(); }
   }
 
-  async function deleteCurrentBox() {
-    if (!can("delete") || scanning || boxBusy || !currentBox) return;
-    const deleteCode = window.prompt("Enter the deletion code to delete this box and return its phones to Ready Stock:");
-    if (deleteCode === null) return;
-
-    setMessage();
-    boxBusy = true;
-    clearTimeout(scanTimer);
-    render();
-    try {
-      const { data, error } = await getClient().rpc("delete_export_box_with_restore", {
-        p_box_id: currentBox.box_id,
-        p_delete_code: deleteCode
-      });
-      if (error) throw error;
-      const result = asRow(data);
-      const restored = Number(result?.restored_items || 0);
-      setMessage(`${result?.deleted_box_number || "Export box"} was deleted. ${restored} phone(s) returned to Ready Stock.`, "success");
-      showToast(`${restored} phone(s) restored to Ready Stock.`);
-      currentBox = null;
-      lines = [];
-      imeiInput.value = "";
-      await loadCurrentBox();
-    } catch (error) {
-      setMessage(error.message || "The export box could not be deleted.");
-    } finally { boxBusy = false; render(); }
-  }
-
   async function initialize() {
     if (!config.supabaseUrl || !config.supabaseAnonKey || !window.supabase) {
       permissionMessage.textContent = "Supabase authentication is not configured.";
@@ -305,7 +275,6 @@
   startNextButton.addEventListener("click", () => finishAndStartNext().catch((error) => setMessage(error.message || "The next export box could not be opened.")));
   printButton.addEventListener("click", printBox);
   confirmPrintButton.addEventListener("click", confirmPrint);
-  deleteBoxButton.addEventListener("click", () => deleteCurrentBox());
   initialize().catch((error) => {
     permissionMessage.textContent = error.message || "Export Boxes could not be loaded.";
     permissionMessage.hidden = false;

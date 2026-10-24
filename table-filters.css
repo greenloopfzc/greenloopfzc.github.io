@@ -18,7 +18,7 @@
 .table-sort-menu { position:relative; }
 .table-sort-menu > summary { display:flex; align-items:center; gap:8px; min-height:38px; padding:8px 13px; box-sizing:border-box; list-style:none; border:1px solid var(--nm-line,#cad8e0); border-radius:10px; color:inherit; background:var(--nm-card,#f3f7fa); font-size:13px; font-weight:600; cursor:pointer; }
 .table-sort-menu > summary::-webkit-details-marker { display:none; }
-.table-sort-menu > summary::after { content:'â†•'; }
+.table-sort-menu > summary::after { content:'\2195'; }
 .table-sort-menu-body { position:absolute; z-index:12; top:calc(100% + 6px); left:0; display:flex; flex-direction:column; gap:10px; width:210px; padding:12px; border:1px solid var(--nm-line,#cad8e0); border-radius:12px; background:var(--nm-card,#f3f7fa); box-shadow:0 8px 24px #183d4b22; }
 .table-sort-menu .table-filter-field { flex:none; width:100%; max-width:none; }
 .table-filters .table-sort-reset,.table-sort-controls .table-sort-reset { min-height:28px; padding:4px 9px; border:1px solid var(--nm-line,#cad8e0); border-radius:7px; background:var(--nm-well,#e5edf2); color:inherit; box-shadow:none; font-size:12px; white-space:normal; }
