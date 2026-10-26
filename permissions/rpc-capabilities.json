@@ -1293,5 +1293,51 @@
   "review_legacy_parts_return_v1": {
     "page": "parts",
     "capability": "return"
+  },
+  "get_lab_parts_plans_v2": {
+    "page": "lab_glass",
+    "capability": "view",
+    "read": true
+  },
+  "save_lab_services_v1": {
+    "page": "lab_glass",
+    "capability": "entry"
+  },
+  "submit_lab_parts_plan_v2": {
+    "page": "lab_glass",
+    "capability": "entry"
+  },
+  "complete_parts_only_lab_v1": {
+    "page": "lab_glass",
+    "capability": "entry"
+  },
+  "get_parts_only_queue_v1": {
+    "page": "parts",
+    "capability": "view",
+    "read": true
+  },
+  "get_parts_only_order_v1": {
+    "page": "parts",
+    "capability": "view",
+    "read": true
+  },
+  "get_parts_only_counts_v1": {
+    "any": [
+      {
+        "page": "parts",
+        "capability": "view",
+        "read": true
+      },
+      {
+        "page": "lab_glass",
+        "capability": "view",
+        "read": true
+      },
+      {
+        "page": "overview",
+        "capability": "view",
+        "read": true
+      }
+    ]
   }
 }

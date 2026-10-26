@@ -179,14 +179,14 @@
     const currentSelection = row.querySelector(`[data-choice="${kind}"] select`)?.value || "";
     return unique([...tags, currentSelection]);
   }
-  function rememberLineDraft(row) {
+  function rememberLineDraft(row, kind) {
     if (!row?.dataset.stepId) return;
-    lineDrafts.set(String(row.dataset.stepId), {
-      parts: selectedChoices(row, "part"),
-      quantities:Object.fromEntries([...row.querySelectorAll("[data-part-quantity]")].map(e=>[e.dataset.name,e.value])),
-      services: selectedChoices(row, "service")
-    });
+    const id=String(row.dataset.stepId),old=lineDrafts.get(id)||{};
+    lineDrafts.set(id, {...old,cycle:rowData(row)?.pf_plan?.cycle,
+      ...(kind==='part'?{parts:selectedChoices(row,'part'),quantities:Object.fromEntries([...row.querySelectorAll('[data-part-quantity]')].map(e=>[e.dataset.name,e.value])),partsDirty:true}:{}),
+      ...(kind==='service'?{services:selectedChoices(row,'service'),servicesDirty:true}:{})});
   }
+  function clearDraftKind(id,kind){const d=lineDrafts.get(String(id));if(!d)return;delete d[kind+'Dirty'];delete d[kind==='parts'?'parts':'services'];if(kind==='parts')delete d.quantities;if(!d.partsDirty&&!d.servicesDirty)lineDrafts.delete(String(id));}
   function labelledStatic(label, value, className = "") {
     return `<div class="lab-static-field ${className}"><span class="lab-field-label">${escapeHtml(label)}</span><div class="lab-static-value">${value}</div></div>`;
   }
@@ -198,12 +198,13 @@
   }
   function lineWorkflowState(row) {
     const p=row.pf_plan||{parts:[],services:[],returns:[]};
-    return {submitted:!!p.submitted,locked:!!p.locked,pendingReturns:p.returns.filter(r=>r.status==='pending'),allIssued:!!p.submitted&&p.parts.every(r=>Number(r.issued)>=Number(r.quantity))&&p.services.every(s=>s.status!=='pending'),hasParts:p.parts.length>0,manualFlow:false};
+    return {submitted:!!p.submitted,locked:!!p.locked,pendingReturns:p.returns.filter(r=>r.status==='pending'),allIssued:p.parts.every(r=>Number(r.issued)>=Number(r.quantity))&&(!p.parts.length||!!p.submitted),hasParts:p.parts.length>0,manualFlow:false};
   }
-  function linePartVisual(row){const p=lineWorkflowState(row);return {className:p.pendingReturns.length?'parts-pending':p.allIssued?'parts-issued':'parts-pending',label:p.pendingReturns.length?'Return pending':!p.submitted?'Preparing requirements':p.locked?(p.allIssued?'Parts issued · List locked':'Partially issued · List locked'):'Sent to Parts · Editable'};}
+  function linePartVisual(row){const p=lineWorkflowState(row);return {className:p.pendingReturns.length?'parts-pending':p.allIssued?'parts-issued':'parts-pending',label:p.pendingReturns.length?'Return pending':!p.hasParts?'No parts required':!p.submitted?'Preparing parts list':p.locked?(p.allIssued?'Parts issued · List locked':'Partially issued · List locked'):'Sent to Parts · Editable'};}
   function actionCell(row) {
-    const p=row.pf_plan||{},st=lineWorkflowState(row),ready=st.allIssued&&!st.pendingReturns.length;
-    return `${!st.locked?`<button type="button" class="line-save order-parts" data-order-parts="${escapeHtml(row.step_id)}">${st.submitted?'Update Parts list':'Send to Parts'}</button>`:'<span class="pf-lab-lock">List locked after issue</span>'}<button type="button" class="line-save job-completed" data-complete-lab="${escapeHtml(row.step_id)}" ${ready?'':'disabled'}>Job Completed</button><small class="line-status" data-line-status>${st.pendingReturns.length?'Waiting for Parts return review':!st.submitted?'Finalise parts and services, then send to Parts':ready?'Ready to send to Final QC':'Waiting for issue and service confirmation'}</small>`;
+    const p=row.pf_plan||{},st=lineWorkflowState(row),d=lineDrafts.get(String(row.step_id))||{},servicesReady=p.services_saved||!p.services?.length,ready=st.allIssued&&!st.pendingReturns.length&&servicesReady&&!d.partsDirty&&!d.servicesDirty;
+    const send=st.hasParts||st.submitted||d.partsDirty;
+    return `${!st.locked&&send?`<button type="button" class="line-save order-parts" data-order-parts="${escapeHtml(row.step_id)}">${st.submitted?'Update Parts list':'Send to Parts'}</button>`:st.locked?'<span class="pf-lab-lock">Parts list locked after issue</span>':''}<button type="button" class="line-save job-completed" data-complete-lab="${escapeHtml(row.step_id)}" ${ready?'':'disabled'}>Job Completed</button><small class="line-status" data-line-status>${d.partsDirty||d.servicesDirty?'Save the changed list before completing the job':st.pendingReturns.length?'Waiting for Parts return review':!servicesReady?'Save the Lab services list':ready?'Ready to send to Final QC':!st.submitted?'Send the parts list to Parts':'Waiting for required parts'}</small>`;
   }
   function returnableParts(row) {
     return activeLabPartRequests(row).filter((item) => Number(item.issued || 0) - Number(item.installed || 0) - Number(item.returned || 0) > 0);
@@ -251,9 +252,9 @@
       ].join("");
       const visual = linePartVisual(row);
       const draft = lineDrafts.get(String(row.step_id));
-      const displayedParts = draft?.parts || labPartNames(row);
-      const displayedServices = draft?.services || labServiceNames(row);
-      return `<tr class="lab-phone-row ${visual.className}" data-step-id="${escapeHtml(row.step_id)}"><td colspan="12"><article class="lab-phone-card"><div class="lab-card-status"><span>${escapeHtml(visual.label)}</span></div><div class="lab-static-grid">${staticLine}</div><div class="lab-edit-grid"><fieldset class="pf-lab-choices" ${row.pf_plan?.locked?'disabled':''}><div class="lab-edit-field lab-parts-field"><span class="lab-field-label">${usesManualParts(row) ? "Parts added in Lab" : "Final parts required"}</span>${row.pf_plan?.locked?readOnlyList(row.pf_plan.parts.map(p=>p.name+" x "+p.quantity)):choiceCell("part", partOptions, displayedParts,row)}</div><div class="lab-edit-field"><span class="lab-field-label">Final services required</span>${row.pf_plan?.locked?readOnlyList(displayedServices):choiceCell("service", standardServices, displayedServices,row)}</div></fieldset><div class="lab-line-actions">${saveCell}${issuedPartTools(row)}</div></div></article></td></tr>`;
+      const displayedParts = draft?.partsDirty ? draft.parts : labPartNames(row);
+      const displayedServices = draft?.servicesDirty ? draft.services : labServiceNames(row);
+      return `<tr class="lab-phone-row ${visual.className}" data-step-id="${escapeHtml(row.step_id)}"><td colspan="12"><article class="lab-phone-card"><div class="lab-card-status"><span>${escapeHtml(visual.label)}</span></div><div class="lab-static-grid">${staticLine}</div><div class="lab-edit-grid"><fieldset class="pf-lab-choices" ${row.pf_plan?.locked?'disabled':''}><div class="lab-edit-field lab-parts-field"><span class="lab-field-label">${usesManualParts(row) ? "Parts added in Lab" : "Final parts required"}</span>${row.pf_plan?.locked?readOnlyList(row.pf_plan.parts.map(p=>p.name+" x "+p.quantity)):choiceCell("part", partOptions, displayedParts,row)}</div></fieldset><div class="lab-edit-field pf-lab-services"><span class="lab-field-label">Lab &amp; Glass services</span>${choiceCell("service", standardServices, displayedServices,row)}<button type="button" class="line-save" data-save-services="${escapeHtml(row.step_id)}" ${row.pf_plan?.services_saved&&!draft?.servicesDirty?'disabled':''}>Save Services</button><small>${draft?.servicesDirty?'Unsaved service changes':row.pf_plan?.services_saved?'Saved in Lab &amp; Glass':'Managed in Lab &amp; Glass'}</small></div><div class="lab-line-actions">${saveCell}${issuedPartTools(row)}</div></div></article></td></tr>`;
     }).join("");
   }
 
@@ -340,13 +341,10 @@
       return [String(job.id), {...batch,...device,job_number:job.job_number}];
     }));
     if (!isCurrent()) return;
-    const planResponse=await getClient().rpc('get_lab_parts_plans_v1',{p_step_ids:rows.map(r=>r.step_id)});if(!isCurrent())return;if(planResponse.error)throw planResponse.error;
-    const plans=new Map((planResponse.data||[]).map(p=>[String(p.step_id),p]));for(const [id,p]of plans)if(p.locked)lineDrafts.delete(id);
+    const planResponse=await getClient().rpc('get_lab_parts_plans_v2',{p_step_ids:rows.map(r=>r.step_id)});if(!isCurrent())return;if(planResponse.error)throw planResponse.error;
+    const plans=new Map((planResponse.data||[]).map(p=>[String(p.step_id),p]));for(const [id,p]of plans){const d=lineDrafts.get(id);if(d&&d.cycle!==p.cycle)lineDrafts.delete(id);else if(p.locked)clearDraftKind(id,'parts');}
     technicianRows = rows.map((row) => ({ ...row,pf_plan:plans.get(String(row.step_id)), ...quantityByJob.get(String(row.job_id)), pending_part_returns: pendingByStep.get(String(row.step_id)) || [] }));
     renderTechnicianLines();
-    technicianWorkRows.querySelectorAll("tr[data-step-id]").forEach((row) => {
-      if (lineDrafts.has(String(row.dataset.stepId))) markLineChanged(row);
-    });
   }
   async function loadFrameRows() {
     setBoardMessage();
@@ -419,8 +417,8 @@
     if (!value || selectedChoices(button.closest("tr"), holder.dataset.choice).some((item) => normalise(item) === normalise(value))) return;
     holder.querySelector(".lab-choice-tags").insertAdjacentHTML("beforeend", choiceTag(holder.dataset.choice,value));
     select.value = "";
-    rememberLineDraft(button.closest("tr"));
-    markLineChanged(button.closest("tr"));
+    rememberLineDraft(button.closest("tr"),holder.dataset.choice);
+    markLineChanged(button.closest("tr"),holder.dataset.choice);
   }
   function addSelectedChoice(select) {
     const holder = select.closest("[data-choice]");
@@ -435,29 +433,17 @@
         choiceTag(holder.dataset.choice,value)
       );
     }
-    rememberLineDraft(row);
+    rememberLineDraft(row,holder.dataset.choice);
     row.dataset.editing = "true";
-    markLineChanged(row);
+    markLineChanged(row,holder.dataset.choice);
   }
-  function markLineChanged(row) {
-    if(rowData(row)?.pf_plan?.locked)return;
-    editVersion += 1;
-    const orderButton = row.querySelector("[data-order-parts]");
-    const completeButton = row.querySelector("[data-complete-lab]");
-    const status = row.querySelector("[data-line-status]");
-    if (!orderButton) return;
-    row.dataset.dirty = "true";
-    orderButton.disabled = false;
-    const returnPart = row.querySelector("[data-return-part-select]")?.value || "";
-    const returnReason = row.querySelector("[data-return-reason]:checked")?.value || "";
-    const selectedParts = selectedChoices(row, "part");
-    orderButton.textContent = returnPart || returnReason ? "Submit Part Return" : "Update Parts list";
-    orderButton.className = "line-save order-parts";
-    if (completeButton) completeButton.disabled = true;
-    if (status) {
-      status.textContent = "Submit the updated order before completing the job";
-      status.className = "line-status";
-    }
+  function markLineChanged(row,kind='part') {
+    if(kind==='part'&&rowData(row)?.pf_plan?.locked)return;
+    editVersion+=1;row.dataset.dirty='true';
+    const actions=row.querySelector('.lab-line-actions'),template=document.createElement('template');template.innerHTML=actionCell(rowData(row));
+    for(const selector of ['[data-order-parts]','[data-complete-lab]','[data-line-status]']){const next=template.content.querySelector(selector),current=actions.querySelector(selector);if(current&&next){current.textContent=next.textContent;current.disabled=next.disabled;}else if(next)actions.prepend(next);}
+
+    const serviceButton=row.querySelector('[data-save-services]');if(kind==='service'&&serviceButton)serviceButton.disabled=false;
   }
   async function runLineAction(button, action) {
     if (!editable()) return;
@@ -481,14 +467,15 @@
   async function orderParts(button) {
     if(!editable())return;const row=button.closest('tr'),data=rowData(row),p=data?.pf_plan;if(!p||p.locked)return;
     const parts=selectedChoices(row,'part').map(name=>({name,quantity:Number([...row.querySelectorAll('[data-part-quantity]')].find(e=>normalise(e.dataset.name)===normalise(name))?.value||1)}));
-    const {error}=await getClient().rpc('submit_lab_parts_plan_v1',{p_step_id:row.dataset.stepId,p_revision:p.revision,p_parts:parts,p_services:selectedChoices(row,'service')});
-    if(error){setBoardMessage(error.message);return;}row.dataset.saved='yes';lineDrafts.delete(String(row.dataset.stepId));showToast('Final parts and services sent to Parts.');document.dispatchEvent(new Event('greenloop:notifications-changed'));await refreshAll();
+    const {error}=await getClient().rpc('submit_lab_parts_plan_v2',{p_step_id:row.dataset.stepId,p_revision:p.revision,p_parts:parts});
+    if(error){setBoardMessage(error.message);return;}row.dataset.saved='yes';clearDraftKind(row.dataset.stepId,'parts');showToast('Parts list sent to Parts.');document.dispatchEvent(new Event('greenloop:notifications-changed'));await refreshAll();
   }
+  async function saveServices(button){const row=button.closest('tr'),p=rowData(row)?.pf_plan;if(!p)return;const {error}=await getClient().rpc('save_lab_services_v1',{p_step_id:row.dataset.stepId,p_services_revision:p.services_revision??0,p_services:selectedChoices(row,'service')});if(error){setBoardMessage(error.message);return;}row.dataset.saved='yes';clearDraftKind(row.dataset.stepId,'services');showToast('Services saved in Lab & Glass.');await refreshAll();}
   async function submitPartReturn(button){const row=button.closest('tr'),p=rowData(row)?.pf_plan;if(!p)return;const quantity=Number(row.querySelector('[data-pf-return-qty]').value),notes=row.querySelector('[data-pf-return-notes]').value.trim();if(!notes||notes.length<2){setBoardMessage('Add notes for Parts to review this return.');return;}const {error}=await getClient().rpc('request_parts_flow_return_v1',{p_step_id:row.dataset.stepId,p_revision:p.revision,p_issue_id:row.querySelector('[data-pf-return-issue]').value,p_quantity:quantity,p_notes:notes});if(error){setBoardMessage(error.message);return;}row.dataset.saved='yes';showToast('Return sent to Parts for classification.');document.dispatchEvent(new Event('greenloop:notifications-changed'));await refreshAll();}
   async function completeLab(button) {
     if (!editable()) return;
     setSubmitting(button, true, "Completing...");
-    const { error } = await getClient().rpc("complete_parts_flow_lab_v1", { p_step_id: button.dataset.completeLab,p_revision:rowData(button.closest("tr"))?.pf_plan?.revision??0 });
+    const { error } = await getClient().rpc("complete_parts_only_lab_v1", { p_step_id: button.dataset.completeLab,p_revision:rowData(button.closest("tr"))?.pf_plan?.revision??0,p_services_revision:rowData(button.closest("tr"))?.pf_plan?.services_revision??0 });
     setSubmitting(button, false);
     if (error) { setBoardMessage(error.message); return; }
     button.closest("tr").dataset.saved = "yes";
@@ -660,10 +647,11 @@
       const select = holder?.querySelector("select");
       if (select && normalise(select.value) === normalise(remove.dataset.value)) select.value = "";
       (remove.closest(".pf-lab-part-tag")||remove).remove();
-      rememberLineDraft(row);
-      markLineChanged(row);
+      rememberLineDraft(row,holder.dataset.choice);
+      markLineChanged(row,holder.dataset.choice);
       return;
     }
+    const saveService=event.target.closest('[data-save-services]');if(saveService){runLineAction(saveService,saveServices).catch(e=>setBoardMessage(e.message));return;}
     const returned=event.target.closest("[data-pf-return]");if(returned){runLineAction(returned,submitPartReturn).catch(e=>setBoardMessage(e.message));return;}
     const order = event.target.closest("[data-order-parts]"); if (order && !order.disabled) runLineAction(order, orderParts).catch((error) => setBoardMessage(error.message));
     const completeLabButton = event.target.closest("[data-complete-lab]"); if (completeLabButton) runLineAction(completeLabButton, completeLab).catch((error) => setBoardMessage(error.message));
@@ -671,7 +659,7 @@
   });
   technicianWorkRows.addEventListener("change", (event) => {
     if (!editable()) return;
-    if(event.target.matches("[data-part-quantity]")){rememberLineDraft(event.target.closest("tr"));markLineChanged(event.target.closest("tr"));return;}
+    if(event.target.matches("[data-part-quantity]")){rememberLineDraft(event.target.closest("tr"),"part");markLineChanged(event.target.closest("tr"),"part");return;}
     const choiceSelect = event.target.closest('[data-choice] select');
     if (choiceSelect) {
       addSelectedChoice(choiceSelect);

@@ -18,17 +18,17 @@
     <link rel="stylesheet" href="css/parts.css?v=20260825-manual-lab-parts-mode-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="js/permission-catalog.js?v=20261024-office-access-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261026-parts-flow-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261026-parts-services-separate-1"></script>
 <script defer src="js/page-capabilities.js?v=20261024-office-access-1"></script>
 <script defer src="js/imei-stage-notice.js?v=20261023-dual-imei-1"></script>
 <link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
 <script defer src="js/office-access.js?v=20261024-office-access-1"></script>
-<script defer src="js/config.js?v=20261026-parts-flow-1"></script>
+<script defer src="js/config.js?v=20261026-parts-services-separate-1"></script>
   <script defer src="js/login-activity.js?v=20261013-search-tv-1"></script>
   <link rel="stylesheet" href="css/record-search.css?v=20261017-find-record-popup-1">
   <script defer src="js/record-search.js?v=20261013-search-tv-1"></script>
-    <script defer src="js/part-notifications.js?v=20261026-parts-flow-1"></script>
-  <script defer src="js/parts.js?v=20261026-parts-flow-1"></script>
+    <script defer src="js/part-notifications.js?v=20261026-parts-services-separate-1"></script>
+  <script defer src="js/parts.js?v=20261026-parts-services-separate-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
     <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
   <link rel="stylesheet" href="css/sidebar-compact.css?v=20261009-sidebar-pdf-1">
@@ -37,7 +37,7 @@
   <script defer src="js/clean-layout.js?v=20261017-clean-layout-1"></script>
   <script defer src="js/suspicious-badge.js?v=20261017-suspicious-activity-1"></script>
 <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261003-qc-duplicate-stage-1">
-  <link rel="stylesheet" href="css/parts-flow.css?v=20261026-parts-flow-1">
+  <link rel="stylesheet" href="css/parts-flow.css?v=20261026-parts-services-separate-1">
 </head>
   <body class="app-page">
     <div class="app-shell">
@@ -65,9 +65,9 @@
       <main class="app-main">
         <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Dashboard</a><span>/</span><strong>Parts</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
         <div class="page-content parts-content">
-          <section class="page-heading"><div><p class="eyebrow dashboard-eyebrow">Parts Department</p><h1>Parts</h1><p class="heading-subtitle">Final parts and services sent by Lab &amp; Glass.</p></div></section>
+          <section class="page-heading"><div><p class="eyebrow dashboard-eyebrow">Parts Department</p><h1>Parts</h1><p class="heading-subtitle">Parts requested by Lab &amp; Glass.</p></div></section>
           <div id="permission-message" class="access-message" hidden></div>
-          <section id="parts-app" class="pf-app" hidden><div class="pf-heading"><div><h2>Finalised requirements</h2><p>Open an IMEI to issue parts, confirm services or review returns.</p></div><button id="refresh-parts" class="secondary-button" type="button" data-search-read-only>Refresh</button></div><p id="pf-message" role="status" aria-live="polite"></p><section id="pf-legacy" class="pf-legacy" hidden></section><div id="pf-queue-wrap" class="pf-scroll"><table id="pf-queue" class="pf-table"><thead><tr><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>Technician</th><th>Parts</th><th>Services</th><th>Status</th><th>Sent</th></tr></thead><tbody id="pf-rows"></tbody></table></div><div class="pf-pager"><button id="pf-prev" class="secondary-button" type="button" data-search-read-only>Previous</button><span id="pf-count"></span><button id="pf-next" class="secondary-button" type="button" data-search-read-only>Next</button></div><section id="pf-detail" class="pf-detail" hidden></section></section>
+          <section id="parts-app" class="pf-app" hidden><div class="pf-heading"><div><h2>Finalised requirements</h2><p>Open an IMEI to issue parts or review returns.</p></div><button id="refresh-parts" class="secondary-button" type="button" data-search-read-only>Refresh</button></div><p id="pf-message" role="status" aria-live="polite"></p><section id="pf-legacy" class="pf-legacy" hidden></section><div id="pf-queue-wrap" class="pf-scroll"><table id="pf-queue" class="pf-table"><thead><tr><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>Technician</th><th>Parts</th><th>Status</th><th>Sent</th></tr></thead><tbody id="pf-rows"></tbody></table></div><div class="pf-pager"><button id="pf-prev" class="secondary-button" type="button" data-search-read-only>Previous</button><span id="pf-count"></span><button id="pf-next" class="secondary-button" type="button" data-search-read-only>Next</button></div><section id="pf-detail" class="pf-detail" hidden></section></section>
         </div>
       </main>
     </div>
