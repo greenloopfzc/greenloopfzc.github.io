@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css?v=20261016-strict-view-only-1">
-    <link rel="stylesheet" href="css/laboratory.css?v=20261026-employees-1">
+    <link rel="stylesheet" href="css/laboratory.css?v=20261026-lab-counts-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="js/imei-stage-notice.js?v=20261023-dual-imei-1"></script>
   <script defer src="js/permission-catalog.js?v=20261024-office-access-1"></script>
@@ -30,7 +30,7 @@
   <script defer src="js/record-search.js?v=20261013-search-tv-1"></script>
     <script defer src="js/part-notifications.js?v=20261026-employees-1"></script>
   <script defer src="js/employee-updates.js?v=20261026-employees-1"></script>
-  <script defer src="js/laboratory.js?v=20261026-employees-1"></script>
+  <script defer src="js/laboratory.js?v=20261026-lab-counts-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
     <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261003-qc-duplicate-stage-1">
   <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
@@ -56,7 +56,7 @@
           <div id="permission-message" class="access-message" hidden></div>
           <section id="lab-app" class="lab-app" hidden>
             <section id="technician-board" class="technician-board">
-              <div class="lab-imei-finder" data-capability="search" data-capability-page="lab_glass"><label id="technician-imei-scan-wrap" class="technician-imei-scan"><span>Find phone by IMEI</span><span class="technician-imei-scan-row"><input id="technician-imei-scan" type="search" inputmode="numeric" maxlength="15" autocomplete="off" placeholder="Enter or scan 15-digit IMEI" aria-label="Find phone by IMEI" data-search-read-only disabled><button id="check-technician-imei" type="button" data-search-read-only disabled>Open phone</button><button id="clear-technician-imei" class="secondary-button" type="button" data-search-read-only hidden>Show all</button></span></label></div>
+              <div class="lab-imei-toolbar"><div class="lab-imei-finder" data-capability="search" data-capability-page="lab_glass"><label id="technician-imei-scan-wrap" class="technician-imei-scan"><span>Find phone by IMEI</span><span class="technician-imei-scan-row"><input id="technician-imei-scan" type="search" inputmode="numeric" maxlength="15" autocomplete="off" placeholder="Enter or scan 15-digit IMEI" aria-label="Find phone by IMEI" data-search-read-only disabled><button id="check-technician-imei" type="button" data-search-read-only disabled>Open phone</button><button id="clear-technician-imei" class="secondary-button" type="button" data-search-read-only hidden>Show all</button></span></label></div><div id="lab-total-pending" class="lab-total-pending" role="status" aria-live="polite" aria-atomic="true">Total pending: <strong id="lab-total-pending-count">…</strong> <span id="lab-total-pending-unit">phones</span></div></div>
               <div class="technician-board-heading"><div><p class="panel-kicker">Technicians</p><h2 id="technician-board-title">Select a technician</h2><p>Click a name to see all assigned phones.</p></div><div class="technician-board-actions"><button id="refresh-lab" class="secondary-button" type="button">Refresh</button><button id="add-lab-technician" class="secondary-button" type="button">+ Add technician</button><button id="remove-lab-technician" class="secondary-button danger-button" type="button">− Remove selected</button></div></div>
               <div id="technician-cards" class="technician-cards" role="list"></div>
             </section>

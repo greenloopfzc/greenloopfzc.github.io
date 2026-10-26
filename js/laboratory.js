@@ -115,10 +115,13 @@
   }
 
   function renderTechnicianCards() {
+    const pendingTotal=technicians.reduce((sum,t)=>sum+Math.max(0,Number(t.pending_count)||0),0);
+    document.querySelector('#lab-total-pending-count').textContent=pendingTotal.toLocaleString('en-US');
+    document.querySelector('#lab-total-pending-unit').textContent=pendingTotal===1?'phone':'phones';
     technicianCards.innerHTML = technicians.length ? technicians.map((technician) => {
       const count = Number(technician.pending_count || 0);
       const active = String(technician.id) === String(activeTechnicianId);
-      return `<button class="technician-card${active ? " is-active" : ""}" type="button" data-capability="view" data-capability-page="lab_glass" data-search-read-only data-technician-id="${escapeHtml(technician.id)}" aria-pressed="${active}"><span class="technician-avatar">${escapeHtml(initials(technician.full_name))}</span><span class="technician-card-copy"><strong>${escapeHtml(technician.full_name)}</strong><span>${count} ${technician.unassigned?'unassigned':'assigned'} IMEI${count === 1 ? "" : "s"}</span></span><span class="technician-card-count${count ? "" : " is-zero"}">${count > 99 ? "99+" : count}</span></button>`;
+      return `<button class="technician-card${active ? " is-active" : ""}" type="button" data-capability="view" data-capability-page="lab_glass" data-search-read-only data-technician-id="${escapeHtml(technician.id)}" aria-pressed="${active}"><span class="technician-avatar">${escapeHtml(initials(technician.full_name))}</span><span class="technician-card-copy"><strong>${escapeHtml(technician.full_name)}</strong><span>${count} ${technician.unassigned?'unassigned':'assigned'} IMEI${count === 1 ? "" : "s"}</span></span><span class="technician-card-count${count ? "" : " is-zero"}" aria-label="${count} pending phone${count===1?'':'s'}">${count.toLocaleString('en-US')}</span></button>`;
     }).join("") : '<p class="technician-lines-empty">No technicians are available.</p>';
     const selected = technicians.find((item) => String(item.id) === String(activeTechnicianId));
     technicianBoardTitle.textContent = selected?.unassigned?'Phones awaiting employee assignment':selected ? `${selected.full_name}'s assigned work` : "Select a technician";
@@ -371,7 +374,7 @@
     if (error) throw error;
     const next=data||[];const rosterChanged=JSON.stringify(technicians)!==JSON.stringify(next);technicians=next;
     activeTechnicianId = technicians.some((item) => String(item.id) === String(preferredId)) ? String(preferredId) : String(technicians.find((item) => Number(item.pending_count || 0) > 0)?.id || technicians[0]?.id || "");
-    if(rosterChanged)renderTechnicianCards();
+    if(rosterChanged||document.querySelector('#lab-total-pending-count').textContent==='…')renderTechnicianCards();
     for(const select of technicianWorkRows.querySelectorAll('[data-assign-employee]')){
       if(select===document.activeElement)continue;
       const choices=technicians.filter(t=>!t.unassigned),current=select.value;
