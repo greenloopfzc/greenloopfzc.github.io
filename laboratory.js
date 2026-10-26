@@ -118,12 +118,13 @@
     technicianCards.innerHTML = technicians.length ? technicians.map((technician) => {
       const count = Number(technician.pending_count || 0);
       const active = String(technician.id) === String(activeTechnicianId);
-      return `<button class="technician-card${active ? " is-active" : ""}" type="button" data-technician-id="${escapeHtml(technician.id)}" aria-pressed="${active}"><span class="technician-avatar">${escapeHtml(initials(technician.full_name))}</span><span class="technician-card-copy"><strong>${escapeHtml(technician.full_name)}</strong><span>${count} assigned IMEI${count === 1 ? "" : "s"}</span></span><span class="technician-card-count${count ? "" : " is-zero"}">${count > 99 ? "99+" : count}</span></button>`;
+      return `<button class="technician-card${active ? " is-active" : ""}" type="button" data-capability="view" data-capability-page="lab_glass" data-search-read-only data-technician-id="${escapeHtml(technician.id)}" aria-pressed="${active}"><span class="technician-avatar">${escapeHtml(initials(technician.full_name))}</span><span class="technician-card-copy"><strong>${escapeHtml(technician.full_name)}</strong><span>${count} ${technician.unassigned?'unassigned':'assigned'} IMEI${count === 1 ? "" : "s"}</span></span><span class="technician-card-count${count ? "" : " is-zero"}">${count > 99 ? "99+" : count}</span></button>`;
     }).join("") : '<p class="technician-lines-empty">No technicians are available.</p>';
     const selected = technicians.find((item) => String(item.id) === String(activeTechnicianId));
-    technicianBoardTitle.textContent = selected ? `${selected.full_name}'s assigned work` : "Select a technician";
-    technicianLinesTitle.textContent = selected ? `${selected.full_name}'s phone lines` : "Assigned phone lines";
-    removeTechnicianButton.disabled = !selected;
+    technicianBoardTitle.textContent = selected?.unassigned?'Phones awaiting employee assignment':selected ? `${selected.full_name}'s assigned work` : "Select a technician";
+    technicianLinesTitle.textContent = selected?.unassigned?'Unassigned phones':selected ? `${selected.full_name}'s phone lines` : "Assigned phone lines";
+    removeTechnicianButton.disabled = !selected || !!selected.unassigned;
+    document.querySelector('#technician-lines-help').textContent=selected?.unassigned?'Assign an employee to continue this phone’s work.':'Review the lower line, order required parts, then complete the job after Parts has issued them.';
     technicianImeiScan.disabled = !searchable();
     checkTechnicianImei.disabled = !searchable();
     technicianImeiScan.placeholder = "Enter or scan 15-digit IMEI";
@@ -251,6 +252,7 @@
         labelledStatic("Initial QC Parts", readOnlyList(qcParts)),
         labelledStatic("Initial QC Service", readOnlyList(qcServices))
       ].join("");
+      if(row.unassigned){return `<tr class="lab-phone-row unassigned-phone" data-step-id="${escapeHtml(row.step_id)}"><td colspan="12"><article class="lab-phone-card"><div class="lab-card-status"><span>Awaiting employee assignment</span></div><div class="lab-static-grid">${staticLine}</div><div class="employee-assignment"><label>Assign employee<select data-assign-employee data-capability="entry" data-capability-page="lab_glass"><option value="">Choose employee</option>${technicians.filter(t=>!t.unassigned).map(t=>`<option value="${escapeHtml(t.id)}">${escapeHtml(t.full_name)}</option>`).join('')}</select></label><button type="button" class="line-save" data-assign-employee-save data-capability="entry" data-capability-page="lab_glass">Assign employee</button></div></article></td></tr>`;}
       const visual = linePartVisual(row);
       const draft = lineDrafts.get(String(row.step_id));
       const displayedParts = draft?.partsDirty ? draft.parts : row.pf_plan?.locked?[]:labPartNames(row);
@@ -320,8 +322,8 @@
     setBoardMessage();
     if (!activeTechnicianId) { technicianRows = []; renderTechnicianLines(); return; }
     const [rowResponse, returnResponse] = await Promise.all([
-      getClient().rpc("get_lab_technician_rows_v2", { p_technician_id: technicianId }),
-      getClient().rpc("get_lab_part_return_requests_for_technician", { p_technician_id: technicianId })
+      getClient().rpc("get_lab_employee_rows_v1", { p_employee_id: technicians.find(t=>String(t.id)===String(technicianId))?.unassigned ? null : technicianId }),
+      technicians.find(t=>String(t.id)===String(technicianId))?.unassigned ? Promise.resolve({data:[]}) : getClient().rpc("get_lab_part_return_requests_for_technician", { p_technician_id: technicianId })
     ]);
     if (!isCurrent()) return;
     if (rowResponse.error) throw rowResponse.error;
@@ -365,11 +367,19 @@
     await loadFrameReport();
   }
   async function loadTechnicians(preferredId = activeTechnicianId) {
-    const { data, error } = await getClient().rpc("get_lab_technician_workboard_by_stage", { p_stage: isFrameMode ? "frame" : "laboratory" });
+    const { data, error } = await getClient().rpc('get_lab_employee_board_v1');
     if (error) throw error;
-    technicians = data || [];
+    const next=data||[];const rosterChanged=JSON.stringify(technicians)!==JSON.stringify(next);technicians=next;
     activeTechnicianId = technicians.some((item) => String(item.id) === String(preferredId)) ? String(preferredId) : String(technicians.find((item) => Number(item.pending_count || 0) > 0)?.id || technicians[0]?.id || "");
-    renderTechnicianCards();
+    if(rosterChanged)renderTechnicianCards();
+    for(const select of technicianWorkRows.querySelectorAll('[data-assign-employee]')){
+      if(select===document.activeElement)continue;
+      const choices=technicians.filter(t=>!t.unassigned),current=select.value;
+      if(JSON.stringify([...select.options].slice(1).map(o=>[o.value,o.text]))!==JSON.stringify(choices.map(t=>[String(t.id),t.full_name]))){
+        select.innerHTML='<option value="">Choose employee</option>'+choices.map(t=>`<option value="${escapeHtml(t.id)}">${escapeHtml(t.full_name)}</option>`).join('');
+        select.value=choices.some(t=>String(t.id)===current)?current:'';
+      }
+    }
   }
   async function refreshAll() {
     if (isFrameMode) { await loadFrameRows(); return; }
@@ -395,6 +405,7 @@
     setSubmitting(addTechnicianButton, false);
     if (error) throw error;
     const saved = data?.[0] || data;
+    window.GREENLOOP_EMPLOYEES?.changed();
     activeTechnicianId = String(saved?.id || "");
     await refreshAll();
     showToast("Technician added.");
@@ -407,6 +418,7 @@
     if (window.prompt(`Enter deletion code to remove ${technician.full_name}:`) !== "1213") return;
     const { error } = await getClient().rpc("remove_lab_technician", { p_technician_id: technician.id, p_deletion_code: "1213" });
     if (error) throw error;
+    window.GREENLOOP_EMPLOYEES?.changed();
     activeTechnicianId = "";
     await refreshAll();
   }
@@ -471,6 +483,7 @@
     if(error){setBoardMessage(error.message);return;}row.dataset.saved='yes';clearDraftKind(row.dataset.stepId,'parts');showToast('Parts list sent to Parts.');document.dispatchEvent(new Event('greenloop:notifications-changed'));await refreshAll();
   }
   async function saveServices(button){const row=button.closest('tr'),p=rowData(row)?.pf_plan;if(!p)return;const {error}=await getClient().rpc('save_lab_services_v1',{p_step_id:row.dataset.stepId,p_services_revision:p.services_revision??0,p_services:selectedChoices(row,'service')});if(error){setBoardMessage(error.message);return;}row.dataset.saved='yes';clearDraftKind(row.dataset.stepId,'services');showToast('Services saved in Lab & Glass.');await refreshAll();}
+  async function assignEmployee(button){const row=button.closest('tr'),employeeId=row.querySelector('[data-assign-employee]').value;if(!employeeId){setBoardMessage('Choose an employee for this phone.');return;}const {data,error}=await getClient().rpc('assign_lab_employee_v1',{p_step_id:row.dataset.stepId,p_employee_id:employeeId});if(error){setBoardMessage(error.message);return;}row.dataset.saved='yes';activeTechnicianId=String(data.employee_id);await refreshAll();showToast('Phone assigned to '+data.employee_name+'.');document.dispatchEvent(new Event('greenloop:notifications-changed'));}
   async function cancelPart(button){const row=button.closest('tr'),p=rowData(row)?.pf_plan;if(!p)return;const {error}=await getClient().rpc('cancel_lab_part_v1',{p_step_id:row.dataset.stepId,p_revision:p.revision,p_request_id:button.dataset.cancelPart});if(error){setBoardMessage(error.message);return;}row.dataset.saved='yes';showToast('Unissued part removed.');document.dispatchEvent(new Event('greenloop:notifications-changed'));await refreshAll();}
   async function submitPartReturn(button){const row=button.closest('tr'),p=rowData(row)?.pf_plan;if(!p)return;const issueId=row.querySelector('[data-pf-return-issue]').value;if(!issueId){setBoardMessage('Select the part to return.');return;}const quantity=Number(row.querySelector('[data-pf-return-qty]').value);if(!Number.isInteger(quantity)||quantity<1){setBoardMessage('Enter a valid return quantity.');return;}const {error}=await getClient().rpc('request_parts_flow_return_v1',{p_step_id:row.dataset.stepId,p_revision:p.revision,p_issue_id:issueId,p_quantity:quantity,p_notes:null});if(error){setBoardMessage(error.message);return;}row.dataset.saved='yes';showToast('Return sent to Parts for classification.');document.dispatchEvent(new Event('greenloop:notifications-changed'));await refreshAll();}
   async function completeLab(button) {
@@ -528,7 +541,7 @@
         : normalise(t.full_name) === normalise(data.assigned_technician_name));
       if (!owner()) await loadTechnicians(activeTechnicianId);
       if (!scanCurrent()) return;
-      const technician = owner();
+      const technician = owner() || technicians.find(t=>t.unassigned);
       if (!technician) throw new Error("This phone has no active technician assignment. Check its assignment before continuing.");
       activeTechnicianId = String(technician.id); focusedStepId = String(data.id);
       technicianRows = []; renderTechnicianCards(); renderTechnicianLines();
@@ -591,6 +604,7 @@
     else await loadFrameGrades();
     await refreshAll();
     if (!isFrameMode) {
+      window.GREENLOOP_EMPLOYEES?.watch(async()=>{if(!app.hidden&&!technicianWorkRows.querySelector('tr[data-busy="yes"]')){const previous=activeTechnicianId;await loadTechnicians(activeTechnicianId);if(previous!==activeTechnicianId&&!technicianEditorIsActive())await loadTechnicianRows();}});
       window.setInterval(() => {
         if (
           document.visibilityState !== "visible"
@@ -652,6 +666,7 @@
       markLineChanged(row,holder.dataset.choice);
       return;
     }
+    const assign=event.target.closest('[data-assign-employee-save]');if(assign){runLineAction(assign,assignEmployee).catch(e=>setBoardMessage(e.message));return;}
     const cancelled=event.target.closest('[data-cancel-part]');if(cancelled){runLineAction(cancelled,cancelPart).catch(e=>setBoardMessage(e.message));return;}
     const saveService=event.target.closest('[data-save-services]');if(saveService){runLineAction(saveService,saveServices).catch(e=>setBoardMessage(e.message));return;}
     const returned=event.target.closest("[data-pf-return]");if(returned){runLineAction(returned,submitPartReturn).catch(e=>setBoardMessage(e.message));return;}

@@ -383,6 +383,7 @@
     if (!fullName?.trim()) return;
     const { data, error } = await getClient().rpc("add_technician_roster", { p_full_name: fullName.trim() });
     if (error) throw error;
+    window.GREENLOOP_EMPLOYEES?.changed();
     await loadTechnicians();
     const created = Array.isArray(data) ? data[0] : data;
     refreshTechnicianSelects(row, created?.id || "");
@@ -397,6 +398,7 @@
     if (window.prompt("Enter deletion code to remove this technician:") !== "1213") return;
     const { error } = await getClient().rpc("delete_technician_roster", { p_technician_id: select.value, p_deletion_code: "1213" });
     if (error) throw error;
+    window.GREENLOOP_EMPLOYEES?.changed();
     await loadTechnicians();
     refreshTechnicianSelects();
     showToast("Technician removed.");
@@ -736,6 +738,7 @@
     await Promise.all([loadTechnicians(), loadPendingCount(), loadPartOptions()]);
     createRows(10);
     app.hidden = false;
+    window.GREENLOOP_EMPLOYEES?.watch(data=>{if(document.activeElement?.matches('[data-carry-field="technician"]'))return;const next=data.map(e=>({id:e.id,full_name:e.full_name,email:null}));if(JSON.stringify(technicians.map(e=>[e.id,e.full_name]))===JSON.stringify(next.map(e=>[e.id,e.full_name])))return;technicians=next;refreshTechnicianSelects();});
     setupHorizontalScroll();
     tableBody.querySelector(".qc-bulk-imei")?.focus();
   }

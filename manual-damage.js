@@ -319,6 +319,7 @@
       }
       dialog.close();
       // Refresh the shared catalog, retaining any unrelated form selections.
+      window.GREENLOOP_EMPLOYEES?.changed();
       await loadChoices();
     } catch (error) {
       if (accessDenied) return;
@@ -490,6 +491,7 @@
     syncControls();
     watchAccount();
     await Promise.all([loadChoices(), loadReports(0)]);
+    window.GREENLOOP_EMPLOYEES?.watch(data=>{if(!catalogReady||saving||optionBusy||catalogLoading||accessDenied||document.activeElement===choices.employee.input)return;const next=data.map(e=>({id:e.damage_id,label:e.label}));if(JSON.stringify((catalog.employees||[]).map(e=>[e.id,e.label]))===JSON.stringify(next.map(e=>[e.id,e.label])))return;catalog={...catalog,employees:next};renderChoices();});
   }
   start().catch((error) => message("permission-message", error.message || "Manual damage entry could not be loaded."));
 })();

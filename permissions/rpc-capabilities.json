@@ -1362,5 +1362,44 @@
     "page": "parts",
     "capability": "view",
     "read": true
+  },
+  "get_lab_employee_board_v1": {
+    "page": "lab_glass",
+    "capability": "view",
+    "read": true
+  },
+  "get_lab_employee_rows_v1": {
+    "page": "lab_glass",
+    "capability": "view",
+    "read": true
+  },
+  "assign_lab_employee_v1": {
+    "page": "lab_glass",
+    "capability": "entry"
+  },
+  "get_shared_employees_v1": {
+    "any": [
+      {
+        "page": "initial_qc",
+        "capability": "view",
+        "read": true
+      },
+      {
+        "page": "lab_glass",
+        "capability": "view",
+        "read": true
+      },
+      {
+        "page": "ready_stock",
+        "capability": "view",
+        "read": true
+      },
+      {
+        "page": "tv_manual_entry",
+        "capability": "view",
+        "read": true
+      }
+    ],
+    "read": true
   }
 }

@@ -478,6 +478,7 @@
   window.addEventListener("beforeunload", (event) => { if (sendingForRework) { event.preventDefault(); event.returnValue = ""; } });
   reworkForm.addEventListener("submit", (event) => sendForRework(event).catch((error) => showToast(error.message || "Phone could not be sent for rework.")));
   window.addEventListener("hashchange", () => showReadyStockView(true));
+  window.GREENLOOP_EMPLOYEES?.watch(data=>{if(!techniciansAvailable||sendingForRework||document.activeElement===reworkTechnician)return;const next=data.map(e=>[String(e.id),e.full_name]),current=[...reworkTechnician.options].filter(o=>o.value).map(o=>[o.value,o.textContent]);if(JSON.stringify(next)===JSON.stringify(current))return;const selected=reworkTechnician.value;reworkTechnician.replaceChildren(new Option('Select technician',''));for(const e of data)reworkTechnician.add(new Option(e.full_name,e.id));reworkTechnician.value=selected;syncReworkControls();});
   initialize().catch((error) => {
     permissionMessage.textContent = error.message || "Ready Stock could not be loaded.";
     permissionMessage.hidden = false;
