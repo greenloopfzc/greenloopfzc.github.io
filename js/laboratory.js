@@ -182,7 +182,7 @@
   function rememberLineDraft(row, kind) {
     if (!row?.dataset.stepId) return;
     const id=String(row.dataset.stepId),old=lineDrafts.get(id)||{};
-    lineDrafts.set(id, {...old,cycle:rowData(row)?.pf_plan?.cycle,
+    lineDrafts.set(id, {...old,cycle:rowData(row)?.pf_plan?.cycle,modeLocked:!!rowData(row)?.pf_plan?.locked,
       ...(kind==='part'?{parts:selectedChoices(row,'part'),quantities:Object.fromEntries([...row.querySelectorAll('[data-part-quantity]')].map(e=>[e.dataset.name,e.value])),partsDirty:true}:{}),
       ...(kind==='service'?{services:selectedChoices(row,'service'),servicesDirty:true}:{})});
   }
@@ -200,19 +200,20 @@
     const p=row.pf_plan||{parts:[],services:[],returns:[]};
     return {submitted:!!p.submitted,locked:!!p.locked,pendingReturns:p.returns.filter(r=>r.status==='pending'),allIssued:p.parts.every(r=>Number(r.issued)>=Number(r.quantity))&&(!p.parts.length||!!p.submitted),hasParts:p.parts.length>0,manualFlow:false};
   }
-  function linePartVisual(row){const p=lineWorkflowState(row);return {className:p.pendingReturns.length?'parts-pending':p.allIssued?'parts-issued':'parts-pending',label:p.pendingReturns.length?'Return pending':!p.hasParts?'No parts required':!p.submitted?'Preparing parts list':p.locked?(p.allIssued?'Parts issued · List locked':'Partially issued · List locked'):'Sent to Parts · Editable'};}
+  function linePartVisual(row){const p=lineWorkflowState(row);return {className:p.pendingReturns.length?'parts-pending':p.allIssued?'parts-issued':'parts-pending',label:p.pendingReturns.length?'Return pending':!p.hasParts?'No parts required':!p.submitted?'Preparing parts list':p.locked?(p.allIssued?'Parts issued':'Waiting for Parts'):'Sent to Parts · Editable'};}
   function actionCell(row) {
     const p=row.pf_plan||{},st=lineWorkflowState(row),d=lineDrafts.get(String(row.step_id))||{},servicesReady=p.services_saved||!p.services?.length,ready=st.allIssued&&!st.pendingReturns.length&&servicesReady&&!d.partsDirty&&!d.servicesDirty;
     const send=st.hasParts||st.submitted||d.partsDirty;
-    return `${!st.locked&&send?`<button type="button" class="line-save order-parts" data-order-parts="${escapeHtml(row.step_id)}">${st.submitted?'Update Parts list':'Send to Parts'}</button>`:st.locked?'<span class="pf-lab-lock">Parts list locked after issue</span>':''}<button type="button" class="line-save job-completed" data-complete-lab="${escapeHtml(row.step_id)}" ${ready?'':'disabled'}>Job Completed</button><small class="line-status" data-line-status>${d.partsDirty||d.servicesDirty?'Save the changed list before completing the job':st.pendingReturns.length?'Waiting for Parts return review':!servicesReady?'Save the Lab services list':ready?'Ready to send to Final QC':!st.submitted?'Send the parts list to Parts':'Waiting for required parts'}</small>`;
+    return `${st.locked?`<button type="button" class="line-save order-parts" data-order-parts="${escapeHtml(row.step_id)}" ${d.partsDirty&&d.parts?.length?'':'disabled'}>Order Added Parts</button>`:send?`<button type="button" class="line-save order-parts" data-order-parts="${escapeHtml(row.step_id)}">${st.submitted?'Update Parts list':'Send to Parts'}</button>`:''}<button type="button" class="line-save job-completed" data-complete-lab="${escapeHtml(row.step_id)}" ${ready?'':'disabled'}>Job Completed</button><small class="line-status" data-line-status>${d.partsDirty||d.servicesDirty?'Save the changed list before completing the job':st.pendingReturns.length?'Waiting for Parts return review':!servicesReady?'Save the Lab services list':ready?'Ready to send to Final QC':!st.submitted?'Send the parts list to Parts':'Waiting for required parts'}</small>`;
   }
+  function activePartList(row){const parts=row.pf_plan?.parts||[];return parts.length?'<ul class="pp-active-parts">'+parts.map(p=>`<li><span>${escapeHtml(p.name)} × ${escapeHtml(p.quantity)} <small>${Number(p.issued)>=Number(p.quantity)?'Issued':'Awaiting issue'}</small></span>${p.can_cancel?`<button type="button" data-cancel-part="${escapeHtml(p.request_id)}" aria-label="Remove unissued ${escapeHtml(p.name)}">Remove</button>`:''}</li>`).join('')+'</ul>':'<small>No active parts.</small>';}
   function returnableParts(row) {
     return activeLabPartRequests(row).filter((item) => Number(item.issued || 0) - Number(item.installed || 0) - Number(item.returned || 0) > 0);
   }
   function issuedPartTools(row) {
     const p=row.pf_plan;if(!p)return '';const issues=p.issues.filter(i=>Number(i.available)>0);
     const previous=p.previous_manual_parts?.length?'<p class="pf-lab-lock">Earlier manual records: '+p.previous_manual_parts.map(m=>escapeHtml(m.name)+' x '+escapeHtml(m.quantity)).join(', ')+'</p>':'';
-    const returns=p.returns.length?'<ul class="pf-return-status">'+p.returns.map(r=>`<li>${escapeHtml(r.quantity)} returned · ${escapeHtml(r.status)}${r.classification?' · '+escapeHtml(r.classification.replaceAll('_',' ')):''}</li>`).join('')+'</ul>':'';
+    const pendingReturns=p.returns.filter(r=>r.status==='pending');const returns=pendingReturns.length?'<ul class="pf-return-status">'+pendingReturns.map(r=>`<li>${escapeHtml(p.issues.find(i=>i.issue_id===r.issue_id)?.name||'Part')} × ${escapeHtml(r.quantity)} returned · ${escapeHtml(r.status)}${r.classification?' · '+escapeHtml(r.classification.replaceAll('_',' ')):''}</li>`).join('')+'</ul>':'';
     if(!issues.length)return previous+returns;
     return previous+`<details class="lab-issued-tools"><summary>Return Part</summary><div class="pf-lab-return"><label>Issued part<select data-pf-return-issue><option value="">Select part to return</option>${issues.map(i=>`<option value="${escapeHtml(i.issue_id)}" data-available="${escapeHtml(i.available)}">${escapeHtml(i.name)} · ${escapeHtml(i.available)} available</option>`).join('')}</select></label><label data-pf-return-qty-wrap hidden>Return quantity<input type="number" min="1" step="1" value="1" data-pf-return-qty></label><button class="line-save" type="button" data-pf-return>Send return request</button><small>Parts Department will decide the return reason.</small></div></details>${returns}`;
   }
@@ -252,9 +253,9 @@
       ].join("");
       const visual = linePartVisual(row);
       const draft = lineDrafts.get(String(row.step_id));
-      const displayedParts = draft?.partsDirty ? draft.parts : labPartNames(row);
+      const displayedParts = draft?.partsDirty ? draft.parts : row.pf_plan?.locked?[]:labPartNames(row);
       const displayedServices = draft?.servicesDirty ? draft.services : labServiceNames(row);
-      return `<tr class="lab-phone-row ${visual.className}" data-step-id="${escapeHtml(row.step_id)}"><td colspan="12"><article class="lab-phone-card"><div class="lab-card-status"><span>${escapeHtml(visual.label)}</span></div><div class="lab-static-grid">${staticLine}</div><div class="lab-edit-grid"><fieldset class="pf-lab-choices" ${row.pf_plan?.locked?'disabled':''}><div class="lab-edit-field lab-parts-field"><span class="lab-field-label">${usesManualParts(row) ? "Parts added in Lab" : "Final parts required"}</span>${row.pf_plan?.locked?readOnlyList(row.pf_plan.parts.map(p=>p.name+" x "+p.quantity)):choiceCell("part", partOptions, displayedParts,row)}</div></fieldset><div class="lab-edit-field pf-lab-services"><span class="lab-field-label">Lab &amp; Glass services</span>${choiceCell("service", standardServices, displayedServices,row)}<button type="button" class="line-save" data-save-services="${escapeHtml(row.step_id)}" ${row.pf_plan?.services_saved&&!draft?.servicesDirty?'disabled':''}>Save Services</button><small>${draft?.servicesDirty?'Unsaved service changes':row.pf_plan?.services_saved?'Saved in Lab &amp; Glass':'Managed in Lab &amp; Glass'}</small></div><div class="lab-line-actions">${saveCell}${issuedPartTools(row)}</div></div></article></td></tr>`;
+      return `<tr class="lab-phone-row ${visual.className}" data-step-id="${escapeHtml(row.step_id)}"><td colspan="12"><article class="lab-phone-card"><div class="lab-card-status"><span>${escapeHtml(visual.label)}</span></div><div class="lab-static-grid">${staticLine}</div><div class="lab-edit-grid"><fieldset class="pf-lab-choices"><div class="lab-edit-field lab-parts-field"><span class="lab-field-label">${usesManualParts(row) ? "Parts added in Lab" : "Final parts required"}</span>${row.pf_plan?.locked?activePartList(row)+'<span class="lab-field-label">Add Parts</span>':''}${choiceCell("part",unique([...partOptions,...(row.pf_plan?.part_history||[]).map(p=>p.name)]),displayedParts,row)}</div></fieldset><div class="lab-edit-field pf-lab-services"><span class="lab-field-label">Lab &amp; Glass services</span>${choiceCell("service", standardServices, displayedServices,row)}<button type="button" class="line-save" data-save-services="${escapeHtml(row.step_id)}" ${row.pf_plan?.services_saved&&!draft?.servicesDirty?'disabled':''}>Save Services</button><small>${draft?.servicesDirty?'Unsaved service changes':row.pf_plan?.services_saved?'Saved in Lab &amp; Glass':'Managed in Lab &amp; Glass'}</small></div><div class="lab-line-actions">${saveCell}${issuedPartTools(row)}</div></div></article></td></tr>`;
     }).join("");
   }
 
@@ -341,8 +342,8 @@
       return [String(job.id), {...batch,...device,job_number:job.job_number}];
     }));
     if (!isCurrent()) return;
-    const planResponse=await getClient().rpc('get_lab_parts_plans_v2',{p_step_ids:rows.map(r=>r.step_id)});if(!isCurrent())return;if(planResponse.error)throw planResponse.error;
-    const plans=new Map((planResponse.data||[]).map(p=>[String(p.step_id),p]));for(const [id,p]of plans){const d=lineDrafts.get(id);if(d&&d.cycle!==p.cycle)lineDrafts.delete(id);else if(p.locked)clearDraftKind(id,'parts');}
+    const planResponse=await getClient().rpc('get_lab_parts_plans_v3',{p_step_ids:rows.map(r=>r.step_id)});if(!isCurrent())return;if(planResponse.error)throw planResponse.error;
+    const plans=new Map((planResponse.data||[]).map(p=>[String(p.step_id),p]));for(const [id,p]of plans){const d=lineDrafts.get(id);if(d&&d.cycle!==p.cycle)lineDrafts.delete(id);else if(d?.partsDirty&&d.modeLocked!==!!p.locked)clearDraftKind(id,'parts');}
     technicianRows = rows.map((row) => ({ ...row,pf_plan:plans.get(String(row.step_id)), ...quantityByJob.get(String(row.job_id)), pending_part_returns: pendingByStep.get(String(row.step_id)) || [] }));
     renderTechnicianLines();
   }
@@ -438,7 +439,6 @@
     markLineChanged(row,holder.dataset.choice);
   }
   function markLineChanged(row,kind='part') {
-    if(kind==='part'&&rowData(row)?.pf_plan?.locked)return;
     editVersion+=1;row.dataset.dirty='true';
     const actions=row.querySelector('.lab-line-actions'),template=document.createElement('template');template.innerHTML=actionCell(rowData(row));
     for(const selector of ['[data-order-parts]','[data-complete-lab]','[data-line-status]']){const next=template.content.querySelector(selector),current=actions.querySelector(selector);if(current&&next){current.textContent=next.textContent;current.disabled=next.disabled;}else if(next)actions.prepend(next);}
@@ -465,12 +465,13 @@
     }
   }
   async function orderParts(button) {
-    if(!editable())return;const row=button.closest('tr'),data=rowData(row),p=data?.pf_plan;if(!p||p.locked)return;
+    if(!editable())return;const row=button.closest('tr'),data=rowData(row),p=data?.pf_plan;if(!p)return;
     const parts=selectedChoices(row,'part').map(name=>({name,quantity:Number([...row.querySelectorAll('[data-part-quantity]')].find(e=>normalise(e.dataset.name)===normalise(name))?.value||1)}));
-    const {error}=await getClient().rpc('submit_lab_parts_plan_v2',{p_step_id:row.dataset.stepId,p_revision:p.revision,p_parts:parts});
+    const {error}=await getClient().rpc(p.locked?'add_lab_parts_v1':'submit_lab_parts_plan_v2',{p_step_id:row.dataset.stepId,p_revision:p.revision,p_parts:parts});
     if(error){setBoardMessage(error.message);return;}row.dataset.saved='yes';clearDraftKind(row.dataset.stepId,'parts');showToast('Parts list sent to Parts.');document.dispatchEvent(new Event('greenloop:notifications-changed'));await refreshAll();
   }
   async function saveServices(button){const row=button.closest('tr'),p=rowData(row)?.pf_plan;if(!p)return;const {error}=await getClient().rpc('save_lab_services_v1',{p_step_id:row.dataset.stepId,p_services_revision:p.services_revision??0,p_services:selectedChoices(row,'service')});if(error){setBoardMessage(error.message);return;}row.dataset.saved='yes';clearDraftKind(row.dataset.stepId,'services');showToast('Services saved in Lab & Glass.');await refreshAll();}
+  async function cancelPart(button){const row=button.closest('tr'),p=rowData(row)?.pf_plan;if(!p)return;const {error}=await getClient().rpc('cancel_lab_part_v1',{p_step_id:row.dataset.stepId,p_revision:p.revision,p_request_id:button.dataset.cancelPart});if(error){setBoardMessage(error.message);return;}row.dataset.saved='yes';showToast('Unissued part removed.');document.dispatchEvent(new Event('greenloop:notifications-changed'));await refreshAll();}
   async function submitPartReturn(button){const row=button.closest('tr'),p=rowData(row)?.pf_plan;if(!p)return;const issueId=row.querySelector('[data-pf-return-issue]').value;if(!issueId){setBoardMessage('Select the part to return.');return;}const quantity=Number(row.querySelector('[data-pf-return-qty]').value);if(!Number.isInteger(quantity)||quantity<1){setBoardMessage('Enter a valid return quantity.');return;}const {error}=await getClient().rpc('request_parts_flow_return_v1',{p_step_id:row.dataset.stepId,p_revision:p.revision,p_issue_id:issueId,p_quantity:quantity,p_notes:null});if(error){setBoardMessage(error.message);return;}row.dataset.saved='yes';showToast('Return sent to Parts for classification.');document.dispatchEvent(new Event('greenloop:notifications-changed'));await refreshAll();}
   async function completeLab(button) {
     if (!editable()) return;
@@ -651,6 +652,7 @@
       markLineChanged(row,holder.dataset.choice);
       return;
     }
+    const cancelled=event.target.closest('[data-cancel-part]');if(cancelled){runLineAction(cancelled,cancelPart).catch(e=>setBoardMessage(e.message));return;}
     const saveService=event.target.closest('[data-save-services]');if(saveService){runLineAction(saveService,saveServices).catch(e=>setBoardMessage(e.message));return;}
     const returned=event.target.closest("[data-pf-return]");if(returned){runLineAction(returned,submitPartReturn).catch(e=>setBoardMessage(e.message));return;}
     const order = event.target.closest("[data-order-parts]"); if (order && !order.disabled) runLineAction(order, orderParts).catch((error) => setBoardMessage(error.message));

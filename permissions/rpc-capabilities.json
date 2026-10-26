@@ -1339,5 +1339,23 @@
         "read": true
       }
     ]
+  },
+  "get_lab_parts_plans_v3": {
+    "page": "lab_glass",
+    "capability": "view",
+    "read": true
+  },
+  "add_lab_parts_v1": {
+    "page": "lab_glass",
+    "capability": "entry"
+  },
+  "cancel_lab_part_v1": {
+    "page": "lab_glass",
+    "capability": "entry"
+  },
+  "get_parts_returns_v1": {
+    "page": "parts",
+    "capability": "view",
+    "read": true
   }
 }
