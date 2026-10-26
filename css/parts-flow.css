@@ -3,3 +3,14 @@
 @media(max-width:700px){.pf-app,.pf-detail{padding:12px}.pf-lab-choices{grid-template-columns:1fr;grid-column:1/-1}.pf-pager{justify-content:center}}
 
 #pf-count{white-space:nowrap;font-size:12px}@media(max-width:600px){.pf-pager{flex-wrap:wrap;justify-content:space-between}#pf-count{order:3;width:100%;text-align:center}.pf-pager button{flex:1}}
+
+/* Parts action state: quiet green when finished, soft red while Parts must act. */
+.pf-app [data-pf-tone="pending"],.pf-detail[data-pf-tone="pending"]{--pf-state-bg:#fff0ee;--pf-state-ink:#7b3831;--pf-state-line:#ecc5be}
+.pf-app [data-pf-tone="complete"],.pf-detail[data-pf-tone="complete"]{--pf-state-bg:#e7f4ec;--pf-state-ink:#185e3b;--pf-state-line:#afd0bc}
+.pf-app .pf-table tr[data-pf-tone]>td{background:var(--pf-state-bg)!important;border-bottom-color:var(--pf-state-line)!important}
+.pf-status[data-pf-tone]{background:var(--pf-state-bg);color:var(--pf-state-ink);border-color:var(--pf-state-line)}
+.pf-detail[data-pf-tone]{border-color:var(--pf-state-line)}
+html[data-mode="dark"] .pf-app [data-pf-tone="pending"],html[data-mode="dark"] .pf-detail[data-pf-tone="pending"]{--pf-state-bg:#3b2e31;--pf-state-ink:#f0bbb3;--pf-state-line:#76504f}
+html[data-mode="dark"] .pf-app [data-pf-tone="complete"],html[data-mode="dark"] .pf-detail[data-pf-tone="complete"]{--pf-state-bg:#253d34;--pf-state-ink:#b7dfc9;--pf-state-line:#48765e}
+
+.pf-lab-return [hidden]{display:none!important}
