@@ -18,17 +18,18 @@
     <link rel="stylesheet" href="css/parts.css?v=20260825-manual-lab-parts-mode-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="js/permission-catalog.js?v=20261024-office-access-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261026-parts-simple-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261026-parts-badges-1"></script>
 <script defer src="js/page-capabilities.js?v=20261024-office-access-1"></script>
 <script defer src="js/imei-stage-notice.js?v=20261023-dual-imei-1"></script>
 <link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
 <script defer src="js/office-access.js?v=20261024-office-access-1"></script>
-<script defer src="js/config.js?v=20261026-parts-simple-1"></script>
+<script defer src="js/config.js?v=20261026-parts-badges-1"></script>
   <script defer src="js/login-activity.js?v=20261013-search-tv-1"></script>
   <link rel="stylesheet" href="css/record-search.css?v=20261017-find-record-popup-1">
   <script defer src="js/record-search.js?v=20261013-search-tv-1"></script>
-    <script defer src="js/part-notifications.js?v=20261026-parts-simple-1"></script>
-  <script defer src="js/parts.js?v=20261026-parts-simple-1"></script>
+    <script defer src="js/part-notifications.js?v=20261026-parts-badges-1"></script>
+  <script defer src="js/parts.js?v=20261026-parts-badges-1"></script>
+  <script defer src="js/parts-badges.js?v=20261026-parts-badges-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
     <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
   <link rel="stylesheet" href="css/sidebar-compact.css?v=20261009-sidebar-pdf-1">
@@ -37,7 +38,7 @@
   <script defer src="js/clean-layout.js?v=20261017-clean-layout-1"></script>
   <script defer src="js/suspicious-badge.js?v=20261017-suspicious-activity-1"></script>
 <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261003-qc-duplicate-stage-1">
-  <link rel="stylesheet" href="css/parts-flow.css?v=20261026-parts-simple-1">
+  <link rel="stylesheet" href="css/parts-flow.css?v=20261026-parts-badges-1">
 </head>
   <body class="app-page">
     <div class="app-shell">
@@ -68,7 +69,7 @@
           <section class="page-heading"><div><p class="eyebrow dashboard-eyebrow">Parts Department</p><h1>Parts</h1><p class="heading-subtitle">Parts requested by Lab &amp; Glass.</p></div></section>
           <div id="permission-message" class="access-message" hidden></div>
           <section id="parts-app" class="pf-app pp-simple" hidden>
-            <div class="pp-hub"><button type="button" class="pp-card" data-pp-view="ordered" aria-pressed="false" data-search-read-only data-capability="view" data-capability-page="parts"><span class="pp-icon" aria-hidden="true">&#9636;</span><strong>Parts Ordered</strong><small>Phone orders from Lab &amp; Glass</small></button><button type="button" class="pp-card" data-pp-view="returned" aria-pressed="false" data-search-read-only data-capability="view" data-capability-page="parts"><span class="pp-icon" aria-hidden="true">&#8617;</span><strong>Parts Returned</strong><small>Review returns and view reasons</small></button></div>
+            <div class="pp-hub"><button type="button" class="pp-card" data-pp-view="ordered" aria-pressed="false" data-search-read-only data-capability="view" data-capability-page="parts"><span class="pp-icon" aria-hidden="true">&#9636;</span><span class="pp-pending-badge" data-parts-pending="ordered" aria-hidden="true">…</span><strong>Parts Ordered</strong><small>Phone orders from Lab &amp; Glass</small></button><button type="button" class="pp-card" data-pp-view="returned" aria-pressed="false" data-search-read-only data-capability="view" data-capability-page="parts"><span class="pp-icon" aria-hidden="true">&#8617;</span><span class="pp-pending-badge" data-parts-pending="returned" aria-hidden="true">…</span><strong>Parts Returned</strong><small>Review returns and view reasons</small></button></div>
             <p id="pf-message" role="status" aria-live="polite"></p>
             <section id="pp-ordered" hidden><div class="pf-heading"><h2>Parts Ordered</h2><button id="refresh-parts" type="button" class="secondary-button" data-search-read-only data-capability="view" data-capability-page="parts">Refresh</button></div><div id="pf-queue-wrap" class="pf-scroll"><table id="pf-queue" class="pf-table"><thead><tr><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>Technician</th><th>Parts</th><th>Status</th><th>Ordered</th></tr></thead><tbody id="pf-rows"></tbody></table></div><div class="pf-pager"><button id="pf-prev" type="button" class="secondary-button" data-search-read-only data-capability="view" data-capability-page="parts">Previous</button><span id="pf-count"></span><button id="pf-next" type="button" class="secondary-button" data-search-read-only data-capability="view" data-capability-page="parts">Next</button></div><section id="pf-detail" class="pf-detail" hidden></section></section>
             <section id="pp-returned" hidden><div class="pp-return-groups"><button type="button" class="pp-return-card" data-return-category="damaged" aria-pressed="false" data-search-read-only data-capability="view" data-capability-page="parts"><span>Damaged</span><strong>0</strong><small>pcs</small></button><button type="button" class="pp-return-card" data-return-category="faulty" aria-pressed="false" data-search-read-only data-capability="view" data-capability-page="parts"><span>Faulty</span><strong>0</strong><small>pcs</small></button><button type="button" class="pp-return-card" data-return-category="not_needed" aria-pressed="false" data-search-read-only data-capability="view" data-capability-page="parts"><span>Not Needed</span><strong>0</strong><small>pcs</small></button><button type="button" class="pp-return-card" data-return-category="other" aria-pressed="false" data-search-read-only data-capability="view" data-capability-page="parts"><span>Other</span><strong>0</strong><small>pcs</small></button></div><div class="pf-heading"><h2 id="pp-return-title">Awaiting Review</h2><div><button id="pp-awaiting" type="button" class="secondary-button" data-search-read-only data-capability="view" data-capability-page="parts" hidden>Awaiting Review</button> <button id="pp-return-refresh" type="button" class="secondary-button" data-search-read-only data-capability="view" data-capability-page="parts">Refresh</button></div></div><div id="pp-return-wrap" class="pf-scroll"><table id="pp-return-table" class="pf-table"><thead><tr><th>IMEI</th><th>Phone</th><th>Technician</th><th>Part</th><th>Qty</th><th>Returned</th><th>Reason</th><th>Notes</th><th></th></tr></thead><tbody id="pp-return-rows"></tbody></table></div><div class="pf-pager"><button id="pp-return-prev" type="button" class="secondary-button" data-search-read-only data-capability="view" data-capability-page="parts">Previous</button><span id="pp-return-count"></span><button id="pp-return-next" type="button" class="secondary-button" data-search-read-only data-capability="view" data-capability-page="parts">Next</button></div></section>

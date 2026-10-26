@@ -1357,5 +1357,10 @@
     "page": "parts",
     "capability": "view",
     "read": true
+  },
+  "get_parts_pending_imei_counts_v1": {
+    "page": "parts",
+    "capability": "view",
+    "read": true
   }
 }
