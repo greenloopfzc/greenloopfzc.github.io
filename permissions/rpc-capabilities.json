@@ -1231,5 +1231,67 @@
       "capability": "view",
       "read": true
     }
+  },
+  "get_lab_parts_plans_v1": {
+    "page": "lab_glass",
+    "capability": "view",
+    "read": true
+  },
+  "submit_lab_parts_plan_v1": {
+    "page": "lab_glass",
+    "capability": "entry"
+  },
+  "get_parts_flow_queue_v1": {
+    "page": "parts",
+    "capability": "view",
+    "read": true
+  },
+  "get_parts_flow_order_v1": {
+    "page": "parts",
+    "capability": "view",
+    "read": true
+  },
+  "issue_parts_flow_v1": {
+    "page": "parts",
+    "capability": "issue"
+  },
+  "set_parts_flow_service_v1": {
+    "page": "parts",
+    "capability": "edit"
+  },
+  "request_parts_flow_return_v1": {
+    "page": "lab_glass",
+    "capability": "entry"
+  },
+  "review_parts_flow_return_v1": {
+    "page": "parts",
+    "capability": "return"
+  },
+  "complete_parts_flow_lab_v1": {
+    "page": "lab_glass",
+    "capability": "entry"
+  },
+  "get_parts_flow_counts_v1": {
+    "any": [
+      {
+        "page": "parts",
+        "capability": "view",
+        "read": true
+      },
+      {
+        "page": "lab_glass",
+        "capability": "view",
+        "read": true
+      },
+      {
+        "page": "overview",
+        "capability": "view",
+        "read": true
+      }
+    ]
+  },
+  "review_legacy_parts_return_v1": {
+    "page": "parts",
+    "capability": "return"
   }
 }

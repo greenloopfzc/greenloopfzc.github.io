@@ -143,7 +143,9 @@
       if (requestEpoch !== epoch || stopped || document.hidden) return;
       if (error) throw error;
       failures = 0;
-      renderCounts(data);
+      let updated=data;try{const pf=await withDeadline(client.rpc('get_parts_flow_counts_v1'));if(!pf.error)updated={...(Array.isArray(data)?data[0]:data),parts:pf.data};}catch(_){}
+      if(requestEpoch!==epoch||stopped||document.hidden)return;
+      renderCounts(updated);
     } catch (_) {
       // A temporary connection failure must not make pending work disappear.
       failures += 1;

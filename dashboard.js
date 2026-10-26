@@ -280,6 +280,7 @@
     const readyTotal = Number(readyData.total_qty) || 0;
 
     const workflow = Array.isArray(workflowResult.data) ? workflowResult.data[0] : (workflowResult.data || {});
+    try{const pf=await getClient().rpc('get_parts_flow_counts_v1');if(!pf.error)workflow.parts=pf.data;}catch(_){}
     renderMetrics(workflow);
     window.GREENLOOP_LAB_DELAY?.refreshDashboard();
     await refreshLiveHeadlines();

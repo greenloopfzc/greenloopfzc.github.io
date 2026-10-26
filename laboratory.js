@@ -144,9 +144,7 @@
   function allLabPartRequests(row) { return asList(row.lab_part_requests); }
   function activeLabPartRequests(row) { return allLabPartRequests(row).filter((item) => !isReturnedPartRequest(item, row)); }
   function manualPartNames(row) { return unique(asList(row.manual_parts).map((item) => item.name)); }
-  function usesManualParts(row) {
-    return manualLabPartsMode && !allLabPartRequests(row).some((item) => Number(item.issued || 0) > 0);
-  }
+  function usesManualParts(row) { return false; }
   function initialServiceNames(row, requiredOnly = false) {
     return unique(asList(row.initial_services)
       .filter((item) => !requiredOnly || item.lab_decision !== "not_required")
@@ -154,6 +152,7 @@
       .filter(isInitialQcService));
   }
   function labPartNames(row) {
+    if(row.pf_plan)return row.pf_plan.parts.map(p=>p.name);
     const manuallyAdded = manualPartNames(row);
     if (usesManualParts(row) && manuallyAdded.length) return manuallyAdded;
     const allRequests = allLabPartRequests(row);
@@ -162,6 +161,7 @@
     return initialNames(row.initial_parts).filter((name) => !asList(row.initial_parts).some((item) => normalise(item.name) === normalise(name) && ["not_required", "unused_returned", "cancelled"].includes(normalise(item.status))));
   }
   function labServiceNames(row) {
+    if(row.pf_plan)return row.pf_plan.services.map(p=>p.name);
     const reviewed = asList(row.lab_services);
     if (reviewed.length) return unique(reviewed
       .filter((item) => item.required !== false)
@@ -170,8 +170,9 @@
     return initialServiceNames(row, true);
   }
   function readOnlyList(values) { const list = unique(values); return list.length ? `<div class="line-list">${list.map((value) => `<span>${escapeHtml(value)}</span>`).join("")}</div>` : '<span class="line-empty">None</span>'; }
-  function choiceCell(kind, options, selected) {
-    return `<div class="lab-choice" data-choice="${kind}"><div class="lab-choice-row"><select>${optionsMarkup(options, kind === "part" ? "Select part" : "Select service")}</select><button type="button" data-add-choice="${kind}" title="Add">+</button></div><div class="lab-choice-tags">${unique(selected).map((value) => `<button type="button" data-remove-choice="${kind}" data-value="${escapeHtml(value)}" title="Remove">${escapeHtml(value)}</button>`).join("")}</div></div>`;
+  function choiceTag(kind,value,quantity=1){return kind==='part'?`<span class="pf-lab-part-tag"><button type="button" data-remove-choice="part" data-value="${escapeHtml(value)}" title="Remove">${escapeHtml(value)}</button><input data-part-quantity data-name="${escapeHtml(value)}" type="number" min="1" max="10000" step="1" value="${escapeHtml(quantity)}" aria-label="Quantity for ${escapeHtml(value)}"></span>`:`<button type="button" data-remove-choice="service" data-value="${escapeHtml(value)}" title="Remove">${escapeHtml(value)}</button>`;}
+  function choiceCell(kind, options, selected, data={}) {
+    return `<div class="lab-choice" data-choice="${kind}"><div class="lab-choice-row"><select>${optionsMarkup(options,kind==='part'?'Select part':'Select service')}</select><button type="button" data-add-choice="${kind}" title="Add">+</button></div><div class="lab-choice-tags">${unique(selected).map(value=>choiceTag(kind,value,lineDrafts.get(String(data.step_id))?.quantities?.[value]??data.pf_plan?.parts?.find(p=>normalise(p.name)===normalise(value))?.quantity??1)).join('')}</div></div>`;
   }
   function selectedChoices(row, kind) {
     const tags = [...row.querySelectorAll(`[data-choice="${kind}"] [data-remove-choice]`)].map((button) => button.dataset.value);
@@ -182,6 +183,7 @@
     if (!row?.dataset.stepId) return;
     lineDrafts.set(String(row.dataset.stepId), {
       parts: selectedChoices(row, "part"),
+      quantities:Object.fromEntries([...row.querySelectorAll("[data-part-quantity]")].map(e=>[e.dataset.name,e.value])),
       services: selectedChoices(row, "service")
     });
   }
@@ -195,65 +197,25 @@
     return `<option value="">Select repeat reason</option><option value="faulty_part">Faulty Part</option><option value="technician_damage">Damaged by Technician</option><option value="other">Other</option>`;
   }
   function lineWorkflowState(row) {
-    const allRequests = allLabPartRequests(row);
-    const requests = activeLabPartRequests(row);
-    const pendingReturns = asList(row.pending_part_returns).filter((item) => item.status === "pending");
-    const initialParts = asList(row.initial_parts);
-    const manualFlow = usesManualParts(row);
-    const submitted = manualFlow
-      ? asList(row.lab_services).length > 0 || initialParts.some((item) => ["manually_installed", "not_required"].includes(String(item.status))) || manualPartNames(row).length > 0
-      : allRequests.length > 0 || asList(row.lab_services).length > 0 || initialParts.some((item) => ["requested", "not_required", "unused_returned"].includes(String(item.status)));
-    const needsParts = requests.length > 0 || labPartNames(row).length > 0;
-    const allIssued = manualFlow ? submitted : submitted && (!needsParts || (requests.length > 0 && requests.every((item) => Number(item.issued || 0) >= Number(item.quantity || 1))));
-    return { requests, pendingReturns, submitted, allIssued, hasParts: needsParts, manualFlow };
+    const p=row.pf_plan||{parts:[],services:[],returns:[]};
+    return {submitted:!!p.submitted,locked:!!p.locked,pendingReturns:p.returns.filter(r=>r.status==='pending'),allIssued:!!p.submitted&&p.parts.every(r=>Number(r.issued)>=Number(r.quantity))&&p.services.every(s=>s.status!=='pending'),hasParts:p.parts.length>0,manualFlow:false};
   }
-  function linePartVisual(row) {
-    const state = lineWorkflowState(row);
-    const needsParts = state.hasParts;
-    if (state.pendingReturns.length) return { className: "parts-pending", label: "Return pending" };
-    if (needsParts && !state.allIssued) return { className: "parts-pending", label: "Parts pending" };
-    return { className: "parts-issued", label: needsParts ? (state.manualFlow ? "Parts added in Lab" : "Parts issued") : "No parts required" };
-  }
+  function linePartVisual(row){const p=lineWorkflowState(row);return {className:p.pendingReturns.length?'parts-pending':p.allIssued?'parts-issued':'parts-pending',label:p.pendingReturns.length?'Return pending':!p.submitted?'Preparing requirements':p.locked?(p.allIssued?'Parts issued · List locked':'Partially issued · List locked'):'Sent to Parts · Editable'};}
   function actionCell(row) {
-    const state = lineWorkflowState(row);
-    if (state.pendingReturns.length) {
-      const names = unique(state.pendingReturns.map((item) => item.part_name)).join(", ");
-      return `<button class="line-save line-state return-pending" type="button" disabled>Return Pending</button><button class="line-save job-completed" type="button" data-complete-lab="${escapeHtml(row.step_id)}" disabled>✓ Job Completed</button><small class="line-status" data-line-status>Parts approval: ${escapeHtml(names)}</small>`;
-    }
-    if (!state.submitted) {
-      const plannedParts = labPartNames(row);
-      const plannedServices = labServiceNames(row);
-      if (!plannedParts.length && !plannedServices.length) {
-        return `<button class="line-save line-state parts-issued" type="button" data-order-parts="${escapeHtml(row.step_id)}" disabled>✓ No Parts Required</button><button class="line-save job-completed" type="button" data-complete-lab="${escapeHtml(row.step_id)}">✓ Job Completed</button><small class="line-status success" data-line-status>Ready to send to Final QC</small>`;
-      }
-      const label = plannedParts.length ? (state.manualFlow ? "Save Manual Parts" : "Request Parts") : "Save Services";
-      const help = plannedParts.length ? (state.manualFlow ? "Save selected parts against this IMEI; no Parts request will be sent" : "Send only selected parts to Parts Department") : "Save services; no Parts notification will be sent";
-      return `<button class="line-save order-parts" type="button" data-order-parts="${escapeHtml(row.step_id)}">${label}</button><button class="line-save job-completed" type="button" data-complete-lab="${escapeHtml(row.step_id)}" disabled>✓ Job Completed</button><small class="line-status" data-line-status>${help}</small>`;
-    }
-    if (!state.allIssued) {
-      return `<button class="line-save line-state parts-ordered" type="button" data-order-parts="${escapeHtml(row.step_id)}" disabled>Parts Ordered</button><button class="line-save job-completed" type="button" data-complete-lab="${escapeHtml(row.step_id)}" disabled>✓ Job Completed</button><small class="line-status" data-line-status>Waiting for Parts Department</small>`;
-    }
-    const issuedLabel = state.hasParts ? (state.manualFlow ? "✓ Parts Added in Lab" : "✓ Parts Issued") : "✓ No Parts Required";
-    const readyText = state.manualFlow && state.hasParts ? "Manual parts saved on this IMEI. Ready to send to Final QC" : "Ready to send to Final QC";
-    return `<button class="line-save line-state parts-issued" type="button" data-order-parts="${escapeHtml(row.step_id)}" disabled>${issuedLabel}</button><button class="line-save job-completed" type="button" data-complete-lab="${escapeHtml(row.step_id)}">✓ Job Completed</button><small class="line-status success" data-line-status>${readyText}</small>`;
+    const p=row.pf_plan||{},st=lineWorkflowState(row),ready=st.allIssued&&!st.pendingReturns.length;
+    return `${!st.locked?`<button type="button" class="line-save order-parts" data-order-parts="${escapeHtml(row.step_id)}">${st.submitted?'Update Parts list':'Send to Parts'}</button>`:'<span class="pf-lab-lock">List locked after issue</span>'}<button type="button" class="line-save job-completed" data-complete-lab="${escapeHtml(row.step_id)}" ${ready?'':'disabled'}>Job Completed</button><small class="line-status" data-line-status>${st.pendingReturns.length?'Waiting for Parts return review':!st.submitted?'Finalise parts and services, then send to Parts':ready?'Ready to send to Final QC':'Waiting for issue and service confirmation'}</small>`;
   }
   function returnableParts(row) {
     return activeLabPartRequests(row).filter((item) => Number(item.issued || 0) - Number(item.installed || 0) - Number(item.returned || 0) > 0);
   }
   function issuedPartTools(row) {
-    const state = lineWorkflowState(row);
-    if (!state.allIssued || !state.hasParts) return "";
-    const parts = returnableParts(row);
-    if (!parts.length) return "";
-    const options = parts.map((part) => {
-      const available = Number(part.issued || 0) - Number(part.installed || 0) - Number(part.returned || 0);
-      return `<option value="${escapeHtml(part.id)}">${escapeHtml(part.name)} - ${available} issued</option>`;
-    }).join("");
-    return `<details class="lab-issued-tools"><summary>Manage issued parts</summary><div class="lab-issued-manager"><label class="lab-issued-part-select"><span class="lab-field-label">Part name</span><select data-return-part-select><option value="">Select issued part</option>${options}</select></label><fieldset class="lab-return-reasons"><legend>Reason — tick one</legend><label class="lab-return-reason damaged"><input type="checkbox" data-return-reason value="damaged"><span>Damage</span></label><label class="lab-return-reason faulty"><input type="checkbox" data-return-reason value="faulty"><span>Faulty</span></label><label class="lab-return-reason not-needed"><input type="checkbox" data-return-reason value="not_needed"><span>Not Needed</span></label></fieldset><p class="lab-return-rule">Damage and Faulty never return to usable Inventory. Not Needed returns to Inventory only after Parts approval.</p></div></details>`;
+    const p=row.pf_plan;if(!p)return '';const issues=p.issues.filter(i=>Number(i.available)>0);
+    const previous=p.previous_manual_parts?.length?'<p class="pf-lab-lock">Earlier manual records: '+p.previous_manual_parts.map(m=>escapeHtml(m.name)+' x '+escapeHtml(m.quantity)).join(', ')+'</p>':'';
+    const returns=p.returns.length?'<ul class="pf-return-status">'+p.returns.map(r=>`<li>${escapeHtml(r.quantity)} returned · ${escapeHtml(r.status)}${r.classification?' · '+escapeHtml(r.classification.replaceAll('_',' ')):''}</li>`).join('')+'</ul>':'';
+    if(!issues.length)return previous+returns;
+    return previous+`<details class="lab-issued-tools"><summary>Return issued part</summary><div class="pf-lab-return"><label>Issued part<select data-pf-return-issue>${issues.map(i=>`<option value="${escapeHtml(i.issue_id)}" data-available="${escapeHtml(i.available)}">${escapeHtml(i.name)} · ${escapeHtml(i.available)} available</option>`).join('')}</select></label><label>Return quantity<input type="number" min="1" step="1" value="1" data-pf-return-qty></label><label>Notes for Parts<input type="text" maxlength="1000" data-pf-return-notes placeholder="Why is this part being returned?"></label><button class="line-save" type="button" data-pf-return>Send return request</button><small>Parts will classify the return as Not Needed, Damaged or Faulty.</small></div></details>${returns}`;
   }
-  function rowData(rowElement) {
-    return technicianRows.find((item) => String(item.step_id) === String(rowElement.dataset.stepId));
-  }
+  function rowData(rowElement) { return technicianRows.find(item=>String(item.step_id)===String(rowElement?.dataset.stepId)); }
   function renderTechnicianLines() {
     const selectedTech = technicians.find((item) => String(item.id) === String(activeTechnicianId));
     const assignedRows = technicianRows.filter((row) => isFrameMode ? String(row.department) === "frame" : ["laboratory", "glass"].includes(String(row.department)));
@@ -291,7 +253,7 @@
       const draft = lineDrafts.get(String(row.step_id));
       const displayedParts = draft?.parts || labPartNames(row);
       const displayedServices = draft?.services || labServiceNames(row);
-      return `<tr class="lab-phone-row ${visual.className}" data-step-id="${escapeHtml(row.step_id)}"><td colspan="12"><article class="lab-phone-card"><div class="lab-card-status"><span>${escapeHtml(visual.label)}</span></div><div class="lab-static-grid">${staticLine}</div><div class="lab-edit-grid"><div class="lab-edit-field lab-parts-field"><span class="lab-field-label">${usesManualParts(row) ? "Parts added in Lab" : "Final parts required"}</span>${choiceCell("part", partOptions, displayedParts)}</div><div class="lab-edit-field"><span class="lab-field-label">Final services required</span>${choiceCell("service", standardServices, displayedServices)}</div><div class="lab-line-actions">${saveCell}${issuedPartTools(row)}</div></div></article></td></tr>`;
+      return `<tr class="lab-phone-row ${visual.className}" data-step-id="${escapeHtml(row.step_id)}"><td colspan="12"><article class="lab-phone-card"><div class="lab-card-status"><span>${escapeHtml(visual.label)}</span></div><div class="lab-static-grid">${staticLine}</div><div class="lab-edit-grid"><fieldset class="pf-lab-choices" ${row.pf_plan?.locked?'disabled':''}><div class="lab-edit-field lab-parts-field"><span class="lab-field-label">${usesManualParts(row) ? "Parts added in Lab" : "Final parts required"}</span>${row.pf_plan?.locked?readOnlyList(row.pf_plan.parts.map(p=>p.name+" x "+p.quantity)):choiceCell("part", partOptions, displayedParts,row)}</div><div class="lab-edit-field"><span class="lab-field-label">Final services required</span>${row.pf_plan?.locked?readOnlyList(displayedServices):choiceCell("service", standardServices, displayedServices,row)}</div></fieldset><div class="lab-line-actions">${saveCell}${issuedPartTools(row)}</div></div></article></td></tr>`;
     }).join("");
   }
 
@@ -378,7 +340,9 @@
       return [String(job.id), {...batch,...device,job_number:job.job_number}];
     }));
     if (!isCurrent()) return;
-    technicianRows = rows.map((row) => ({ ...row, ...quantityByJob.get(String(row.job_id)), pending_part_returns: pendingByStep.get(String(row.step_id)) || [] }));
+    const planResponse=await getClient().rpc('get_lab_parts_plans_v1',{p_step_ids:rows.map(r=>r.step_id)});if(!isCurrent())return;if(planResponse.error)throw planResponse.error;
+    const plans=new Map((planResponse.data||[]).map(p=>[String(p.step_id),p]));for(const [id,p]of plans)if(p.locked)lineDrafts.delete(id);
+    technicianRows = rows.map((row) => ({ ...row,pf_plan:plans.get(String(row.step_id)), ...quantityByJob.get(String(row.job_id)), pending_part_returns: pendingByStep.get(String(row.step_id)) || [] }));
     renderTechnicianLines();
     technicianWorkRows.querySelectorAll("tr[data-step-id]").forEach((row) => {
       if (lineDrafts.has(String(row.dataset.stepId))) markLineChanged(row);
@@ -453,7 +417,7 @@
     const select = holder.querySelector("select");
     const value = select.value;
     if (!value || selectedChoices(button.closest("tr"), holder.dataset.choice).some((item) => normalise(item) === normalise(value))) return;
-    holder.querySelector(".lab-choice-tags").insertAdjacentHTML("beforeend", `<button type="button" data-remove-choice="${holder.dataset.choice}" data-value="${escapeHtml(value)}" title="Remove">${escapeHtml(value)}</button>`);
+    holder.querySelector(".lab-choice-tags").insertAdjacentHTML("beforeend", choiceTag(holder.dataset.choice,value));
     select.value = "";
     rememberLineDraft(button.closest("tr"));
     markLineChanged(button.closest("tr"));
@@ -468,7 +432,7 @@
     if (!existing) {
       holder.querySelector(".lab-choice-tags").insertAdjacentHTML(
         "beforeend",
-        `<button type="button" data-remove-choice="${holder.dataset.choice}" data-value="${escapeHtml(value)}" title="Remove">${escapeHtml(value)}</button>`
+        choiceTag(holder.dataset.choice,value)
       );
     }
     rememberLineDraft(row);
@@ -476,6 +440,7 @@
     markLineChanged(row);
   }
   function markLineChanged(row) {
+    if(rowData(row)?.pf_plan?.locked)return;
     editVersion += 1;
     const orderButton = row.querySelector("[data-order-parts]");
     const completeButton = row.querySelector("[data-complete-lab]");
@@ -486,7 +451,7 @@
     const returnPart = row.querySelector("[data-return-part-select]")?.value || "";
     const returnReason = row.querySelector("[data-return-reason]:checked")?.value || "";
     const selectedParts = selectedChoices(row, "part");
-    orderButton.textContent = returnPart || returnReason ? "Submit Part Return" : selectedParts.length ? (usesManualParts(rowData(row) || {}) ? "Save Manual Parts" : "Request Parts") : "Save Services";
+    orderButton.textContent = returnPart || returnReason ? "Submit Part Return" : "Update Parts list";
     orderButton.className = "line-save order-parts";
     if (completeButton) completeButton.disabled = true;
     if (status) {
@@ -514,60 +479,16 @@
     }
   }
   async function orderParts(button) {
-    if (!editable()) return;
-    const row = button.closest("tr");
-    const status = row.querySelector("[data-line-status]");
-    const requestId = row.querySelector("[data-return-part-select]")?.value || "";
-    const returnReason = row.querySelector("[data-return-reason]:checked")?.value || "";
-    if (requestId || returnReason) {
-      if (!requestId || !returnReason) {
-        status.textContent = "Select one issued part and tick exactly one reason.";
-        status.className = "line-status error";
-        return;
-      }
-      setSubmitting(button, true, "Submitting...");
-      const { error } = await getClient().rpc("request_lab_part_return", {
-        p_work_order_step_id: row.dataset.stepId,
-        p_part_request_id: requestId,
-        p_return_reason: returnReason
-      });
-      setSubmitting(button, false);
-      if (error) { status.textContent = error.message; status.className = "line-status error"; return; }
-      row.dataset.saved = "yes";
-      showToast("Return sent to Parts Department for approval. Inventory was not changed.");
-      document.dispatchEvent(new CustomEvent("greenloop:notifications-changed"));
-      await refreshAll();
-      return;
-    }
-    const selectedParts = selectedChoices(row, "part");
-    const selectedServices = selectedChoices(row, "service");
-    const manualFlow = lineWorkflowState(rowData(row) || {}).manualFlow;
-    rememberLineDraft(row);
-    setSubmitting(button, true, "Saving...");
-    const { data, error } = await getClient().rpc("save_lab_technician_line_v2", {
-      p_work_order_step_id: row.dataset.stepId,
-      p_lab_parts: selectedParts,
-      p_lab_services: selectedServices,
-      p_extra_parts: [],
-      p_extra_services: [],
-      p_repeat_part: null,
-      p_repeat_reason: null
-    });
-    setSubmitting(button, false);
-    if (error) { status.textContent = error.message; status.className = "line-status error"; return; }
-    row.dataset.saved = "yes";
-    lineDrafts.delete(String(row.dataset.stepId));
-    const notifications = Number(data?.parts_notified || 0) + (data?.repeat_part_requested ? 1 : 0);
-    status.textContent = manualFlow || data?.manual_mode ? "Manual parts saved on this IMEI. No Parts request was sent." : (data?.repeat_part_requested ? `${notifications} part notification(s); repeat order #${Number(data.repeat_number || 2)}` : `${notifications} part notification(s)`);
-    status.className = "line-status success";
-    document.dispatchEvent(new CustomEvent("greenloop:notifications-changed"));
-    showToast(manualFlow || data?.manual_mode ? "Manual parts saved against this IMEI. No Parts request was created." : "Parts order submitted. Services were saved without a Parts notification.");
-    await refreshAll();
+    if(!editable())return;const row=button.closest('tr'),data=rowData(row),p=data?.pf_plan;if(!p||p.locked)return;
+    const parts=selectedChoices(row,'part').map(name=>({name,quantity:Number([...row.querySelectorAll('[data-part-quantity]')].find(e=>normalise(e.dataset.name)===normalise(name))?.value||1)}));
+    const {error}=await getClient().rpc('submit_lab_parts_plan_v1',{p_step_id:row.dataset.stepId,p_revision:p.revision,p_parts:parts,p_services:selectedChoices(row,'service')});
+    if(error){setBoardMessage(error.message);return;}row.dataset.saved='yes';lineDrafts.delete(String(row.dataset.stepId));showToast('Final parts and services sent to Parts.');document.dispatchEvent(new Event('greenloop:notifications-changed'));await refreshAll();
   }
+  async function submitPartReturn(button){const row=button.closest('tr'),p=rowData(row)?.pf_plan;if(!p)return;const quantity=Number(row.querySelector('[data-pf-return-qty]').value),notes=row.querySelector('[data-pf-return-notes]').value.trim();if(!notes||notes.length<2){setBoardMessage('Add notes for Parts to review this return.');return;}const {error}=await getClient().rpc('request_parts_flow_return_v1',{p_step_id:row.dataset.stepId,p_revision:p.revision,p_issue_id:row.querySelector('[data-pf-return-issue]').value,p_quantity:quantity,p_notes:notes});if(error){setBoardMessage(error.message);return;}row.dataset.saved='yes';showToast('Return sent to Parts for classification.');document.dispatchEvent(new Event('greenloop:notifications-changed'));await refreshAll();}
   async function completeLab(button) {
     if (!editable()) return;
     setSubmitting(button, true, "Completing...");
-    const { error } = await getClient().rpc("complete_lab_technician_line", { p_work_order_step_id: button.dataset.completeLab });
+    const { error } = await getClient().rpc("complete_parts_flow_lab_v1", { p_step_id: button.dataset.completeLab,p_revision:rowData(button.closest("tr"))?.pf_plan?.revision??0 });
     setSubmitting(button, false);
     if (error) { setBoardMessage(error.message); return; }
     button.closest("tr").dataset.saved = "yes";
@@ -738,17 +659,19 @@
       const holder = remove.closest("[data-choice]");
       const select = holder?.querySelector("select");
       if (select && normalise(select.value) === normalise(remove.dataset.value)) select.value = "";
-      remove.remove();
+      (remove.closest(".pf-lab-part-tag")||remove).remove();
       rememberLineDraft(row);
       markLineChanged(row);
       return;
     }
+    const returned=event.target.closest("[data-pf-return]");if(returned){runLineAction(returned,submitPartReturn).catch(e=>setBoardMessage(e.message));return;}
     const order = event.target.closest("[data-order-parts]"); if (order && !order.disabled) runLineAction(order, orderParts).catch((error) => setBoardMessage(error.message));
     const completeLabButton = event.target.closest("[data-complete-lab]"); if (completeLabButton) runLineAction(completeLabButton, completeLab).catch((error) => setBoardMessage(error.message));
     const completeFrameButton = event.target.closest("[data-complete-frame]"); if (completeFrameButton) runLineAction(completeFrameButton, completeFrame).catch((error) => setBoardMessage(error.message));
   });
   technicianWorkRows.addEventListener("change", (event) => {
     if (!editable()) return;
+    if(event.target.matches("[data-part-quantity]")){rememberLineDraft(event.target.closest("tr"));markLineChanged(event.target.closest("tr"));return;}
     const choiceSelect = event.target.closest('[data-choice] select');
     if (choiceSelect) {
       addSelectedChoice(choiceSelect);

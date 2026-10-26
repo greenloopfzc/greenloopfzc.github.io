@@ -228,6 +228,7 @@ document.addEventListener("click", (event) => {
     item("Initial QC", "initial-qc.html", "✓", page === "initial-qc.html"),
     item("Stock Return", "stock-return.html", "↩", page === "stock-return.html"),
     item("Lab & Glass", "laboratory.html", "⌁", (page === "laboratory.html" || page === "glass.html") && window.location.hash !== "#frame"),
+    item("Parts", "parts.html", "▦", page === "parts.html"),
     item("Final QC", "final-qc.html", "◉", page === "final-qc.html"),
     item("Frame Department", "laboratory.html#frame", "□", page === "laboratory.html" && window.location.hash === "#frame"),
     item("Ready Stock", "ready-stock.html", "▤", page === "ready-stock.html"),
