@@ -1401,5 +1401,20 @@
       }
     ],
     "read": true
+  },
+  "get_parts_supplier_queue_v1": {
+    "page": "parts",
+    "capability": "view",
+    "read": true
+  },
+  "get_parts_supplier_returns_v1": {
+    "page": "parts",
+    "capability": "view",
+    "read": true
+  },
+  "get_parts_supplier_order_v1": {
+    "page": "parts",
+    "capability": "view",
+    "read": true
   }
 }

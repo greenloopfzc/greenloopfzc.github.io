@@ -20,3 +20,5 @@ html[data-mode="dark"] .pf-app [data-pf-tone="complete"],html[data-mode="dark"] 
 .pp-active-parts li{font-size:.78rem;font-weight:600;line-height:1.4}.pp-active-parts small{font-size:.66rem}.pp-active-parts button{appearance:none;min-height:30px;padding:5px 9px;border:1px solid var(--nm-line,#cbd9e0);border-radius:8px;background:var(--nm-control,#f4f8fb);color:var(--nm-ink,#24343b);box-shadow:var(--nm-shadow,2px 2px 5px #183d4b22,-2px -2px 5px #ffffffb3);font-family:inherit;cursor:pointer}
 
 .pp-card{position:relative;padding-right:64px}.pp-card .pp-pending-badge{position:absolute;top:14px;right:14px;display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 6px;box-sizing:border-box;border:2px solid #fff;border-radius:999px;background:#dc2f25!important;color:#fff!important;box-shadow:0 2px 7px #a0191259;font-size:12px;font-weight:800;line-height:1;white-space:nowrap}.pp-pending-badge[data-count-state=stale]{opacity:.8}
+
+.pf-table .pf-supplier-code{font-weight:800;white-space:nowrap}.pf-supplier-detail strong{color:var(--nm-ink,#24343b);font-weight:800}
