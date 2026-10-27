@@ -105,6 +105,7 @@
     async function search({append=false,selectExact=false}={}) {
       clearTimeout(timer);
       const term=clean(input.value); if(!term){++version;close();return;}
+      if(!append&&selectExact&&/^\d{15}$/.test(term)&&typeof options.onExactIdentifier==='function'&&window.GREENLOOP_CAN_SEARCH!==false){close();return options.onExactIdentifier(term);}
       const currentVersion=++version;
       if(!append){items=[];list.replaceChildren();active=-1;input.removeAttribute("aria-activedescendant");nextOffset=0;}
       lastQuery=term;busy=true;more.hidden=true;status.textContent="Searching…";show();

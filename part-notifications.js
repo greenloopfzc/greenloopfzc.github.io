@@ -18,6 +18,7 @@
   const minimumGap = 200; // Leading refresh, with a bounded trailing refresh for bulk writes.
   let autoPickTimer;
   let manualImeiAction = false;
+  let lastCountsKey="",forceDispatch=false;
 
   function getClient() {
     if (!supabaseClient && window.supabase && config.supabaseUrl && config.supabaseAnonKey) {
@@ -100,7 +101,7 @@
       const next = client.channel('greenloop-workflow-notifications-v1');
       channel = next;
       next.on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'workflow_notification_signal' }, () => {
-        if (channel === next) refreshWorkflowNotifications();
+        if (channel === next) {forceDispatch=true;refreshWorkflowNotifications();}
       }).subscribe((status) => {
         if (channel !== next) return;
         connected = status === 'SUBSCRIBED';
@@ -110,7 +111,8 @@
     } catch (_) { disconnect(); }
   }
 
-  function refreshWorkflowNotifications() {
+  function refreshWorkflowNotifications(event) {
+    if(event?.type)forceDispatch=true;
     dirty = true;
     if (stopped || document.hidden || inFlight || refreshTimer) return;
     refreshTimer = window.setTimeout(runRefresh, Math.max(0, minimumGap - (performance.now() - lastStarted)));
@@ -131,7 +133,7 @@
     const client = getClient();
     if (!client) { pollLater(); return; }
     inFlight = true; dirty = false; lastStarted = performance.now();
-    const requestEpoch = epoch;
+    const requestEpoch = epoch,notifyAfterRead=forceDispatch;forceDispatch=false;
     try {
       const { data: sessionData } = await withDeadline(client.auth.getSession());
       if (requestEpoch !== epoch || stopped || document.hidden) return;
@@ -139,14 +141,14 @@
       if (nextUser !== userId) { disconnect(); hideAllBadges(); userId = nextUser; }
       if (!userId) { hideAllBadges(); return; }
       connect(client);
-      const { data, error } = await withDeadline(client.rpc('get_workflow_notification_counts'));
+      const [{data,error},partsResult]=await Promise.all([withDeadline(client.rpc('get_workflow_notification_counts')),withDeadline(client.rpc('get_parts_flow_counts_v1')).catch(()=>null)]);
       if (requestEpoch !== epoch || stopped || document.hidden) return;
       if (error) throw error;
       failures = 0;
-      let updated=data;try{const pf=await withDeadline(client.rpc('get_parts_flow_counts_v1'));if(!pf.error)updated={...(Array.isArray(data)?data[0]:data),parts:pf.data};}catch(_){}
+      const updated=partsResult&&!partsResult.error?{...(Array.isArray(data)?data[0]:data),parts:partsResult.data}:data;
       if(requestEpoch!==epoch||stopped||document.hidden)return;
       renderCounts(updated);
-      document.dispatchEvent(new Event("greenloop:workflow-notifications-refreshed"));
+      const countsKey=JSON.stringify(updated);if(countsKey!==lastCountsKey||notifyAfterRead){lastCountsKey=countsKey;document.dispatchEvent(new Event("greenloop:workflow-notifications-refreshed"));}
     } catch (_) {
       // A temporary connection failure must not make pending work disappear.
       failures += 1;
@@ -209,7 +211,7 @@
     document.addEventListener("greenloop:notifications-changed", refreshWorkflowNotifications);
     document.addEventListener('greenloop:workflow-committed', refreshWorkflowNotifications);
     window.addEventListener('storage', (event) => {
-      if (event.key === 'greenloop-workflow-commit-v1') refreshWorkflowNotifications();
+      if (event.key === 'greenloop-workflow-commit-v1') {forceDispatch=true;refreshWorkflowNotifications();}
     });
     window.addEventListener('online', refreshWorkflowNotifications);
     window.addEventListener('focus', refreshWorkflowNotifications);
@@ -217,7 +219,7 @@
     authSubscription = auth?.onAuthStateChange?.((event, session) => {
       // Never call Supabase from inside its auth lock.
       if ((session?.user?.id || null) !== userId || event === 'SIGNED_OUT') {
-        epoch += 1; userId = session?.user?.id || null;
+        epoch += 1; userId = session?.user?.id || null;lastCountsKey="";
         disconnect(); hideAllBadges();
       }
       refreshWorkflowNotifications();

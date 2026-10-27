@@ -42,6 +42,8 @@
   let manualLabPartsMode = false;
   let frameGradeItems = [];
   const lineDrafts = new Map();
+  const workbenchReads = new Map();
+  let boardRead = null;
   let toastTimer;
   let rowLoadVersion = 0;
   let editVersion = 0;
@@ -71,7 +73,8 @@
   });
   function applyWorkFilters(){
     const elements=[...technicianWorkRows.querySelectorAll('tr[data-step-id]')];
-    const rows=elements.map(el=>technicianRows.find(row=>String(row.step_id)===el.dataset.stepId)||{});
+    const byId=new Map(technicianRows.map(row=>[String(row.step_id),row]));
+    const rows=elements.map(el=>byId.get(el.dataset.stepId)||{});
     workFilters.bind(rows,elements);
   }
   new MutationObserver(applyWorkFilters).observe(technicianWorkRows,{childList:true});
@@ -317,40 +320,32 @@
     if (error) throw error;
     frameGradeItems = data || [];
   }
-  async function loadTechnicianRows() {
-    const version = ++rowLoadVersion;
-    const technicianId = activeTechnicianId;
-    const editsAtStart = editVersion;
-    const isCurrent = () => version === rowLoadVersion && technicianId === activeTechnicianId && editsAtStart === editVersion;
-    setBoardMessage();
-    if (!activeTechnicianId) { technicianRows = []; renderTechnicianLines(); return; }
-    const [rowResponse, returnResponse] = await Promise.all([
-      getClient().rpc("get_lab_employee_rows_v1", { p_employee_id: technicians.find(t=>String(t.id)===String(technicianId))?.unassigned ? null : technicianId }),
-      technicians.find(t=>String(t.id)===String(technicianId))?.unassigned ? Promise.resolve({data:[]}) : getClient().rpc("get_lab_part_return_requests_for_technician", { p_technician_id: technicianId })
-    ]);
-    if (!isCurrent()) return;
-    if (rowResponse.error) throw rowResponse.error;
-    if (returnResponse.error) throw returnResponse.error;
-    const pendingByStep = new Map();
-    (returnResponse.data || []).forEach((item) => {
-      const key = String(item.work_order_step_id);
-      pendingByStep.set(key, [...(pendingByStep.get(key) || []), item]);
-    });
-    const rows = rowResponse.data || [];
-    const jobIds = [...new Set(rows.map((row) => row.job_id).filter(Boolean))];
-    const { data: batchJobs } = jobIds.length
-      ? await getClient().from("jobs").select("id, job_number, device:devices(device_number, serial_number, imei_2), receiving_batch:receiving_batches(planned_quantity, invoice_number, batch_number)").in("id", jobIds)
-      : { data: [] };
-    const quantityByJob = new Map((batchJobs || []).map((job) => {
-      const batch = Array.isArray(job.receiving_batch) ? job.receiving_batch[0] : job.receiving_batch;
-      const device=Array.isArray(job.device)?job.device[0]:job.device;
-      return [String(job.id), {...batch,...device,job_number:job.job_number}];
-    }));
-    if (!isCurrent()) return;
-    const planResponse=await getClient().rpc('get_lab_parts_plans_v3',{p_step_ids:rows.map(r=>r.step_id)});if(!isCurrent())return;if(planResponse.error)throw planResponse.error;
-    const plans=new Map((planResponse.data||[]).map(p=>[String(p.step_id),p]));for(const [id,p]of plans){const d=lineDrafts.get(id);if(d&&d.cycle!==p.cycle)lineDrafts.delete(id);else if(d?.partsDirty&&d.modeLocked!==!!p.locked)clearDraftKind(id,'parts');}
-    technicianRows = rows.map((row) => ({ ...row,pf_plan:plans.get(String(row.step_id)), ...quantityByJob.get(String(row.job_id)), pending_part_returns: pendingByStep.get(String(row.step_id)) || [] }));
-    renderTechnicianLines();
+  async function labRead(promise){
+    let timer;try{return await Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Phone data is taking too long. Check the connection and refresh.')),12000);})]);}finally{clearTimeout(timer);}
+  }
+  async function readWorkbench(args) {
+    const key=JSON.stringify(args);
+    if(!workbenchReads.has(key)){
+      const request=labRead(getClient().rpc('get_lab_workbench_v1',args)).then(({data,error})=>{if(error)throw error;if(!data||!Array.isArray(data.rows))throw new Error('Phone lines could not be verified.');return data;}).finally(()=>workbenchReads.delete(key));
+      workbenchReads.set(key,request);
+    }
+    return workbenchReads.get(key);
+  }
+  function applyWorkbenchRows(rows,{quiet=false}={}){
+    for(const row of rows){const p=row.pf_plan;if(!p)continue;const id=String(row.step_id),d=lineDrafts.get(id);if(d&&d.cycle!==p.cycle)lineDrafts.delete(id);else if(d?.partsDirty&&d.modeLocked!==!!p.locked)clearDraftKind(id,'parts');}
+    if(quiet&&JSON.stringify(technicianRows)===JSON.stringify(rows))return;
+    technicianRows=rows;renderTechnicianLines();
+  }
+  async function loadTechnicianRows({quiet=false}={}) {
+    if(!app.isConnected)return;
+    const version=++rowLoadVersion,technicianId=activeTechnicianId,editsAtStart=editVersion,scan=focusedImei;
+    if(!quiet)setBoardMessage();
+    if(!technicianId){technicianRows=[];renderTechnicianLines();return;}
+    const employee=technicians.find(t=>String(t.id)===String(technicianId));
+    const data=await readWorkbench({p_employee_id:employee?.unassigned?null:technicianId,p_imei:scan||null});
+    if(version!==rowLoadVersion||technicianId!==activeTechnicianId||editsAtStart!==editVersion||scan!==focusedImei)return;
+    if(scan&&String(data.employee_id)!==String(technicianId)){setBoardMessage('Phone assignment changed. Scan the IMEI again.');return;}
+    applyWorkbenchRows(data.rows,{quiet});
   }
   async function loadFrameRows() {
     setBoardMessage();
@@ -370,8 +365,10 @@
     await loadFrameReport();
   }
   async function loadTechnicians(preferredId = activeTechnicianId) {
-    const { data, error } = await getClient().rpc('get_lab_employee_board_v1');
-    if (error) throw error;
+    const selectionAtStart=activeTechnicianId;
+    if(!boardRead)boardRead=labRead(getClient().rpc('get_lab_employee_board_v1')).finally(()=>boardRead=null);
+    const {data,error}=await boardRead;if(error)throw error;
+    if(activeTechnicianId!==selectionAtStart)preferredId=activeTechnicianId;
     const next=data||[];const rosterChanged=JSON.stringify(technicians)!==JSON.stringify(next);technicians=next;
     activeTechnicianId = technicians.some((item) => String(item.id) === String(preferredId)) ? String(preferredId) : String(technicians.find((item) => Number(item.pending_count || 0) > 0)?.id || technicians[0]?.id || "");
     if(rosterChanged||document.querySelector('#lab-total-pending-count').textContent==='…')renderTechnicianCards();
@@ -386,11 +383,9 @@
   }
   async function refreshAll() {
     if (isFrameMode) { await loadFrameRows(); return; }
-    const { data: manualMode, error: manualModeError } = await getClient().rpc("get_manual_lab_parts_mode");
-    if (manualModeError) throw manualModeError;
-    manualLabPartsMode = Boolean(manualMode);
-    await loadTechnicians(activeTechnicianId);
-    await loadTechnicianRows();
+    const previous=activeTechnicianId;
+    if(previous){await Promise.all([loadTechnicians(previous),loadTechnicianRows({quiet:true})]);if(previous!==activeTechnicianId)await loadTechnicianRows();}
+    else{await loadTechnicians();await loadTechnicianRows();}
   }
 
   function technicianEditorIsActive() {
@@ -504,9 +499,9 @@
     imeiLookupVersion++; window.clearTimeout(imeiTimer); pendingImei = "";
     technicianImeiScanWrap.removeAttribute("aria-busy"); checkTechnicianImei.textContent = "Open phone";
   }
-  function clearImeiFocus() {
+  function clearImeiFocus(render=true) {
     cancelImeiLookup(); focusedImei = ""; focusedStepId = ""; technicianImeiScan.value = "";
-    clearTechnicianImei.hidden = true; setBoardMessage(); renderTechnicianLines();
+    clearTechnicianImei.hidden = true; setBoardMessage(); if(render)renderTechnicianLines();
   }
   async function scanTechnicianImei() {
     if (!searchable()) return;
@@ -516,42 +511,26 @@
     if (technicianWorkRows.querySelector('tr[data-busy="yes"]')) { setBoardMessage("Wait for the current save to finish, then open the IMEI."); return; }
     const ticket = ++imeiLookupVersion;
     const scanCurrent = () => ticket === imeiLookupVersion && technicianImeiScan.value.trim() === imei && searchable() && app.isConnected;
-    pendingImei = imei; focusedImei = imei; focusedStepId = ""; clearTechnicianImei.hidden = false; renderTechnicianLines();
+    pendingImei = imei; focusedImei = imei; focusedStepId = ""; clearTechnicianImei.hidden = false; technicianWorkRows.innerHTML='<tr><td colspan="12" class="technician-lines-empty">Finding phone…</td></tr>';
     technicianImeiScanWrap.setAttribute("aria-busy", "true"); checkTechnicianImei.textContent = "Opening…";
     setBoardMessage("Finding the assigned technician…");
     try {
-      if (!await window.GREENLOOP_IMEI_STAGE_NOTICE.checkPrimary(imei, {isCurrent:scanCurrent})) {
-        if (scanCurrent()) setBoardMessage("Duplicate phone — use IMEI 1.");
-        return;
+      ++rowLoadVersion;
+      const data=await readWorkbench({p_employee_id:null,p_imei:imei});
+      if(!scanCurrent())return;
+      if(data.identity?.matched_type==='secondary'){
+        renderTechnicianLines();setBoardMessage('Duplicate phone — use IMEI 1.');
+        await window.GREENLOOP_IMEI_STAGE_NOTICE.show({imei,knownRecord:data.identity,isCurrent:scanCurrent});return;
       }
-      // Read only the current Lab/Glass assignment; existing RLS and Office Only guards apply.
-      const {data, error} = await getClient().from("job_work_order_steps")
-        .select("id, assigned_technician_roster_id, assigned_technician_name, work_order:job_work_orders!inner(job:jobs!inner(deleted_at, device:devices!inner(imei_1, deleted_at)))")
-        .in("department", ["laboratory", "glass"]).eq("step_status", "in_progress")
-        .eq("work_order.job.device.imei_1", imei).is("work_order.job.deleted_at", null)
-        .is("work_order.job.device.deleted_at", null)
-        .order("created_at", {ascending:false}).order("id", {ascending:false}).limit(1).maybeSingle();
-      if (!scanCurrent()) return;
-      if (error) throw error;
-      if (!data) {
-        renderTechnicianLines();
-        setBoardMessage("This IMEI has no pending Lab or Glass work.");
-        window.GREENLOOP_IMEI_STAGE_NOTICE?.show({imei,title:"Phone unavailable here",message:"This IMEI has no pending Lab or Glass work.",onlyIfFound:true,isCurrent:scanCurrent});
-        return;
+      if(!data.step_id||!data.rows.length){
+        technicianRows=[];renderTechnicianLines();setBoardMessage('This IMEI has no pending Lab or Glass work.');
+        if(data.identity?.found)void window.GREENLOOP_IMEI_STAGE_NOTICE.show({imei,title:'Phone unavailable here',message:'This IMEI has no pending Lab or Glass work.',knownRecord:data.identity,isCurrent:scanCurrent});return;
       }
-      const owner = () => technicians.find(t => data.assigned_technician_roster_id
-        ? String(t.id) === String(data.assigned_technician_roster_id)
-        : normalise(t.full_name) === normalise(data.assigned_technician_name));
-      if (!owner()) await loadTechnicians(activeTechnicianId);
-      if (!scanCurrent()) return;
-      const technician = owner() || technicians.find(t=>t.unassigned);
-      if (!technician) throw new Error("This phone has no active technician assignment. Check its assignment before continuing.");
-      activeTechnicianId = String(technician.id); focusedStepId = String(data.id);
-      technicianRows = []; renderTechnicianCards(); renderTechnicianLines();
-      await workFilters.clear();
-      if (!scanCurrent()) return;
-      await loadTechnicianRows();
-      if (!scanCurrent()) return;
+      const technician=technicians.find(t=>String(t.id)===String(data.employee_id))||{id:data.employee_id,full_name:data.employee_name,pending_count:data.rows.length,unassigned:data.unassigned};
+      if(!technicians.some(t=>String(t.id)===String(technician.id)))technicians.push(technician);
+      activeTechnicianId=String(technician.id);focusedStepId=String(data.step_id);
+      renderTechnicianCards();await workFilters.clear();if(!scanCurrent())return;
+      applyWorkbenchRows(data.rows);
       const target = technicianWorkRows.querySelector(`tr[data-step-id="${CSS.escape(focusedStepId)}"]`);
       if (!target || target.hidden) throw new Error("The phone assignment changed or its line is no longer pending. Search the IMEI again.");
       setBoardMessage(`IMEI ${imei} · ${technician.full_name}`, true);
@@ -603,19 +582,22 @@
     await window.GREENLOOP_ACCESS_READY;
     if (window.GREENLOOP_PAGE_ACCESS?.pageKey !== (isFrameMode ? "frame_department" : "lab_glass")) return;
     app.hidden = false;
-    if (!isFrameMode) await loadPartOptions();
-    else await loadFrameGrades();
-    await refreshAll();
+    if (!isFrameMode) {await Promise.all([loadPartOptions(),refreshAll()]);if(!technicianEditorIsActive())renderTechnicianLines();}
+    else {await loadFrameGrades();await refreshAll();}
     if (!isFrameMode) {
       window.GREENLOOP_EMPLOYEES?.watch(async()=>{if(!app.hidden&&!technicianWorkRows.querySelector('tr[data-busy="yes"]')){const previous=activeTechnicianId;await loadTechnicians(activeTechnicianId);if(previous!==activeTechnicianId&&!technicianEditorIsActive())await loadTechnicianRows();}});
+      const refreshBoard=()=>{if(!document.hidden&&!app.hidden&&app.isConnected)loadTechnicians(activeTechnicianId).catch(()=>{});};
+      document.addEventListener('greenloop:workflow-notifications-refreshed',refreshBoard);
+      window.setInterval(refreshBoard,5000);
       window.setInterval(() => {
         if (
           document.visibilityState !== "visible"
           || app.hidden
+          || !app.isConnected
           || technicianEditorIsActive()
           || technicianWorkRows.querySelector('tr[data-dirty="true"], tr[data-editing="true"], tr[data-busy="yes"]')
         ) return;
-        loadTechnicianRows().catch(() => {});
+        loadTechnicianRows({quiet:true}).catch(() => {});
       }, 12000);
     }
   }
@@ -641,8 +623,9 @@
   removeTechnicianButton.addEventListener("click", () => removeTechnician().catch((error) => setBoardMessage(error.message)));
   technicianCards.addEventListener("click", (event) => {
     const card = event.target.closest("[data-technician-id]"); if (!card) return;
-    clearImeiFocus(); activeTechnicianId = card.dataset.technicianId; technicianRows = [];
-    renderTechnicianCards(); renderTechnicianLines();
+    if(card.dataset.technicianId===activeTechnicianId&&!focusedImei)return;
+    clearImeiFocus(false); activeTechnicianId = card.dataset.technicianId; technicianRows = [];
+    renderTechnicianCards(); technicianWorkRows.innerHTML='<tr><td colspan="12" class="technician-lines-empty">Loading phone lines…</td></tr>';
     workFilters.clear().then(() => loadTechnicianRows()).catch(error => setBoardMessage(error.message));
   });
   technicianImeiScan.addEventListener("input", () => {

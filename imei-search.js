@@ -463,6 +463,7 @@ function buildStageSections(sortedRows) {
   async function search(event) {
     event?.preventDefault();if(!allowed)return;
     if(!query.value.trim()){setMessage("Enter an IMEI, invoice, device number, serial number, or model.");return;}
+    if(/^\d{15}$/.test(query.value.trim())&&window.GREENLOOP_CAN_SEARCH!==false){await openDevice({identifier:query.value.trim()});return;}
     await searchWidget.search({selectExact:true});
   }
   async function initialize() {
@@ -473,7 +474,7 @@ function buildStageSections(sortedRows) {
     await window.GREENLOOP_ACCESS_READY;
     if (!window.GREENLOOP_PAGE_ACCESS || window.GREENLOOP_PAGE_ACCESS.pageKey !== "imei_search") { permissionMessage.textContent = "Your account does not have IMEI Search permission."; permissionMessage.hidden = false; return; }
     allowed = true; app.hidden = false;
-    searchWidget=window.GREENLOOP_RECORD_SEARCH.attach(query,{onSelect:item=>item.kind==="receipt"?openReceipt(item):openDevice(item)});
+    searchWidget=window.GREENLOOP_RECORD_SEARCH.attach(query,{onExactIdentifier:value=>openDevice({identifier:value}),onSelect:item=>item.kind==="receipt"?openReceipt(item):openDevice(item)});
     const requestedReceipt=new URLSearchParams(window.location.search).get("receipt");
     if(requestedReceipt){await openReceipt({id:requestedReceipt});return;}
     if (requestedQuery.trim()) { query.value = requestedQuery.trim(); await search(); }

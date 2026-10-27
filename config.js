@@ -147,7 +147,8 @@ window.GREENLOOP_CONFIG = Object.freeze({
           }
         }
         const rule = window.GREENLOOP_RPC_CAPABILITIES?.[name];
-        if (response && !response.error && rule && !rule.read) announceWorkflowCommit();
+        const readOnly=r=>r?.read===true||(Array.isArray(r?.any)&&r.any.length>0&&r.any.every(readOnly));
+        if (response && !response.error && rule && !readOnly(rule)) announceWorkflowCommit();
         return response;
       };
     }

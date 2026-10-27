@@ -1288,7 +1288,8 @@
         "capability": "view",
         "read": true
       }
-    ]
+    ],
+    "read": true
   },
   "review_legacy_parts_return_v1": {
     "page": "parts",
@@ -1338,7 +1339,8 @@
         "capability": "view",
         "read": true
       }
-    ]
+    ],
+    "read": true
   },
   "get_lab_parts_plans_v3": {
     "page": "lab_glass",
@@ -1449,6 +1451,11 @@
   },
   "get_imei_entry_choices_v1": {
     "page": "imei_entry",
+    "capability": "view",
+    "read": true
+  },
+  "get_lab_workbench_v1": {
+    "page": "lab_glass",
     "capability": "view",
     "read": true
   }
