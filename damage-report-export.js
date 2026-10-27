@@ -79,7 +79,7 @@
         if(request!==ticket||!active)return;
         if(error){if(denied(error)){close();onDenied(error);}else failed(error);return;}
         if((data && data.selected_employee_key || '')!==employeeKey){failed(new Error('The selected technician report could not be verified. Please retry.'));return;}
-        Promise.all([script('js/vendor/pdf-lib-1.17.1.min.js','PDFLib'),script('js/damage-report-pdf.js?v=20261016-page-capabilities-1','GREENLOOP_DAMAGE_PDF'),
+        Promise.all([script('js/vendor/pdf-lib-1.17.1.min.js','PDFLib'),script('js/damage-report-pdf.js?v=20261027-damage-pdf-pages-1','GREENLOOP_DAMAGE_PDF'),
           fetch('assets/greenloop-fzc-logo.jpg').then(function(response){if(!response.ok)throw new Error('Report logo did not load. Please retry.');return response.arrayBuffer();})])
           .then(function(results){if(request!==ticket||!active)return null;return window.GREENLOOP_DAMAGE_PDF.create(data,{logo:results[2]});})
           .then(function(result){if(!result||request!==ticket||!active)return;finish();

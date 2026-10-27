@@ -202,7 +202,7 @@
     const firstTop = HEIGHT - (91 + metricRows*71 + (zeroRows.length ? 27+zeroRows.length*23 : 0) + 18);
     const laterTop = HEIGHT - 85, bottom = 49;
     const employeeGap = 16, blockOverhead = 48 + valueBandHeight + formulaHeight + employeeGap;
-    if (firstTop < bottom + 65) throw new Error('Too many employee or currency cells for this four-page report. Select a smaller report scope.');
+    if (firstTop < bottom + 65) throw new Error('The summary contains too many employee or currency cells for one readable A4 page.');
     // Paginate measured, variable-height rows. Repeat the employee band and
     // column headings on each continuation page. Exceptionally tall entries
     // split into readable fragments without dropping any cell text.
@@ -235,7 +235,7 @@
       if(!best||pages.length<best.length)best=pages;
     }
     pages=best;
-    if (pages.length>4) throw new Error('This date range needs more than four readable A4 pages. Select a shorter date range. No entries have been left out.');
+    // Keep every measured page; page count never truncates the selected report.
     // Use the available page height, with modest padding on a short final page.
     for(let pi=0;pi<pages.length;pi++) {
       const blocks=pages[pi], rows=blocks.flatMap(block=>block.rows);
@@ -375,5 +375,5 @@
     return {bytes:await pdf.save(),pages:pages.length,bodyFont:size,drawn,previewPages,report,orientation,width:WIDTH,height:HEIGHT,detailCount:0,
       filename:'Greenloop-Damage-Report-'+(report.selectedEmployee ? (report.selectedEmployee.name.replace(/[^a-z0-9_-]+/gi,'-').replace(/^-|-$/g,'').slice(0,60)||'Technician')+'-' : '')+report.from+'-to-'+report.to+'.pdf'};
   }
-  root.GREENLOOP_DAMAGE_PDF={create,prepare,validDate,version:VERSION};
+  root.GREENLOOP_DAMAGE_PDF={create,prepare,validDate,version:VERSION,layoutVersion:'20261027-damage-pdf-pages-1'};
 })(typeof window==='object'?window:globalThis);
