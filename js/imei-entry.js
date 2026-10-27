@@ -2,6 +2,7 @@
   "use strict";
 
   const config = window.GREENLOOP_CONFIG || {};
+  const storageValues=window.GREENLOOP_STORAGE;
   const form = document.querySelector("#imei-entry-form");
   const batchSelect = document.querySelector("#stock-batch");
   const batchSummary = document.querySelector("#batch-summary");
@@ -95,9 +96,10 @@
     syncDeviceKind();
   }
   function ensureSelectValue(select, value) {
-    const text = String(value ?? "").trim();
+    const parsed=select===storage?storageValues.parse(value):null;
+    const text = select===storage?(parsed===null?"":String(parsed)):String(value ?? "").trim();
     if (!text) return;
-    if (![...select.options].some((option) => option.value.toLocaleLowerCase() === text.toLocaleLowerCase())) select.add(new Option(text, text));
+    if (![...select.options].some((option) => option.value.toLocaleLowerCase() === text.toLocaleLowerCase())) select.add(new Option(select===storage?storageValues.label(text):text, text));
     const match = [...select.options].find((option) => option.value.toLocaleLowerCase() === text.toLocaleLowerCase());
     if (match) select.value = match.value;
   }
@@ -169,11 +171,13 @@
   ];
 
   async function loadMaster(group, select, placeholder, selected = select.value) {
-    const { data, error } = await api().rpc("get_entry_options", { p_option_group: group });
+    const { data, error } = await api().rpc("get_imei_entry_choices_v1", { p_option_group: group });
     if (error) throw error;
     select.replaceChildren(new Option(placeholder, ""));
-    (data || []).forEach((item) => { const option = new Option(item.option_value, item.option_value); option.dataset.optionId = item.id; select.add(option); });
-    if ([...select.options].some((option) => option.value === String(selected))) select.value = String(selected);
+    const items=[...(data||[])];if(group==='storage_gb')items.sort((a,b)=>storageValues.compare(a.option_value,b.option_value));
+    const seen=new Set();for(const item of items){const parsed=group==='storage_gb'?storageValues.parse(item.option_value):null;if(group==='storage_gb'&&parsed===null)continue;const value=group==='storage_gb'?String(parsed):item.option_value;if(seen.has(value))continue;seen.add(value);const option=new Option(group==='storage_gb'?storageValues.label(value):item.option_value,value);option.dataset.optionId=item.id;select.add(option);}
+    const selectedValue=group==='storage_gb'&&storageValues.parse(selected)!==null?String(storageValues.parse(selected)):String(selected);
+    if ([...select.options].some((option) => option.value === selectedValue)) select.value = selectedValue;
   }
 
   async function loadAllMaster() { await Promise.all(masterFields.map(([group, select, placeholder]) => loadMaster(group, select, placeholder))); }
@@ -183,7 +187,8 @@
     const target = document.querySelector(`#${button.dataset.optionTarget}`);
     const value = window.prompt(`Enter the new ${group.replaceAll("_", " ")}:`);
     if (!value?.trim()) return;
-    const { data, error } = await api().rpc("add_entry_option", { p_option_group: group, p_option_value: value.trim() });
+    const storageGb=group==='storage_gb'?storageValues.parse(value):null;if(group==='storage_gb'&&storageGb===null){setMessage('Enter valid storage, for example 128 GB, 1 TB or 2 TB.');return;}
+    const { data, error } = await api().rpc("add_entry_option", { p_option_group: group, p_option_value: group==='storage_gb'?String(storageGb):value.trim() });
     if (error) { setMessage(error.message || "The option could not be added."); return; }
     const field = masterFields.find(([itemGroup, select]) => itemGroup === group && select === target);
     await loadMaster(group, target, field[2], data?.[0]?.saved_value || value.trim());
@@ -290,7 +295,7 @@
     if (!batch) return;
     const plannedLines = Array.isArray(batch.planned_lines) ? batch.planned_lines : [];
     const nextLine = plannedLines.find((line) => Number(line.remaining_quantity) > 0) || plannedLines[0];
-    const planText = plannedLines.map((line) => `${line.model || "Any model"} - ${line.storage_gb ? `${line.storage_gb} GB` : "Any GB"} - ${line.color || "Any color"} (${line.remaining_quantity}/${line.planned_quantity} remaining)`).join(" | ");
+    const planText = plannedLines.map((line) => `${line.model || "Any model"} - ${line.storage_gb ? storageValues.label(line.storage_gb) : "Any GB"} - ${line.color || "Any color"} (${line.remaining_quantity}/${line.planned_quantity} remaining)`).join(" | ");
     const summary = [
       ["Stock/Batch No", batch.batch_number || "Not recorded"], ["Invoice number", batch.invoice_number || "Not generated for legacy receipt"], ["Supplier code", supplierLabel(batch)], ["Stock channel", batch.stock_channel],
       ["Quantity received", `${batch.planned_quantity} devices`], ["Return Stock", batch.returned_quantity ?? "Unavailable"], ["Progress", `${batch.entered_quantity} / ${batch.planned_quantity}`],
@@ -299,6 +304,7 @@
     batchSummary.innerHTML = summary + (planText ? `<div class="batch-plan-lines" title="${escapeHtml(planText)}"><span>Model / GB / Color plan</span><strong>${escapeHtml(planText)}</strong></div>` : "");
     if (nextLine) {
       const setValue = (select, value) => {
+        if(select===storage){ensureSelectValue(select,value);return;}
         if (![...select.options].some((option) => option.value === String(value))) select.add(new Option(value, value));
         select.value = String(value);
       };
@@ -414,7 +420,8 @@
     if (savedImeis.has(scannedImei)) { checkDuplicateImei(scannedImei, { force: true }).catch(() => {}); return; }
     if (!hasBatteryHealth()) { setMessage("Enter battery health 0–100, or select Not available for an Android phone."); return; }
     const unavailable = platform.value === "android" && batteryUnavailable.checked;
-    const receiptDetails = { p_batch_id: batch.batch_id, p_imei_1: scannedImei, p_model: model.value, p_storage_gb: Number(storage.value), p_color: color.value, p_battery_health: unavailable ? null : Number(battery.value), p_brand: brand.value.trim(), p_platform: platform.value, p_battery_health_unavailable: unavailable };
+    const storageGb=storageValues.parse(storage.value);if(storageGb===null){setMessage('Select valid storage before saving.');return;}
+    const receiptDetails = { p_batch_id: batch.batch_id, p_imei_1: scannedImei, p_model: model.value, p_storage_gb: storageGb, p_color: color.value, p_battery_health: unavailable ? null : Number(battery.value), p_brand: brand.value.trim(), p_platform: platform.value, p_battery_health_unavailable: unavailable };
     const cableDetails = { serial: serialNumber?.value.trim() || null, region: phoneRegion?.value.trim() || null };
     const liveDevice = boundIdentity;
     if (cableMirror && platform.value === "ios" && liveDevice?.identitySchemaVersion !== 2) {setMessage("Update the Greenloop cable reader for dual IMEI support, reconnect the iPhone, then save.");return;}

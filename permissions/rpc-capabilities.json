@@ -1446,5 +1446,10 @@
       }
     ],
     "read": true
+  },
+  "get_imei_entry_choices_v1": {
+    "page": "imei_entry",
+    "capability": "view",
+    "read": true
   }
 }

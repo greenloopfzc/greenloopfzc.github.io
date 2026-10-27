@@ -2,6 +2,7 @@
   "use strict";
 
   const config = window.GREENLOOP_CONFIG || {};
+  const storageValues=window.GREENLOOP_STORAGE;
   let client;
 
   function api() {
@@ -101,17 +102,19 @@
       const master = masterByGroup[group];
       const rowSelects = [...panel.querySelectorAll(classByGroup[group])];
       const preserved = rowSelects.map((select) => select.value);
-      const { data, error } = await api().rpc("get_entry_options", { p_option_group: group });
+      const { data, error } = await api().rpc("get_imei_entry_choices_v1", { p_option_group: group });
       if (error) throw error;
-      const items = data || [];
+      const items = [...(data || [])];if(group==="storage_gb")items.sort((a,b)=>storageValues.compare(a.option_value,b.option_value));
       const fill = (select, chosen) => {
         select.replaceChildren(new Option("Select", ""));
         items.forEach((item) => {
-          const option = new Option(item.option_value, item.option_value);
+          const gb=group==="storage_gb"?storageValues.parse(item.option_value):null;if(group==="storage_gb"&&gb===null)return;
+          const option = new Option(group==="storage_gb"?storageValues.label(gb):item.option_value,group==="storage_gb"?String(gb):item.option_value);
           option.dataset.optionId = item.id;
           select.add(option);
         });
-        if ([...select.options].some((option) => option.value === String(chosen || ""))) select.value = String(chosen);
+        const value=group==="storage_gb"?String(storageValues.parse(chosen)||""):String(chosen||"");
+        if ([...select.options].some((option) => option.value === value)) select.value = value;
       };
       fill(master, preferredValue || master.value);
       rowSelects.forEach((select, index) => fill(select, select.closest("tr") === preferredRow ? preferredValue : preserved[index]));
@@ -121,7 +124,8 @@
       const group = button.dataset.optionGroup;
       const value = window.prompt(`Enter the new ${group.replaceAll("_", " ")}:`);
       if (!value?.trim()) return;
-      const { data, error } = await api().rpc("add_entry_option", { p_option_group: group, p_option_value: value.trim() });
+      const gb=group==="storage_gb"?storageValues.parse(value):null;if(group==="storage_gb"&&gb===null){window.alert("Enter valid storage, for example 128 GB, 1 TB or 2 TB.");return;}
+      const { data, error } = await api().rpc("add_entry_option", { p_option_group: group, p_option_value: group==="storage_gb"?String(gb):value.trim() });
       if (error) { window.alert(error.message || "The option could not be added."); return; }
       await reloadOptionGroup(group, data?.[0]?.saved_value || value.trim(), button.closest("tr"));
     }
@@ -130,7 +134,7 @@
       const group = button.dataset.optionGroup;
       const select = button.closest(".batch-option-control").querySelector("select");
       if (!select.value) { window.alert("Select an option first."); return; }
-      const { data, error: loadError } = await api().rpc("get_entry_options", { p_option_group: group });
+      const { data, error: loadError } = await api().rpc("get_imei_entry_choices_v1", { p_option_group: group });
       if (loadError) { window.alert(loadError.message); return; }
       const item = (data || []).find((entry) => String(entry.option_value).trim().toLocaleLowerCase() === String(select.value).trim().toLocaleLowerCase());
       if (!item) { window.alert("This option could not be found."); return; }
@@ -289,6 +293,7 @@
       if (!row.querySelector(".batch-row-imei").checkValidity()) { setRowStatus(row, "Phone IMEI differs from the entered IMEI — review this line", "is-error"); return; }
       if (!brand || !model || !storage || !color) { setRowStatus(row, "Enter Brand, Model, GB and Color", "is-error"); return; }
       if (!unavailable && (battery === "" || !Number.isInteger(Number(battery)) || Number(battery) < 0 || Number(battery) > 100)) { setRowStatus(row, "Enter BH 0–100, or select Not available for Android", "is-error"); return; }
+      const storageGb=storageValues.parse(storage);if(storageGb===null){setRowStatus(row,"Select valid storage before saving","is-error");return;}
       row.dataset.busy = "yes";
       if (savedImeis.has(imei) || savingImeis.has(imei)) {
         row.dataset.busy = "";
@@ -312,7 +317,7 @@
         p_serial_number: row.dataset.cableConnectionId && row.dataset.cableImei === imei ? row.dataset.serialNumber || null : null,
         p_specification_region: row.dataset.cableConnectionId && row.dataset.cableImei === imei ? row.dataset.phoneRegion || null : null,
         p_model: model,
-        p_storage_gb: Number(storage),
+        p_storage_gb: storageGb,
         p_color: color,
         p_battery_health: unavailable ? null : Number(battery),
         p_brand: brand, p_platform: platform, p_battery_health_unavailable: unavailable
@@ -416,9 +421,10 @@
       const setSelect = (selector, value) => {
         const select = row.querySelector(selector);
         if (select.dataset.cableEdited === "yes") return;
-        const text = String(value ?? "").trim();
+        const isStorage=selector===".batch-row-storage";
+        const text = isStorage?String(storageValues.parse(value)||""):String(value ?? "").trim();
         if (!text) return;
-        if (![...select.options].some((option) => option.value.toLocaleLowerCase() === text.toLocaleLowerCase())) select.add(new Option(text, text));
+        if (![...select.options].some((option) => option.value.toLocaleLowerCase() === text.toLocaleLowerCase())) select.add(new Option(isStorage?storageValues.label(text):text, text));
         const match = [...select.options].find((option) => option.value.toLocaleLowerCase() === text.toLocaleLowerCase());
         if (match) select.value = match.value;
         select.dataset.manuallyChanged = "yes";
