@@ -1,8 +1,8 @@
 # Lab pending counts
 
-Version: 20261026-lab-counts-1 (frontend only; database version remains 20261026-employees-1).
+Version: 20261027-lab-pending-card-1 (frontend only; database version remains 20261026-employees-1).
 
-Lab & Glass shows a bold red Total pending count next to Open phone. It uses the full employee board, including Unassigned, and is independent of selected employee, IMEI search and table filters. The summary remains available to users with Lab View permission, including accounts without Search permission. Existing board refresh updates the summary and employee badges together. Failed refreshes keep the last successful count.
+Lab & Glass shows Total Pending in a compact raised card next to Open phone, with a phone icon, muted label, large red count and phones unit. The card uses the current theme background, rounded corners and raised shadows; mobile uses the full available width. It uses the full employee board, including Unassigned, and is independent of selected employee, IMEI search and table filters. The summary remains available to users with Lab View permission, including accounts without Search permission. Existing board refresh updates the summary and employee badges together. Failed refreshes keep the last successful count.
 
 Nonzero employee badges are larger, solid red with bold white numbers in light and dark themes. Zero badges stay neutral. Exact counts are displayed above 99 as well. Employee names and raised cards retain their layout.
 
