@@ -58,8 +58,8 @@
       ? `IMEI entered from ${rangeFrom.value} to ${rangeTo.value}. All stages included.`
       : "All saved phones, at every stage.";
     body.innerHTML = rows.length
-      ? rows.map((row) => `<tr><td class="journey-imei">${escapeHtml(row.imei || row.device_number)}<small>${escapeHtml(row.device_number || "")}</small><button type="button" class="secondary-button journey-open" data-device-id="${escapeHtml(row.device_id)}">View journey</button></td><td><span class="journey-current-stage">${escapeHtml(row.current_stage || "Not recorded")}</span></td><td>${dateCell(row.date_entered)}</td><td>${escapeHtml(row.device_details || "—")}</td><td>${escapeHtml(formatDateTime(row.date_received))}</td><td>${dateCell(row.date_completed)}</td><td>${escapeHtml(row.stock_channel)}</td><td>${escapeHtml(row.invoice_number)}</td><td>${escapeHtml(window.GREENLOOP_CAN_VIEW_PARTNER_NAMES ? row.supplier_company : "Confidential supplier")}</td><td>${escapeHtml(row.quantity_received)}</td><td>${escapeHtml(row.supplier_code)}</td><td>${escapeHtml(row.battery_health || "—")}</td><td>${escapeHtml(row.supplier_grade)}</td><td>${escapeHtml(row.company_initial_grade)}</td><td>${escapeHtml(row.company_final_grade)}</td><td class="journey-parts">${escapeHtml(row.parts_issued)}</td><td class="journey-money">${escapeHtml(formatMoney(row.parts_cost))}</td><td>${escapeHtml(row.service_done)}</td><td>${escapeHtml(row.technician_name)}</td><td>${escapeHtml(row.box_number)}</td><td>${dateCell(row.export_date)}</td><td>${escapeHtml(window.GREENLOOP_CAN_VIEW_PARTNER_NAMES ? row.customer_name : "Confidential customer")}</td></tr>`).join("")
-      : '<tr><td class="journey-empty" colspan="22">No saved phone matches these filters.</td></tr>';
+      ? rows.map((row) => `<tr><td class="journey-imei">${escapeHtml(row.imei || row.device_number)}<small>${escapeHtml(row.device_number || "")}</small><button type="button" class="secondary-button journey-open" data-device-id="${escapeHtml(row.device_id)}">View journey</button></td><td><span class="journey-current-stage">${escapeHtml(row.current_stage || "Not recorded")}</span></td><td>${dateCell(row.date_entered)}</td><td>${escapeHtml(row.device_details || "—")}</td><td>${escapeHtml(formatDateTime(row.date_received))}</td><td>${dateCell(row.date_completed)}</td><td>${escapeHtml(row.stock_channel)}</td><td>${escapeHtml(row.invoice_number)}</td><td>${escapeHtml(window.GREENLOOP_CAN_VIEW_PARTNER_NAMES ? row.supplier_company : "Confidential supplier")}</td><td>${escapeHtml(row.quantity_received)}</td><td>${escapeHtml(row.supplier_code)}</td><td>${escapeHtml(row.batch_number || "—")}</td><td>${escapeHtml(row.battery_health || "—")}</td><td>${escapeHtml(row.supplier_grade)}</td><td>${escapeHtml(row.company_initial_grade)}</td><td>${escapeHtml(row.company_final_grade)}</td><td class="journey-parts">${escapeHtml(row.parts_issued)}</td><td class="journey-money">${escapeHtml(formatMoney(row.parts_cost))}</td><td>${escapeHtml(row.service_done)}</td><td>${escapeHtml(row.technician_name)}</td><td>${escapeHtml(row.box_number)}</td><td>${dateCell(row.export_date)}</td><td>${escapeHtml(window.GREENLOOP_CAN_VIEW_PARTNER_NAMES ? row.customer_name : "Confidential customer")}</td></tr>`).join("")
+      : '<tr><td class="journey-empty" colspan="23">No saved phone matches these filters.</td></tr>';
   }
 
   function applyConnectedDevice(device = {}) {
@@ -115,7 +115,7 @@
 
   const journeyFilters=window.GREENLOOP_FILTERS.get('journey-record-filters',{
     before:body.closest('.journey-table-wrap'),searchInput:search,
-    fields:[['current_stage','Stage'],['supplier_code','Supplier code'],['company_final_grade','Final grade']],
+    fields:[['current_stage','Stage'],['supplier_code','Supplier code'],['batch_number','Stock/Batch No'],['company_final_grade','Final grade']],
     onChange:()=>{offset=0;return loadJourney();}
   });
   async function loadJourney(quiet = false) {
@@ -129,7 +129,7 @@
     if (!quiet) refresh.textContent = 'Loading...';
     updatePager();
     try {
-      const {data, error} = await getClient().rpc('get_sorted_filter_records_v1',{...journeyFilters.sortArgs(),p_source:'journey',p_filters:{...journeyFilters.query(),_from:from||'',_to:to||''},p_offset:offset,p_limit:pageSize});
+      const {data, error} = await getClient().rpc('get_stock_batch_report_v1',{...journeyFilters.sortArgs(),p_source:'journey',p_filters:{...journeyFilters.query(),_from:from||'',_to:to||''},p_offset:offset,p_limit:pageSize});
       if (generation !== journeyGeneration) return;
       if (error) throw error;
       if (!data || !Array.isArray(data.rows) || !Number.isSafeInteger(Number(data.total)) || Number(data.total) < 0) throw new Error('Stock Journey returned an invalid response.');

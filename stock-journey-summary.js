@@ -80,7 +80,7 @@
       const suffix=results.length?' — '+results.map(r=>r==='pass'?'Pass':'Fail').join(' → '):'';
       const title=(titles[g.key]||titles.other)+(['laboratory','glass'].includes(g.key)&&g.rework?' Rework':'')+suffix;
       const facts=[];const add=(label,value)=>{if(value)facts.push('<span><strong>'+esc(label)+':</strong> '+esc(value)+'</span>');};
-      if(g.key==='stock_received'){add('Invoice',vals('Invoice').join(', '));add('Supplier',vals('Supplier code','Supplier name').join(', '));}
+      if(g.key==='stock_received'){add('Stock/Batch No',vals('Receipt','Batch').join(', '));add('Invoice',vals('Invoice').join(', '));add('Supplier',vals('Supplier code','Supplier name').join(', '));}
       if(g.key==='initial_qc')add('Findings',vals('Findings','Problems').join('; '));
       if(['laboratory','glass'].includes(g.key)){
         const techs=unique(g.rows.filter(r=>prefix(r)==='assignment'||/^timer-/.test(prefix(r))).map(r=>r.actor).concat(vals('Technician','Assigned technician')));

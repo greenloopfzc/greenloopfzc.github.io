@@ -1416,5 +1416,35 @@
     "page": "parts",
     "capability": "view",
     "read": true
+  },
+  "get_parts_batch_queue_v1": {
+    "page": "parts",
+    "capability": "view",
+    "read": true
+  },
+  "get_parts_batch_returns_v1": {
+    "page": "parts",
+    "capability": "view",
+    "read": true
+  },
+  "get_parts_batch_order_v1": {
+    "page": "parts",
+    "capability": "view",
+    "read": true
+  },
+  "get_stock_batch_report_v1": {
+    "any": [
+      {
+        "page": "accounts",
+        "capability": "view",
+        "read": true
+      },
+      {
+        "page": "ready_stock_journey",
+        "capability": "view",
+        "read": true
+      }
+    ],
+    "read": true
   }
 }

@@ -369,6 +369,7 @@ function buildStageSections(sortedRows) {
       ["GB",number(device.storage_gb)===null ? "" : `${device.storage_gb} GB`],["Supplier",supplierName || supplierCode],
       ["IMEI 1",device.imei_1],["IMEI 2",device.imei_2],
       ["Serial number",device.serial_number],["Supplier code",supplierCode],
+      ["Stock/Batch No",field(receipt,"Receipt","Batch")],["Invoice No",field(receipt,"Invoice")],["Stock received",receipt.occurred_at ? moment(receipt.occurred_at) : ""],
       ["Device number",device.device_number]
     ];
     if(scalar(device.region))values.push(["Current location",place(device.current_location)],["Phone region",device.region]);
@@ -445,7 +446,7 @@ function buildStageSections(sortedRows) {
       const receipt=data.receipt || {};
       if(!append){
         query.value=receipt.invoice_number || receipt.batch_number || query.value;
-        const values=[["Invoice",receipt.invoice_number],["Batch",receipt.batch_number],["Stock received",moment(receipt.received_at)],
+        const values=[["Invoice",receipt.invoice_number],["Stock/Batch No",receipt.batch_number],["Stock received",moment(receipt.received_at)],
           ["Received by",receipt.received_by],["Supplier code",receipt.supplier_code],
           ...(window.GREENLOOP_CAN_VIEW_PARTNER_NAMES?[["Supplier",receipt.supplier_name]]:[]),
           ["Quantity received",receipt.planned_quantity],["Phones entered",receipt.entered_quantity],["Stock channel",receipt.stock_channel]];

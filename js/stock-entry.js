@@ -147,8 +147,9 @@
     const batch = data?.[0];
     saved = true;
     if (!batch?.batch_id) { setMessage("The receipt was saved, but its reference could not be loaded. Open IMEI Entry to select the receipt; do not save it again.", "success"); return; }
+    document.querySelector("#stock-batch-display").value=batch.batch_number || "Not recorded";
     const receiptCode = supplierCodeDisplay.value || batch?.supplier_code || "Supplier receipt";
-    setMessage(`${receiptCode} saved with ${batch?.planned_quantity || receivedQuantity} devices. Invoice ${batch?.invoice_number || "generated"}. Opening IMEI Entry.`, "success");
+    setMessage(`${receiptCode} saved with ${batch?.planned_quantity || receivedQuantity} devices. Stock/Batch ${batch?.batch_number || "not recorded"}. Invoice ${batch?.invoice_number || "generated"}. Opening IMEI Entry.`, "success");
     window.setTimeout(() => window.location.assign(`imei-entry.html?batch=${encodeURIComponent(batch.batch_id)}`), 450);
     } catch (error) {
       setMessage(error.message || "The receipt could not be saved. Please check your connection.");

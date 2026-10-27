@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="css/stock-entry.css?v=20260821-simple-receipt-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="js/permission-catalog.js?v=20261024-office-access-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261026-parts-flow-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261027-stock-batches-1"></script>
 <script defer src="js/page-capabilities.js?v=20261024-office-access-1"></script>
 <script defer src="js/imei-stage-notice.js?v=20261023-dual-imei-1"></script>
 <link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
@@ -26,7 +26,7 @@
   <script defer src="js/search-highlights.js?v=20261013-search-tv-1"></script>
   <script defer src="js/record-search.js?v=20261013-search-tv-1"></script>
     <script defer src="js/part-notifications.js?v=20261026-parts-flow-1"></script>
-    <script defer src="js/stock-entry.js?v=20260918-audit-2"></script>
+    <script defer src="js/stock-entry.js?v=20261027-stock-batches-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
     <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
   <link rel="stylesheet" href="css/sidebar-compact.css?v=20261009-sidebar-pdf-1">
@@ -58,6 +58,7 @@
                   <div class="form-field"><label for="supplier-id">Supplier company <span class="required-mark">Required</span></label><div class="master-option-control supplier-company-control"><select id="supplier-id" required><option value="">Loading supplier companies...</option></select><button id="add-supplier" class="master-add" type="button" title="Add supplier company" aria-label="Add supplier company">+</button><button id="remove-supplier" class="master-remove" type="button" title="Remove selected supplier company" aria-label="Remove selected supplier company">−</button></div><small>Add a new company with +. Hide a company with −; receipt history stays safe and empty reset receipts are removed automatically.</small></div>
                   <div class="form-field"><label for="quantity-received">Quantity received <span class="required-mark">Required</span></label><input id="quantity-received" type="number" min="1" step="1" inputmode="numeric" placeholder="300" required><small>Enter the total number of devices in this receipt.</small></div>
                   <div class="form-field"><label for="supplier-code-display">Supplier code</label><input id="supplier-code-display" class="supplier-code-display" type="text" readonly aria-describedby="supplier-code-help" placeholder="Select a company and enter quantity"><small id="supplier-code-help">Generated automatically, for example SUP-01-(300).</small></div>
+                  <div class="form-field full-width"><label for="stock-batch-display">Stock/Batch No</label><input id="stock-batch-display" type="text" readonly value="Generated automatically on save" aria-describedby="stock-batch-help"><small id="stock-batch-help">Every new receipt gets its own Batch No. IMEIs entered in that receipt remain linked to it.</small></div>
                   <div class="form-field full-width"><label for="receiving-notes">Notes</label><textarea id="receiving-notes" rows="3" placeholder="Optional notes for this receipt"></textarea></div>
                 </div>
               </section>

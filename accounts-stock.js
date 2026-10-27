@@ -44,8 +44,8 @@
     } catch (e) { context.notice(e.message || 'Customer could not be saved.',true); }
     finally { context.lock(false); }
   }
-  const supplierColumns = [['Supplier','supplier_name'],['Code','supplier_code'],['Invoice / Receipt','invoice_number'],['Received · UAE','received_at'],['Model','model'],['GB','storage_gb'],['Color','color'],['Received','received'],['In company','in_company'],['Ready','ready'],['In process','in_process'],['Exported','exported'],['Returned','returned']];
-  const customerColumns = [['Customer','customer_name'],['Customer code','customer_code'],['Exported · UAE','exported_at'],['Box','box_number'],['Model','model'],['GB','storage_gb'],['Color','color'],['Grade','final_grade'],['Qty','quantity'],['Supplier','supplier_name'],['Supplier code','supplier_code'],['Invoice','invoice_number'],['Stock received · UAE','received_at']];
+  const supplierColumns = [['Supplier','supplier_name'],['Code','supplier_code'],['Stock/Batch No','batch_number'],['Invoice / Receipt','invoice_number'],['Received · UAE','received_at'],['Model','model'],['GB','storage_gb'],['Color','color'],['Received','received'],['In company','in_company'],['Ready','ready'],['In process','in_process'],['Exported','exported'],['Returned','returned']];
+  const customerColumns = [['Customer','customer_name'],['Customer code','customer_code'],['Exported · UAE','exported_at'],['Box','box_number'],['Model','model'],['GB','storage_gb'],['Color','color'],['Grade','final_grade'],['Qty','quantity'],['Supplier','supplier_name'],['Supplier code','supplier_code'],['Stock/Batch No','batch_number'],['Invoice','invoice_number'],['Stock received · UAE','received_at']];
   function table(data) {
     const columns = view === 'supplier' ? supplierColumns : customerColumns;
     if (!data.rows.length) return '<p class="box-empty">No stock found for these filters.</p>';
@@ -62,7 +62,7 @@
   }
   const stockFilters=window.GREENLOOP_FILTERS.get('accounts-record-filters',{
     before:$('#accounts-stock-filter'),sortTarget:'#accounts-stock-list',dateKey:'received_at',dateLabel:'Received / exported',
-    fields:[['supplier_code','Supplier code'],['customer_code','Customer code'],['model','Model'],['storage_gb','GB'],['color','Color'],['final_grade','Grade']],
+    fields:[['supplier_code','Supplier code'],['batch_number','Stock/Batch No'],['customer_code','Customer code'],['model','Model'],['storage_gb','GB'],['color','Color'],['final_grade','Grade']],
     onChange:()=>{offset=0;return loadStock();}
   });
   $('#accounts-stock-filter').hidden=true;
@@ -73,7 +73,7 @@
     const msg = $('#accounts-stock-message');
     msg.textContent = ''; msg.classList.remove('is-visible');
     try {
-      const data = await rpc('get_sorted_filter_records_v1',{...stockFilters.sortArgs(),p_source:'accounts_'+view,p_filters:stockFilters.query(),p_offset:offset,p_limit:50});
+      const data = await rpc('get_stock_batch_report_v1',{...stockFilters.sortArgs(),p_source:'accounts_'+view,p_filters:stockFilters.query(),p_offset:offset,p_limit:50});
       stockFilters.result(data);
       total = data.total;
       $('#accounts-stock-list').innerHTML = table(data);
@@ -106,7 +106,7 @@
     $('#accounts-stock-title').textContent = supplier ? 'Supplier Stock' : 'Customer Stock';
     $('#accounts-date-from-label').firstChild.textContent = 'From date';
     $('#accounts-date-to-label').firstChild.textContent = 'To date';
-    $('#accounts-stock-filter').elements.search.placeholder = supplier ? 'Supplier, invoice, model, color…' : 'Customer, supplier, box, invoice, model…';
+    $('#accounts-stock-filter').elements.search.placeholder = supplier ? 'Supplier, batch, invoice, model, color…' : 'Customer, supplier, batch, box, invoice, model…';
     $('#accounts-stock-note').textContent = supplier ? 'All suppliers in one table. In company = Ready + In process. In process includes stock awaiting IMEI entry, Box Entry and Accounts verification. Returned phones are shown separately. Dates filter the original receipt.' : 'All customers in one table. Exports appear after Accounts verification. Older boxes show the recorded customer, or Not recorded if unavailable. Totals cover all matching rows.';
     stockFilters.clear();
   }

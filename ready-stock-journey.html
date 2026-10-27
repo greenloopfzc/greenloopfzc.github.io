@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="css/ready-stock-journey.css?v=20261010-journey-summary-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="js/permission-catalog.js?v=20261024-office-access-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261026-parts-flow-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261027-stock-batches-1"></script>
 <script defer src="js/page-capabilities.js?v=20261024-office-access-1"></script>
 <script defer src="js/imei-stage-notice.js?v=20261023-dual-imei-1"></script>
 <link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
@@ -33,9 +33,9 @@
     <link rel="stylesheet" href="css/cable-reader-setup.css?v=20261023-cable-setup-1">
     <script defer src="js/cable-reader-setup.js?v=20261023-cable-setup-1"></script>
     <script defer src="js/part-notifications.js?v=20261026-parts-flow-1"></script>
-    <script defer src="js/stock-journey-summary.js?v=20261010-journey-summary-1"></script>
+    <script defer src="js/stock-journey-summary.js?v=20261027-stock-batches-1"></script>
     <script defer src="js/lab-delay.js?v=20261024-lab-delay-1"></script>
-  <script defer src="js/ready-stock-journey.js?v=20261024-lab-delay-1"></script>
+  <script defer src="js/ready-stock-journey.js?v=20261027-stock-batches-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
     <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
   <link rel="stylesheet" href="css/sidebar-compact.css?v=20261009-sidebar-pdf-1">
@@ -66,7 +66,7 @@
             <p id="journey-live-status" class="journey-live-status" role="status">Updates every 30 seconds.</p>
             <section class="journey-summary"><span>Devices shown</span><strong id="journey-total">0</strong><small id="journey-range-label">All stages · Latest IMEI entry first.</small></section>
             <section class="journey-cable-card"><div><p class="panel-kicker">Existing phone details</p><h2>Fill missing Serial Number and Region</h2><p id="journey-cable-status">Connect one saved phone by cable. Its IMEI, Serial Number and Region will be read automatically.</p></div><div class="journey-cable-values"><span>IMEI <strong id="journey-cable-imei">Waiting for phone</strong></span><span>Serial Number <strong id="journey-cable-serial">-</strong></span><span>Region <strong id="journey-cable-region">-</strong></span><button id="save-journey-cable-details" class="primary-button" type="button" disabled>Save to this IMEI</button></div></section>
-            <section class="journey-panel"><div class="journey-table-wrap"><table class="journey-table"><thead><tr><th>IMEI / Journey</th><th>Current stage</th><th>IMEI entered</th><th>Model · GB · Color · Region</th><th>Date received</th><th>Latest Final QC pass</th><th>Stock channel</th><th>Invoice</th><th>Supplier company</th><th>Quantity received</th><th>Supplier code</th><th>Initial BH / Final BH</th><th>Supplier grade</th><th>Company initial grade</th><th>Company final grade</th><th>Parts issued</th><th>Parts cost (AED)</th><th>Service done</th><th>Technician name</th><th>Box number</th><th>Export date</th><th>Customer name</th></tr></thead><tbody id="journey-body"></tbody></table></div></section><nav class="journey-pagination" aria-label="Stock Journey pages"><button id="journey-prev" class="secondary-button" type="button" disabled>Previous</button><span id="journey-page-label">0 phones</span><button id="journey-next" class="secondary-button" type="button" disabled>Next</button></nav>
+            <section class="journey-panel"><div class="journey-table-wrap"><table class="journey-table"><thead><tr><th>IMEI / Journey</th><th>Current stage</th><th>IMEI entered</th><th>Model · GB · Color · Region</th><th>Date received</th><th>Latest Final QC pass</th><th>Stock channel</th><th>Invoice</th><th>Supplier company</th><th>Quantity received</th><th>Supplier code</th><th>Stock/Batch No</th><th>Initial BH / Final BH</th><th>Supplier grade</th><th>Company initial grade</th><th>Company final grade</th><th>Parts issued</th><th>Parts cost (AED)</th><th>Service done</th><th>Technician name</th><th>Box number</th><th>Export date</th><th>Customer name</th></tr></thead><tbody id="journey-body"></tbody></table></div></section><nav class="journey-pagination" aria-label="Stock Journey pages"><button id="journey-prev" class="secondary-button" type="button" disabled>Previous</button><span id="journey-page-label">0 phones</span><button id="journey-next" class="secondary-button" type="button" disabled>Next</button></nav>
           </section>
         </div>
       </main>

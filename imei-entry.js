@@ -263,7 +263,7 @@
     }
 
     batchSelect.replaceChildren(new Option(batches.length ? "Select supplier code / batch" : "No incomplete stock batches", ""));
-    batches.forEach((batch) => batchSelect.add(new Option(`${supplierLabel(batch)} - ${batch.planned_quantity} received - ${batch.remaining_quantity} remaining`, batch.batch_id)));
+    batches.forEach((batch) => batchSelect.add(new Option(`${supplierLabel(batch)} · ${batch.batch_number || "No batch recorded"} · ${batch.invoice_number || "No invoice recorded"} - ${batch.planned_quantity} received - ${batch.remaining_quantity} remaining`, batch.batch_id)));
     if (batches.some((batch) => batch.batch_id === selected)) batchSelect.value = selected;
     else batchSelect.value = "";
     batchSelect.disabled = false;
@@ -292,7 +292,7 @@
     const nextLine = plannedLines.find((line) => Number(line.remaining_quantity) > 0) || plannedLines[0];
     const planText = plannedLines.map((line) => `${line.model || "Any model"} - ${line.storage_gb ? `${line.storage_gb} GB` : "Any GB"} - ${line.color || "Any color"} (${line.remaining_quantity}/${line.planned_quantity} remaining)`).join(" | ");
     const summary = [
-      ["Invoice number", batch.invoice_number || "Not generated for legacy receipt"], ["Supplier code", supplierLabel(batch)], ["Stock channel", batch.stock_channel],
+      ["Stock/Batch No", batch.batch_number || "Not recorded"], ["Invoice number", batch.invoice_number || "Not generated for legacy receipt"], ["Supplier code", supplierLabel(batch)], ["Stock channel", batch.stock_channel],
       ["Quantity received", `${batch.planned_quantity} devices`], ["Return Stock", batch.returned_quantity ?? "Unavailable"], ["Progress", `${batch.entered_quantity} / ${batch.planned_quantity}`],
       ["Remaining", batch.remaining_quantity]
     ].map(([label, value]) => `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("");
