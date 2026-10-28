@@ -1,0 +1,55 @@
+-- Independent Supplier/GC grade choices in Initial QC's Manage Dropdowns.
+begin;
+do $$begin if public.get_qc_work_options_version()is distinct from '20261028-qc-work-options-1'then raise exception 'Verified QC Work Options update is required.';end if;if to_regprocedure('public.get_qc_dropdowns_version()')is not null then if public.get_qc_dropdowns_version()is distinct from '20261028-qc-dropdowns-1'then raise exception 'Existing QC Dropdowns update needs review.';end if;end if;end;$$;
+create table if not exists greenloop_private.qc_grade_options(id uuid primary key default gen_random_uuid(),kind text not null check(kind in('supplier_grade','gc_grade')),name text not null check(length(name)between 1 and 120 and name=upper(regexp_replace(btrim(name),'\s+',' ','g'))),created_by uuid,created_at timestamptz not null default now(),unique(kind,name));
+create table if not exists greenloop_private.qc_grade_option_audit(id uuid primary key default gen_random_uuid(),kind text not null check(kind in('supplier_grade','gc_grade')),name text not null,actor uuid not null,created_at timestamptz not null default now());
+alter table greenloop_private.qc_grade_options enable row level security;alter table greenloop_private.qc_grade_option_audit enable row level security;revoke all on greenloop_private.qc_grade_options,greenloop_private.qc_grade_option_audit from public,anon,authenticated;
+insert into greenloop_private.qc_grade_options(kind,name)
+select kind,name from(values('supplier_grade','A+'),('supplier_grade','A'),('supplier_grade','B'),('supplier_grade','C'),('supplier_grade','UNSORTED'),('gc_grade','A+'),('gc_grade','A'),('gc_grade','B'),('gc_grade','C'))v(kind,name)
+union select 'supplier_grade',upper(regexp_replace(btrim(supplier_grade),'\s+',' ','g'))from public.jobs where length(btrim(supplier_grade))between 1 and 120 and supplier_grade!~'[[:cntrl:]]'
+union select 'gc_grade',upper(regexp_replace(btrim(gc_grade),'\s+',' ','g'))from public.devices where length(btrim(gc_grade))between 1 and 120 and gc_grade!~'[[:cntrl:]]'on conflict(kind,name)do nothing;
+create or replace function greenloop_private.qc_grade_allowed(p_kind text,p_value text)returns boolean language sql stable security definer set search_path=pg_catalog,public as $$select exists(select 1 from greenloop_private.qc_grade_options where kind=p_kind and name=upper(regexp_replace(btrim(p_value),'\s+',' ','g')));$$;
+revoke all on function greenloop_private.qc_grade_allowed(text,text)from public,anon,authenticated;
+-- Change only the two grade allow-lists in the already reviewed private implementation.
+-- Its entry/role guards, row locks, routing and atomic business updates are retained.
+do $grades$declare impl text;ddl text;before text;old_supplier text:=$a$v_supplier_grade not in ('A+', 'A', 'B', 'C', 'UNSORTED')$a$;old_gc text:=$a$v_gc_grade not in ('A+', 'A', 'B', 'C')$a$;begin
+ select implementation into impl from greenloop_private.capability_routines where to_regprocedure(identity)='public.complete_scanned_initial_qc_with_roster_and_grades(uuid,text,text,text,jsonb,jsonb,uuid,text,text)'::regprocedure;
+ if impl is null then raise exception 'Reviewed Initial QC grade implementation is missing.';end if;ddl:=pg_get_functiondef(to_regprocedure(impl));before:=ddl;
+ if strpos(ddl,'greenloop_private.qc_grade_allowed')=0 then
+  if strpos(ddl,old_supplier)=0 or strpos(ddl,old_gc)=0 then raise exception 'Initial QC grade validator differs from the reviewed implementation.';end if;
+  ddl:=replace(ddl,old_supplier,$a$not greenloop_private.qc_grade_allowed('supplier_grade',v_supplier_grade)$a$);ddl:=replace(ddl,old_gc,$a$not greenloop_private.qc_grade_allowed('gc_grade',v_gc_grade)$a$);
+  ddl:=replace(ddl,$a$upper(btrim(coalesce(p_supplier_grade, '')))$a$,$a$upper(regexp_replace(btrim(coalesce(p_supplier_grade, '')),'\s+',' ','g'))$a$);ddl:=replace(ddl,$a$upper(btrim(coalesce(p_gc_grade, '')))$a$,$a$upper(regexp_replace(btrim(coalesce(p_gc_grade, '')),'\s+',' ','g'))$a$);
+  ddl:=replace(ddl,'Supplier Grade must be A+, A, B, C, or Unsorted.','Choose a saved Supplier Grade from Manage Dropdowns.');ddl:=replace(ddl,'GC Grade must be A+, A, B, or C.','Choose a saved GC Grade from Manage Dropdowns.');execute ddl;
+ end if;
+ update greenloop_private.capability_routines set original_hash=md5(pg_get_functiondef(to_regprocedure(impl)))where implementation=impl;
+end;$grades$;
+create or replace function public.get_qc_dropdowns_v1()returns jsonb language plpgsql stable security definer set search_path=pg_catalog,public as $$begin perform greenloop_private.pf_cap('initial_qc','view');return public.get_qc_work_options_v1('initial_qc')||jsonb_build_object(
+ 'supplier_grades',coalesce((select jsonb_agg(jsonb_build_object('id',id,'name',name)order by case name when 'A+'then 0 when 'A'then 1 when 'B'then 2 when 'C'then 3 when 'UNSORTED'then 999 else 10 end,name)from greenloop_private.qc_grade_options where kind='supplier_grade'),'[]'),
+ 'gc_grades',coalesce((select jsonb_agg(jsonb_build_object('id',id,'name',name)order by case name when 'A+'then 0 when 'A'then 1 when 'B'then 2 when 'C'then 3 when 'UNSORTED'then 999 else 10 end,name)from greenloop_private.qc_grade_options where kind='gc_grade'),'[]'));
+end;$$;
+create or replace function public.save_qc_dropdown_v1(p_kind text,p_name text)returns jsonb language plpgsql security definer set search_path=pg_catalog,public as $$declare n text;chosen uuid;is_new boolean:=false;begin
+ perform greenloop_private.pf_cap('initial_qc','manage_options');if p_kind in('part','service')then return public.save_qc_work_option_v1(p_kind,p_name);end if;
+ if p_kind is null or p_kind not in('supplier_grade','gc_grade')or p_name is null or p_name~'[[:cntrl:]]'then raise exception 'Choose a valid dropdown and enter a name.'using errcode='22023';end if;n:=upper(regexp_replace(btrim(p_name),'\s+',' ','g'));if length(n)not between 1 and 120 then raise exception 'Enter a grade from 1 to 120 characters.'using errcode='22023';end if;
+ perform pg_advisory_xact_lock(hashtextextended('qc-grade:'||p_kind||':'||n,0));select id into chosen from greenloop_private.qc_grade_options where kind=p_kind and name=n;
+ if chosen is null then insert into greenloop_private.qc_grade_options(kind,name,created_by)values(p_kind,n,auth.uid())returning id into chosen;is_new:=true;insert into greenloop_private.qc_grade_option_audit(kind,name,actor)values(p_kind,n,auth.uid());end if;
+ return jsonb_build_object('id',chosen,'kind',p_kind,'name',n,'changed',is_new,'action',case when is_new then 'created'else null end);
+end;$$;
+insert into greenloop_private.capability_rpc_rules values('get_qc_dropdowns_v1','{"page":"initial_qc","capability":"view","read":true}'),('save_qc_dropdown_v1','{"page":"initial_qc","capability":"manage_options"}')on conflict(rpc_name)do update set rule=excluded.rule;
+update greenloop_private.page_capability_installation set hash=(select md5(jsonb_agg(to_jsonb(r)order by rpc_name)::text)from greenloop_private.capability_rpc_rules r)where identity='rules';
+do $wrap$declare f record;impl text;impl_identity text;args text;body text;begin
+ for f in select p.*,pg_get_functiondef(p.oid)ddl,p.oid::regprocedure::text signature from pg_proc p where p.pronamespace='public'::regnamespace and p.proname in ('get_qc_dropdowns_v1','save_qc_dropdown_v1')loop
+ impl:='office_impl_'||f.oid;execute regexp_replace(f.ddl,'FUNCTION public\.'||f.proname||'\(','FUNCTION greenloop_private.'||impl||'(');impl_identity:='greenloop_private.'||impl||'('||oidvectortypes(f.proargtypes)||')';execute format('revoke all on function %s from public,anon,authenticated',impl_identity);select coalesce(string_agg('$'||i,','order by i),'')into args from generate_series(1,f.pronargs)i;
+ body:=E'begin\n -- greenloop-office-wrapper-196\n perform greenloop_private.require_office_network();\n return greenloop_private.'||impl||'('||args||E');\nend;';execute format('create or replace function public.%I(%s)returns %s language plpgsql %s security definer set search_path=pg_catalog,public as %L',f.proname,pg_get_function_arguments(f.oid),pg_get_function_result(f.oid),case f.provolatile when 's'then 'stable'else 'volatile'end,body);execute format('revoke all on function %s from public,anon,authenticated',f.signature);execute format('grant execute on function %s to authenticated',f.signature);insert into greenloop_private.office_routines values(f.signature,impl_identity,md5(pg_get_functiondef(impl_identity::regprocedure)),md5(pg_get_functiondef(f.oid)))on conflict(identity)do update set implementation=excluded.implementation,original_hash=excluded.original_hash,wrapped_hash=excluded.wrapped_hash;
+ end loop;
+end;$wrap$;
+create table if not exists greenloop_private.qc_dropdowns_installation(identity text primary key,hash text not null);
+alter table greenloop_private.qc_dropdowns_installation enable row level security;revoke all on greenloop_private.qc_dropdowns_installation from public,anon,authenticated;
+insert into greenloop_private.qc_dropdowns_installation select p.oid::regprocedure::text,md5(pg_get_functiondef(p.oid))from pg_proc p where(p.pronamespace='public'::regnamespace and p.proname in('get_qc_dropdowns_v1','save_qc_dropdown_v1'))or(p.pronamespace='greenloop_private'::regnamespace and(p.proname='qc_grade_allowed'or p.oid=to_regprocedure((select implementation from greenloop_private.capability_routines where to_regprocedure(identity)='public.complete_scanned_initial_qc_with_roster_and_grades(uuid,text,text,text,jsonb,jsonb,uuid,text,text)'::regprocedure))))on conflict(identity)do update set hash=excluded.hash;
+create or replace function public.get_qc_dropdowns_version()returns text language sql stable security definer set search_path=pg_catalog,public as $$select case when public.get_qc_work_options_version()='20261028-qc-work-options-1'
+ and(select count(*)=4 and bool_and(coalesce(hash=md5(pg_get_functiondef(to_regprocedure(identity))),false))from greenloop_private.qc_dropdowns_installation)
+ and not exists(select 1 from unnest(array['qc_grade_options','qc_grade_option_audit','qc_dropdowns_installation'])t where not exists(select 1 from pg_class c where c.oid=to_regclass('greenloop_private.'||t)and c.relrowsecurity)or has_table_privilege('authenticated','greenloop_private.'||t,'SELECT,INSERT,UPDATE,DELETE,TRUNCATE')or has_table_privilege('anon','greenloop_private.'||t,'SELECT,INSERT,UPDATE,DELETE,TRUNCATE'))
+ and not has_function_privilege('authenticated','greenloop_private.qc_grade_allowed(text,text)','EXECUTE')and not has_function_privilege('anon','greenloop_private.qc_grade_allowed(text,text)','EXECUTE')then '20261028-qc-dropdowns-1'end;$$;
+revoke all on function public.get_qc_dropdowns_version()from public;grant execute on function public.get_qc_dropdowns_version()to anon,authenticated;
+do $$begin if public.get_qc_dropdowns_version()is distinct from '20261028-qc-dropdowns-1'then raise exception 'QC Dropdowns verification failed.';end if;end;$$;
+notify pgrst,'reload schema';commit;
+select public.get_qc_dropdowns_version()as installed_qc_dropdowns_version;

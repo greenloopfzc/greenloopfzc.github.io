@@ -1496,5 +1496,14 @@
     "page": "lab_glass",
     "capability": "view",
     "read": true
+  },
+  "get_qc_dropdowns_v1": {
+    "page": "initial_qc",
+    "capability": "view",
+    "read": true
+  },
+  "save_qc_dropdown_v1": {
+    "page": "initial_qc",
+    "capability": "manage_options"
   }
 }

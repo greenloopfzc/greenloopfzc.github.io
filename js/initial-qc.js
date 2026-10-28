@@ -20,6 +20,7 @@
     { label: "Testing", kind: "service", partName: null, action: "Complete technical testing" }
   ];
   let workItems = [...defaultPartItems, ...serviceItems];
+  let supplierGradeItems=["A+","A","B","C","UNSORTED"],gcGradeItems=["A+","A","B","C"];
 
   const app = document.querySelector("#qc-app");
   const permissionMessage = document.querySelector("#permission-message");
@@ -124,8 +125,8 @@
   }
 
   function gradeOptions(includeUnsorted = false) {
-    const grades = includeUnsorted ? ["A+", "A", "B", "C", "UNSORTED"] : ["A+", "A", "B", "C"];
-    return `<option value="">Select grade</option>${grades.map((grade) => `<option value="${grade}">${grade === "UNSORTED" ? "Unsorted" : grade}</option>`).join("")}`;
+    const grades = includeUnsorted ? supplierGradeItems : gcGradeItems;
+    return `<option value="">Select grade</option>${grades.map((grade) => `<option value="${escapeHtml(grade)}">${escapeHtml(grade === "UNSORTED" ? "Unsorted" : grade)}</option>`).join("")}`;
   }
 
   function technicianOptions(selectedValue = "") {
@@ -140,22 +141,26 @@
 
   async function loadPartOptions() {
     if(loadingWorkOptions)return loadingWorkOptions;
-    loadingWorkOptions=(async()=>{const {data,error}=await getClient().rpc('get_qc_work_options_v1',{p_page:'initial_qc'});if(error)throw error;if(!Array.isArray(data?.parts)||!Array.isArray(data?.services)||![...data.parts,...data.services].every(o=>typeof o.name==='string'&&o.name.trim()))throw new Error('The shared Parts & Services list could not be verified. Finish installing its update.');
+    loadingWorkOptions=(async()=>{const {data,error}=await getClient().rpc('get_qc_dropdowns_v1',{});if(error)throw error;if(!Array.isArray(data?.parts)||!Array.isArray(data?.services)||!Array.isArray(data?.supplier_grades)||!Array.isArray(data?.gc_grades)||![...data.parts,...data.services,...data.supplier_grades,...data.gc_grades].every(o=>typeof o.name==='string'&&o.name.trim()))throw new Error('The managed dropdown lists could not be verified. Finish installing its update.');
+    supplierGradeItems=data.supplier_grades.map(o=>o.name);gcGradeItems=data.gc_grades.map(o=>o.name);
     workItems=[...data.parts.map(o=>({label:o.name,kind:'part',partName:o.name,action:'Replace or use '+o.name})),...data.services.map(o=>serviceItems.find(s=>s.label.toLowerCase()===o.name.toLowerCase())||{label:o.name,kind:'service',partName:null,action:'Complete '+o.name+' service'})];})();
     try{return await loadingWorkOptions;}finally{loadingWorkOptions=null;}
   }
 
   const canManageWorkOptions=()=>window.GREENLOOP_CAN?.('manage_options','initial_qc')===true;
   const workOptionsKey='greenloop-qc-work-options-changed';let savingWorkOption=false,loadingWorkOptions=null;
-  function refreshRequirementOptions(){for(const select of tableBody.querySelectorAll('[data-requirement]')){const row=select.closest('tr');if(row?.dataset.completed==='yes'||row?.dataset.saving==='yes')continue;const value=select.value;select.innerHTML=requirementOptions(select.dataset.requirement,value);if(value&&![...select.options].some(o=>o.value===value))select.insertAdjacentHTML('beforeend',`<option selected value="${escapeHtml(value)}">${escapeHtml(value)}</option>`);}}
+  function refreshRequirementOptions(){
+    for(const select of tableBody.querySelectorAll('[data-requirement], [data-carry-field="supplierGrade"], [data-carry-field="gcGrade"]')){const row=select.closest('tr');if(row?.dataset.completed==='yes'||row?.dataset.saving==='yes')continue;const value=select.value;select.innerHTML=select.dataset.requirement?requirementOptions(select.dataset.requirement,value):gradeOptions(select.dataset.carryField==='supplierGrade');if(value&&![...select.options].some(o=>o.value===value))select.insertAdjacentHTML('beforeend',`<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`);select.value=value;}
+  }
+  const dropdownLabels={part:'Part',service:'Service',supplier_grade:'Supplier Grade',gc_grade:'GC Grade'};
   function optionMessage(text='',success=false){const el=document.querySelector('#qc-options-message');el.textContent=text;el.hidden=!text;el.dataset.state=success?'success':'error';}
-  function updateOptionForm(){const service=document.querySelector('#qc-options-kind').value==='service';document.querySelector('#qc-options-save').textContent=service?'Add Service':'Add Part';document.querySelector('#qc-options-name').placeholder=service?'Enter new service name':'Enter new part name';}
+  function updateOptionForm(){const kind=document.querySelector('#qc-options-kind').value,label=dropdownLabels[kind];document.querySelector('#qc-options-save').textContent='Add '+label;document.querySelector('#qc-options-name').placeholder=kind==='part'?'Enter new part name':kind==='service'?'Enter new service name':'e.g. D';}
   document.querySelector('#qc-manage-options').addEventListener('click',()=>{if(!canManageWorkOptions())return;optionMessage();updateOptionForm();document.querySelector('#qc-options-dialog').showModal();document.querySelector('#qc-options-name').focus();});
   document.querySelector('#qc-options-kind').addEventListener('change',updateOptionForm);
   document.querySelector('#qc-options-close').addEventListener('click',()=>{if(!savingWorkOption)document.querySelector('#qc-options-dialog').close();});
   document.querySelector('#qc-options-dialog').addEventListener('cancel',e=>{if(savingWorkOption)e.preventDefault();});
-  document.querySelector('#qc-options-form').addEventListener('submit',async e=>{e.preventDefault();if(savingWorkOption||!canManageWorkOptions()||!e.currentTarget.reportValidity())return;const form=e.currentTarget,kind=form.elements.kind.value,name=form.elements.name.value.trim();savingWorkOption=true;for(const control of form.querySelectorAll('input,select,button'))control.disabled=true;document.querySelector('#qc-options-close').disabled=true;optionMessage();try{const {data,error}=await getClient().rpc('save_qc_work_option_v1',{p_kind:kind,p_name:name});if(error)throw error;if(!data||data.kind!==kind||!data.name)throw new Error('The saved name could not be verified. Refresh the list before retrying.');if(loadingWorkOptions)await loadingWorkOptions.catch(()=>{});await loadPartOptions();refreshRequirementOptions();form.elements.name.value='';optionMessage(`${data.name} ${data.changed?'saved':'is already available'}. Available in Initial QC and Lab & Glass.`,true);try{localStorage.setItem(workOptionsKey,crypto.randomUUID());}catch{}}catch(err){optionMessage(err.message||'Could not save this name. Try again.');}finally{savingWorkOption=false;for(const control of form.querySelectorAll('input,select,button'))control.disabled=!canManageWorkOptions();document.querySelector('#qc-options-close').disabled=false;updateOptionForm();if(canManageWorkOptions())form.elements.name.focus();}});
-  async function refreshSharedWorkOptions(){if(document.hidden||app.hidden||savingWorkOption)return;try{await loadPartOptions();refreshRequirementOptions();}catch{showToast('Parts and services could not refresh. Reopen this page to retry.');}}
+  document.querySelector('#qc-options-form').addEventListener('submit',async e=>{e.preventDefault();if(savingWorkOption||!canManageWorkOptions()||!e.currentTarget.reportValidity())return;const form=e.currentTarget,kind=form.elements.kind.value,name=form.elements.name.value.trim();savingWorkOption=true;for(const control of form.querySelectorAll('input,select,button'))control.disabled=true;document.querySelector('#qc-options-close').disabled=true;optionMessage();try{const {data,error}=await getClient().rpc('save_qc_dropdown_v1',{p_kind:kind,p_name:name});if(error)throw error;if(!data||data.kind!==kind||!data.name)throw new Error('The saved name could not be verified. Refresh the list before retrying.');if(loadingWorkOptions)await loadingWorkOptions.catch(()=>{});await loadPartOptions();refreshRequirementOptions();form.elements.name.value='';optionMessage(`${data.name} ${data.changed?'saved':'is already available'}. ${kind==='part'||kind==='service'?'Available in Initial QC and Lab & Glass.':'Available in the '+dropdownLabels[kind]+' dropdown.'}`,true);try{localStorage.setItem(workOptionsKey,crypto.randomUUID());}catch{}}catch(err){optionMessage(err.message||'Could not save this name. Try again.');}finally{savingWorkOption=false;for(const control of form.querySelectorAll('input,select,button'))control.disabled=!canManageWorkOptions();document.querySelector('#qc-options-close').disabled=false;updateOptionForm();if(canManageWorkOptions())form.elements.name.focus();}});
+  async function refreshSharedWorkOptions(){if(document.hidden||app.hidden||savingWorkOption)return;try{await loadPartOptions();refreshRequirementOptions();}catch{showToast('Dropdown lists could not refresh. Reopen this page to retry.');}}
   window.addEventListener('storage',e=>{if(e.key===workOptionsKey)refreshSharedWorkOptions();});window.addEventListener('focus',refreshSharedWorkOptions);
 
   function requirementSelect(kind, selectedValue = "") {
