@@ -5,7 +5,7 @@
   const isFrameMode = window.location.hash.toLowerCase() === "#frame";
   window.addEventListener("hashchange", () => window.location.reload());
   const standardParts = ["Case", "Glass", "Touch panel", "NFC flex", "Vibrator", "Speaker", "Camera", "Face ID flex", "LCD display", "Battery", "Charging flex"];
-  const standardServices = ["Polish", "Cleaning", "Software", "Testing", "Face ID calibration", "Camera calibration", "Housing repair", "Glass work", "Frame work"];
+  let standardServices = ["Polish", "Cleaning", "Software", "Testing", "Face ID calibration", "Camera calibration", "Housing repair", "Glass work", "Frame work"];
   const initialQcServices = new Set(["polish", "cleaning", "software", "testing"]);
   const app = document.querySelector("#lab-app");
   const permissionMessage = document.querySelector("#permission-message");
@@ -324,9 +324,9 @@
   });
   async function loadFrameReport(){return frameFilters.load();}
 
-  async function loadPartOptions() {
-    const { data, error } = await getClient().rpc("get_entry_options", { p_option_group: "part_name" });
-    if (!error && data?.length) partOptions = unique([...standardParts, ...data.map((item) => item.option_value)]);
+  let workOptionsFingerprint='';
+  function applyWorkOptions(data){const fingerprint=JSON.stringify(data);if(fingerprint===workOptionsFingerprint)return;workOptionsFingerprint=fingerprint;partOptions=data.parts.map(o=>o.name);standardServices=data.services.map(o=>o.name);initialQcServices.clear();for(const service of data.services)if(service.initial_qc)initialQcServices.add(normalise(service.name));
+    for(const holder of technicianWorkRows.querySelectorAll('[data-choice]')){const select=holder.querySelector('select');if(!select)continue;const value=select.value;select.innerHTML=optionsMarkup(holder.dataset.choice==='part'?partOptions:standardServices,holder.dataset.choice==='part'?'Select part':'Select service');if(value&&![...select.options].some(o=>o.value===value))select.insertAdjacentHTML('beforeend',`<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`);select.value=value;}
   }
   async function loadFrameGrades() {
     const { data, error } = await getClient().rpc("get_entry_options", { p_option_group: "grade" });
@@ -339,12 +339,13 @@
   async function readWorkbench(args) {
     const key=JSON.stringify(args);
     if(!workbenchReads.has(key)){
-      const request=labRead(getClient().rpc('get_lab_workbench_timing_v1',args)).then(({data,error})=>{if(error)throw error;if(!data||!Array.isArray(data.rows)||!Number.isFinite(Date.parse(data.server_now)))throw new Error('Phone lines could not be verified.');return data;}).finally(()=>workbenchReads.delete(key));
+      const request=labRead(getClient().rpc('get_lab_workbench_options_v1',args)).then(({data,error})=>{if(error)throw error;if(!data||!Array.isArray(data.rows)||!Number.isFinite(Date.parse(data.server_now))||!Array.isArray(data.work_options?.parts)||!Array.isArray(data.work_options?.services)||![...data.work_options.parts,...data.work_options.services].every(o=>typeof o.name==='string'&&o.name.trim()))throw new Error('Phone lines could not be verified.');return data;}).finally(()=>workbenchReads.delete(key));
       workbenchReads.set(key,request);
     }
     return workbenchReads.get(key);
   }
-  function applyWorkbenchRows(rows,{quiet=false,serverTime}={}){
+  function applyWorkbenchRows(rows,{quiet=false,serverTime,workOptions}={}){
+    applyWorkOptions(workOptions);
     if(Number.isFinite(Date.parse(serverTime)))phoneClock={server:Date.parse(serverTime),local:performance.now()};
     for(const row of rows){const p=row.pf_plan;if(!p)continue;const id=String(row.step_id),d=lineDrafts.get(id);if(d&&d.cycle!==p.cycle)lineDrafts.delete(id);else if(d?.partsDirty&&d.modeLocked!==!!p.locked)clearDraftKind(id,'parts');}
     if(quiet&&JSON.stringify(technicianRows)===JSON.stringify(rows))return;
@@ -359,7 +360,7 @@
     const data=await readWorkbench({p_employee_id:employee?.unassigned?null:technicianId,p_imei:scan||null});
     if(version!==rowLoadVersion||technicianId!==activeTechnicianId||editsAtStart!==editVersion||scan!==focusedImei)return;
     if(scan&&String(data.employee_id)!==String(technicianId)){setBoardMessage('Phone assignment changed. Scan the IMEI again.');return;}
-    applyWorkbenchRows(data.rows,{quiet,serverTime:data.server_now});
+    applyWorkbenchRows(data.rows,{quiet,serverTime:data.server_now,workOptions:data.work_options});
   }
   async function loadFrameRows() {
     setBoardMessage();
@@ -544,7 +545,7 @@
       if(!technicians.some(t=>String(t.id)===String(technician.id)))technicians.push(technician);
       activeTechnicianId=String(technician.id);focusedStepId=String(data.step_id);
       renderTechnicianCards();await workFilters.clear();if(!scanCurrent())return;
-      applyWorkbenchRows(data.rows,{serverTime:data.server_now});
+      applyWorkbenchRows(data.rows,{serverTime:data.server_now,workOptions:data.work_options});
       const target = technicianWorkRows.querySelector(`tr[data-step-id="${CSS.escape(focusedStepId)}"]`);
       if (!target || target.hidden) throw new Error("The phone assignment changed or its line is no longer pending. Search the IMEI again.");
       setBoardMessage(`IMEI ${imei} · ${technician.full_name}`, true);
@@ -596,7 +597,7 @@
     await window.GREENLOOP_ACCESS_READY;
     if (window.GREENLOOP_PAGE_ACCESS?.pageKey !== (isFrameMode ? "frame_department" : "lab_glass")) return;
     app.hidden = false;
-    if (!isFrameMode) {await Promise.all([loadPartOptions(),refreshAll()]);if(!technicianEditorIsActive())renderTechnicianLines();}
+    if (!isFrameMode) {await refreshAll();if(!technicianEditorIsActive())renderTechnicianLines();}
     else {await loadFrameGrades();await refreshAll();}
     if (!isFrameMode) {
       window.GREENLOOP_EMPLOYEES?.watch(async()=>{if(!app.hidden&&!technicianWorkRows.querySelector('tr[data-busy="yes"]')){const previous=activeTechnicianId;await loadTechnicians(activeTechnicianId);if(previous!==activeTechnicianId&&!technicianEditorIsActive())await loadTechnicianRows();}});
@@ -604,6 +605,7 @@
       document.addEventListener('greenloop:workflow-notifications-refreshed',refreshBoard);
       window.setInterval(refreshBoard,5000);
       window.setInterval(updatePhoneAges,60000);
+      window.addEventListener("storage",e=>{if(e.key==="greenloop-qc-work-options-changed"&&!document.hidden&&!app.hidden&&!technicianEditorIsActive())loadTechnicianRows({quiet:true}).catch(()=>{});});
       document.addEventListener("visibilitychange",updatePhoneAges);
       window.addEventListener("focus",updatePhoneAges);
       window.setInterval(() => {

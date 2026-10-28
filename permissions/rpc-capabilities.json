@@ -1473,5 +1473,28 @@
     "page": "lab_glass",
     "capability": "view",
     "read": true
+  },
+  "get_qc_work_options_v1": {
+    "dynamic": "filter_source",
+    "parameter": "p_page",
+    "initial_qc": {
+      "page": "initial_qc",
+      "capability": "view",
+      "read": true
+    },
+    "lab_glass": {
+      "page": "lab_glass",
+      "capability": "view",
+      "read": true
+    }
+  },
+  "save_qc_work_option_v1": {
+    "page": "initial_qc",
+    "capability": "manage_options"
+  },
+  "get_lab_workbench_options_v1": {
+    "page": "lab_glass",
+    "capability": "view",
+    "read": true
   }
 }

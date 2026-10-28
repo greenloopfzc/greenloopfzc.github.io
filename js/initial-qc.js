@@ -139,25 +139,24 @@
   }
 
   async function loadPartOptions() {
-    const { data, error } = await getClient().rpc("get_entry_options", { p_option_group: "part_name" });
-    if (error) throw error;
-
-    const partNames = [...defaultPartItems.map((item) => item.partName), ...(data || []).map((item) => item.option_value)]
-      .map((value) => String(value || "").trim())
-      .filter(Boolean)
-      .filter((value, index, values) => values.findIndex((candidate) => candidate.toLocaleLowerCase() === value.toLocaleLowerCase()) === index)
-      .sort((left, right) => left.localeCompare(right, undefined, { numeric: true, sensitivity: "base" }));
-
-    workItems = [
-      ...partNames.map((partName) => ({
-        label: partName,
-        kind: "part",
-        partName,
-        action: `Replace or use ${partName}`
-      })),
-      ...serviceItems
-    ];
+    if(loadingWorkOptions)return loadingWorkOptions;
+    loadingWorkOptions=(async()=>{const {data,error}=await getClient().rpc('get_qc_work_options_v1',{p_page:'initial_qc'});if(error)throw error;if(!Array.isArray(data?.parts)||!Array.isArray(data?.services)||![...data.parts,...data.services].every(o=>typeof o.name==='string'&&o.name.trim()))throw new Error('The shared Parts & Services list could not be verified. Finish installing its update.');
+    workItems=[...data.parts.map(o=>({label:o.name,kind:'part',partName:o.name,action:'Replace or use '+o.name})),...data.services.map(o=>serviceItems.find(s=>s.label.toLowerCase()===o.name.toLowerCase())||{label:o.name,kind:'service',partName:null,action:'Complete '+o.name+' service'})];})();
+    try{return await loadingWorkOptions;}finally{loadingWorkOptions=null;}
   }
+
+  const canManageWorkOptions=()=>window.GREENLOOP_CAN?.('manage_options','initial_qc')===true;
+  const workOptionsKey='greenloop-qc-work-options-changed';let savingWorkOption=false,loadingWorkOptions=null;
+  function refreshRequirementOptions(){for(const select of tableBody.querySelectorAll('[data-requirement]')){const row=select.closest('tr');if(row?.dataset.completed==='yes'||row?.dataset.saving==='yes')continue;const value=select.value;select.innerHTML=requirementOptions(select.dataset.requirement,value);if(value&&![...select.options].some(o=>o.value===value))select.insertAdjacentHTML('beforeend',`<option selected value="${escapeHtml(value)}">${escapeHtml(value)}</option>`);}}
+  function optionMessage(text='',success=false){const el=document.querySelector('#qc-options-message');el.textContent=text;el.hidden=!text;el.dataset.state=success?'success':'error';}
+  function updateOptionForm(){const service=document.querySelector('#qc-options-kind').value==='service';document.querySelector('#qc-options-save').textContent=service?'Add Service':'Add Part';document.querySelector('#qc-options-name').placeholder=service?'Enter new service name':'Enter new part name';}
+  document.querySelector('#qc-manage-options').addEventListener('click',()=>{if(!canManageWorkOptions())return;optionMessage();updateOptionForm();document.querySelector('#qc-options-dialog').showModal();document.querySelector('#qc-options-name').focus();});
+  document.querySelector('#qc-options-kind').addEventListener('change',updateOptionForm);
+  document.querySelector('#qc-options-close').addEventListener('click',()=>{if(!savingWorkOption)document.querySelector('#qc-options-dialog').close();});
+  document.querySelector('#qc-options-dialog').addEventListener('cancel',e=>{if(savingWorkOption)e.preventDefault();});
+  document.querySelector('#qc-options-form').addEventListener('submit',async e=>{e.preventDefault();if(savingWorkOption||!canManageWorkOptions()||!e.currentTarget.reportValidity())return;const form=e.currentTarget,kind=form.elements.kind.value,name=form.elements.name.value.trim();savingWorkOption=true;for(const control of form.querySelectorAll('input,select,button'))control.disabled=true;document.querySelector('#qc-options-close').disabled=true;optionMessage();try{const {data,error}=await getClient().rpc('save_qc_work_option_v1',{p_kind:kind,p_name:name});if(error)throw error;if(!data||data.kind!==kind||!data.name)throw new Error('The saved name could not be verified. Refresh the list before retrying.');if(loadingWorkOptions)await loadingWorkOptions.catch(()=>{});await loadPartOptions();refreshRequirementOptions();form.elements.name.value='';optionMessage(`${data.name} ${data.changed?'saved':'is already available'}. Available in Initial QC and Lab & Glass.`,true);try{localStorage.setItem(workOptionsKey,crypto.randomUUID());}catch{}}catch(err){optionMessage(err.message||'Could not save this name. Try again.');}finally{savingWorkOption=false;for(const control of form.querySelectorAll('input,select,button'))control.disabled=!canManageWorkOptions();document.querySelector('#qc-options-close').disabled=false;updateOptionForm();if(canManageWorkOptions())form.elements.name.focus();}});
+  async function refreshSharedWorkOptions(){if(document.hidden||app.hidden||savingWorkOption)return;try{await loadPartOptions();refreshRequirementOptions();}catch{showToast('Parts and services could not refresh. Reopen this page to retry.');}}
+  window.addEventListener('storage',e=>{if(e.key===workOptionsKey)refreshSharedWorkOptions();});window.addEventListener('focus',refreshSharedWorkOptions);
 
   function requirementSelect(kind, selectedValue = "") {
     return `<select data-requirement="${kind}">${requirementOptions(kind, selectedValue)}</select>`;
@@ -735,6 +734,8 @@
     const { data: canInspect, error } = await getClient().rpc("has_role", { required_roles: ["super_admin", "owner", "manager", "initial_qc"] });
     if (error) throw error;
     if (!canInspect) throw new Error("Your account does not have Initial QC permission.");
+    await window.GREENLOOP_ACCESS_READY;
+    document.querySelector("#qc-manage-options").hidden=!canManageWorkOptions();
     await Promise.all([loadTechnicians(), loadPendingCount(), loadPartOptions()]);
     createRows(10);
     app.hidden = false;

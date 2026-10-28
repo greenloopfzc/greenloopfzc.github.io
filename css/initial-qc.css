@@ -111,3 +111,9 @@ body.qc-modal-open { overflow: hidden; }
   .qc-bulk-scroll { overflow-x: auto; }
   .qc-bulk-table { min-width: 1120px; }
 }
+
+/* Shared Part and Service names are managed without changing the QC work tray. */
+.qc-options-dialog{width:min(480px,calc(100vw - 32px));max-width:calc(100vw - 32px);box-sizing:border-box;padding:24px;border:1px solid var(--nm-line,#d0dbe2);border-radius:22px;background:var(--nm-card,#f4f8fb);color:var(--nm-ink,#25333b);box-shadow:var(--nm-shadow,8px 9px 20px #172e3c33)}
+.qc-options-dialog::backdrop{background:#13273166}.qc-options-dialog>header{display:flex;align-items:center;justify-content:space-between;gap:12px}.qc-options-dialog h2{margin:0;font-size:1.2rem}.qc-options-dialog>p{color:var(--nm-muted,#536878);font-size:.85rem;line-height:1.5}.qc-options-dialog form{display:grid;gap:16px}.qc-options-dialog label{display:grid;gap:7px;font-size:.85rem;font-weight:700}.qc-options-dialog input,.qc-options-dialog select{box-sizing:border-box;width:100%;min-width:0}.qc-options-dialog .form-message[data-state="success"]{color:var(--nm-green,#08744f)}
+
+.qc-options-dialog input,.qc-options-dialog select{min-height:44px;padding:10px 12px;border:1px solid var(--nm-line,#c7d3cd);border-radius:12px;background:var(--nm-well,#eaf0ed);color:var(--nm-ink,#20362e);box-shadow:var(--nm-inset,inset 3px 3px 6px #c7d0cb,inset -3px -3px 6px #fff);font:inherit}
