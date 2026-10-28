@@ -1458,5 +1458,10 @@
     "page": "lab_glass",
     "capability": "view",
     "read": true
+  },
+  "get_ready_stock_imeis_v1": {
+    "page": "ready_stock",
+    "capability": "view",
+    "read": true
   }
 }

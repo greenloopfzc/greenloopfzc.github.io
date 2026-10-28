@@ -92,3 +92,28 @@
   #ready-stock-date-controls .primary-button, #ready-stock-date-controls .secondary-button { width: 100%; }
   .ready-stock-view-switch { width: auto; }
 }
+
+/* Quantity links open a read-only list without changing the compact stock summary. */
+.ready-stock-quantity { border:1px solid transparent; border-radius:8px; padding:5px 9px; background:transparent; color:var(--nm-accent,#087451); font:inherit; font-weight:800; text-decoration:underline; text-decoration-style:dotted; text-underline-offset:4px; cursor:pointer; }
+.ready-stock-quantity:hover { background:var(--nm-well,#eaf5ee); border-color:var(--nm-line,#c5ded0); }
+.ready-stock-quantity:focus-visible,.ready-stock-total-button:focus-visible { outline:2px solid var(--nm-accent,#087451); outline-offset:3px; }
+.ready-stock-total-button { border:0; background:transparent; color:inherit; font:inherit; font-weight:800; padding:0; cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
+.ready-stock-zero { opacity:.55; }
+.ready-imeis-dialog { width:min(1180px,calc(100vw - 32px)); max-width:calc(100vw - 32px); max-height:90svh; margin:auto; padding:0; border:1px solid var(--nm-line,#d3e1e5); border-radius:22px; color:var(--nm-ink,#203540); background:var(--nm-card,#f5f8fb); box-shadow:0 20px 70px #10283155; overflow:hidden; }
+.ready-imeis-dialog::backdrop { background:#10283188; }
+.ready-imeis-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; padding:22px 24px 12px; }
+.ready-imeis-heading h2 { margin:5px 0 8px; font-size:1.25rem; overflow-wrap:anywhere; }
+.ready-imeis-heading p { margin:0; font-size:.82rem; color:var(--nm-muted,#587080); }
+.ready-imeis-status { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:0 24px 14px; }
+.ready-imeis-status p { margin:0; font-size:.85rem; }
+.ready-imeis-scroll { max-height:52svh; overflow:auto; border-block:1px solid var(--nm-line,#d3e1e5); }
+.ready-imeis-table { border-collapse:collapse; width:100%; min-width:880px; font-size:.83rem; }
+.ready-imeis-table th,.ready-imeis-table td { padding:13px 12px; border-bottom:1px solid var(--nm-line,#d3e1e5); white-space:nowrap; }
+.ready-imeis-table th { position:sticky; top:0; background:var(--nm-well,#e4edf2); z-index:1; }
+.ready-phone-imei { font-family:Consolas,monospace; font-weight:700; }
+.ready-phone-imei a { color:var(--nm-accent,#087451); }
+.ready-imeis-paging { display:flex; align-items:center; justify-content:center; gap:16px; padding:16px 20px; font-size:.85rem; }
+@media(max-width:600px) { .ready-imeis-heading { padding:16px 14px 10px; gap:10px; } .ready-imeis-heading h2 { font-size:1.05rem; } .ready-imeis-status { padding:0 14px 12px; } .ready-imeis-dialog { width:calc(100vw - 20px); max-width:calc(100vw - 20px); } }
+
+#ready-stock-phones .secondary-button { width:auto; min-width:70px; flex:0 0 auto; }
+#ready-stock-phones .ready-imeis-paging span { white-space:nowrap; flex:0 0 auto; }

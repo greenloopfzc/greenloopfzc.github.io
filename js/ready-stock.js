@@ -47,6 +47,43 @@
   let toastTimer;
   let sendingForRework = false;
   let readyGeneration = 0;
+  let quantityScopes=[],phoneScope=null,phoneOffset=0,phoneTotal=0,phoneTicket=0,phoneUser=null;
+  const phoneDialog=document.querySelector('#ready-stock-phones'),phoneRows=document.querySelector('#ready-phones-rows'),phoneStatus=document.querySelector('#ready-phones-status'),phonePage=document.querySelector('#ready-phones-page'),phonePrevious=document.querySelector('#ready-phones-previous'),phoneNext=document.querySelector('#ready-phones-next');
+  const phonePageSize=50;
+  function stockGroup(row){return {m:String(row.model||'Unknown model').trim()||'Unknown model',g:normalize(row.final_grade||'Unspecified')};}
+  function registerScope(label,rows,quantity){const groups=[...new Map(rows.map(row=>{const g=stockGroup(row);return[JSON.stringify(g),g];})).values()];return quantityScopes.push({label,groups,quantity,from:appliedReadyRange.from,to:appliedReadyRange.to})-1;}
+  function quantityButton(quantity,label,rows,suffix=''){
+    if(!quantity)return '<span class="ready-stock-zero">0'+suffix+'</span>';
+    const index=registerScope(label,rows,quantity);
+    return `<button class="ready-stock-quantity" type="button" data-ready-imeis="${index}" data-capability="view" data-capability-page="ready_stock" data-search-read-only aria-label="${escapeHtml('View '+quantity+' IMEIs: '+label)}" title="View IMEIs">${escapeHtml(quantity)}${suffix}</button>`;
+  }
+  function clearPhoneList(){++phoneTicket;phoneScope=null;phoneRows.textContent='';phoneStatus.textContent='';phonePage.textContent='';}
+  function closePhoneList(){clearPhoneList();if(phoneDialog.open)phoneDialog.close();}
+  async function loadPhoneList(){
+    if(!phoneScope||!phoneDialog.open)return;
+    const ticket=++phoneTicket,scope=phoneScope,offset=phoneOffset;
+    phonePrevious.disabled=phoneNext.disabled=true;phoneDialog.setAttribute('aria-busy','true');phoneStatus.textContent='Loading IMEIs…';
+    phoneRows.innerHTML='<tr><td colspan="8">Loading phones…</td></tr>';
+    try{
+      const {data,error}=await getClient().rpc('get_ready_stock_imeis_v1',{p_groups:scope.groups,p_date_from:scope.from,p_date_to:scope.to,p_offset:offset,p_limit:phonePageSize});
+      if(ticket!==phoneTicket||scope!==phoneScope||!phoneDialog.open)return;
+      if(error)throw error;if(!data||!Array.isArray(data.rows)||!Number.isSafeInteger(Number(data.total))||Number(data.total)<0)throw new Error('The complete phone list could not be read. Refresh and try again.');
+      phoneTotal=Number(data.total);if(offset&&offset>=phoneTotal){phoneOffset=Math.max(0,Math.floor((phoneTotal-1)/phonePageSize)*phonePageSize);return await loadPhoneList();}
+      phoneStatus.textContent=phoneTotal+' phone'+(phoneTotal===1?'':'s')+(phoneTotal!==scope.quantity?' · Stock changed since the summary was loaded. Refresh Ready Stock for updated totals.':'');
+      const canOpen=window.GREENLOOP_CAN?.('view','imei_search')&&window.GREENLOOP_CAN?.('search','imei_search');
+      phoneRows.innerHTML=data.rows.length?data.rows.map(row=>`<tr><td class="ready-phone-imei">${canOpen&&row.imei?`<a href="imei-search.html?q=${encodeURIComponent(row.imei)}" title="View phone history">${escapeHtml(row.imei)}</a>`:escapeHtml(row.imei||row.device_number||'—')}</td><td>${escapeHtml(row.model||'Unknown model')}</td><td>${escapeHtml(row.storage_gb==null?'—':GREENLOOP_STORAGE.label(row.storage_gb))}</td><td>${escapeHtml(row.color||'—')}</td><td>${escapeHtml(row.final_grade||'Unspecified')}</td><td>${escapeHtml(row.supplier_code||'—')}</td><td>${escapeHtml(row.batch_number||'—')}</td><td>${escapeHtml(formatDateTime(row.latest_passed_at))}</td></tr>`).join(''):'<tr><td colspan="8">No phones currently match this selection.</td></tr>';
+      phonePage.textContent=phoneTotal?`${offset+1}–${Math.min(offset+data.rows.length,phoneTotal)} of ${phoneTotal}`:'0 phones';
+      phonePrevious.disabled=offset===0;phoneNext.disabled=offset+data.rows.length>=phoneTotal;
+    }catch(error){if(ticket===phoneTicket&&scope===phoneScope&&phoneDialog.open){phoneStatus.textContent=error.message||'IMEIs could not load. Please refresh.';phoneRows.innerHTML='<tr><td colspan="8">Phone list unavailable.</td></tr>';phonePage.textContent='';}}
+    finally{if(ticket===phoneTicket)phoneDialog.removeAttribute('aria-busy');}
+  }
+  function openPhoneList(scope){
+    if(!scope||!scope.groups.length||!window.GREENLOOP_CAN?.('view','ready_stock'))return;
+    phoneScope={...scope};phoneOffset=0;phoneTotal=0;
+    document.querySelector('#ready-phones-title').textContent=scope.label;
+    document.querySelector('#ready-phones-range').textContent=scope.from?`Final QC pass: ${shortDate(scope.from)} – ${shortDate(scope.to)}`:'All current Ready Stock';
+    if(!phoneDialog.open)phoneDialog.showModal();loadPhoneList();
+  }
 
   function getClient() {
     if (!client) client = window.GREENLOOP_GET_CLIENT();
@@ -161,6 +198,7 @@
   }
 
   function render(data) {
+    quantityScopes=[];
     const flatRows = window.GREENLOOP_FILTERS.use('ready-stock-filters', Array.isArray(data?.rows) ? data.rows : [], {before:tableBody.closest('.ready-stock-table-wrap'),nativeControls:'#ready-stock-date-controls',externalFilters:readyRangeFilters,sortAfterGroup:true,sortFields:[['model','Model'],['latest','Latest Final QC pass','date'],['total','Total Qty','number']],fields:[['model','Model'],['final_grade','Grade']],onChange:()=>render(data),searchFields:['model','final_grade']});
     const filteredTotal = flatRows.reduce((sum,row)=>sum+Number(row.quantity||0),0);
     const grades = buildGradeList(data, flatRows);
@@ -175,14 +213,15 @@
     if (filters.toolbar && refresh.parentElement !== filters.toolbar) filters.toolbar.append(refresh);
     filters.refreshLayout?.();
     total.textContent = `${filteredTotal} phone${filteredTotal === 1 ? "" : "s"}`;
+    total.dataset.readyImeis=registerScope('Total Ready Stock',flatRows,filteredTotal);total.disabled=filteredTotal===0;total.title='View IMEIs';
     rangeLabel.textContent = appliedReadyRange.from && appliedReadyRange.to
       ? `Final QC pass: ${shortDate(appliedReadyRange.from)} – ${shortDate(appliedReadyRange.to)}`
       : "All current Ready Stock";
     tableHead.innerHTML = `<tr><th>Model</th>${grades.map((grade) => `<th>${escapeHtml(grade.label)}</th>`).join("")}<th>Latest Final QC pass</th><th>Total Qty</th></tr>`;
     tableBody.innerHTML = rows.length
-      ? rows.map((row) => `<tr><td>${escapeHtml(row.model)}</td>${grades.map((grade) => `<td>${escapeHtml(row.grades.get(grade.key) || 0)}</td>`).join("")}<td>${escapeHtml(formatDateTime(row.latest))}</td><td>${escapeHtml(row.total || 0)}</td></tr>`).join("")
+      ? rows.map((row) => `<tr><td>${escapeHtml(row.model)}</td>${grades.map((grade) => `<td>${quantityButton(row.grades.get(grade.key)||0,row.model+' · Grade '+grade.label,flatRows.filter(r=>stockGroup(r).m===row.model&&stockGroup(r).g===grade.key))}</td>`).join("")}<td>${escapeHtml(formatDateTime(row.latest))}</td><td>${quantityButton(row.total||0,row.model+' · All shown grades',flatRows.filter(r=>stockGroup(r).m===row.model))}</td></tr>`).join("")
       : `<tr><td class="ready-stock-empty" colspan="${grades.length + 3}">No Ready Stock matches these filters.</td></tr>`;
-    tableFoot.innerHTML = `<tr><th>Total</th>${grades.map((grade) => `<th>${escapeHtml(gradeTotals.get(grade.key) || 0)}</th>`).join("")}<th>-</th><th>${escapeHtml(filteredTotal)} pcs</th></tr>`;
+    tableFoot.innerHTML = `<tr><th>Total</th>${grades.map((grade) => `<th>${quantityButton(gradeTotals.get(grade.key)||0,'Grade '+grade.label+' · All shown models',flatRows.filter(r=>stockGroup(r).g===grade.key))}</th>`).join("")}<th>-</th><th>${quantityButton(filteredTotal,'Total Ready Stock',flatRows,' pcs')}</th></tr>`;
   }
 
   async function loadReadyStock() {
@@ -422,6 +461,8 @@
       window.location.replace("index.html");
       return;
     }
+    phoneUser=sessionData.session.user.id;
+    getClient().auth.onAuthStateChange?.((event,session)=>{if(event==='SIGNED_OUT'||session?.user?.id&&session.user.id!==phoneUser){closePhoneList();quantityScopes=[];}});
     unconfirmedStorageKey = `greenloop-rework-unconfirmed:${sessionData.session.user.id}`;
     try {
       const saved = JSON.parse(sessionStorage.getItem(unconfirmedStorageKey) || "[]");
@@ -445,6 +486,15 @@
     syncReworkTechnician();
   }
 
+  document.addEventListener('click',event=>{const button=event.target.closest('[data-ready-imeis]');if(button&&!button.disabled)openPhoneList(quantityScopes[Number(button.dataset.readyImeis)]);});
+  document.querySelector('#ready-phones-close').addEventListener('click',closePhoneList);
+  document.querySelector('#ready-phones-refresh').addEventListener('click',()=>loadPhoneList());
+  phonePrevious.addEventListener('click',()=>{phoneOffset=Math.max(0,phoneOffset-phonePageSize);loadPhoneList();});
+  phoneNext.addEventListener('click',()=>{phoneOffset+=phonePageSize;loadPhoneList();});
+  phoneDialog.addEventListener('cancel',clearPhoneList);
+  phoneDialog.addEventListener('close',()=>{if(!phoneDialog.open)clearPhoneList();});
+  window.addEventListener('pagehide',closePhoneList);
+  window.addEventListener('greenloop:office-locked',closePhoneList);
   document.querySelector("#open-menu").addEventListener("click", () => setMenu(true));
   document.querySelector("#close-menu").addEventListener("click", () => setMenu(false));
   backdrop.addEventListener("click", () => setMenu(false));

@@ -16,11 +16,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css?v=20261016-strict-view-only-1">
-    <link rel="stylesheet" href="css/ready-stock.css?v=20261017-clean-layout-1">
+    <link rel="stylesheet" href="css/ready-stock.css?v=20261028-ready-stock-imeis-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="js/imei-stage-notice.js?v=20261023-dual-imei-1"></script>
   <script defer src="js/permission-catalog.js?v=20261024-office-access-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261027-performance-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261028-ready-stock-imeis-1"></script>
 <script defer src="js/page-capabilities.js?v=20261024-office-access-1"></script>
 <link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
 <script defer src="js/office-access.js?v=20261024-office-access-1"></script>
@@ -30,7 +30,8 @@
   <script defer src="js/record-search.js?v=20261027-performance-1"></script>
     <script defer src="js/part-notifications.js?v=20261027-performance-1"></script>
     <script defer src="js/employee-updates.js?v=20261027-performance-1"></script>
-  <script defer src="js/ready-stock.js?v=20261026-employees-1"></script>
+  <script defer src="js/storage-options.js?v=20261027-iphone-entry-options-1"></script>
+  <script defer src="js/ready-stock.js?v=20261028-ready-stock-imeis-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
     <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261003-qc-duplicate-stage-1">
   <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
@@ -67,7 +68,7 @@
           <div id="permission-message" class="access-message" hidden></div>
           <section id="ready-stock-app" hidden>
             <section class="page-heading ready-stock-heading">
-              <div class="ready-stock-heading-copy"><div class="ready-stock-title-row"><h1 id="ready-stock-title" tabindex="-1">Ready Stock</h1><span id="ready-stock-summary" class="ready-stock-inline-total"><strong id="ready-stock-total">0 phones</strong></span></div><p id="ready-stock-subtitle" class="heading-subtitle"><span id="ready-stock-range-label">All current Ready Stock</span></p></div>
+              <div class="ready-stock-heading-copy"><div class="ready-stock-title-row"><h1 id="ready-stock-title" tabindex="-1">Ready Stock</h1><span id="ready-stock-summary" class="ready-stock-inline-total"><button id="ready-stock-total" type="button" class="ready-stock-total-button" data-capability="view" data-capability-page="ready_stock" data-search-read-only disabled>0 phones</button></span></div><p id="ready-stock-subtitle" class="heading-subtitle"><span id="ready-stock-range-label">All current Ready Stock</span></p></div>
               <div class="ready-stock-heading-actions">
                 <a id="back-to-ready-stock" class="secondary-button ready-stock-view-switch" href="#stock" aria-controls="ready-stock-view" hidden><span aria-hidden="true">←</span> Ready Stock</a>
                 <div id="ready-stock-table-actions" class="ready-stock-heading-actions"><a class="primary-button" href="export-box.html">Box Entry <span aria-hidden="true">→</span></a><details class="ready-stock-actions-menu"><summary class="secondary-button">Actions <span aria-hidden="true">▾</span></summary><div class="ready-stock-action-options"><a id="open-ready-stock-rework" href="#rework" aria-controls="ready-stock-rework-view">Send for rework</a><a href="ready-stock-journey.html">View device journey</a></div></details></div>
@@ -103,6 +104,12 @@
         </div>
       </main>
     </div>
+    <dialog id="ready-stock-phones" class="ready-imeis-dialog" aria-labelledby="ready-phones-title">
+      <header class="ready-imeis-heading"><div><p class="panel-kicker">Ready Stock IMEIs</p><h2 id="ready-phones-title">Ready Stock</h2><p id="ready-phones-range"></p></div><button id="ready-phones-close" class="secondary-button" type="button" data-search-read-only>Close</button></header>
+      <div class="ready-imeis-status"><p id="ready-phones-status" role="status" aria-live="polite"></p><button id="ready-phones-refresh" class="secondary-button" type="button" data-search-read-only>Refresh list</button></div>
+      <div class="ready-imeis-scroll"><table class="ready-imeis-table"><thead><tr><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>Final Grade</th><th>Supplier Code</th><th>Stock/Batch No</th><th>Final QC Pass</th></tr></thead><tbody id="ready-phones-rows"></tbody></table></div>
+      <footer class="ready-imeis-paging"><button id="ready-phones-previous" class="secondary-button" type="button" data-search-read-only disabled>Previous</button><span id="ready-phones-page"></span><button id="ready-phones-next" class="secondary-button" type="button" data-search-read-only disabled>Next</button></footer>
+    </dialog>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   </body>
 </html>
