@@ -55,6 +55,19 @@
 
   function getClient() { return (client ||= window.GREENLOOP_GET_CLIENT()); }
   function escapeHtml(value) { return String(value ?? "").replace(/[&<>'"]/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"})[c]); }
+  // Anchor elapsed time to the server using a monotonic local clock; no timer RPCs.
+  let phoneClock=null;
+  function phoneNow(){return phoneClock?phoneClock.server+Math.max(0,performance.now()-phoneClock.local):NaN;}
+  function elapsedPhoneTime(start){const minutes=Math.floor(Math.max(0,phoneNow()-start)/60000);if(!Number.isFinite(minutes))return 'Not recorded';if(minutes===0)return 'Less than 1 min';const days=Math.floor(minutes/1440),hours=Math.floor(minutes%1440/60),mins=minutes%60;return [days?days+'d':'',hours?hours+'h':'',mins?mins+'m':''].filter(Boolean).join(' ');}
+  function phoneTime(row){
+    for(const [key,label]of [['lab_entered_at','Time in Lab & Glass'],['technician_assigned_at','Time with technician'],['line_created_at','Work line age']]){
+      const start=row[key]?Date.parse(row[key]):NaN;if(!Number.isFinite(start)||start>phoneNow())continue;
+      const since=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric',hour:'numeric',minute:'2-digit',hour12:true}).format(new Date(start));
+      return `<div class="lab-phone-time${phoneNow()-start>=172800000?' is-overdue':''}" title="${escapeHtml(label+' · Since '+since+' · UAE')}"><span>${escapeHtml(label)}</span><strong data-lab-phone-age data-started-at="${escapeHtml(new Date(start).toISOString())}">${escapeHtml(elapsedPhoneTime(start))}</strong></div>`;
+    }
+    return '<div class="lab-phone-time is-unrecorded"><span>Time in Lab &amp; Glass</span><strong>Time not recorded</strong></div>';
+  }
+  function updatePhoneAges(){if(isFrameMode||document.hidden||app.hidden||!app.isConnected)return;for(const el of technicianWorkRows.querySelectorAll('[data-lab-phone-age]')){const start=Date.parse(el.dataset.startedAt),text=elapsedPhoneTime(start);if(el.textContent!==text)el.textContent=text;el.closest('.lab-phone-time').classList.toggle('is-overdue',phoneNow()-start>=172800000);}}
   function normalise(value) { return String(value || "").trim().replace(/\s+/g, " ").toLowerCase(); }
   function unique(values) { const seen = new Set(); return values.map((value) => String(value || "").trim()).filter((value) => value && !seen.has(normalise(value)) && seen.add(normalise(value))); }
   function asList(value) { if (Array.isArray(value)) return value; if (!value) return []; try { return JSON.parse(value); } catch { return []; } }
@@ -258,12 +271,12 @@
         labelledStatic("Initial QC Parts", readOnlyList(qcParts)),
         labelledStatic("Initial QC Service", readOnlyList(qcServices))
       ].join("");
-      if(row.unassigned){return `<tr class="lab-phone-row unassigned-phone" data-step-id="${escapeHtml(row.step_id)}"><td colspan="12"><article class="lab-phone-card"><div class="lab-card-status"><span>Awaiting employee assignment</span></div><div class="lab-static-grid">${staticLine}</div><div class="employee-assignment"><label>Assign employee<select data-assign-employee data-capability="entry" data-capability-page="lab_glass"><option value="">Choose employee</option>${technicians.filter(t=>!t.unassigned).map(t=>`<option value="${escapeHtml(t.id)}">${escapeHtml(t.full_name)}</option>`).join('')}</select></label><button type="button" class="line-save" data-assign-employee-save data-capability="entry" data-capability-page="lab_glass">Assign employee</button></div></article></td></tr>`;}
+      if(row.unassigned){return `<tr class="lab-phone-row unassigned-phone" data-step-id="${escapeHtml(row.step_id)}"><td colspan="12"><article class="lab-phone-card"><div class="lab-card-header">${phoneTime(row)}<div class="lab-card-status"><span>Awaiting employee assignment</span></div></div><div class="lab-static-grid">${staticLine}</div><div class="employee-assignment"><label>Assign employee<select data-assign-employee data-capability="entry" data-capability-page="lab_glass"><option value="">Choose employee</option>${technicians.filter(t=>!t.unassigned).map(t=>`<option value="${escapeHtml(t.id)}">${escapeHtml(t.full_name)}</option>`).join('')}</select></label><button type="button" class="line-save" data-assign-employee-save data-capability="entry" data-capability-page="lab_glass">Assign employee</button></div></article></td></tr>`;}
       const visual = linePartVisual(row);
       const draft = lineDrafts.get(String(row.step_id));
       const displayedParts = draft?.partsDirty ? draft.parts : row.pf_plan?.locked?[]:labPartNames(row);
       const displayedServices = draft?.servicesDirty ? draft.services : labServiceNames(row);
-      return `<tr class="lab-phone-row ${visual.className}" data-step-id="${escapeHtml(row.step_id)}"><td colspan="12"><article class="lab-phone-card"><div class="lab-card-status"><span>${escapeHtml(visual.label)}</span></div><div class="lab-static-grid">${staticLine}</div><div class="lab-edit-grid"><fieldset class="pf-lab-choices"><div class="lab-edit-field lab-parts-field"><span class="lab-field-label">${usesManualParts(row) ? "Parts added in Lab" : "Final parts required"}</span>${row.pf_plan?.locked?activePartList(row)+'<span class="lab-field-label">Add Parts</span>':''}${choiceCell("part",unique([...partOptions,...(row.pf_plan?.part_history||[]).map(p=>p.name)]),displayedParts,row)}</div></fieldset><div class="lab-edit-field pf-lab-services"><span class="lab-field-label">Lab &amp; Glass services</span>${choiceCell("service", standardServices, displayedServices,row)}<button type="button" class="line-save" data-save-services="${escapeHtml(row.step_id)}" ${row.pf_plan?.services_saved&&!draft?.servicesDirty?'disabled':''}>Save Services</button><small>${draft?.servicesDirty?'Unsaved service changes':row.pf_plan?.services_saved?'Saved in Lab &amp; Glass':'Managed in Lab &amp; Glass'}</small></div><div class="lab-line-actions">${saveCell}${issuedPartTools(row)}</div></div></article></td></tr>`;
+      return `<tr class="lab-phone-row ${visual.className}" data-step-id="${escapeHtml(row.step_id)}"><td colspan="12"><article class="lab-phone-card"><div class="lab-card-header">${phoneTime(row)}<div class="lab-card-status"><span>${escapeHtml(visual.label)}</span></div></div><div class="lab-static-grid">${staticLine}</div><div class="lab-edit-grid"><fieldset class="pf-lab-choices"><div class="lab-edit-field lab-parts-field"><span class="lab-field-label">${usesManualParts(row) ? "Parts added in Lab" : "Final parts required"}</span>${row.pf_plan?.locked?activePartList(row)+'<span class="lab-field-label">Add Parts</span>':''}${choiceCell("part",unique([...partOptions,...(row.pf_plan?.part_history||[]).map(p=>p.name)]),displayedParts,row)}</div></fieldset><div class="lab-edit-field pf-lab-services"><span class="lab-field-label">Lab &amp; Glass services</span>${choiceCell("service", standardServices, displayedServices,row)}<button type="button" class="line-save" data-save-services="${escapeHtml(row.step_id)}" ${row.pf_plan?.services_saved&&!draft?.servicesDirty?'disabled':''}>Save Services</button><small>${draft?.servicesDirty?'Unsaved service changes':row.pf_plan?.services_saved?'Saved in Lab &amp; Glass':'Managed in Lab &amp; Glass'}</small></div><div class="lab-line-actions">${saveCell}${issuedPartTools(row)}</div></div></article></td></tr>`;
     }).join("");
   }
 
@@ -326,12 +339,13 @@
   async function readWorkbench(args) {
     const key=JSON.stringify(args);
     if(!workbenchReads.has(key)){
-      const request=labRead(getClient().rpc('get_lab_workbench_v1',args)).then(({data,error})=>{if(error)throw error;if(!data||!Array.isArray(data.rows))throw new Error('Phone lines could not be verified.');return data;}).finally(()=>workbenchReads.delete(key));
+      const request=labRead(getClient().rpc('get_lab_workbench_timing_v1',args)).then(({data,error})=>{if(error)throw error;if(!data||!Array.isArray(data.rows)||!Number.isFinite(Date.parse(data.server_now)))throw new Error('Phone lines could not be verified.');return data;}).finally(()=>workbenchReads.delete(key));
       workbenchReads.set(key,request);
     }
     return workbenchReads.get(key);
   }
-  function applyWorkbenchRows(rows,{quiet=false}={}){
+  function applyWorkbenchRows(rows,{quiet=false,serverTime}={}){
+    if(Number.isFinite(Date.parse(serverTime)))phoneClock={server:Date.parse(serverTime),local:performance.now()};
     for(const row of rows){const p=row.pf_plan;if(!p)continue;const id=String(row.step_id),d=lineDrafts.get(id);if(d&&d.cycle!==p.cycle)lineDrafts.delete(id);else if(d?.partsDirty&&d.modeLocked!==!!p.locked)clearDraftKind(id,'parts');}
     if(quiet&&JSON.stringify(technicianRows)===JSON.stringify(rows))return;
     technicianRows=rows;renderTechnicianLines();
@@ -345,7 +359,7 @@
     const data=await readWorkbench({p_employee_id:employee?.unassigned?null:technicianId,p_imei:scan||null});
     if(version!==rowLoadVersion||technicianId!==activeTechnicianId||editsAtStart!==editVersion||scan!==focusedImei)return;
     if(scan&&String(data.employee_id)!==String(technicianId)){setBoardMessage('Phone assignment changed. Scan the IMEI again.');return;}
-    applyWorkbenchRows(data.rows,{quiet});
+    applyWorkbenchRows(data.rows,{quiet,serverTime:data.server_now});
   }
   async function loadFrameRows() {
     setBoardMessage();
@@ -530,7 +544,7 @@
       if(!technicians.some(t=>String(t.id)===String(technician.id)))technicians.push(technician);
       activeTechnicianId=String(technician.id);focusedStepId=String(data.step_id);
       renderTechnicianCards();await workFilters.clear();if(!scanCurrent())return;
-      applyWorkbenchRows(data.rows);
+      applyWorkbenchRows(data.rows,{serverTime:data.server_now});
       const target = technicianWorkRows.querySelector(`tr[data-step-id="${CSS.escape(focusedStepId)}"]`);
       if (!target || target.hidden) throw new Error("The phone assignment changed or its line is no longer pending. Search the IMEI again.");
       setBoardMessage(`IMEI ${imei} · ${technician.full_name}`, true);
@@ -589,6 +603,9 @@
       const refreshBoard=()=>{if(!document.hidden&&!app.hidden&&app.isConnected)loadTechnicians(activeTechnicianId).catch(()=>{});};
       document.addEventListener('greenloop:workflow-notifications-refreshed',refreshBoard);
       window.setInterval(refreshBoard,5000);
+      window.setInterval(updatePhoneAges,60000);
+      document.addEventListener("visibilitychange",updatePhoneAges);
+      window.addEventListener("focus",updatePhoneAges);
       window.setInterval(() => {
         if (
           document.visibilityState !== "visible"

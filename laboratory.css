@@ -198,3 +198,12 @@ html[data-mode="dark"] .lab-pending-value #lab-total-pending-count{color:#ff8a80
 @media(max-width:550px){.lab-imei-toolbar{gap:16px}.lab-imei-toolbar .lab-imei-finder{flex-basis:100%}.lab-total-pending{flex:1 1 100%;min-width:0;height:46px;min-height:46px;padding:6px 12px}.lab-pending-copy{justify-content:space-between;gap:8px}.lab-pending-label{font-size:.7rem;max-width:58px;white-space:normal}.lab-pending-value #lab-total-pending-count{font-size:1.45rem}.lab-pending-value #lab-total-pending-unit{font-size:.7rem}}
 /* Technician counts retain their solid red badges. */
 html[data-gl-page="laboratory.html"] .technician-cards{gap:16px 9px;margin-top:22px}html[data-gl-page="laboratory.html"] .technician-card{min-height:78px;padding-top:18px}html[data-gl-page="laboratory.html"] .technician-card-count{top:-8px;right:7px;min-width:30px;height:30px;padding:0 7px;font-size:.88rem;font-weight:900;line-height:1;box-shadow:0 2px 5px #17342622}html[data-gl-page="laboratory.html"] .technician-card-count:not(.is-zero){color:#fff;background:#dc2f25;border-color:var(--nm-card,#fff)}
+
+/* Each phone keeps its own elapsed-time strip above the saved phone details. */
+.lab-card-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 16px;padding:9px 12px;border-bottom:1px solid var(--nm-line,#d8e1e7);background:var(--nm-card,#f5f8fb);border-radius:16px 16px 0 0}
+.lab-card-header .lab-card-status{position:static;padding:0;text-align:initial;flex:0 0 auto}
+.lab-phone-time{display:flex;align-items:baseline;flex-wrap:wrap;gap:5px 9px;color:var(--nm-muted,#536878);font-size:.74rem;line-height:1.5;min-width:0}
+.lab-phone-time strong{color:var(--nm-ink,#25333b);font-size:.86rem;font-weight:800;font-variant-numeric:tabular-nums}
+.lab-phone-time.is-overdue strong{color:var(--nm-amber,#9b651b)}
+.lab-phone-time.is-unrecorded strong{font-size:.74rem;font-weight:600;color:var(--nm-muted,#536878)}
+@media(max-width:560px){.lab-card-header{gap:7px;padding:9px 10px}.lab-phone-time{font-size:.7rem}.lab-phone-time strong{font-size:.82rem}}

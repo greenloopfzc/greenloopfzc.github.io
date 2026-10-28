@@ -1468,5 +1468,10 @@
     "page": "imei_search",
     "capability": "view",
     "read": true
+  },
+  "get_lab_workbench_timing_v1": {
+    "page": "lab_glass",
+    "capability": "view",
+    "read": true
   }
 }
