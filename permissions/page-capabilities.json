@@ -234,12 +234,12 @@
     },
     {
       "key": "daily_production",
-      "label": "Daily Production Report",
+      "label": "Available Stock",
       "description": "Daily closing stock, grade reports and independent manual entry.",
       "capabilities": [
         {
           "key": "view",
-          "label": "Open Daily Production",
+          "label": "Open Available Stock",
           "write": false
         },
         {
@@ -686,27 +686,27 @@
         },
         {
           "key": "production_view",
-          "label": "Daily Production entry history",
+          "label": "Available Stock entry history",
           "write": false
         },
         {
           "key": "production_edit",
-          "label": "Correct Daily Production entries",
+          "label": "Correct Available Stock entries",
           "write": true
         },
         {
           "key": "production_delete",
-          "label": "Delete Daily Production entries",
+          "label": "Delete Available Stock entries",
           "write": true
         },
         {
           "key": "production_restore",
-          "label": "Restore deleted Daily Production entries",
+          "label": "Restore deleted Available Stock entries",
           "write": true
         },
         {
           "key": "production_delete_all",
-          "label": "Delete all Daily Production data (all dates)",
+          "label": "Delete all Available Stock data (all dates)",
           "write": true
         },
         {

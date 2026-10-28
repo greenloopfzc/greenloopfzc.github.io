@@ -9,19 +9,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#0d5c43">
     <meta name="description" content="Independent manual stock and daily production by model and grade.">
-    <title>Daily Production Report | Greenloop</title>
+    <title>Available Stock | Greenloop</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css?v=20261016-strict-view-only-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="js/imei-stage-notice.js?v=20261023-dual-imei-1"></script>
-  <script defer src="js/permission-catalog.js?v=20261024-office-access-1"></script>
+  <script defer src="js/permission-catalog.js?v=20261028-available-stock-1"></script>
 <script defer src="js/rpc-capabilities.js?v=20261027-performance-1"></script>
 <script defer src="js/page-capabilities.js?v=20261024-office-access-1"></script>
 <link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
 <script defer src="js/office-access.js?v=20261024-office-access-1"></script>
-<script defer src="js/config.js?v=20261027-performance-1"></script>
+<script defer src="js/config.js?v=20261028-available-stock-1"></script>
   <script defer src="js/login-activity.js?v=20261013-search-tv-1"></script>
   <link rel="stylesheet" href="css/record-search.css?v=20261017-find-record-popup-1">
   <script defer src="js/record-search.js?v=20261027-performance-1"></script>
@@ -40,7 +40,7 @@
   <link rel="stylesheet" href="css/production-last-day.css?v=20261022-production-last-day-1">
   <script defer src="js/production-last-day.js?v=20261023-production-last-day-visibility-1"></script>
   <script defer src="js/storage-options.js?v=20261027-iphone-entry-options-1"></script>
-  <script defer src="js/daily-production.js?v=20261028-production-card-layout-1"></script>
+  <script defer src="js/daily-production.js?v=20261028-available-stock-1"></script>
   <script defer src="js/suspicious-badge.js?v=20261017-suspicious-activity-1"></script>
 </head>
     <body class="app-page dp-page">
@@ -52,9 +52,9 @@
       </aside>
       <div id="menu-backdrop" class="menu-backdrop" hidden></div>
       <main class="app-main">
-        <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Dashboard</a><span aria-hidden="true">/</span><strong>Daily Production Report</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
+        <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Dashboard</a><span aria-hidden="true">/</span><strong>Available Stock</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
         <div class="page-content dp-content">
-          <header class="dp-heading"><div><p class="eyebrow">MANUAL STOCK REGISTER</p><h1>Daily Production Report</h1><p>Count stock box by box within each 6 PM–6 PM production day.</p></div><button id="dp-refresh" class="secondary-button" data-capability="view">Refresh</button></header>
+          <header class="dp-heading"><div><p class="eyebrow">MANUAL STOCK REGISTER</p><h1>Available Stock</h1><p>Count stock box by box within each 6 PM–6 PM production day.</p></div><button id="dp-refresh" class="secondary-button" data-capability="view">Refresh</button></header>
           <p id="dp-message" class="dp-message" role="status" hidden></p>
           <section class="dp-entry-section" id="dp-entry-section" hidden>
             <button id="dp-entry-toggle" class="dp-entry-tile" data-capability="entry" aria-expanded="false" aria-controls="dp-entry-panel"><span class="dp-card-icon">＋</span><span><strong>Daily Data Entry</strong><small>Model · GB · Grade · Box quantity</small></span><span aria-hidden="true">→</span></button>
@@ -96,6 +96,6 @@
       <p class="dp-help">Delete a choice with −. It disappears from dropdowns and this list. Previous entries stay available in Reports.</p><p id="dp-options-error" class="dp-message" role="status" hidden></p><div id="dp-options-list"></div>
     </dialog>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
-    <dialog id="dp-pdf-dialog" class="dp-dialog dp-pdf-dialog" aria-labelledby="dp-pdf-title"><header><h2 id="dp-pdf-title">Daily Production PDF</h2><button id="dp-pdf-close" type="button" data-capability="view" aria-label="Close PDF">×</button></header><div class="dp-pdf-actions"><a id="dp-pdf-open" class="secondary-button" target="_blank" rel="noopener" data-capability="download">Open PDF</a><a id="dp-pdf-download" class="primary-button" data-capability="download" download>Download PDF</a><span id="dp-pdf-status" class="dp-help"></span></div><div id="dp-pdf-frame" role="region" aria-label="Daily Production PDF preview"></div></dialog>
+    <dialog id="dp-pdf-dialog" class="dp-dialog dp-pdf-dialog" aria-labelledby="dp-pdf-title"><header><h2 id="dp-pdf-title">Available Stock PDF</h2><button id="dp-pdf-close" type="button" data-capability="view" aria-label="Close PDF">×</button></header><div class="dp-pdf-actions"><a id="dp-pdf-open" class="secondary-button" target="_blank" rel="noopener" data-capability="download">Open PDF</a><a id="dp-pdf-download" class="primary-button" data-capability="download" download>Download PDF</a><span id="dp-pdf-status" class="dp-help"></span></div><div id="dp-pdf-frame" role="region" aria-label="Available Stock PDF preview"></div></dialog>
   </body>
 </html>

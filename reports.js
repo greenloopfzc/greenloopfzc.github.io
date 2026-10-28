@@ -96,7 +96,7 @@
       columns: []
     },
     production_correction: {
-      title: "Daily Production Correction",
+      title: "Available Stock Correction",
       description: "Review saved box entries, correct Model, GB, Grade or quantity, and delete an incorrect entry with an audit trail.",
       columns: []
     },
