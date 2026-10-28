@@ -1505,5 +1505,15 @@
   "save_qc_dropdown_v1": {
     "page": "initial_qc",
     "capability": "manage_options"
+  },
+  "get_ranked_qc_dropdowns_v1": {
+    "page": "initial_qc",
+    "capability": "view",
+    "read": true
+  },
+  "get_ranked_lab_workbench_v1": {
+    "page": "lab_glass",
+    "capability": "view",
+    "read": true
   }
 }

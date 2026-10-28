@@ -141,7 +141,7 @@
 
   async function loadPartOptions() {
     if(loadingWorkOptions)return loadingWorkOptions;
-    loadingWorkOptions=(async()=>{const {data,error}=await getClient().rpc('get_qc_dropdowns_v1',{});if(error)throw error;if(!Array.isArray(data?.parts)||!Array.isArray(data?.services)||!Array.isArray(data?.supplier_grades)||!Array.isArray(data?.gc_grades)||![...data.parts,...data.services,...data.supplier_grades,...data.gc_grades].every(o=>typeof o.name==='string'&&o.name.trim()))throw new Error('The managed dropdown lists could not be verified. Finish installing its update.');
+    loadingWorkOptions=(async()=>{const {data,error}=await getClient().rpc('get_ranked_qc_dropdowns_v1',{});if(error)throw error;if(!Array.isArray(data?.parts)||!Array.isArray(data?.services)||!Array.isArray(data?.supplier_grades)||!Array.isArray(data?.gc_grades)||![...data.parts,...data.services,...data.supplier_grades,...data.gc_grades].every(o=>typeof o.name==='string'&&o.name.trim()))throw new Error('The managed dropdown lists could not be verified. Finish installing its update.');
     supplierGradeItems=data.supplier_grades.map(o=>o.name);gcGradeItems=data.gc_grades.map(o=>o.name);
     workItems=[...data.parts.map(o=>({label:o.name,kind:'part',partName:o.name,action:'Replace or use '+o.name})),...data.services.map(o=>serviceItems.find(s=>s.label.toLowerCase()===o.name.toLowerCase())||{label:o.name,kind:'service',partName:null,action:'Complete '+o.name+' service'})];})();
     try{return await loadingWorkOptions;}finally{loadingWorkOptions=null;}

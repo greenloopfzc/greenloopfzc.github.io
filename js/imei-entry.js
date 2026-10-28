@@ -387,9 +387,13 @@
     }).catch(() => {});
   }
 
+  let autoSaveEpoch = 0;
+  const canEnter = () => window.GREENLOOP_PAGE_ACCESS?.canEdit === true && (!window.GREENLOOP_CAN || window.GREENLOOP_CAN("entry", "imei_entry"));
+  window.addEventListener("greenloop:imei-auto-save-changed", () => { autoSaveEpoch += 1; window.clearTimeout(autoSaveTimer); syncAutoSaveControl(); scheduleAutoSave(); });
+  batchSelect.addEventListener("change", () => { autoSaveEpoch += 1; window.clearTimeout(autoSaveTimer); });
   function canAutoSave() {
     return Boolean(
-      entryReady && window.GREENLOOP_PAGE_ACCESS?.canEdit === true && battery.dataset.estimated !== "yes" && !savedImeis.has(imei.value.trim()) &&
+      entryReady && canEnter() && battery.dataset.estimated !== "yes" && !savedImeis.has(imei.value.trim()) &&
       !(cableMirror && window.GREENLOOP_BULK_CABLE_OWNER?.()) &&
       batches.some((item) => item.batch_id === batchSelect.value) &&
       /^\d{15}$/.test(imei.value.trim()) && imei.checkValidity() &&
@@ -400,16 +404,18 @@
   function scheduleAutoSave() {
     window.clearTimeout(autoSaveTimer);
     if (!autoSaveEnabled()) return;
-    if (!canAutoSave() || (!batteryUnavailable.checked && battery.value.length < 2)) return;
-    autoSaveTimer = window.setTimeout(() => saveImei(null, true), 650);
+    if (!canAutoSave()) return;
+    const epoch = autoSaveEpoch;
+    autoSaveTimer = window.setTimeout(() => { if (epoch === autoSaveEpoch) saveImei(null, true); }, 650);
   }
 
   async function saveImei(event, automatic = false) {
     event?.preventDefault();
     window.clearTimeout(autoSaveTimer);
     if (saving) return;
-    if (!entryReady || window.GREENLOOP_PAGE_ACCESS?.canEdit !== true) { setMessage("Entry permission is required to save an IMEI."); return; }
-    if (automatic && !canAutoSave()) return;
+    if (!entryReady || !canEnter()) { setMessage("Entry permission is required to save an IMEI."); return; }
+    if (automatic && (!autoSaveEnabled() || !canAutoSave())) return;
+    const epoch = autoSaveEpoch;
     setMessage();
     const batch = batches.find((item) => item.batch_id === batchSelect.value);
     if (!batch) { setMessage("Select a supplier-code stock batch first."); return; }
@@ -434,6 +440,7 @@
     setBusy(submit, true, automatic ? "Saving automatically..." : "Saving IMEI...");
     try {
     if (await checkDuplicateImei(scannedImei, { force: !automatic })) return;
+    if (!canEnter() || batchSelect.value !== batch.batch_id || (automatic && (!autoSaveEnabled() || epoch !== autoSaveEpoch))) { setMessage("Not saved — Auto Save stopped or receipt/access changed."); return; }
     const { data, error } = await api().rpc("receive_stock_batch_imei_with_identity_v1", receiptDetails);
     if (error) { setMessage(window.GREENLOOP_SHOW_IMEI_SAVE_ERROR(error, scannedImei)); return; }
     savedImeis.add(scannedImei);
@@ -528,8 +535,7 @@
   form.addEventListener("submit", saveImei);
   autoSaveToggle?.addEventListener("change", () => {
     localStorage.setItem("greenloop-imei-auto-save", autoSaveToggle.checked ? "on" : "off");
-    syncAutoSaveControl();
-    if (autoSaveToggle.checked) scheduleAutoSave();
+    window.dispatchEvent(new Event("greenloop:imei-auto-save-changed"));
   });
   window.addEventListener("greenloop:device", (event) => {
     applyConnectedDevice(event.detail || {});

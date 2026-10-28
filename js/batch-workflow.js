@@ -62,6 +62,28 @@
     let currentBatch;
     let slots = [];
     let loadVersion = 0;
+    let autoSaveEpoch = 0;
+    let autoSaveRunning = false;
+    const autoSaveQueue = [];
+    const queuedRows = new Set();
+    const canEnter = () => window.GREENLOOP_PAGE_ACCESS?.canEdit === true && (!window.GREENLOOP_CAN || window.GREENLOOP_CAN("entry", "imei_entry"));
+    function cancelAutoSaves() {
+      autoSaveEpoch += 1;
+      autoSaveQueue.length = 0; queuedRows.clear();
+      panel.querySelectorAll("tbody tr").forEach(row => window.clearTimeout(row._autoSaveTimer));
+    }
+    async function drainAutoSaves() {
+      if (autoSaveRunning) return;
+      autoSaveRunning = true;
+      try {
+        while (autoSaveQueue.length) {
+          const { row, epoch } = autoSaveQueue.shift(); queuedRows.delete(row);
+          if (epoch !== autoSaveEpoch || !autoSaveEnabled() || !panel.contains(row)) continue;
+          if (performance.now() < row._autoSaveDue) { scheduleRowSave(row); continue; }
+          await saveRow(row, true, epoch);
+        }
+      } finally { autoSaveRunning = false; }
+    }
     const savedImeis = window.GREENLOOP_SAVED_ENTRY_IMEIS ||= new Set();
     const savingImeis = window.GREENLOOP_SAVING_ENTRY_IMEIS ||= new Set();
     window.GREENLOOP_BULK_CABLE_OWNER = () => Boolean(currentBatch && !panel.hidden);
@@ -93,8 +115,35 @@
     }
     function scheduleRowSave(row) {
       window.clearTimeout(row._autoSaveTimer);
-      if (autoSaveEnabled() && rowComplete(row) && row.querySelector(".batch-row-battery").dataset.estimated !== "yes") row._autoSaveTimer = window.setTimeout(() => saveRow(row, true), 650);
+      if (!autoSaveEnabled() || row.dataset.busy === "yes" || row.dataset.saved === "yes" || !canEnter()) return;
+      const estimated = row.querySelector(".batch-row-battery").dataset.estimated === "yes";
+      if (!rowComplete(row) || estimated) {
+        const missing = [];
+        if (!/^\d{15}$/.test(row.querySelector(".batch-row-imei").value.trim())) missing.push("15-digit IMEI");
+        for (const [key, title] of [["brand","Brand"],["model","Model"],["storage","GB"],["color","Color"]]) if (!row.querySelector(".batch-row-" + key).value.trim()) missing.push(title);
+        if (!missing.length && !rowComplete(row)) missing.push("valid Battery Health");
+        if (estimated) missing.push("review Battery Health");
+        setRowStatus(row, "Auto Save: " + (missing.length ? missing.join(", ") : "check IMEI"));
+        return;
+      }
+      setRowStatus(row, "Ready for Auto Save");
+      row._autoSaveDue = performance.now() + 650;
+      const epoch = autoSaveEpoch;
+      row._autoSaveTimer = window.setTimeout(() => {
+        if (epoch !== autoSaveEpoch || !autoSaveEnabled() || queuedRows.has(row)) return;
+        queuedRows.add(row); autoSaveQueue.push({ row, epoch }); void drainAutoSaves();
+      }, 650);
     }
+    function syncBulkAutoSave() {
+      cancelAutoSaves();
+      const toggle = panel.querySelector(".batch-auto-save-toggle");
+      if (toggle) { toggle.checked = autoSaveEnabled(); toggle.closest("label").querySelector("strong").textContent = toggle.checked ? "ON" : "OFF"; }
+      panel.querySelectorAll("tbody tr").forEach(row => {
+        if (autoSaveEnabled()) scheduleRowSave(row);
+        else if (row.dataset.saved !== "yes" && row.dataset.busy !== "yes" && !row.querySelector(".batch-row-status").classList.contains("is-error")) setRowStatus(row, "Waiting — Save manually");
+      });
+    }
+    window.addEventListener("greenloop:imei-auto-save-changed", syncBulkAutoSave);
 
     async function reloadOptionGroup(group, preferredValue = "", preferredRow = null) {
       const masterByGroup = { model: modelMaster, storage_gb: storageMaster, color: colorMaster };
@@ -176,6 +225,7 @@
     }
 
     function renderRows() {
+      cancelAutoSaves();
       if (!currentBatch) {
         panel.hidden = true;
         label.hidden = true;
@@ -216,7 +266,7 @@
           select.dataset.manuallyChanged = "yes";
           select.dataset.cableEdited = "yes";
           continueSelectionToFollowingRows(select);
-          scheduleRowSave(select.closest("tr"));
+          panel.querySelectorAll("tbody tr").forEach(scheduleRowSave);
         });
       });
 
@@ -266,17 +316,16 @@
       });
       panel.querySelector(".batch-auto-save-toggle")?.addEventListener("change", (event) => {
         localStorage.setItem("greenloop-imei-auto-save", event.target.checked ? "on" : "off");
-        event.target.closest("label").querySelector("strong").textContent = event.target.checked ? "ON" : "OFF";
-        const primaryToggle = document.querySelector("#auto-save-toggle");
-        if (primaryToggle) primaryToggle.checked = event.target.checked;
+        window.dispatchEvent(new Event("greenloop:imei-auto-save-changed"));
       });
+      syncBulkAutoSave();
       panel.querySelector(".batch-row-imei")?.focus();
     }
 
-    async function saveRow(row, automatic = false) {
+    async function saveRow(row, automatic = false, epoch = autoSaveEpoch) {
       if (!row || row.dataset.busy === "yes" || row.dataset.saved === "yes") return;
-      if (window.GREENLOOP_PAGE_ACCESS?.canEdit !== true) { setRowStatus(row, "Entry permission is required", "is-error"); return; }
-      if (automatic && (!autoSaveEnabled() || !rowComplete(row) || row.querySelector(".batch-row-battery").dataset.estimated === "yes")) return;
+      if (!canEnter()) { setRowStatus(row, "Entry permission is required", "is-error"); return; }
+      if (automatic && (epoch !== autoSaveEpoch || !autoSaveEnabled() || !rowComplete(row) || row.querySelector(".batch-row-battery").dataset.estimated === "yes")) return;
       if (!currentBatch || String(currentBatch.batch_id) !== batchSelect.value || !panel.contains(row)) {
         setRowStatus(row, "Wait for the selected supplier batch to load", "is-error"); return;
       }
@@ -310,6 +359,10 @@
       if (row.dataset.cableConnectionId && platform === "ios" && row.dataset.identitySchemaVersion !== "2") {setRowStatus(row,"Update the Greenloop cable reader for dual IMEI support, reconnect, then save.","is-error");return;}
       if (typeof window.GREENLOOP_CHECK_IMEI_DUPLICATE !== "function") throw new Error("IMEI check is not ready. Refresh the page before saving.");
       if (await window.GREENLOOP_CHECK_IMEI_DUPLICATE(imei, { force: !automatic })) { setRowStatus(row, "Duplicate IMEI — see popup", "is-error"); return; }
+      // Duplicate checking can wait on the network; recheck the selected receipt and permission before writing.
+      if (!canEnter() || !panel.contains(row) || batchSelect.value !== String(batchId) || String(currentBatch?.batch_id) !== String(batchId) || (automatic && (!autoSaveEnabled() || epoch !== autoSaveEpoch))) {
+        setRowStatus(row, "Not saved — Auto Save stopped or receipt/access changed"); return;
+      }
       const { error } = await api().rpc("receive_stock_batch_imei_with_identity_v1", {
         p_batch_id: batchId,
         p_imei_1: imei,
@@ -359,7 +412,7 @@
       applyCableDevice(window.GREENLOOP_GET_CONNECTED_DEVICE?.());
     }
 
-    batchSelect.addEventListener("change", () => window.setTimeout(loadSelectedBatch, 80));
+    batchSelect.addEventListener("change", () => { cancelAutoSaves(); window.setTimeout(loadSelectedBatch, 80); });
     new MutationObserver(() => {
       if (batchSelect.value && !currentBatch) window.setTimeout(loadSelectedBatch, 80);
     }).observe(batchSelect, { childList: true });

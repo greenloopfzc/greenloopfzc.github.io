@@ -39,6 +39,8 @@
   let technicianRows = [];
   let activeTechnicianId = "";
   let partOptions = [...standardParts];
+  const usageCounts = {part: new Map(), service: new Map()};
+  function rankChoices(kind, options) { return [...options].sort((a,b) => (usageCounts[kind].get(normalise(b)) || 0) - (usageCounts[kind].get(normalise(a)) || 0) || (normalise(a) < normalise(b) ? -1 : normalise(a) > normalise(b) ? 1 : 0)); }
   let manualLabPartsMode = false;
   let frameGradeItems = [];
   const lineDrafts = new Map();
@@ -192,7 +194,7 @@
   function readOnlyList(values) { const list = unique(values); return list.length ? `<div class="line-list">${list.map((value) => `<span>${escapeHtml(value)}</span>`).join("")}</div>` : '<span class="line-empty">None</span>'; }
   function choiceTag(kind,value,quantity=1){return kind==='part'?`<span class="pf-lab-part-tag"><button type="button" data-remove-choice="part" data-value="${escapeHtml(value)}" title="Remove">${escapeHtml(value)}</button><input data-part-quantity data-name="${escapeHtml(value)}" type="number" min="1" max="10000" step="1" value="${escapeHtml(quantity)}" aria-label="Quantity for ${escapeHtml(value)}"></span>`:`<button type="button" data-remove-choice="service" data-value="${escapeHtml(value)}" title="Remove">${escapeHtml(value)}</button>`;}
   function choiceCell(kind, options, selected, data={}) {
-    return `<div class="lab-choice" data-choice="${kind}"><div class="lab-choice-row"><select>${optionsMarkup(options,kind==='part'?'Select part':'Select service')}</select><button type="button" data-add-choice="${kind}" title="Add">+</button></div><div class="lab-choice-tags">${unique(selected).map(value=>choiceTag(kind,value,lineDrafts.get(String(data.step_id))?.quantities?.[value]??data.pf_plan?.parts?.find(p=>normalise(p.name)===normalise(value))?.quantity??1)).join('')}</div></div>`;
+    return `<div class="lab-choice" data-choice="${kind}"><div class="lab-choice-row"><select>${optionsMarkup(rankChoices(kind,options),kind==='part'?'Select part':'Select service')}</select><button type="button" data-add-choice="${kind}" title="Add">+</button></div><div class="lab-choice-tags">${unique(selected).map(value=>choiceTag(kind,value,lineDrafts.get(String(data.step_id))?.quantities?.[value]??data.pf_plan?.parts?.find(p=>normalise(p.name)===normalise(value))?.quantity??1)).join('')}</div></div>`;
   }
   function selectedChoices(row, kind) {
     const tags = [...row.querySelectorAll(`[data-choice="${kind}"] [data-remove-choice]`)].map((button) => button.dataset.value);
@@ -325,7 +327,7 @@
   async function loadFrameReport(){return frameFilters.load();}
 
   let workOptionsFingerprint='';
-  function applyWorkOptions(data){const fingerprint=JSON.stringify(data);if(fingerprint===workOptionsFingerprint)return;workOptionsFingerprint=fingerprint;partOptions=data.parts.map(o=>o.name);standardServices=data.services.map(o=>o.name);initialQcServices.clear();for(const service of data.services)if(service.initial_qc)initialQcServices.add(normalise(service.name));
+  function applyWorkOptions(data){const fingerprint=JSON.stringify(data);if(fingerprint===workOptionsFingerprint)return;workOptionsFingerprint=fingerprint;for(const [kind,list] of [['part',data.parts],['service',data.services]])usageCounts[kind]=new Map(list.map(o=>[normalise(o.name),Number(o.usage_count)||0]));partOptions=data.parts.map(o=>o.name);standardServices=data.services.map(o=>o.name);initialQcServices.clear();for(const service of data.services)if(service.initial_qc)initialQcServices.add(normalise(service.name));
     for(const holder of technicianWorkRows.querySelectorAll('[data-choice]')){const select=holder.querySelector('select');if(!select)continue;const value=select.value;select.innerHTML=optionsMarkup(holder.dataset.choice==='part'?partOptions:standardServices,holder.dataset.choice==='part'?'Select part':'Select service');if(value&&![...select.options].some(o=>o.value===value))select.insertAdjacentHTML('beforeend',`<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`);select.value=value;}
   }
   async function loadFrameGrades() {
@@ -339,7 +341,7 @@
   async function readWorkbench(args) {
     const key=JSON.stringify(args);
     if(!workbenchReads.has(key)){
-      const request=labRead(getClient().rpc('get_lab_workbench_options_v1',args)).then(({data,error})=>{if(error)throw error;if(!data||!Array.isArray(data.rows)||!Number.isFinite(Date.parse(data.server_now))||!Array.isArray(data.work_options?.parts)||!Array.isArray(data.work_options?.services)||![...data.work_options.parts,...data.work_options.services].every(o=>typeof o.name==='string'&&o.name.trim()))throw new Error('Phone lines could not be verified.');return data;}).finally(()=>workbenchReads.delete(key));
+      const request=labRead(getClient().rpc('get_ranked_lab_workbench_v1',args)).then(({data,error})=>{if(error)throw error;if(!data||!Array.isArray(data.rows)||!Number.isFinite(Date.parse(data.server_now))||!Array.isArray(data.work_options?.parts)||!Array.isArray(data.work_options?.services)||![...data.work_options.parts,...data.work_options.services].every(o=>typeof o.name==='string'&&o.name.trim()))throw new Error('Phone lines could not be verified.');return data;}).finally(()=>workbenchReads.delete(key));
       workbenchReads.set(key,request);
     }
     return workbenchReads.get(key);
