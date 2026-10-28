@@ -1463,5 +1463,10 @@
     "page": "ready_stock",
     "capability": "view",
     "read": true
+  },
+  "get_search_receipt_returns_v1": {
+    "page": "imei_search",
+    "capability": "view",
+    "read": true
   }
 }

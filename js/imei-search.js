@@ -440,16 +440,17 @@ function buildStageSections(sortedRows) {
     if(!append){receiptId=item.id;receiptOffset=0;receiptItems=[];result.hidden=true;receiptResult.hidden=true;query.value=item.invoice_number || item.identifier || "";}
     setMessage();setSubmitting(true);
     try {
-      const data=await window.GREENLOOP_RECORD_SEARCH.rpc("get_search_receipt_v1",{p_receipt_id:receiptId,p_offset:receiptOffset,p_limit:25});
+      const data=await window.GREENLOOP_RECORD_SEARCH.rpc("get_search_receipt_returns_v1",{p_receipt_id:receiptId,p_offset:receiptOffset,p_limit:25});
       if(version!==searchVersion)return;
       if(!data.found){setMessage("This stock receipt is no longer available.");return;}
       const receipt=data.receipt || {};
+      if(!Number.isSafeInteger(receipt.returned_quantity)||receipt.returned_quantity<0)throw new Error("Returned phone count could not be verified. Refresh and try again.");
       if(!append){
         query.value=receipt.invoice_number || receipt.batch_number || query.value;
         const values=[["Invoice",receipt.invoice_number],["Stock/Batch No",receipt.batch_number],["Stock received",moment(receipt.received_at)],
           ["Received by",receipt.received_by],["Supplier code",receipt.supplier_code],
           ...(window.GREENLOOP_CAN_VIEW_PARTNER_NAMES?[["Supplier",receipt.supplier_name]]:[]),
-          ["Quantity received",receipt.planned_quantity],["Phones entered",receipt.entered_quantity],["Stock channel",receipt.stock_channel]];
+          ["Quantity received",receipt.planned_quantity],["Phones entered",receipt.entered_quantity],["Phones returned",receipt.returned_quantity],["Stock channel",receipt.stock_channel]];
         receiptResult.innerHTML='<h2>Stock received details</h2><dl>'+values.map(([name,value])=>'<div><dt>'+escapeHtml(name)+'</dt><dd>'+safe(value)+'</dd></div>').join('')+'</dl><h3>Phones in this receipt</h3><div class="history-receipt-devices"></div><button type="button" class="secondary-button" data-search-read-only data-receipt-more hidden>Show more phones</button>';
         receiptResult.querySelector('[data-receipt-more]').addEventListener('click',()=>openReceipt({id:receiptId},true));
       }

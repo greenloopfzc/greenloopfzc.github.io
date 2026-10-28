@@ -21,7 +21,7 @@
   }
   async function rpc(name,args) {
     await window.GREENLOOP_ACCESS_READY;
-    if (window.GREENLOOP_CAN_SEARCH === false) throw new Error("Your account does not have IMEI Search permission.");
+    if (window.GREENLOOP_CAN_SEARCH === false && name !== "get_search_receipt_returns_v1") throw new Error("Your account does not have IMEI Search permission.");
     let timeout;
     try {
       const response = await Promise.race([
