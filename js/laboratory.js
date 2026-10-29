@@ -38,6 +38,7 @@
   let technicians = [];
   let technicianRows = [];
   let activeTechnicianId = "";
+  let activePhoneStepId = "";
   let partOptions = [...standardParts];
   const usageCounts = {part: new Map(), service: new Map()};
   function rankChoices(kind, options) { return [...options].sort((a,b) => (usageCounts[kind].get(normalise(b)) || 0) - (usageCounts[kind].get(normalise(a)) || 0) || (normalise(a) < normalise(b) ? -1 : normalise(a) > normalise(b) ? 1 : 0)); }
@@ -247,7 +248,18 @@
     return previous+`<details class="lab-issued-tools"><summary>Return Part</summary><div class="pf-lab-return"><label>Issued part<select data-pf-return-issue><option value="">Select part to return</option>${issues.map(i=>`<option value="${escapeHtml(i.issue_id)}" data-available="${escapeHtml(i.available)}">${escapeHtml(i.name)} · ${escapeHtml(i.available)} available</option>`).join('')}</select></label><label data-pf-return-qty-wrap hidden>Return quantity<input type="number" min="1" step="1" value="1" data-pf-return-qty></label><button class="line-save" type="button" data-pf-return>Send return request</button><small>Parts Department will decide the return reason.</small></div></details>${returns}`;
   }
   function rowData(rowElement) { return technicianRows.find(item=>String(item.step_id)===String(rowElement?.dataset.stepId)); }
+  function phoneCardHeader(row,status) {
+    const active=String(row.step_id)===activePhoneStepId;
+    return `<header class="lab-card-header"><div class="lab-card-identity"><span class="lab-card-kicker">IMEI</span><h3 id="lab-phone-${escapeHtml(row.step_id)}" class="lab-card-imei"><bdi>${escapeHtml(row.imei||"—")}</bdi></h3><p class="lab-card-model">${escapeHtml(row.model||"—")}</p></div><div class="lab-card-meta">${phoneTime(row)}<div class="lab-card-status"><span>${escapeHtml(status)}</span></div><span class="lab-active-indicator" ${active?'':'hidden'}>Active phone</span></div></header>`;
+  }
+  function activatePhoneCard(event) {
+    if(isFrameMode||event.type==='pointerdown'&&event.button!==0)return;
+    const row=event.target.closest?.('.lab-phone-row[data-step-id]');if(!row||!technicianWorkRows.contains(row))return;
+    activePhoneStepId=String(row.dataset.stepId);
+    for(const item of technicianWorkRows.querySelectorAll('.lab-phone-row')){const active=item.dataset.stepId===activePhoneStepId;item.querySelector('.lab-phone-card')?.classList.toggle('is-active',active);const badge=item.querySelector('.lab-active-indicator');if(badge)badge.hidden=!active;}
+  }
   function renderTechnicianLines() {
+    technicianWorkRows.closest("table").classList.toggle("lab-separated-phones",!isFrameMode);
     const selectedTech = technicians.find((item) => String(item.id) === String(activeTechnicianId));
     const assignedRows = technicianRows.filter((row) => isFrameMode ? String(row.department) === "frame" : ["laboratory", "glass"].includes(String(row.department)));
     const filtered = assignedRows.filter(row => !focusedImei || (String(row.imei) === focusedImei && (!focusedStepId || String(row.step_id) === focusedStepId)));
@@ -258,6 +270,7 @@
       technicianWorkRows.innerHTML = `<tr><td colspan="12" class="technician-lines-empty">${focusedImei ? `No pending line for IMEI ${escapeHtml(focusedImei)}. Use Show all to return to this technician’s phones.` : awaitingFinalQc ? `${escapeHtml(selectedTech?.full_name || "This technician")} has ${awaitingFinalQc} phone${awaitingFinalQc === 1 ? "" : "s"} awaiting Final QC receipt.` : `${escapeHtml(selectedTech?.full_name || "This technician")} has no ${isFrameMode ? "Frame" : "Laboratory"} phones pending.`}</td></tr>`;
       return;
     }
+    if(focusedStepId&&filtered.some(row=>String(row.step_id)===String(focusedStepId)))activePhoneStepId=String(focusedStepId);
     technicianWorkRows.innerHTML = filtered.map((row) => {
       const qcParts = initialNames(row.initial_parts);
       const qcServices = initialServiceNames(row);
@@ -280,12 +293,12 @@
         labelledStatic("Initial QC Parts", readOnlyList(qcParts)),
         labelledStatic("Initial QC Service", readOnlyList(qcServices))
       ].join("");
-      if(row.unassigned){return `<tr class="lab-phone-row unassigned-phone" data-step-id="${escapeHtml(row.step_id)}"><td colspan="12"><article class="lab-phone-card"><div class="lab-card-header">${phoneTime(row)}<div class="lab-card-status"><span>Awaiting employee assignment</span></div></div><div class="lab-static-grid">${staticLine}</div><div class="employee-assignment"><label>Assign employee<select data-assign-employee data-capability="entry" data-capability-page="lab_glass"><option value="">Choose employee</option>${technicians.filter(t=>!t.unassigned).map(t=>`<option value="${escapeHtml(t.id)}">${escapeHtml(t.full_name)}</option>`).join('')}</select></label><button type="button" class="line-save" data-assign-employee-save data-capability="entry" data-capability-page="lab_glass">Assign employee</button></div></article></td></tr>`;}
+      if(row.unassigned){return `<tr class="lab-phone-row unassigned-phone" data-step-id="${escapeHtml(row.step_id)}"><td colspan="12"><article class="lab-phone-card${String(row.step_id)===activePhoneStepId?' is-active':''}" aria-labelledby="lab-phone-${escapeHtml(row.step_id)}">${phoneCardHeader(row,"Awaiting employee assignment")}<div class="lab-static-grid">${staticLine}</div><div class="employee-assignment"><label>Assign employee<select data-assign-employee data-capability="entry" data-capability-page="lab_glass"><option value="">Choose employee</option>${technicians.filter(t=>!t.unassigned).map(t=>`<option value="${escapeHtml(t.id)}">${escapeHtml(t.full_name)}</option>`).join('')}</select></label><button type="button" class="line-save" data-assign-employee-save data-capability="entry" data-capability-page="lab_glass">Assign employee</button></div></article></td></tr>`;}
       const visual = linePartVisual(row);
       const draft = lineDrafts.get(String(row.step_id));
       const displayedParts = draft?.partsDirty ? draft.parts : additionalMode(row)?[]:labPartNames(row);
       const displayedServices = draft?.servicesDirty ? draft.services : labServiceNames(row);
-      return `<tr class="lab-phone-row ${visual.className}" data-step-id="${escapeHtml(row.step_id)}"><td colspan="12"><article class="lab-phone-card"><div class="lab-card-header">${phoneTime(row)}<div class="lab-card-status"><span>${escapeHtml(visual.label)}</span></div></div><div class="lab-static-grid">${staticLine}</div><div class="lab-edit-grid"><fieldset class="pf-lab-choices"><div class="lab-edit-field lab-parts-field"><span class="lab-field-label">${additionalMode(row)?"Required parts":usesManualParts(row)?"Parts added in Lab":"Final parts required"}</span>${additionalMode(row)?(row.pf_plan?.qc_parts_sent?'<small class="pf-lab-lock">Initial QC parts sent directly to Parts.</small>':'')+activePartList(row)+'<span class="lab-field-label">Order additional parts</span>':''}${choiceCell("part",unique([...partOptions,...(row.pf_plan?.part_history||[]).map(p=>p.name)]),displayedParts,row)}</div></fieldset><div class="lab-edit-field pf-lab-services"><span class="lab-field-label">Lab &amp; Glass services</span>${choiceCell("service", standardServices, displayedServices,row)}<button type="button" class="line-save" data-save-services="${escapeHtml(row.step_id)}" ${row.pf_plan?.services_saved&&!draft?.servicesDirty?'disabled':''}>Save Services</button><small>${draft?.servicesDirty?'Unsaved service changes':row.pf_plan?.services_saved?'Saved in Lab &amp; Glass':'Managed in Lab &amp; Glass'}</small></div><div class="lab-line-actions">${saveCell}${issuedPartTools(row)}</div></div></article></td></tr>`;
+      return `<tr class="lab-phone-row ${visual.className}" data-step-id="${escapeHtml(row.step_id)}"><td colspan="12"><article class="lab-phone-card${String(row.step_id)===activePhoneStepId?' is-active':''}" aria-labelledby="lab-phone-${escapeHtml(row.step_id)}">${phoneCardHeader(row,visual.label)}<div class="lab-static-grid">${staticLine}</div><div class="lab-edit-grid"><fieldset class="pf-lab-choices"><div class="lab-edit-field lab-parts-field"><span class="lab-field-label">${additionalMode(row)?"Required parts":usesManualParts(row)?"Parts added in Lab":"Final parts required"}</span>${additionalMode(row)?(row.pf_plan?.qc_parts_sent?'<small class="pf-lab-lock">Initial QC parts sent directly to Parts.</small>':'')+activePartList(row)+'<span class="lab-field-label">Order additional parts</span>':''}${choiceCell("part",unique([...partOptions,...(row.pf_plan?.part_history||[]).map(p=>p.name)]),displayedParts,row)}</div></fieldset><div class="lab-edit-field pf-lab-services"><span class="lab-field-label">Lab &amp; Glass services</span>${choiceCell("service", standardServices, displayedServices,row)}<button type="button" class="line-save" data-save-services="${escapeHtml(row.step_id)}" ${row.pf_plan?.services_saved&&!draft?.servicesDirty?'disabled':''}>Save Services</button><small>${draft?.servicesDirty?'Unsaved service changes':row.pf_plan?.services_saved?'Saved in Lab &amp; Glass':'Managed in Lab &amp; Glass'}</small></div><div class="lab-line-actions">${saveCell}${issuedPartTools(row)}</div></div></article></td></tr>`;
     }).join("");
   }
 
@@ -654,7 +667,7 @@
   technicianCards.addEventListener("click", (event) => {
     const card = event.target.closest("[data-technician-id]"); if (!card) return;
     if(card.dataset.technicianId===activeTechnicianId&&!focusedImei)return;
-    clearImeiFocus(false); activeTechnicianId = card.dataset.technicianId; technicianRows = [];
+    clearImeiFocus(false); activePhoneStepId=""; activeTechnicianId = card.dataset.technicianId; technicianRows = [];
     renderTechnicianCards(); technicianWorkRows.innerHTML='<tr><td colspan="12" class="technician-lines-empty">Loading phone lines…</td></tr>';
     workFilters.clear().then(() => loadTechnicianRows()).catch(error => setBoardMessage(error.message));
   });
@@ -669,6 +682,8 @@
   });
   checkTechnicianImei.addEventListener("click", () => { window.clearTimeout(imeiTimer); scanTechnicianImei(); });
   clearTechnicianImei.addEventListener("click", () => { if (searchable()) { clearImeiFocus(); technicianImeiScan.focus(); } });
+  technicianWorkRows.addEventListener("pointerdown",activatePhoneCard);
+  technicianWorkRows.addEventListener("focusin",activatePhoneCard);
   technicianWorkRows.addEventListener("click", (event) => {
     if (!editable()) return;
     const add = event.target.closest("[data-add-choice]"); if (add) { addChoice(add); return; }
