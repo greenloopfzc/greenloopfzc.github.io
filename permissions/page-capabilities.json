@@ -738,6 +738,11 @@
           "key": "damage_reset",
           "label": "Reset damage report",
           "write": true
+        },
+        {
+          "key": "workflow_correction",
+          "label": "Full IMEI Workflow Correction (Reports only)",
+          "write": true
         }
       ]
     },

@@ -1545,5 +1545,14 @@
       }
     ],
     "read": true
+  },
+  "get_full_imei_workflow_v1": {
+    "page": "reports",
+    "capability": "workflow_correction",
+    "read": true
+  },
+  "save_full_imei_workflow_v1": {
+    "page": "reports",
+    "capability": "workflow_correction"
   }
 }

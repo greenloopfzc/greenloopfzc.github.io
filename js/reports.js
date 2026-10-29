@@ -51,9 +51,9 @@
   function queueExternalReportRefresh() {
     externalRefreshPending = true;
     window.clearTimeout(externalRefreshTimer);
-    if (app.hidden || document.visibilityState === "hidden" || deletionBusy || reportMutationPending) return;
+    if (app.hidden || document.visibilityState === "hidden" || deletionBusy || reportMutationPending || window.GREENLOOP_FULL_IMEI_CORRECTION?.isBusy()) return;
     externalRefreshTimer = window.setTimeout(() => {
-      if (app.hidden || document.visibilityState === "hidden" || deletionBusy || reportMutationPending) return;
+      if (app.hidden || document.visibilityState === "hidden" || deletionBusy || reportMutationPending || window.GREENLOOP_FULL_IMEI_CORRECTION?.isBusy()) return;
       externalRefreshPending = false;
       resetDeletionPreview();
       correctionRecord = null;
@@ -648,6 +648,12 @@
 
   let correctionWidget;
   function renderDataCorrection() {
+    if (!correctionBoxNumber && window.GREENLOOP_CAN?.('workflow_correction','reports') && window.GREENLOOP_FULL_IMEI_CORRECTION) {
+      correctionWidget?.destroy();correctionWidget=null;
+      panelKicker.textContent='Reports';panelTitle.textContent='Full IMEI Workflow Correction';panelDescription.textContent='Search one IMEI and correct its recorded entries by department.';rowCount.textContent='Reports only';
+      window.GREENLOOP_FULL_IMEI_CORRECTION.mount(reportContent,{onSaved:()=>loadReports()});return;
+    }
+    window.GREENLOOP_FULL_IMEI_CORRECTION?.unmount();
     correctionWidget?.destroy();correctionWidget=null;
     renderDataCorrectionMarkup();
     const input=reportContent.querySelector("#correction-identifier");
@@ -902,6 +908,7 @@
   }
 
   function renderActiveReport() {
+    if (activeReport !== 'data_correction') window.GREENLOOP_FULL_IMEI_CORRECTION?.unmount();
     document.querySelectorAll('.table-filters').forEach(el=>el.hidden=true);
     document.querySelectorAll(".report-tab[data-report]").forEach((tab) => {
       const selected = tab.dataset.report === activeReport;
@@ -1027,11 +1034,11 @@
     canManageCorrections = Boolean(correctionPermission);
     const { data: resetPermission } = await getClient().rpc("has_role", { required_roles: ["super_admin", "owner"] });
     canResetData = Boolean(resetPermission);
-    document.querySelectorAll('[data-report="data_correction"], [data-report="restricted_data"]').forEach((tab) => { tab.hidden = !canManageCorrections; });
+    document.querySelectorAll('[data-report="data_correction"], [data-report="restricted_data"]').forEach((tab) => { tab.hidden = !(canManageCorrections || tab.dataset.report === 'data_correction' && window.GREENLOOP_CAN?.('workflow_correction','reports')); });
     document.querySelector('[data-report="production_correction"]').hidden = !['production_view','production_edit','production_delete','production_restore','production_delete_all'].some(cap=>window.GREENLOOP_CAN?.(cap,'reports'));
     const reportQuery = new URLSearchParams(window.location.search).get("report");
     const requestedReport = reportQuery === "supplier_returns" ? "stock_returns" : reportQuery;
-    if (requestedReport && reports[requestedReport] && (!["data_correction", "restricted_data"].includes(requestedReport) || canManageCorrections) && (requestedReport !== 'production_correction' || ['production_view','production_edit','production_delete','production_restore','production_delete_all'].some(cap=>window.GREENLOOP_CAN?.(cap,'reports')))) activeReport = requestedReport;
+    if (requestedReport && reports[requestedReport] && (!["data_correction", "restricted_data"].includes(requestedReport) || canManageCorrections || requestedReport === 'data_correction' && window.GREENLOOP_CAN?.('workflow_correction','reports')) && (requestedReport !== 'production_correction' || ['production_view','production_edit','production_delete','production_restore','production_delete_all'].some(cap=>window.GREENLOOP_CAN?.(cap,'reports')))) activeReport = requestedReport;
     const now = new Date();
     dateFrom.value = localDate(new Date(now.getFullYear(), now.getMonth(), 1));
     dateTo.value = localDate(now);
@@ -1055,8 +1062,9 @@
   filterForm.addEventListener("submit", loadReports);
   tabs.addEventListener("click", (event) => {
     const tab = event.target.closest(".report-tab[data-report]");
+    if (window.GREENLOOP_FULL_IMEI_CORRECTION?.isSaving()) return;
     if (!tab || tab.hidden || deletionBusy || reportMutationPending || window.GREENLOOP_DAMAGE_MANAGEMENT?.isBusy() || (tab.dataset.report !== "overview" && !reports[tab.dataset.report])) return;
-    if (["data_correction", "restricted_data"].includes(tab.dataset.report) && !canManageCorrections) return;
+    if (["data_correction", "restricted_data"].includes(tab.dataset.report) && !canManageCorrections && !(tab.dataset.report === 'data_correction' && window.GREENLOOP_CAN?.('workflow_correction','reports'))) return;
     resetDeletionPreview();
     correctionSearchGeneration += 1;
     setMessage();
