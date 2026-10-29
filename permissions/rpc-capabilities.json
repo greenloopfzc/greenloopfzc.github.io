@@ -1605,5 +1605,9 @@
   "complete_initial_qc_direct_to_frame_v2": {
     "page": "initial_qc",
     "capability": "entry"
+  },
+  "receive_stock_batch_imei_with_identity_v1": {
+    "page": "imei_entry",
+    "capability": "entry"
   }
 }

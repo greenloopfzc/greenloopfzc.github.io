@@ -116,7 +116,12 @@
     const connection = window.GREENLOOP_CABLE_CONNECTION_ID || 0;
     return () => connection === (window.GREENLOOP_CABLE_CONNECTION_ID || 0) && (!fields.length || fields.some((field) => field.isConnected && field.value.trim() === value));
   }
-  function showDuplicateDialog(record, { kind = "duplicate", text = "", force = false, isCurrent = () => true } = {}) {
+  function imeiErrorText(error) {
+    const reason=String(error?.message||"The service did not return a reason.").replace(/[\r\n\t]+/g," ").trim().slice(0,420);
+    const code=/^[A-Z0-9]{3,12}$/.test(String(error?.code||""))?` (${error.code})`:"";
+    return reason+code;
+  }
+  function showDuplicateDialog(record, { kind = "duplicate", text = "", title = "", force = false, isCurrent = () => true } = {}) {
     if (!duplicateDialog || !isCurrent()) return;
     const notice = `${record.imei}:${window.GREENLOOP_CABLE_CONNECTION_ID || 0}:${kind}`;
     if (!force && lastDuplicateNotice === notice) return;
@@ -126,7 +131,7 @@
       return;
     }
     window.GREENLOOP_IMEI_STAGE_NOTICE?.clear();
-    document.querySelector("#duplicate-imei-title").textContent = kind === "error" ? "IMEI check unavailable" : "Duplicate phone";
+    document.querySelector("#duplicate-imei-title").textContent = title || (kind === "error" ? "IMEI check unavailable" : "Duplicate phone");
     duplicateDialog.querySelector(":scope > p").textContent = kind === "error" ? text : "This phone is a duplicate. It already exists in the system.";
     duplicateDialog.dataset.imei = record.imei || "";
     if (!duplicateDialog.open) duplicateDialog.showModal();
@@ -146,7 +151,7 @@
       data = response.data;
       if (!Array.isArray(data) || data.length > 1 || (data.length === 1 && typeof data[0]?.found !== "boolean")) throw new Error("Invalid duplicate-check response.");
     } catch (error) {
-      if (show) showDuplicateDialog({ imei: scannedImei }, { kind: "error", force, isCurrent, text: "The duplicate check could not be completed. Please try again. Nothing was saved." });
+      if (show) showDuplicateDialog({ imei: scannedImei }, { kind: "error", force, isCurrent, text: `The duplicate check could not be completed. ${imeiErrorText(error)} Saving is blocked; nothing was saved.` });
       if (isCurrent()) setMessage("IMEI check failed - saving is blocked. See popup.");
       throw new Error("IMEI check failed - saving is blocked. See popup.");
     }
@@ -158,10 +163,16 @@
   }
   window.GREENLOOP_CHECK_IMEI_DUPLICATE = checkDuplicateImei;
   window.GREENLOOP_SHOW_IMEI_SAVE_ERROR = (error, scannedImei) => {
-    const text = String(error?.message || "The IMEI could not be saved.");
-    const duplicate = /duplicate\s+imei|imei.*already|already.*imei/i.test(text);
-    showDuplicateDialog({ imei: scannedImei }, { kind: duplicate ? "duplicate" : "error", text: "The phone could not be saved. Please try again.", force: true });
-    return duplicate ? "Duplicate IMEI - see popup" : "Could not save - see popup";
+    const text=String(error?.message||"The IMEI could not be saved.");
+    let identity;try{identity=JSON.parse(error?.details||"{}");}catch{identity=null;}
+    if(identity?.reason==='secondary_imei'&&/^\d{15}$/.test(identity.primary_imei||'')&&window.GREENLOOP_IMEI_STAGE_NOTICE){
+      void window.GREENLOOP_IMEI_STAGE_NOTICE.show({imei:scannedImei,knownRecord:{found:true,matched_type:'secondary',primary_imei:identity.primary_imei,current_stage:null}});
+      return 'Duplicate phone — use IMEI 1; see popup';
+    }
+    const duplicate=/duplicate\s+imei|imei.*already|already.*imei/i.test(text);
+    const uncertain=/failed to fetch|network|timed?\s*out|timeout|connection (?:lost|interrupted)/i.test(text);
+    showDuplicateDialog({imei:scannedImei},{kind:duplicate?'duplicate':'error',title:duplicate?'Duplicate phone':uncertain?'Save not confirmed':'IMEI not saved',text:uncertain?`The save could not be confirmed. ${imeiErrorText(error)} Check this IMEI in IMEI Search before saving it again.`:imeiErrorText(error),force:true});
+    return duplicate?'Duplicate IMEI - see popup':uncertain?'Save not confirmed — check IMEI Search':'Could not save - see popup';
   };
 
   const masterFields = [
@@ -459,7 +470,7 @@
     imei.focus();
     if (Number(result?.remaining_quantity) === 0) showToast("This stock batch is complete. All IMEIs are in Initial QC.");
     await loadBatches(Number(result?.remaining_quantity) === 0 ? "" : batch.batch_id);
-    } catch (error) { setMessage(savedImeis.has(scannedImei) ? "IMEI saved, but the remaining details or receipt could not refresh. Check IMEI Search before continuing." : (error.message || "The IMEI could not be saved."), savedImeis.has(scannedImei) ? "success" : "error"); }
+    } catch (error) { const saved=savedImeis.has(scannedImei);setMessage(saved ? "IMEI saved, but the remaining details or receipt could not refresh. Check IMEI Search before continuing." : /^IMEI check failed/.test(error?.message||"") ? error.message : window.GREENLOOP_SHOW_IMEI_SAVE_ERROR(error,scannedImei), saved ? "success" : "error"); }
     finally {
       saving = false;
       savingImeis.delete(scannedImei);

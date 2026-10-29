@@ -387,7 +387,7 @@
       const nextRow = row.nextElementSibling;
       const nextControl = nextRow?.querySelector(".batch-row-imei:not(:disabled)") || panel.querySelector("tr:not(.batch-saved-row) .batch-row-battery:not(:disabled)");
       nextControl?.focus();
-      } catch (error) { setRowStatus(row, row.dataset.saved === "yes" ? `IMEI saved; details need checking: ${error.message}` : (error.message || "Could not save"), "is-error"); }
+      } catch (error) { setRowStatus(row, row.dataset.saved === "yes" ? `IMEI saved; details need checking: ${error.message}` : /^IMEI check failed/.test(error?.message||"") ? error.message : window.GREENLOOP_SHOW_IMEI_SAVE_ERROR?.(error,imei) || error.message || "Could not save", "is-error"); }
       finally {
         row.dataset.busy = "";
         savingImeis.delete(imei);
