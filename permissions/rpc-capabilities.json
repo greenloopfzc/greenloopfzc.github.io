@@ -1554,5 +1554,14 @@
   "save_full_imei_workflow_v1": {
     "page": "reports",
     "capability": "workflow_correction"
+  },
+  "prepare_parts_picking_v1": {
+    "page": "parts",
+    "capability": "issue",
+    "read": true
+  },
+  "issue_parts_picking_v1": {
+    "page": "parts",
+    "capability": "issue"
   }
 }

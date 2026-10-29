@@ -18,7 +18,7 @@
     <link rel="stylesheet" href="css/parts.css?v=20260825-manual-lab-parts-mode-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="js/permission-catalog.js?v=20261029-technician-parts-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261029-technician-parts-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261029-parts-picking-1"></script>
 <script defer src="js/page-capabilities.js?v=20261024-office-access-1"></script>
 <script defer src="js/imei-stage-notice.js?v=20261023-dual-imei-1"></script>
 <link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
@@ -39,10 +39,10 @@
   <script defer src="js/suspicious-badge.js?v=20261017-suspicious-activity-1"></script>
 <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261003-qc-duplicate-stage-1">
   <link rel="stylesheet" href="css/parts-flow.css?v=20261027-parts-supplier-codes-1">
-  <link rel="stylesheet" href="css/parts-technician-report.css?v=20261029-technician-parts-1">
-  <script defer src="js/parts-technician-exports.js?v=20261029-technician-parts-1"></script>
+  <link rel="stylesheet" href="css/parts-technician-report.css?v=20261029-parts-picking-1">
+  <script defer src="js/parts-technician-exports.js?v=20261029-parts-picking-1"></script>
   <script defer src="js/storage-options.js?v=20261027-iphone-entry-options-1"></script>
-  <script defer src="js/parts-technician-report.js?v=20261029-technician-parts-1"></script>
+  <script defer src="js/parts-technician-report.js?v=20261029-parts-picking-1"></script>
 </head>
   <body class="app-page">
     <div class="app-shell">
@@ -80,9 +80,10 @@
 
             <section id="pp-technician" class="pt-report" hidden aria-labelledby="pt-title">
               <div class="pf-heading"><div><h2 id="pt-title">Technician Parts Report</h2><p class="pt-caption">Parts awaiting issue</p></div><div id="pt-totals" class="pt-totals" aria-live="polite"></div></div>
-              <div class="pt-toolbar"><label class="pt-technician">Technician<select id="pt-technician" data-capability="technician_report" data-capability-page="parts" aria-label="Select technician"><option value="">All Technicians</option></select></label><div class="pt-actions"><button id="pt-refresh" type="button" class="secondary-button" data-capability="technician_report" data-capability-page="parts" data-search-read-only>Refresh</button><button type="button" class="secondary-button" data-pt-export="view" data-capability="technician_download" data-capability-page="parts" hidden>PDF View</button><button type="button" class="secondary-button" data-pt-export="pdf" data-capability="technician_download" data-capability-page="parts" hidden>Download PDF</button><button type="button" class="primary-button" data-pt-export="excel" data-capability="technician_download" data-capability-page="parts" hidden>Download Excel</button></div></div>
+              <div class="pt-toolbar"><label class="pt-technician">Technician<select id="pt-technician" data-capability="technician_report" data-capability-page="parts" aria-label="Select technician"><option value="">All Technicians</option></select></label><label class="pt-technician">Parts Wise<select id="pt-part" data-capability="technician_report" data-capability-page="parts" aria-label="Select part"><option value="">All Parts</option></select></label><div class="pt-actions"><button id="pt-refresh" type="button" class="secondary-button" data-capability="technician_report" data-capability-page="parts" data-search-read-only>Refresh</button><button type="button" class="secondary-button" data-pt-export="view" data-capability="technician_download" data-capability-page="parts" hidden>PDF View</button><button type="button" class="secondary-button" data-pt-export="pdf" data-capability="technician_download" data-capability-page="parts" hidden>Download PDF</button><button type="button" class="primary-button" data-pt-export="excel" data-capability="technician_download" data-capability-page="parts" hidden>Download Excel</button></div></div>
+              <div class="pt-picking-actions"><label data-pt-issue-only hidden><input id="pt-select-all" type="checkbox" data-capability="issue" data-capability-page="parts"> Select all visible lines</label><button id="pt-bulk-review" type="button" class="primary-button" data-capability="issue" data-capability-page="parts" hidden>Review Bulk Issue</button><span id="pt-selection-count" aria-live="polite"></span></div>
               <p id="pt-message" class="pt-message" role="status" aria-live="polite"></p>
-              <div class="pf-scroll"><table id="pt-table" class="pf-table" data-no-auto-sort><thead><tr><th data-pt-sort="technician_name">Technician</th><th data-pt-sort="model">Model</th><th data-pt-sort="part_name">Part</th><th data-pt-sort="color">Color</th><th data-pt-sort="quantity">Pending Qty</th><th data-pt-sort="phones">Phones</th></tr></thead><tbody id="pt-rows"></tbody></table></div>
+              <div class="pf-scroll"><table id="pt-table" class="pf-table" data-no-auto-sort><thead><tr><th data-pt-issue-only hidden>Select</th><th data-pt-sort="technician_name">Technician</th><th data-pt-sort="model">Model</th><th data-pt-sort="part_name">Part</th><th data-pt-sort="color">Color</th><th data-pt-sort="quantity">Pending Qty</th><th data-pt-sort="phones">Phones</th></tr></thead><tbody id="pt-rows"></tbody></table></div>
               <p id="pt-count" class="pt-caption"></p>
             </section>
           </section>
@@ -91,6 +92,7 @@
     </div>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
     <dialog id="pt-details-dialog" class="pt-dialog" aria-labelledby="pt-details-title"><div class="pt-dialog-head"><div><h2 id="pt-details-title">Pending phones</h2><p id="pt-details-subtitle"></p></div><button type="button" class="secondary-button" id="pt-details-close" data-search-read-only data-capability="technician_report" data-capability-page="parts">Close</button></div><p id="pt-details-message" role="status"></p><div class="pf-scroll"><table class="pf-table"><thead><tr><th>IMEI</th><th>GB</th><th>Supplier Code</th><th>Stock/Batch No</th><th>Pending Qty</th><th>Ordered</th></tr></thead><tbody id="pt-details-rows"></tbody></table></div></dialog>
-    <dialog id="pt-pdf-dialog" class="pt-dialog pt-pdf-dialog" aria-labelledby="pt-pdf-title"><div class="pt-dialog-head"><h2 id="pt-pdf-title">Technician Parts Report</h2><div><button type="button" id="pt-pdf-download" class="primary-button" data-capability="technician_download" data-capability-page="parts">Download PDF</button> <button type="button" id="pt-pdf-close" class="secondary-button" data-search-read-only data-capability="technician_download" data-capability-page="parts">Close</button></div></div><iframe id="pt-pdf-frame" title="Technician Parts Report PDF"></iframe></dialog>
+    <dialog id="pt-pdf-dialog" class="pt-dialog pt-pdf-dialog" aria-labelledby="pt-pdf-title"><div class="pt-dialog-head"><h2 id="pt-pdf-title">Technician Parts Report</h2><div><a id="pt-pdf-open" class="secondary-button" target="_blank" rel="noopener" data-capability="technician_download" data-capability-page="parts">Open PDF</a> <button type="button" id="pt-pdf-download" class="primary-button" data-capability="technician_download" data-capability-page="parts">Download PDF</button> <button type="button" id="pt-pdf-close" class="secondary-button" data-search-read-only data-capability="technician_download" data-capability-page="parts">Close</button></div></div><iframe id="pt-pdf-frame" title="Technician Parts Report PDF"></iframe></dialog>
+  <dialog id="pt-picking-dialog" class="pt-dialog" aria-labelledby="pt-picking-title"><form id="pt-picking-form"><div class="pt-dialog-head"><div><h2 id="pt-picking-title">Review Bulk Issue</h2><p>Check the phones, quantities and supply source before issuing.</p></div><button id="pt-picking-close" type="button" class="secondary-button" data-capability="issue" data-capability-page="parts">Close</button></div><p id="pt-picking-message" role="status"></p><div class="pf-scroll"><table class="pf-table"><thead><tr><th>Issue</th><th>Phone / IMEI</th><th>Part / Color</th><th>Technician</th><th>Issue Qty</th><th>Supply source</th><th>Price / part · AED (optional)</th></tr></thead><tbody id="pt-picking-rows"></tbody></table></div><div class="pt-picking-footer"><strong id="pt-picking-totals"></strong><button id="pt-picking-confirm" class="primary-button" data-capability="issue" data-capability-page="parts">Confirm Bulk Issue</button></div></form></dialog>
   </body>
 </html>
