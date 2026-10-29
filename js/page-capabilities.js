@@ -25,9 +25,18 @@
     if (Array.isArray(rule.all)) return rule.all.every(allowedRule);
     return window.GREENLOOP_CAN(rule.capability || rule.cap,rule.page || current());
   }
-  window.GREENLOOP_RPC_CAPABILITY = (name,args={}) => {
+  // Releases contain both the original `rpcs` catalog and later flat entries.
+  // Keep later overrides first, and resolve the same rule for guards and events.
+  window.GREENLOOP_RPC_RULE = name => {
     const map=window.GREENLOOP_RPC_CAPABILITIES || window.GREENLOOP_RPC_CAPABILITY_MAP || {};
-    let rule=map[name] || map.rpc?.[name];
+    const own=source=>source && Object.prototype.hasOwnProperty.call(source,name)?source[name]:null;
+    return own(map) || own(map.rpc) || own(map.rpcs);
+  };
+  window.GREENLOOP_RPC_CAPABILITY = (name,args={}) => {
+    let rule=window.GREENLOOP_RPC_RULE(name);
+    // A read marker without a grant is metadata, including the office check.
+    // It must not wait for the permissions whose loading it protects.
+    if (rule?.read===true && !rule.page && !rule.capability && !rule.cap && !rule.any && !rule.all && !rule.dynamic) return null;
     if (typeof rule === 'function') rule=rule(args,current());
     if (rule?.dynamic) {
       const value=args[rule.parameter];

@@ -135,7 +135,7 @@ window.GREENLOOP_CONFIG = Object.freeze({
           const requirement = window.GREENLOOP_RPC_CAPABILITY?.(name,args[0] || {});
           if (requirement) {
             await window.GREENLOOP_ACCESS_READY;
-            if (!window.GREENLOOP_RPC_ALLOWED?.(name,args[0] || {})) return {data:null,error:{code:'42501',message:'This action is not allowed for your account.'}};
+            if (!window.GREENLOOP_RPC_ALLOWED?.(name,args[0] || {})) return {data:null,error:{code:'42501',message:requirement.capability==='__unmapped_write__'?'The permission mapping for this action is missing. Refresh the page and report this message if it continues.':'This action is not allowed for your account.'}};
           }
         }
         const response = await rpc(name, ...args);
@@ -146,9 +146,10 @@ window.GREENLOOP_CONFIG = Object.freeze({
             void window.GREENLOOP_IMEI_STAGE_NOTICE?.show({imei:scanned,knownRecord:{found:true,matched_type:'secondary',primary_imei:detail.primary_imei,current_stage:null}});
           }
         }
-        const rule = window.GREENLOOP_RPC_CAPABILITIES?.[name];
+        const rule = window.GREENLOOP_RPC_RULE?.(name) || window.GREENLOOP_RPC_CAPABILITIES?.[name];
         const readOnly=r=>r?.read===true||(Array.isArray(r?.any)&&r.any.length>0&&r.any.every(readOnly));
-        if (response && !response.error && rule && !readOnly(rule)) announceWorkflowCommit();
+        const readName=/^(get_|list_|has_|is_)/.test(name) && !/^get_or_create_/.test(name);
+        if (response && !response.error && rule && !readOnly(rule) && !readName) announceWorkflowCommit();
         return response;
       };
     }
