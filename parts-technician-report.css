@@ -4,3 +4,10 @@
 .pt-toolbar{display:block;padding:12px 0}.pt-filter-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}.pt-filter-grid .pt-technician{min-width:0}.pt-filter-grid select{width:100%;min-width:0}.pt-toolbar>.pt-actions{justify-content:flex-end;margin-top:12px}@media(max-width:1200px){.pt-filter-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:650px){.pt-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pt-filter-grid .pt-technician{min-width:0}.pt-toolbar>.pt-actions{justify-content:flex-start}}@media(max-width:360px){.pt-filter-grid{grid-template-columns:1fr}}
 
 @media(max-width:480px){.pt-filter-grid{grid-template-columns:1fr}}
+
+/* Keep table sorting and phone-detail links flat within this report. */
+#pt-table .pt-sort,#pt-table .pt-sort:hover,#pt-table .pt-sort:active{box-shadow:none!important;text-shadow:none!important;filter:none!important;transform:none!important;background:transparent!important;border:0!important;border-radius:0!important;color:inherit!important;min-height:0!important;padding:4px 0!important}
+#pt-table .pt-quantity,#pt-table .pt-quantity:hover,#pt-table .pt-quantity:active{box-shadow:none!important;text-shadow:none!important;filter:none!important;transform:none!important;border:0!important;background:var(--nm-green-bg,#e1f1e9)!important;color:var(--nm-green,#087651)!important;border-radius:6px!important}
+#pt-table tfoot th,#pt-table tfoot td{background:var(--nm-green-bg,#e1f1e9);color:var(--nm-green,#087651);font-weight:800;border-top:2px solid var(--nm-line,#cbd9e0);box-shadow:none!important;padding:15px 18px}
+#pt-table tfoot th{text-align:left;letter-spacing:normal;text-transform:none}
+#pt-table tfoot td:nth-last-child(-n+2){text-align:center;font-variant-numeric:tabular-nums}
