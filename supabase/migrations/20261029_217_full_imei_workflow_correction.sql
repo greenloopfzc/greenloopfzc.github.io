@@ -143,7 +143,7 @@ begin
  end if;
  update greenloop_private.parts_flow_orders set revision=revision+1 where device_id=dev.id;
  update greenloop_private.lab_only_services l set revision=revision+1 where exists(select 1 from public.jobs j where j.id=l.job_id and j.device_id=dev.id);
- update greenloop_private.qc_work_usage_cache set built_at='-infinity';
+ update greenloop_private.qc_work_usage_cache set built_at='-infinity' where singleton = true;
  select coalesce(jsonb_agg(to_jsonb(x)order by kind,row_key),'[]')into after_rows from greenloop_private.wf_rows(dev.id)x;
  for entry in select value from jsonb_array_elements(after_rows)loop
   select value into oldval from jsonb_array_elements(before_rows)x where x->>'kind'=entry->>'kind'and x->>'row_key'=entry->>'row_key';
