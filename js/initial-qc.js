@@ -630,8 +630,8 @@
     row.querySelectorAll("input, select, button").forEach((control) => { control.disabled = true; });
     rowButton.textContent = "Saved";
     const route = submission.routeToFrame ? "frame" : (hasWork ? "laboratory" : "final_qc");
-    setRowState(row, route === "frame" ? "Completed - Frame" : (hasWork ? "Completed - Laboratory" : "Completed - Final QC"), "is-completed");
-    return { ok: true, hasWork, route };
+    setRowState(row, route === "frame" ? "Completed - Frame" : (submission.parts.length ? "Completed - Lab & Parts" : hasWork ? "Completed - Laboratory" : "Completed - Final QC"), "is-completed");
+    return { ok: true, hasWork, route, partsQueued:hasWork&&submission.parts.length>0 };
     } catch (error) {
       setRowState(row, error.message || "Could not save", "is-error");
       return { ok: false, error: error.message || "Could not save" };
@@ -652,7 +652,7 @@
       return;
     }
     await loadPendingCount();
-    showToast(result.route === "frame" ? "Initial QC saved. Phone sent directly to Frame." : (result.hasWork ? "Initial QC saved. Phone sent to Laboratory." : "Initial QC saved. Phone sent directly to Final QC."));
+    showToast(result.route === "frame" ? "Initial QC saved. Phone sent directly to Frame." : (result.partsQueued ? "Initial QC saved. Phone sent to Laboratory and required parts sent to Parts." : result.hasWork ? "Initial QC saved. Phone sent to Laboratory." : "Initial QC saved. Phone sent directly to Final QC."));
     focusNextInspectionRow(row);
   }
 

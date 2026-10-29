@@ -30,7 +30,7 @@
   <script defer src="js/record-search.js?v=20261027-performance-1"></script>
     <script defer src="js/part-notifications.js?v=20261027-performance-1"></script>
   <script defer src="js/employee-updates.js?v=20261027-performance-1"></script>
-  <script defer src="js/laboratory.js?v=20261028-workflow-efficiency-1"></script>
+  <script defer src="js/laboratory.js?v=20261029-qc-direct-parts-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
     <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261003-qc-duplicate-stage-1">
   <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
@@ -70,7 +70,7 @@
               <div class="frame-report-heading"><div><p class="panel-kicker">Frame performance</p><h2>Pass and Fail history</h2></div><div class="frame-report-counts"><span id="frame-pass-count">0 Pass</span><span id="frame-fail-count">0 Fail</span></div></div>
               <div class="frame-report-scroll"><table><thead><tr><th>Time</th><th>IMEI</th><th>Supplier</th><th>Model</th><th>Result</th><th>Recorded by</th></tr></thead><tbody id="frame-report-rows"><tr><td colspan="6">No Frame results recorded yet.</td></tr></tbody></table></div>
             </section>
-            <details class="lab-workflow-help"><summary>Workflow help</summary><p id="workflow-rule-text">Laboratory saves parts and services. Only parts create a Parts Department notification. Laboratory completion sends the phone to Final QC. Direct Final QC Pass decides the Final Grade. Frame phones receive Final Grade in Frame Department and then go to Ready Stock.</p></details>
+            <details class="lab-workflow-help"><summary>Workflow help</summary><p id="workflow-rule-text">Initial QC sends required parts directly to Parts. Laboratory orders additional parts and saves services. Return an issued part before ordering its replacement. Laboratory completion sends the phone to Final QC. Direct Final QC Pass decides the Final Grade. Frame phones receive Final Grade in Frame Department and then go to Ready Stock.</p></details>
           </section>
         </div>
       </main>

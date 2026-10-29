@@ -1593,5 +1593,17 @@
       }
     ],
     "read": true
+  },
+  "complete_initial_qc_lab_first": {
+    "page": "initial_qc",
+    "capability": "entry"
+  },
+  "complete_scanned_initial_qc_with_roster_and_grades": {
+    "page": "initial_qc",
+    "capability": "entry"
+  },
+  "complete_initial_qc_direct_to_frame_v2": {
+    "page": "initial_qc",
+    "capability": "entry"
   }
 }
