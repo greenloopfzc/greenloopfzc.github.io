@@ -14,7 +14,7 @@ The migration grants the new action initially only to existing Owner / Super Adm
 
 ## Installation
 
-Run the provided `Publish-GreenLoop-Full-IMEI-Workflow-Correction.ps1` script. It checks pinned source files and installed versions, then copies the required cumulative SQL only when necessary. In Supabase SQL Editor, use a new query, paste the clipboard directly, and run the complete SQL through:
+Run the provided `Publish-GreenLoop-Full-IMEI-Workflow-Correction.ps1` script. If the optimized verification engine is missing, the first clipboard query is the database verification repair. Run that complete query and confirm `installed_verification_engine_version = 20261029-verification-engine-1`, then return to PowerShell and press Enter. The script uses one read-only result map rather than repeatedly rechecking the same dependency chain. Original version functions and business data remain unchanged. It checks pinned source files and installed versions, then copies the required cumulative SQL only when necessary. In Supabase SQL Editor, use a new query, paste the clipboard directly, and run the complete SQL through:
 
 `installed_full_imei_workflow_version = 20261029-full-imei-workflow-1`
 
