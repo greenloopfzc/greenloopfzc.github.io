@@ -548,7 +548,9 @@
     return {
       findings,
       parts,
+      services: servicesSelected,
       technicianId,
+      technicianName: technicianId ? (technicians.find(t=>String(t.id)===String(technicianId))?.full_name || technicians.find(t=>String(t.id)===String(technicianId))?.email || row.querySelector('[data-carry-field="technician"]').selectedOptions[0]?.textContent || "Technician") : "Unassigned",
       routeToFrame: Boolean(row.querySelector("[data-route-frame]")?.checked),
       supplierGrade: row.querySelector('[data-carry-field="supplierGrade"]').value || null,
       gcGrade: row.querySelector('[data-carry-field="gcGrade"]').value || null,
@@ -600,6 +602,7 @@
     }
     const rowButton = row.querySelector("[data-save-row]");
     row.dataset.saving = "yes";
+    window.GREENLOOP_QC_HANDOVER?.setBusy(row.dataset.rowId,true);
     const controls = [...row.querySelectorAll("input, select, button")].map((control) => [control, control.disabled]);
     controls.forEach(([control]) => { control.disabled = true; });
     try {
@@ -624,6 +627,13 @@
       return { ok: false, error: error.message || "Could not save" };
     }
 
+    const storage=Number(selectedJob.device?.storage_gb);
+    window.GREENLOOP_QC_HANDOVER?.record({
+      jobId:selectedJob.id,imei:selectedJob.device.imei_1,model:selectedJob.device.model,
+      storage:storage ? (storage>=1024&&storage%1024===0 ? `${storage/1024} TB` : `${storage} GB`) : "-",color:selectedJob.device.color,
+      technicianId:submission.technicianId,technician:submission.technicianName,
+      parts:submission.parts.map(part=>({name:part.part_name,quantity:part.quantity})),services:submission.services
+    });
     row.dataset.completed = "yes";
     row.classList.remove("is-error");
     row.classList.add("is-completed");
@@ -637,6 +647,7 @@
       return { ok: false, error: error.message || "Could not save" };
     } finally {
       row.dataset.saving = "";
+      window.GREENLOOP_QC_HANDOVER?.setBusy(row.dataset.rowId,false);
       if (row.dataset.completed !== "yes") {
         controls.forEach(([control, disabled]) => { control.disabled = disabled; });
         setSubmitting(rowButton, false);
@@ -669,6 +680,8 @@
 
     const button = document.querySelector("#complete-qc");
     setSubmitting(button, true, "Saving Initial QC...");
+    window.GREENLOOP_QC_HANDOVER?.setBusy("bulk",true);
+    try {
     let completed = 0;
     let directFinalQc = 0;
     let sentToLab = 0;
@@ -696,6 +709,7 @@
     } else {
       setMessage(`${completed} scanned Initial QC row(s) completed successfully.`, true);
     }
+    } finally { setSubmitting(button,false);window.GREENLOOP_QC_HANDOVER?.setBusy("bulk",false); }
   }
 
   function resetTray() {
@@ -744,6 +758,7 @@
     await Promise.all([loadTechnicians(), loadPendingCount(), loadPartOptions()]);
     createRows(10);
     app.hidden = false;
+    window.GREENLOOP_QC_HANDOVER?.refresh();
     window.GREENLOOP_EMPLOYEES?.watch(data=>{if(document.activeElement?.matches('[data-carry-field="technician"]'))return;const next=data.map(e=>({id:e.id,full_name:e.full_name,email:null}));if(JSON.stringify(technicians.map(e=>[e.id,e.full_name]))===JSON.stringify(next.map(e=>[e.id,e.full_name])))return;technicians=next;refreshTechnicianSelects();});
     setupHorizontalScroll();
     tableBody.querySelector(".qc-bulk-imei")?.focus();

@@ -30,7 +30,10 @@
   <script defer src="js/record-search.js?v=20261027-performance-1"></script>
     <script defer src="js/part-notifications.js?v=20261027-performance-1"></script>
   <script defer src="js/employee-updates.js?v=20261027-performance-1"></script>
-  <script defer src="js/initial-qc.js?v=20261029-qc-direct-parts-1"></script>
+  <link rel="stylesheet" href="css/qc-handover.css?v=20261030-qc-handover-1">
+  <script defer src="js/qc-handover-pdf.js?v=20261030-qc-handover-1"></script>
+  <script defer src="js/qc-handover.js?v=20261030-qc-handover-1"></script>
+  <script defer src="js/initial-qc.js?v=20261030-qc-handover-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
     <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261003-qc-duplicate-stage-1">
   <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
@@ -86,6 +89,11 @@
               </section>
               <div class="qc-bulk-actions"><span>Tick Frame to send a no-work phone directly to Frame; otherwise no-work phones go to Final QC.</span><button id="complete-qc" class="primary-button receive-submit" type="submit">Complete scanned Initial QC &rarr;</button></div>
             </form>
+            <section id="qc-handover" class="qc-handover" hidden>
+              <div><h3>Technician Handover Sheet</h3><div class="qc-handover-summary"><strong id="qc-handover-count">0 saved phones</strong><p id="qc-handover-technician">Save entries, then generate the sheet.</p></div><p>Includes successful saves since this page was opened or refreshed.</p></div>
+              <div class="qc-handover-actions"><button type="button" class="secondary-button" data-qc-handover="print" data-capability="entry" data-capability-page="initial_qc" disabled>Print</button><button type="button" class="secondary-button" data-qc-handover="view" data-capability="entry" data-capability-page="initial_qc" disabled>PDF View</button><button type="button" class="primary-button" data-qc-handover="download" data-capability="entry" data-capability-page="initial_qc" disabled>Download PDF</button></div>
+              <p id="qc-handover-message" class="qc-handover-message" role="status" aria-live="polite" hidden></p>
+            </section>
           </section>
         </div>
       </main>
@@ -99,6 +107,8 @@
       </section>
     </div>
     <dialog id="qc-options-dialog" class="qc-options-dialog" aria-labelledby="qc-options-title"><header><div><p class="panel-kicker">Initial QC choices</p><h2 id="qc-options-title">Manage Dropdowns</h2></div><button id="qc-options-close" type="button" class="icon-button" data-capability="view" aria-label="Close names">×</button></header><p>Add parts, services, Supplier Grades or GC Grades. Each grade list is managed separately.</p><form id="qc-options-form"><label>Type<select id="qc-options-kind" name="kind" data-capability="manage_options" data-capability-page="initial_qc"><option value="part">Part</option><option value="service">Service</option><option value="supplier_grade">Supplier Grade</option><option value="gc_grade">GC Grade</option></select></label><label>New name<input id="qc-options-name" name="name" maxlength="120" required autocomplete="off" data-capability="manage_options" data-capability-page="initial_qc" placeholder="Enter new part name"></label><p id="qc-options-message" class="form-message receiving-message" role="status" aria-live="polite" hidden></p><button id="qc-options-save" type="submit" class="primary-button" data-capability="manage_options" data-capability-page="initial_qc">Add Part</button></form></dialog>
+    <dialog id="qc-handover-warning" class="qc-handover-dialog" aria-labelledby="qc-handover-warning-title"><h2 id="qc-handover-warning-title">Check technician assignments</h2><p id="qc-handover-warning-text"></p><div class="qc-handover-warning-actions"><button id="qc-handover-warning-close" type="button" class="primary-button" data-capability="entry" data-capability-page="initial_qc">OK</button></div></dialog>
+    <dialog id="qc-handover-preview" class="qc-handover-dialog qc-handover-preview" aria-labelledby="qc-handover-preview-title"><header><h2 id="qc-handover-preview-title">Initial QC Handover - PDF View</h2><button id="qc-handover-close" type="button" class="secondary-button" data-capability="entry" data-capability-page="initial_qc">Close</button></header><iframe id="qc-handover-frame" title="Technician handover PDF"></iframe><footer><a id="qc-handover-open" class="secondary-button" target="_blank" rel="noopener" data-capability="entry" data-capability-page="initial_qc">Open PDF</a><a id="qc-handover-file" class="primary-button" download data-capability="entry" data-capability-page="initial_qc">Download PDF</a></footer></dialog>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   </body>
 </html>
