@@ -397,6 +397,16 @@
           "key": "manage_options",
           "label": "Manage names & dropdown choices",
           "write": true
+        },
+        {
+          "key": "technician_report",
+          "label": "View Technician Parts Report",
+          "write": false
+        },
+        {
+          "key": "technician_download",
+          "label": "Technician report: PDF View / Download and Excel",
+          "write": false
         }
       ]
     },

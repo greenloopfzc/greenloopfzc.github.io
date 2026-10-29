@@ -17,8 +17,8 @@
     <link rel="stylesheet" href="css/styles.css?v=20261016-strict-view-only-1">
     <link rel="stylesheet" href="css/parts.css?v=20260825-manual-lab-parts-mode-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script defer src="js/permission-catalog.js?v=20261028-available-stock-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261027-performance-1"></script>
+  <script defer src="js/permission-catalog.js?v=20261029-technician-parts-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261029-technician-parts-1"></script>
 <script defer src="js/page-capabilities.js?v=20261024-office-access-1"></script>
 <script defer src="js/imei-stage-notice.js?v=20261023-dual-imei-1"></script>
 <link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
@@ -28,7 +28,7 @@
   <link rel="stylesheet" href="css/record-search.css?v=20261017-find-record-popup-1">
   <script defer src="js/record-search.js?v=20261027-performance-1"></script>
     <script defer src="js/part-notifications.js?v=20261027-performance-1"></script>
-  <script defer src="js/parts.js?v=20261027-stock-batches-1"></script>
+  <script defer src="js/parts.js?v=20261029-technician-parts-1"></script>
   <script defer src="js/parts-badges.js?v=20261026-parts-badges-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
     <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
@@ -39,6 +39,10 @@
   <script defer src="js/suspicious-badge.js?v=20261017-suspicious-activity-1"></script>
 <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261003-qc-duplicate-stage-1">
   <link rel="stylesheet" href="css/parts-flow.css?v=20261027-parts-supplier-codes-1">
+  <link rel="stylesheet" href="css/parts-technician-report.css?v=20261029-technician-parts-1">
+  <script defer src="js/parts-technician-exports.js?v=20261029-technician-parts-1"></script>
+  <script defer src="js/storage-options.js?v=20261027-iphone-entry-options-1"></script>
+  <script defer src="js/parts-technician-report.js?v=20261029-technician-parts-1"></script>
 </head>
   <body class="app-page">
     <div class="app-shell">
@@ -69,14 +73,24 @@
           <section class="page-heading"><div><p class="eyebrow dashboard-eyebrow">Parts Department</p><h1>Parts</h1><p class="heading-subtitle">Parts requested by Lab &amp; Glass.</p></div></section>
           <div id="permission-message" class="access-message" hidden></div>
           <section id="parts-app" class="pf-app pp-simple" hidden>
-            <div class="pp-hub"><button type="button" class="pp-card" data-pp-view="ordered" aria-pressed="false" data-search-read-only data-capability="view" data-capability-page="parts"><span class="pp-icon" aria-hidden="true">&#9636;</span><span class="pp-pending-badge" data-parts-pending="ordered" aria-hidden="true">…</span><strong>Parts Ordered</strong><small>Phone orders from Lab &amp; Glass</small></button><button type="button" class="pp-card" data-pp-view="returned" aria-pressed="false" data-search-read-only data-capability="view" data-capability-page="parts"><span class="pp-icon" aria-hidden="true">&#8617;</span><span class="pp-pending-badge" data-parts-pending="returned" aria-hidden="true">…</span><strong>Parts Returned</strong><small>Review returns and view reasons</small></button></div>
+            <div class="pp-hub"><button type="button" class="pp-card" data-pp-view="ordered" aria-pressed="false" data-search-read-only data-capability="view" data-capability-page="parts"><span class="pp-icon" aria-hidden="true">&#9636;</span><span class="pp-pending-badge" data-parts-pending="ordered" aria-hidden="true">…</span><strong>Parts Ordered</strong><small>Phone orders from Lab &amp; Glass</small></button><button type="button" class="pp-card" data-pp-view="returned" aria-pressed="false" data-search-read-only data-capability="view" data-capability-page="parts"><span class="pp-icon" aria-hidden="true">&#8617;</span><span class="pp-pending-badge" data-parts-pending="returned" aria-hidden="true">…</span><strong>Parts Returned</strong><small>Review returns and view reasons</small></button><button type="button" class="pp-card" data-pp-view="technician" aria-pressed="false" data-search-read-only data-capability="technician_report" data-capability-page="parts" hidden><span class="pp-icon" aria-hidden="true">&#9776;</span><strong>Technician Parts Report</strong><small>Pending parts by technician, model and color</small></button></div>
             <p id="pf-message" role="status" aria-live="polite"></p>
             <section id="pp-ordered" hidden><div class="pf-heading"><h2>Parts Ordered</h2><button id="refresh-parts" type="button" class="secondary-button" data-search-read-only data-capability="view" data-capability-page="parts">Refresh</button></div><div id="pf-queue-wrap" class="pf-scroll"><table id="pf-queue" class="pf-table"><thead><tr><th>IMEI</th><th>Supplier Code</th><th>Stock/Batch No</th><th>Model</th><th>GB</th><th>Color</th><th>Technician</th><th>Parts</th><th>Status</th><th>Ordered</th></tr></thead><tbody id="pf-rows"></tbody></table></div><div class="pf-pager"><button id="pf-prev" type="button" class="secondary-button" data-search-read-only data-capability="view" data-capability-page="parts">Previous</button><span id="pf-count"></span><button id="pf-next" type="button" class="secondary-button" data-search-read-only data-capability="view" data-capability-page="parts">Next</button></div><section id="pf-detail" class="pf-detail" hidden></section></section>
             <section id="pp-returned" hidden><div class="pp-return-groups"><button type="button" class="pp-return-card" data-return-category="damaged" aria-pressed="false" data-search-read-only data-capability="view" data-capability-page="parts"><span>Damaged</span><strong>0</strong><small>pcs</small></button><button type="button" class="pp-return-card" data-return-category="faulty" aria-pressed="false" data-search-read-only data-capability="view" data-capability-page="parts"><span>Faulty</span><strong>0</strong><small>pcs</small></button><button type="button" class="pp-return-card" data-return-category="not_needed" aria-pressed="false" data-search-read-only data-capability="view" data-capability-page="parts"><span>Not Needed</span><strong>0</strong><small>pcs</small></button><button type="button" class="pp-return-card" data-return-category="other" aria-pressed="false" data-search-read-only data-capability="view" data-capability-page="parts"><span>Other</span><strong>0</strong><small>pcs</small></button></div><div class="pf-heading"><h2 id="pp-return-title">Awaiting Review</h2><div><button id="pp-awaiting" type="button" class="secondary-button" data-search-read-only data-capability="view" data-capability-page="parts" hidden>Awaiting Review</button> <button id="pp-return-refresh" type="button" class="secondary-button" data-search-read-only data-capability="view" data-capability-page="parts">Refresh</button></div></div><div id="pp-return-wrap" class="pf-scroll"><table id="pp-return-table" class="pf-table"><thead><tr><th>IMEI</th><th>Supplier Code</th><th>Stock/Batch No</th><th>Phone</th><th>Technician</th><th>Part</th><th>Qty</th><th>Returned</th><th>Reason</th><th>Notes</th><th></th></tr></thead><tbody id="pp-return-rows"></tbody></table></div><div class="pf-pager"><button id="pp-return-prev" type="button" class="secondary-button" data-search-read-only data-capability="view" data-capability-page="parts">Previous</button><span id="pp-return-count"></span><button id="pp-return-next" type="button" class="secondary-button" data-search-read-only data-capability="view" data-capability-page="parts">Next</button></div></section>
+
+            <section id="pp-technician" class="pt-report" hidden aria-labelledby="pt-title">
+              <div class="pf-heading"><div><h2 id="pt-title">Technician Parts Report</h2><p class="pt-caption">Parts awaiting issue</p></div><div id="pt-totals" class="pt-totals" aria-live="polite"></div></div>
+              <div class="pt-toolbar"><label class="pt-technician">Technician<select id="pt-technician" data-capability="technician_report" data-capability-page="parts" aria-label="Select technician"><option value="">All Technicians</option></select></label><div class="pt-actions"><button id="pt-refresh" type="button" class="secondary-button" data-capability="technician_report" data-capability-page="parts" data-search-read-only>Refresh</button><button type="button" class="secondary-button" data-pt-export="view" data-capability="technician_download" data-capability-page="parts" hidden>PDF View</button><button type="button" class="secondary-button" data-pt-export="pdf" data-capability="technician_download" data-capability-page="parts" hidden>Download PDF</button><button type="button" class="primary-button" data-pt-export="excel" data-capability="technician_download" data-capability-page="parts" hidden>Download Excel</button></div></div>
+              <p id="pt-message" class="pt-message" role="status" aria-live="polite"></p>
+              <div class="pf-scroll"><table id="pt-table" class="pf-table" data-no-auto-sort><thead><tr><th data-pt-sort="technician_name">Technician</th><th data-pt-sort="model">Model</th><th data-pt-sort="part_name">Part</th><th data-pt-sort="color">Color</th><th data-pt-sort="quantity">Pending Qty</th><th data-pt-sort="phones">Phones</th></tr></thead><tbody id="pt-rows"></tbody></table></div>
+              <p id="pt-count" class="pt-caption"></p>
+            </section>
           </section>
         </div>
       </main>
     </div>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+    <dialog id="pt-details-dialog" class="pt-dialog" aria-labelledby="pt-details-title"><div class="pt-dialog-head"><div><h2 id="pt-details-title">Pending phones</h2><p id="pt-details-subtitle"></p></div><button type="button" class="secondary-button" id="pt-details-close" data-search-read-only data-capability="technician_report" data-capability-page="parts">Close</button></div><p id="pt-details-message" role="status"></p><div class="pf-scroll"><table class="pf-table"><thead><tr><th>IMEI</th><th>GB</th><th>Supplier Code</th><th>Stock/Batch No</th><th>Pending Qty</th><th>Ordered</th></tr></thead><tbody id="pt-details-rows"></tbody></table></div></dialog>
+    <dialog id="pt-pdf-dialog" class="pt-dialog pt-pdf-dialog" aria-labelledby="pt-pdf-title"><div class="pt-dialog-head"><h2 id="pt-pdf-title">Technician Parts Report</h2><div><button type="button" id="pt-pdf-download" class="primary-button" data-capability="technician_download" data-capability-page="parts">Download PDF</button> <button type="button" id="pt-pdf-close" class="secondary-button" data-search-read-only data-capability="technician_download" data-capability-page="parts">Close</button></div></div><iframe id="pt-pdf-frame" title="Technician Parts Report PDF"></iframe></dialog>
   </body>
 </html>

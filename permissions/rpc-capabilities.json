@@ -1515,5 +1515,35 @@
     "page": "lab_glass",
     "capability": "view",
     "read": true
+  },
+  "get_parts_technician_report_v1": {
+    "all": [
+      {
+        "page": "parts",
+        "capability": "view"
+      },
+      {
+        "page": "parts",
+        "capability": "technician_report"
+      }
+    ],
+    "read": true
+  },
+  "export_parts_technician_report_v1": {
+    "all": [
+      {
+        "page": "parts",
+        "capability": "view"
+      },
+      {
+        "page": "parts",
+        "capability": "technician_report"
+      },
+      {
+        "page": "parts",
+        "capability": "technician_download"
+      }
+    ],
+    "read": true
   }
 }

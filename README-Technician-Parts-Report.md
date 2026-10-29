@@ -1,0 +1,15 @@
+# Technician Parts Report
+
+Prepared 29 October 2026. Live installation/publishing is complete only after the publisher prints its final green LIVE - VERIFIED result.
+
+Parts has a third card, Technician Parts Report. Choose All Technicians, one shared employee, or Unassigned. Current outstanding quantities are grouped by technician, model, part and phone color. Pending Qty opens the matching IMEIs with GB, supplier code, batch number and order date. A phone is counted once in the report-wide pending-phone total; it can occur in several part groups. No supplier/customer names, prices, IMEI2 or serial numbers are included in this report.
+
+The report reads the same current-cycle unfinished Parts requests used by the existing Parts issue badge: requested minus issued. Partial issues reduce the requirement. An issued part being returned does not itself create a pending issue; a saved replacement order does. Cancelled requests, completed repair cycles and deleted phones/jobs are excluded. Technician changes appear on refresh. Parts Ordered, Parts Returned, services, ordering, issue, return and completion workflows retain their existing behavior.
+
+PDF View, Download PDF and Download Excel fetch a fresh permission-checked complete snapshot for the selected technician. There is no four-page limit or first-page-only export. PDF repeats headings and wraps names. Native .xlsx contains typed quantities, a total formula, unique-phone total, filters, frozen headings and print settings. User-entered text remains literal text, including strings beginning with '='. PDF renders non-Latin names without dropping them. Export libraries are served locally and loaded only when exporting.
+
+User Access > Parts has two independent read-only actions: View Technician Parts Report, and Technician report: PDF View / Download and Excel. Select Parts View and report access first, then export access if required. These actions do not grant Issue or Return permissions. Ordinary existing accounts receive no new grants automatically; current Owner/Super Admin accounts with Parts access receive both new report actions on initial installation. Existing grants and business records are preserved. No Edge Function or JWT settings change is needed.
+
+Run outputs/Publish-GreenLoop-Technician-Parts-Report.ps1. The publisher pins tested source/installers, checks existing versions with retrying read-only probes, copies only required cumulative SQL, and requires installed_technician_parts_report_version = 20261029-technician-parts-1 before GitHub publication. It fetches first, never force pushes, and verifies all live assets. Refresh Ctrl+F5 after the final green result.
+
+Validation: native disposable PostgreSQL for grouping, quantity changes, permissions, Office/TV restrictions and replay; browser integration for report/card/drill-down/export/read-only/access controls/races/dark-mobile and previous Parts views; actual PDF and XLSX inspection, long and non-Latin exports, PDF page rendering, and independent spreadsheet import/render verification; isolated publisher rehearsals. No test writes to live Supabase or GitHub.
