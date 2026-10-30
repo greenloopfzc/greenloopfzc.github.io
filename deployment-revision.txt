@@ -1,0 +1,4 @@
+Greenloop deployment revision
+Release: 20261030-user-password-1
+Application source: 70cdc68191bb75349592ed24f871bc875553ef2d
+Purpose: fresh GitHub Pages build after the previous deployment stalled.
