@@ -1,5 +1,5 @@
 {
-  "version": "20261022-production-last-day-1",
+  "version": "20261030-restricted-scopes-1",
   "pages": [
     {
       "key": "overview",
@@ -742,6 +742,26 @@
         {
           "key": "workflow_correction",
           "label": "Full IMEI Workflow Correction (Reports only)",
+          "write": true
+        },
+        {
+          "key": "delete_supplier",
+          "label": "Delete by Supplier",
+          "write": true
+        },
+        {
+          "key": "delete_invoice",
+          "label": "Delete by Invoice",
+          "write": true
+        },
+        {
+          "key": "delete_batch",
+          "label": "Delete by Stock/Batch",
+          "write": true
+        },
+        {
+          "key": "delete_imei_list",
+          "label": "Delete multiple IMEIs",
           "write": true
         }
       ]

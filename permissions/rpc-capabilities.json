@@ -1609,5 +1609,73 @@
   "receive_stock_batch_imei_with_identity_v1": {
     "page": "imei_entry",
     "capability": "entry"
+  },
+  "get_restricted_scope_options_v1": {
+    "dynamic": "restricted_scope",
+    "parameter": "p_scope",
+    "actions": {
+      "supplier": {
+        "page": "reports",
+        "capability": "delete_supplier"
+      },
+      "invoice": {
+        "page": "reports",
+        "capability": "delete_invoice"
+      },
+      "batch": {
+        "page": "reports",
+        "capability": "delete_batch"
+      },
+      "imei_list": {
+        "page": "reports",
+        "capability": "delete_imei_list"
+      }
+    },
+    "read": true
+  },
+  "preview_restricted_scope_v1": {
+    "dynamic": "restricted_scope",
+    "parameter": "p_scope",
+    "actions": {
+      "supplier": {
+        "page": "reports",
+        "capability": "delete_supplier"
+      },
+      "invoice": {
+        "page": "reports",
+        "capability": "delete_invoice"
+      },
+      "batch": {
+        "page": "reports",
+        "capability": "delete_batch"
+      },
+      "imei_list": {
+        "page": "reports",
+        "capability": "delete_imei_list"
+      }
+    },
+    "read": true
+  },
+  "execute_restricted_scope_v1": {
+    "dynamic": "restricted_scope",
+    "parameter": "p_scope",
+    "actions": {
+      "supplier": {
+        "page": "reports",
+        "capability": "delete_supplier"
+      },
+      "invoice": {
+        "page": "reports",
+        "capability": "delete_invoice"
+      },
+      "batch": {
+        "page": "reports",
+        "capability": "delete_batch"
+      },
+      "imei_list": {
+        "page": "reports",
+        "capability": "delete_imei_list"
+      }
+    }
   }
 }

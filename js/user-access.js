@@ -119,6 +119,8 @@
 
   function capabilityRoleQualifier(pageKey, capability) {
     if (pageKey === "inventory" && capability === "approve") return "Owner, Manager or Super Admin";
+    if (pageKey === "reports" && ["delete_supplier","delete_invoice","delete_batch"].includes(capability)) return "Owner or Super Admin";
+    if (pageKey === "reports" && capability === "delete_imei_list") return "Owner, Manager or Super Admin";
     if (pageKey === "reports" && capability === "damage_reset") return "Owner or Super Admin";
     if (pageKey === "user_access" && capability === "office_networks") return "Owner or Super Admin";
     if (pageKey === "user_access" && capability === "login_activity") return "Super Admin only";

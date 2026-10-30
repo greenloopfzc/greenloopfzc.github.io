@@ -157,7 +157,7 @@
     },
     restricted_data: {
       title: "Restricted Data",
-      description: "Delete one IMEI or reset all IMEIs and their linked processes. Every deletion is saved in Deleted History.",
+      description: "Delete selected IMEIs, a supplier, invoice, Stock/Batch or all operational IMEIs. Every deletion is saved in Deleted History.",
       columns: []
     },
     data_correction: {
@@ -531,13 +531,22 @@
     panelKicker.textContent = "Management control";
     panelTitle.textContent = "Restricted Data";
     panelDescription.textContent = reports.restricted_data.description;
-    rowCount.textContent = "2 deletion options";
+    rowCount.textContent = "6 deletion options";
     reportContent.innerHTML = `<div class="restricted-workspace">
       ${deletionResult ? `<div class="restricted-result" role="status"><strong>Deletion completed</strong><p>${escapeHtml(deletionResult)}</p><button type="button" class="secondary-button" data-open-deleted-history>View Deleted History</button></div>` : ""}
-      <div class="restricted-preserved"><strong>Your setup, inventory stock, Live Damage Report and audit history stay</strong><p>Technician names, parts names and dropdowns, existing inventory stock, users, permissions and settings are preserved. Deleted History keeps the records of who deleted what and when.</p><p>Live Damage Report entries, employees, departments, quantities, prices and history are preserved and managed separately.</p><p>Unused issued parts follow the existing stock-return rules.</p></div>
+      <div class="restricted-preserved"><strong>Your setup, inventory stock, Live Damage Report and audit history stay</strong><p>Employees, parts and service/grade dropdowns, inventory stock, users, permissions and settings are preserved. Supplier removal from new receipts applies only when selected in Delete by Supplier. Deleted History keeps who deleted what and when.</p><p>Live Damage Report entries, prices and history, and the independent Available Stock manual counts, are preserved and managed separately.</p><p>Unused issued parts follow the existing stock-return rules.</p></div>
       <div class="restricted-options">${deletionScopeCard("single")}${deletionScopeCard("all")}</div>
     </div>`;
     setDeletionBusy(deletionBusy);
+    window.GREENLOOP_RESTRICTED_SCOPES?.mount(reportContent.querySelector('.restricted-options'),{
+      canManage:canManageCorrections,canReset:canResetData,setBusy:setDeletionBusy,
+      success:async(text,startedAt)=>{
+        deletionPreview=null;correctionRecord=null;correctionSearchGeneration++;
+        deletionResult=text;deletionAuditDates={from:deletionHistoryDate(startedAt||new Date()),to:deletionHistoryDate(new Date())};
+        invalidateStockReturnData();renderRestrictedData();
+        try{await loadReports();}catch(error){setMessage('Deletion completed. The reports could not refresh; check Deleted History.');}
+      }
+    });
   }
 
   function setDeletionBusy(busy) {
@@ -908,6 +917,7 @@
   }
 
   function renderActiveReport() {
+    if(activeReport!=="restricted_data")window.GREENLOOP_RESTRICTED_SCOPES?.unmount();
     if (activeReport !== 'data_correction') window.GREENLOOP_FULL_IMEI_CORRECTION?.unmount();
     document.querySelectorAll('.table-filters').forEach(el=>el.hidden=true);
     document.querySelectorAll(".report-tab[data-report]").forEach((tab) => {
