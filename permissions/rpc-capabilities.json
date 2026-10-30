@@ -1733,5 +1733,21 @@
   },
   "get_pending_parts_prices_version": {
     "read": true
+  },
+  "get_stock_parts_cost_v1": {
+    "all": [
+      {
+        "page": "reports",
+        "capability": "view"
+      },
+      {
+        "page": "reports",
+        "capability": "stock_parts_cost"
+      }
+    ],
+    "read": true
+  },
+  "get_stock_parts_cost_version": {
+    "read": true
   }
 }

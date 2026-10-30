@@ -1,5 +1,5 @@
 {
-  "version": "20261030-restricted-scopes-1",
+  "version": "20261030-stock-parts-cost-1",
   "pages": [
     {
       "key": "overview",
@@ -763,6 +763,11 @@
           "key": "delete_imei_list",
           "label": "Delete multiple IMEIs",
           "write": true
+        },
+        {
+          "key": "stock_parts_cost",
+          "label": "View Stock Parts Cost (confidential)",
+          "write": false
         }
       ]
     },

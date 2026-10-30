@@ -92,6 +92,7 @@
   }
 
   const reports = {
+    stock_parts_cost: {title:"Stock Parts Cost",description:"Supplier, invoice and batch parts cost with phone and part breakdown. Missing prices remain explicit.",columns:[]},
     manual_damage: {
       title: "Live Damage Report",
       description: "Correct a damage entry or delete manual damage history. Every change is permanently audited.",
@@ -897,6 +898,7 @@
   }
 
   function renderActiveReport() {
+    if(activeReport!=="stock_parts_cost")window.GREENLOOP_STOCK_PARTS_COST?.unmount();
     if(activeReport!=="restricted_data")window.GREENLOOP_RESTRICTED_SCOPES?.unmount();
     if (activeReport !== 'data_correction') window.GREENLOOP_FULL_IMEI_CORRECTION?.unmount();
     document.querySelectorAll('.table-filters').forEach(el=>el.hidden=true);
@@ -906,8 +908,14 @@
       tab.setAttribute("aria-pressed", String(selected));
     });
     const liveDetails = activeReport === "complete_device_details";
-    filterForm.hidden = liveDetails || activeReport === "restricted_data" || activeReport === "data_correction" || activeReport === "manual_damage" || activeReport === "production_correction";
+    filterForm.hidden = activeReport === "stock_parts_cost" || liveDetails || activeReport === "restricted_data" || activeReport === "data_correction" || activeReport === "manual_damage" || activeReport === "production_correction";
     window.GREENLOOP_PRODUCTION_CORRECTION?.unmount();
+    if(activeReport === "stock_parts_cost") {
+      window.GREENLOOP_DAMAGE_MANAGEMENT?.unmount();window.GREENLOOP_COMPLETE_DEVICE_DETAILS?.unmount();
+      panelKicker.textContent="Confidential cost report";panelTitle.textContent="Stock Parts Cost";panelDescription.textContent=reports.stock_parts_cost.description;rowCount.textContent="All recorded history";
+      if(window.GREENLOOP_CAN?.('stock_parts_cost','reports'))window.GREENLOOP_STOCK_PARTS_COST?.mount(reportContent);else reportContent.textContent="Stock Parts Cost report permission is required.";
+      return;
+    }
     if (activeReport === "production_correction") {
       window.GREENLOOP_DAMAGE_MANAGEMENT?.unmount();
       window.GREENLOOP_COMPLETE_DEVICE_DETAILS?.unmount();
@@ -950,6 +958,7 @@
 
   async function loadReports(event) {
     event?.preventDefault();
+    if(activeReport === "stock_parts_cost"){await window.GREENLOOP_STOCK_PARTS_COST?.refresh();return;}
     if (activeReport === "manual_damage") {
       await window.GREENLOOP_DAMAGE_MANAGEMENT?.refresh();
       return;
@@ -1026,15 +1035,16 @@
     canResetData = Boolean(resetPermission);
     document.querySelectorAll('[data-report="data_correction"], [data-report="restricted_data"]').forEach((tab) => { tab.hidden = !(canManageCorrections || tab.dataset.report === 'data_correction' && window.GREENLOOP_CAN?.('workflow_correction','reports')); });
     document.querySelector('[data-report="production_correction"]').hidden = !['production_view','production_edit','production_delete','production_restore','production_delete_all'].some(cap=>window.GREENLOOP_CAN?.(cap,'reports'));
+    document.querySelector('[data-report="stock_parts_cost"]').hidden = !window.GREENLOOP_CAN?.('stock_parts_cost','reports');
     const reportQuery = new URLSearchParams(window.location.search).get("report");
     const requestedReport = reportQuery === "supplier_returns" ? "stock_returns" : reportQuery;
-    if (requestedReport && reports[requestedReport] && (!["data_correction", "restricted_data"].includes(requestedReport) || canManageCorrections || requestedReport === 'data_correction' && window.GREENLOOP_CAN?.('workflow_correction','reports')) && (requestedReport !== 'production_correction' || ['production_view','production_edit','production_delete','production_restore','production_delete_all'].some(cap=>window.GREENLOOP_CAN?.(cap,'reports')))) activeReport = requestedReport;
+    if (requestedReport && (requestedReport !== "stock_parts_cost" || window.GREENLOOP_CAN?.("stock_parts_cost","reports")) && reports[requestedReport] && (!["data_correction", "restricted_data"].includes(requestedReport) || canManageCorrections || requestedReport === 'data_correction' && window.GREENLOOP_CAN?.('workflow_correction','reports')) && (requestedReport !== 'production_correction' || ['production_view','production_edit','production_delete','production_restore','production_delete_all'].some(cap=>window.GREENLOOP_CAN?.(cap,'reports')))) activeReport = requestedReport;
     const now = new Date();
     dateFrom.value = localDate(new Date(now.getFullYear(), now.getMonth(), 1));
     dateTo.value = localDate(now);
     app.hidden = false;
     renderActiveReport();
-    if (activeReport !== "manual_damage" && activeReport !== "production_correction") await loadReports();
+    if (activeReport !== "manual_damage" && activeReport !== "production_correction" && activeReport !== "stock_parts_cost") await loadReports();
     if (externalRefreshPending) queueExternalReportRefresh();
   }
 
@@ -1055,13 +1065,14 @@
     if (window.GREENLOOP_FULL_IMEI_CORRECTION?.isSaving()) return;
     if (!tab || tab.hidden || deletionBusy || reportMutationPending || window.GREENLOOP_DAMAGE_MANAGEMENT?.isBusy() || (tab.dataset.report !== "overview" && !reports[tab.dataset.report])) return;
     if (["data_correction", "restricted_data"].includes(tab.dataset.report) && !canManageCorrections && !(tab.dataset.report === 'data_correction' && window.GREENLOOP_CAN?.('workflow_correction','reports'))) return;
+    if(tab.dataset.report === "stock_parts_cost" && !window.GREENLOOP_CAN?.("stock_parts_cost","reports"))return;
     resetDeletionPreview();
     correctionSearchGeneration += 1;
     setMessage();
     activeReport = tab.dataset.report;
     if (activeReport === "manual_damage") invalidatePendingReportRead();
     renderActiveReport();
-    if (activeReport !== "manual_damage" && activeReport !== "production_correction" && !hasReportSummary(reportData)) loadReports();
+    if (activeReport !== "manual_damage" && activeReport !== "production_correction" && activeReport !== "stock_parts_cost" && !hasReportSummary(reportData)) loadReports();
   });
   reportContent.addEventListener("click", (event) => {
     const savedDataButton = event.target.closest('[data-audit-details-index]');
