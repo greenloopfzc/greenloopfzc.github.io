@@ -27,6 +27,7 @@
   let client;
   let users = [];
   let selectedUserId = "";
+  let currentUserId = "";
   let currentUserIsSuperAdmin = false;
   let savingAccess = false;
   let creatingUser = false;
@@ -238,7 +239,8 @@
     editor.hidden = !user;
     selectUserMessage.hidden = Boolean(user);
     setMessage(message);
-    if (!user) return;
+    if (!user) { window.GREENLOOP_PASSWORD_ADMIN?.select(null);return; }
+    window.GREENLOOP_PASSWORD_ADMIN?.select({userId:user.user_id,username:user.login_username,protected:user.tv_display?.protected_account,self:String(user.user_id)===currentUserId,superAdmin:currentUserIsSuperAdmin});
 
     fullName.value = user.full_name || "";
     username.value = user.login_username || "";
@@ -377,7 +379,7 @@
 
   async function createUser(event) {
     event.preventDefault();
-    if (creatingUser || !can("create_users")) return;
+    if (creatingUser || window.GREENLOOP_PASSWORD_ADMIN?.isBusy() || !can("create_users")) return;
     setMessage(createUserMessage);
     if (!createUserForm.reportValidity()) return;
     if (newPassword.value !== newConfirmPassword.value) { setMessage(createUserMessage, "Passwords do not match."); newConfirmPassword.focus(); return; }
@@ -414,7 +416,7 @@
 
   async function saveAccess(event) {
     event.preventDefault();
-    if (savingAccess || !can("manage_access")) return;
+    if (savingAccess || window.GREENLOOP_PASSWORD_ADMIN?.isBusy() || !can("manage_access")) return;
     if (!editor.checkValidity()) { editor.reportValidity(); return; }
     if(tvOnly.checked && !tvParts.checked && !tvOriginal.checked && !tvCopy.checked){setMessage(message,"Choose at least one TV display option.");return;}
     const selected = collectSelection(roleOptions);
@@ -484,6 +486,7 @@
       return;
     }
 
+    currentUserId=String(sessionData.session.user.id);
     const { data: allowed, error } = await getClient().rpc("has_role", {
       required_roles: ["super_admin", "owner"]
     });
@@ -525,11 +528,11 @@
   document.querySelector("#close-menu").addEventListener("click", () => setMenu(false));
   backdrop.addEventListener("click", () => setMenu(false));
   document.querySelector("#refresh-users").addEventListener("click", () => {
-    if (savingAccess || creatingUser) return;
+    if (savingAccess || creatingUser || window.GREENLOOP_PASSWORD_ADMIN?.isBusy()) return;
     loadUsers().catch((error) => setMessage(message, error.message || "Users could not be loaded."));
   });
   userList.addEventListener("click", (event) => {
-    if (savingAccess) return;
+    if (savingAccess || window.GREENLOOP_PASSWORD_ADMIN?.isBusy()) return;
     const item = event.target.closest("[data-user-id]");
     if (!item) return;
     selectedUserId = item.dataset.userId;

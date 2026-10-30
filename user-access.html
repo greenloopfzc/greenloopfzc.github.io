@@ -18,18 +18,19 @@
     <link rel="stylesheet" href="css/user-access.css?v=20261021-requested-rollback-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="js/permission-catalog.js?v=20261030-stock-parts-cost-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261030-stock-parts-cost-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261030-user-password-1"></script>
 <script defer src="js/page-capabilities.js?v=20261030-supplier-progress-1"></script>
 <script defer src="js/imei-stage-notice.js?v=20261023-dual-imei-1"></script>
 <link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
 <script defer src="js/office-access.js?v=20261024-office-access-1"></script>
-<script defer src="js/config.js?v=20261030-lab-bulk-transfer-1"></script>
+<script defer src="js/config.js?v=20261030-user-password-1"></script>
   <script defer src="js/login-activity.js?v=20261013-search-tv-1"></script>
   <link rel="stylesheet" href="css/record-search.css?v=20261017-find-record-popup-1">
   <script defer src="js/record-search.js?v=20261027-performance-1"></script>
     <script defer src="js/part-notifications.js?v=20261027-performance-1"></script>
     <script defer src="js/office-access-admin.js?v=20261024-office-access-1"></script>
-<script defer src="js/user-access.js?v=20261030-restricted-scopes-1"></script>
+<script defer src="js/user-password.js?v=20261030-user-password-1"></script>
+<script defer src="js/user-access.js?v=20261030-user-password-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
     <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
   <link rel="stylesheet" href="css/sidebar-compact.css?v=20261009-sidebar-pdf-1">
@@ -38,6 +39,7 @@
   <script defer src="js/clean-layout.js?v=20261030-supplier-progress-1"></script>
   <script defer src="js/suspicious-badge.js?v=20261017-suspicious-activity-1"></script>
 <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261003-qc-duplicate-stage-1">
+  <link rel="stylesheet" href="css/user-password.css?v=20261030-user-password-1">
 </head>
   <body class="app-page">
     <div class="app-shell">
@@ -105,6 +107,7 @@
                     <label class="access-active"><input id="access-active" type="checkbox"> Account is active</label>
                   </div>
 
+                  <section id="user-password" class="user-password" hidden aria-label="Selected user password"><label for="access-stored-password">Password</label><div class="user-password-row"><input id="access-stored-password" type="password" readonly autocomplete="off" placeholder="Password hidden" aria-label="Selected account password" data-capability="manage_access" data-capability-page="user_access"><button type="button" id="show-user-password" class="secondary-button" aria-pressed="false" data-capability="manage_access" data-capability-page="user_access" disabled>Show</button><button type="button" id="change-user-password" class="secondary-button" data-capability="manage_access" data-capability-page="user_access" disabled>Change Password</button></div><p id="user-password-help"></p><p id="user-password-message" class="user-password-message" role="status" hidden></p></section>
                   <fieldset class="damage-tv-settings" id="damage-tv-settings">
                     <legend>Damage TV display</legend>
                     <label class="damage-tv-switch"><input id="access-tv-only" type="checkbox"> TV Display Only</label>
@@ -154,8 +157,8 @@
                 <div class="create-user-fields">
                   <label>Full name<input id="new-full-name" required minlength="2" maxlength="100" autocomplete="off" placeholder="Example: Akram"></label>
                   <label>Username<input id="new-username" required minlength="3" maxlength="40" autocomplete="off" spellcheck="false" placeholder="Example: akram"></label>
-                  <label>Temporary password<input id="new-password" required minlength="8" maxlength="72" type="password" autocomplete="new-password" placeholder="Minimum 8 characters"></label>
-                  <label>Confirm password<input id="new-confirm-password" required minlength="8" maxlength="72" type="password" autocomplete="new-password" placeholder="Enter password again"></label>
+                  <label>Temporary password<input id="new-password" required minlength="6" maxlength="20" type="password" autocomplete="new-password" placeholder="6 to 20 characters"></label>
+                  <label>Confirm password<input id="new-confirm-password" required minlength="6" maxlength="20" type="password" autocomplete="new-password" placeholder="Enter password again"></label>
                 </div>
 
                 <div id="new-appearance-options"></div>
@@ -176,6 +179,7 @@
       </main>
     </div>
 
+    <dialog id="password-change-dialog" class="password-dialog" aria-labelledby="password-change-title"><form id="password-change-form"><div><h2 id="password-change-title">Change Password</h2><p id="password-change-account"></p></div><p>6–20 characters. Numbers alone are allowed.</p><label>New password<input id="change-password" type="password" required minlength="6" maxlength="20" autocomplete="new-password" data-capability="manage_access" data-capability-page="user_access"></label><label>Confirm password<input id="change-confirm-password" type="password" required minlength="6" maxlength="20" autocomplete="new-password" data-capability="manage_access" data-capability-page="user_access"></label><label class="password-show"><input id="show-new-passwords" type="checkbox" data-capability="manage_access" data-capability-page="user_access"> Show new password</label><p id="password-self-notice" hidden>Changing your own password will sign you out.</p><p id="password-change-message" role="status" hidden></p><div class="password-dialog-actions"><button type="button" id="password-change-close" class="secondary-button" data-capability="view" data-capability-page="user_access">Close</button><button type="button" id="check-password-status" class="secondary-button" data-capability="manage_access" data-capability-page="user_access" hidden>Check status</button><button type="submit" id="save-user-password" class="primary-button" data-capability="manage_access" data-capability-page="user_access">Save Password</button></div></form></dialog>
     <div id="toast" class="toast" hidden></div>
   </body>
 </html>

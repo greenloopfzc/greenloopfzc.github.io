@@ -122,7 +122,11 @@ window.GREENLOOP_CONFIG = Object.freeze({
         const invoke = sharedClient.functions.invoke.bind(sharedClient.functions);
         sharedClient.functions.invoke = async (...args) => {
           await window.GREENLOOP_ACCESS_READY;
-          if (!window.GREENLOOP_CAN?.('create_users','user_access')) return {data:null,error:{code:'42501',message:'Add Greenloop User permission is required.'}};
+          const action=args[1]?.body?.action;
+          if(args[0]==='admin-create-user' && action!==undefined && action!=='create_user'){
+            if(!['change_password','password_change_status','password_info','reveal_password'].includes(action))return {data:null,error:{code:'42501',message:'This account action is not supported.'}};
+            if(window.GREENLOOP_PAGE_ACCESS?.pageKey!=='user_access'||window.GREENLOOP_PAGE_ACCESS?.canEdit!==true||!window.GREENLOOP_CAN?.('manage_access','user_access'))return {data:null,error:{code:'42501',message:'Edit users & permissions access is required.'}};
+          }else if (!window.GREENLOOP_CAN?.('create_users','user_access')) return {data:null,error:{code:'42501',message:'Add Greenloop User permission is required.'}};
           return invoke(...args);
         };
       }
