@@ -1697,5 +1697,41 @@
   },
   "get_lab_bulk_transfer_version": {
     "read": true
+  },
+  "get_pending_parts_prices_v1": {
+    "page": "parts",
+    "capability": "view",
+    "read": true
+  },
+  "save_pending_parts_prices_v1": {
+    "page": "parts",
+    "capability": "issue"
+  },
+  "assign_pending_parts_source_v1": {
+    "page": "parts",
+    "capability": "issue"
+  },
+  "issue_parts_with_source_v1": {
+    "page": "parts",
+    "capability": "issue"
+  },
+  "issue_parts_picking_with_source_v1": {
+    "all": [
+      {
+        "page": "parts",
+        "capability": "view"
+      },
+      {
+        "page": "parts",
+        "capability": "technician_report"
+      },
+      {
+        "page": "parts",
+        "capability": "issue"
+      }
+    ]
+  },
+  "get_pending_parts_prices_version": {
+    "read": true
   }
 }
