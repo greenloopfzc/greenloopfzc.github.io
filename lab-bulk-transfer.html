@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en" data-global-imei-search="off">
+  <head>
+    <meta charset="utf-8">
+  <script src="js/appearance.js?v=20261017-settings-appearance-1"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0d5c43">
+    <meta name="description" content="Greenloop Laboratory and Frame technician workbench.">
+    <title>Bulk Transfer to Final QC | Greenloop</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css?v=20261016-strict-view-only-1">
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="js/imei-stage-notice.js?v=20261023-dual-imei-1"></script>
+  <script defer src="js/permission-catalog.js?v=20261030-restricted-scopes-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261030-lab-bulk-transfer-1"></script>
+<script defer src="js/page-capabilities.js?v=20261030-supplier-progress-1"></script>
+<link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
+<script defer src="js/office-access.js?v=20261024-office-access-1"></script>
+<script defer src="js/config.js?v=20261030-lab-bulk-transfer-1"></script>
+  <script defer src="js/login-activity.js?v=20261013-search-tv-1"></script>
+  <link rel="stylesheet" href="css/record-search.css?v=20261017-find-record-popup-1">
+  <script defer src="js/record-search.js?v=20261027-performance-1"></script>
+    <script defer src="js/part-notifications.js?v=20261027-performance-1"></script>
+      <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
+    <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261003-qc-duplicate-stage-1">
+  <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
+  <link rel="stylesheet" href="css/sidebar-compact.css?v=20261009-sidebar-pdf-1">
+  <script defer src="js/sidebar-compact.js?v=20261009-sidebar-pdf-1"></script>
+  <link rel="stylesheet" href="css/clean-layout.css?v=20261017-clean-layout-1">
+  <script defer src="js/clean-layout.js?v=20261030-supplier-progress-1"></script>
+  <script defer src="js/suspicious-badge.js?v=20261017-suspicious-activity-1"></script>
+<link rel="stylesheet" href="css/lab-bulk-transfer.css?v=20261030-lab-bulk-transfer-1">
+<script defer src="js/lab-bulk-transfer.js?v=20261030-lab-bulk-transfer-1"></script>
+<script defer src="js/lab-bulk-page.js?v=20261030-lab-bulk-transfer-1"></script>
+</head>
+<body class="app-page">
+    <div class="app-shell">
+      <aside id="sidebar" class="sidebar" aria-label="Main navigation">
+        <div class="sidebar-top"><a class="app-brand" href="dashboard.html"><span class="gl-wordmark"><img src="assets/greenloop-fzc-logo.jpg" alt="Greenloop FZC" width="1280" height="427"></span></a><button id="close-menu" hidden aria-hidden="true" tabindex="-1" class="icon-button close-menu" type="button" aria-label="Close menu">×</button></div>
+        <nav class="sidebar-nav"></nav>
+        <div class="sidebar-user"><span class="user-avatar">SA</span><span><strong>System Admin</strong><small>Super Admin</small></span></div>
+      </aside>
+      <div id="menu-backdrop" class="menu-backdrop" hidden></div>
+      <main class="app-main">
+        <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Dashboard</a><span>/</span><strong>Bulk Transfer to Final QC</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
+        <div class="page-content" style="max-width:1900px"><section class="page-heading"><div><p class="eyebrow">Lab &amp; Glass</p><h1>Bulk Transfer to Final QC</h1><p>Scan completed phones, review their readiness, then transfer them together.</p></div><a class="secondary-button" href="laboratory.html">← Back to Lab &amp; Glass</a></section><p id="permission-message" class="access-message" role="status" hidden></p><div id="lab-bulk-host" hidden></div></div></main></div></body></html>

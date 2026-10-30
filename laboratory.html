@@ -20,17 +20,18 @@
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="js/imei-stage-notice.js?v=20261023-dual-imei-1"></script>
   <script defer src="js/permission-catalog.js?v=20261030-restricted-scopes-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261030-supplier-progress-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261030-lab-bulk-transfer-1"></script>
 <script defer src="js/page-capabilities.js?v=20261030-supplier-progress-1"></script>
 <link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
 <script defer src="js/office-access.js?v=20261024-office-access-1"></script>
-<script defer src="js/config.js?v=20261029-action-permissions-1"></script>
+<script defer src="js/config.js?v=20261030-lab-bulk-transfer-1"></script>
   <script defer src="js/login-activity.js?v=20261013-search-tv-1"></script>
   <link rel="stylesheet" href="css/record-search.css?v=20261017-find-record-popup-1">
   <script defer src="js/record-search.js?v=20261027-performance-1"></script>
     <script defer src="js/part-notifications.js?v=20261027-performance-1"></script>
   <script defer src="js/employee-updates.js?v=20261027-performance-1"></script>
-  <script defer src="js/laboratory.js?v=20261029-lab-phone-cards-1"></script>
+  <link rel="stylesheet" href="css/lab-bulk-transfer.css?v=20261030-lab-bulk-transfer-1">
+  <script defer src="js/laboratory.js?v=20261030-lab-bulk-transfer-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
     <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261003-qc-duplicate-stage-1">
   <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
@@ -56,7 +57,7 @@
           <div id="permission-message" class="access-message" hidden></div>
           <section id="lab-app" class="lab-app" hidden>
             <section id="technician-board" class="technician-board">
-              <div class="lab-imei-toolbar"><div class="lab-imei-finder" data-capability="search" data-capability-page="lab_glass"><label id="technician-imei-scan-wrap" class="technician-imei-scan"><span>Find phone by IMEI</span><span class="technician-imei-scan-row"><input id="technician-imei-scan" type="search" inputmode="numeric" maxlength="15" autocomplete="off" placeholder="Enter or scan 15-digit IMEI" aria-label="Find phone by IMEI" data-search-read-only disabled><button id="check-technician-imei" type="button" data-search-read-only disabled>Open phone</button><button id="clear-technician-imei" class="secondary-button" type="button" data-search-read-only hidden>Show all</button></span></label></div><div id="lab-total-pending" class="lab-total-pending" role="status" aria-live="polite" aria-atomic="true"><span class="lab-pending-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false"><rect x="7" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 5h4M12 18.5h1M4 7v11a3 3 0 0 0 1 2.2"/></svg></span><span class="lab-pending-copy"><span class="lab-pending-label">Total Pending</span><span class="lab-pending-value"><strong id="lab-total-pending-count">…</strong> <span id="lab-total-pending-unit">phones</span></span></span></div></div>
+              <div class="lab-imei-toolbar"><div class="lab-imei-finder" data-capability="search" data-capability-page="lab_glass"><label id="technician-imei-scan-wrap" class="technician-imei-scan"><span>Find phone by IMEI</span><span class="technician-imei-scan-row"><input id="technician-imei-scan" type="search" inputmode="numeric" maxlength="15" autocomplete="off" placeholder="Enter or scan 15-digit IMEI" aria-label="Find phone by IMEI" data-search-read-only disabled><button id="check-technician-imei" type="button" data-search-read-only disabled>Open phone</button><button id="clear-technician-imei" class="secondary-button" type="button" data-search-read-only hidden>Show all</button></span></label></div><div id="lab-total-pending" class="lab-total-pending" role="status" aria-live="polite" aria-atomic="true"><span class="lab-pending-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false"><rect x="7" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 5h4M12 18.5h1M4 7v11a3 3 0 0 0 1 2.2"/></svg></span><span class="lab-pending-copy"><span class="lab-pending-label">Total Pending</span><span class="lab-pending-value"><strong id="lab-total-pending-count">…</strong> <span id="lab-total-pending-unit">phones</span></span></span></div><a id="open-lab-bulk" class="lab-bulk-launch-card" role="button" data-capability="view" data-capability-page="lab_glass" href="lab-bulk-transfer.html"><span class="lbt-link-icon" aria-hidden="true">⇥</span><strong>Bulk Transfer to Final QC</strong><span aria-hidden="true">→</span></a></div>
               <div class="technician-board-heading"><div><p class="panel-kicker">Technicians</p><h2 id="technician-board-title">Select a technician</h2><p>Click a name to see all assigned phones.</p></div><div class="technician-board-actions"><button id="refresh-lab" class="secondary-button" type="button">Refresh</button><button id="add-lab-technician" class="secondary-button" type="button">+ Add technician</button><button id="remove-lab-technician" class="secondary-button danger-button" type="button">− Remove selected</button></div></div>
               <div id="technician-cards" class="technician-cards" role="list"></div>
             </section>

@@ -734,5 +734,11 @@
     button.disabled = !result;
     status.textContent = result === "pass" ? "Select Final Grade, then move to Ready Stock" : result === "fail" ? "Will stay in Frame" : "Select Pass or Fail";
   });
+  document.querySelector('#open-lab-bulk')?.addEventListener('click',event=>{
+    if([...lineDrafts.values()].some(d=>d.partsDirty||d.servicesDirty)||technicianWorkRows.querySelector('tr[data-busy="yes"]')){
+      event.preventDefault();setBoardMessage('Save or discard the changed Lab lines before opening Bulk Transfer to Final QC.');
+    }
+  });
+  window.addEventListener('pageshow',event=>{if(event.persisted&&!isFrameMode&&!app.hidden)refreshAll().catch(error=>setBoardMessage(error.message));});
   initialize().catch((error) => { permissionMessage.textContent = error.message || "Laboratory could not be loaded."; permissionMessage.hidden = false; });
 })();

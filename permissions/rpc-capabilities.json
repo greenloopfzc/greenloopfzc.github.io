@@ -1685,5 +1685,17 @@
   },
   "get_supplier_progress_version": {
     "read": true
+  },
+  "lookup_lab_bulk_phone_v1": {
+    "page": "lab_glass",
+    "capability": "entry",
+    "read": true
+  },
+  "transfer_lab_bulk_to_final_qc_v1": {
+    "page": "lab_glass",
+    "capability": "entry"
+  },
+  "get_lab_bulk_transfer_version": {
+    "read": true
   }
 }
