@@ -260,3 +260,16 @@ html[data-design="neumorphism"] .audit-details-toggle { box-shadow: var(--nm-sha
 html[data-design="neumorphism"] .audit-details-toggle[aria-expanded="true"] { box-shadow: var(--nm-inset); }
 html[data-design="neumorphism"] .audit-snapshot-summary { box-shadow: var(--nm-shadow-sm); }
 @media (max-width: 760px) { .audit-detail-content { padding: 12px; } .audit-snapshot-summary { padding: 12px; } }
+
+/* Receipt-aware supplier progress; compact filters and a distinct returned count. */
+.supplier-report-tools {grid-template-columns:minmax(160px,1fr) minmax(210px,1fr) minmax(140px,1fr) auto;}
+.supplier-report-summary {grid-template-columns:repeat(4,minmax(140px,1fr));}
+.supplier-return-summary {text-align:left;padding:12px 14px;border:1px solid #e3b8a1;border-radius:9px;background:#fff4ec;color:inherit;cursor:pointer;}
+.supplier-return-summary small {display:block;margin-top:6px;}
+.supplier-return-detail {padding:12px 18px 18px;border-bottom:1px solid var(--border-color,#dbe7df);}
+.supplier-return-detail h3 {margin:0 0 12px;}
+.supplier-progress-table small,.supplier-return-detail td small {display:block;margin-top:4px;}
+.supplier-progress-table tfoot {background:var(--accent-soft,#e4f2eb);}
+.supplier-progress-table .supplier-returned {color:var(--text-color,#943e27);font-weight:800;}
+html[data-mode="dark"] .supplier-return-summary {background:#47372d;color:#fff0df;border-color:#9d7254;}
+@media(max-width:900px){.supplier-report-tools{grid-template-columns:1fr;}.supplier-report-summary{grid-template-columns:repeat(2,minmax(0,1fr));}}

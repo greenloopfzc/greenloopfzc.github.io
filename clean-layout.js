@@ -54,16 +54,16 @@
     const supplier = document.querySelector('#report-content #supplier-progress-filter');
     if (supplier && api.bar.id === 'report-supplier-progress') {
       api.panel.querySelectorAll('[data-clean-supplier-filter]').forEach(element => element.remove());
-      const label = supplier.closest('label');
-      label.dataset.cleanSupplierFilter = '';
-      adopt(api, label);
+      for (const id of ['supplier-progress-filter','supplier-progress-batch']) {
+        const select=document.getElementById(id);const label=select?.closest('label');
+        if(label){label.dataset.cleanSupplierFilter='';adopt(api,label);}
+      }
       chipKeys.delete(api);
     }
-    const selectedSupplier = api.panel.querySelector('#supplier-progress-filter');
-    if (selectedSupplier?.value && selectedSupplier.value !== 'all') chips.push({
-      label:'Supplier', value:selectedSupplier.selectedOptions[0]?.textContent || selectedSupplier.value,
-      clear:() => { selectedSupplier.value = 'all'; selectedSupplier.dispatchEvent(new Event('change', {bubbles:true})); }
-    });
+    for (const [id,label] of [['supplier-progress-filter','Supplier'],['supplier-progress-batch','Stock / Batch']]) {
+      const select=api.panel.querySelector('#'+id);
+      if(select?.value && select.value!=='all')chips.push({label,value:select.selectedOptions[0]?.textContent||select.value,clear:()=>{select.value='all';select.dispatchEvent(new Event('change',{bubbles:true}));}});
+    }
     external(api, chips);
   }
   function journey() {

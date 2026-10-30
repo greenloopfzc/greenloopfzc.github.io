@@ -32,6 +32,8 @@
   let deletionAuditDates = null;
   let auditView = "deleted";
   let selectedSupplier = "all";
+  let selectedSupplierBatch = "all";
+  let supplierReturnsOpen = false;
   let reportGeneration = 0;
   let correctionSearchGeneration = 0;
   let reportMutationPending = false;
@@ -316,68 +318,46 @@
   }
 
   function renderSupplierProgress() {
-    const allRows = reportData.supplier_progress || [];
-    const suppliers = [...new Map(allRows.map((row) => [String(row.supplier_id), {
-      id: String(row.supplier_id),
-      label: supplierReceiptLabel(row.supplier_code, row.planned_quantity, row.supplier_name)
-    }])).values()].sort((left, right) => left.label.localeCompare(right.label));
-
-    if (selectedSupplier !== "all" && !suppliers.some((supplier) => supplier.id === selectedSupplier)) selectedSupplier = "all";
-    const rows = window.GREENLOOP_FILTERS.use('report-supplier-progress', selectedSupplier === "all" ? allRows : allRows.filter((row) => String(row.supplier_id) === selectedSupplier), {before:reportContent,fields:[['model','Model']],onChange:()=>renderSupplierProgress(),searchFields:['supplier_code','model','invoice_number']});
-    const received = supplierTotal(rows, "received_quantity");
-    const ready = supplierTotal(rows, "ready_quantity");
-    const exported = supplierTotal(rows, "exported_quantity");
-    const stagePending = supplierTotal(rows, "initial_qc_pending") + supplierTotal(rows, "lab_glass_pending") + supplierTotal(rows, "parts_pending") + supplierTotal(rows, "final_qc_pending") + supplierTotal(rows, "other_quantity");
-    const completedPercent = received ? Math.round(((ready + exported) / received) * 100) : 0;
-    const receiptReturns = (reportData.stock_return_receipt_totals || []).filter((receipt) => {
-      if (selectedSupplier !== "all" && String(receipt.supplier_id) !== selectedSupplier) return false;
-      const date = new Date(receipt.received_at);
-      if (!receipt.received_at || !Number.isFinite(date.getTime())) return false;
-      const parts = Object.fromEntries(new Intl.DateTimeFormat("en", {timeZone:"Asia/Dubai",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(date).map(part => [part.type, part.value]));
-      const receivedDate = `${parts.year}-${parts.month}-${parts.day}`;
-      return receivedDate >= reportData.date_from && receivedDate <= reportData.date_to && Number(receipt.unallocated_return_quantity) > 0;
-    });
-    const receiptReturnNote = receiptReturns.length ? `<aside class="supplier-return-note"><strong>Receipt-level returns: ${supplierTotal(receiptReturns, "unallocated_return_quantity")} units</strong><p>Actual IMEIs still to enter for these receipts: <strong>${supplierTotal(receiptReturns, "remaining_unentered")}</strong>. Model pending counts may include these returned units because the returns were recorded against the receipt.</p></aside>` : "";
-
     panelKicker.textContent = "Supplier progress";
     panelTitle.textContent = "Supplier stock progress";
-    panelDescription.textContent = `Models received from ${dateLabel(reportData.date_from)} to ${dateLabel(reportData.date_to)}, with their present workflow position.`;
-    rowCount.textContent = `${rows.length} model line${rows.length === 1 ? "" : "s"}`;
-
-    const supplierOptions = suppliers.map((supplier) => `<option value="${escapeHtml(supplier.id)}"${supplier.id === selectedSupplier ? " selected" : ""}>${escapeHtml(supplier.label)}</option>`).join("");
-    const tableBody = rows.length ? rows.map((row) => `<tr>
-      <td><strong>${escapeHtml(supplierReceiptLabel(row.supplier_code, row.planned_quantity, row.supplier_name))}</strong></td>
-      <td>${escapeHtml(row.model)}</td>
-      <td>${escapeHtml(row.storage_label || "—")}</td>
-      <td>${escapeHtml(row.batch_numbers)}</td>
-      <td>${escapeHtml(row.stock_channels)}</td>
-      <td>${escapeHtml(row.planned_quantity)}</td>
-      <td>${escapeHtml(row.received_quantity)}</td>
-      <td class="supplier-count pending">${escapeHtml(row.imei_entry_pending)}</td>
-      <td class="supplier-count pending">${escapeHtml(row.initial_qc_pending)}</td>
-      <td class="supplier-count pending">${escapeHtml(row.lab_glass_pending)}</td>
-      <td class="supplier-count pending">${escapeHtml(row.parts_pending)}</td>
-      <td class="supplier-count pending">${escapeHtml(row.final_qc_pending)}</td>
-      <td class="supplier-count ready">${escapeHtml(row.ready_quantity)}</td>
-      <td class="supplier-count exported">${escapeHtml(row.exported_quantity)}</td>
-      <td>${escapeHtml(row.other_quantity)}</td>
-    </tr>`).join("") : '<tr><td class="report-empty" colspan="15">No supplier stock was received in this date range.</td></tr>';
-
-    reportContent.innerHTML = `<div class="supplier-report-tools">
-      <label>Supplier<select id="supplier-progress-filter"><option value="all">All suppliers</option>${supplierOptions}</select></label>
-      <div class="supplier-progress-track"><span style="width:${Math.min(completedPercent, 100)}%"></span></div><strong>${completedPercent}% Ready / Exported</strong>
-    </div>
-    <div class="supplier-report-summary">
-      <article><span>Planned stock</span><strong>${supplierTotal(rows, "planned_quantity")}</strong></article>
-      <article><span>IMEIs entered</span><strong>${received}</strong></article>
-      <article><span>Workflow pending</span><strong>${stagePending}</strong></article>
-      <article class="ready"><span>Ready Stock</span><strong>${ready}</strong></article>
-      <article class="exported"><span>Exported</span><strong>${exported}</strong></article>
-    </div>
-    ${receiptReturnNote}
-    <div class="report-table-wrap"><table class="report-table supplier-progress-table"><thead><tr>
-      <th>Supplier</th><th>Model</th><th>GB</th><th>Batch</th><th>Channel</th><th>Planned</th><th>IMEIs entered</th><th>IMEI entry pending</th><th>Initial QC</th><th>Lab &amp; Glass</th><th>Parts</th><th>Final QC</th><th>Ready Stock</th><th>Exported</th><th>Other</th>
-    </tr></thead><tbody>${tableBody}</tbody></table></div>`;
+    panelDescription.textContent = `Receipts from ${dateLabel(reportData.date_from)} to ${dateLabel(reportData.date_to)}. Returned phones are separate from the active workflow. Unentered stock is only the remaining receipt balance.`;
+    const data = reportData.supplier_progress_v2;
+    if (!data || !Array.isArray(data.receipts) || !Array.isArray(data.rows) || !Array.isArray(data.returns)) {
+      rowCount.textContent = "Unavailable";
+      reportContent.innerHTML = '<p class="report-empty">Supplier Progress could not be loaded. Apply the date range to retry. Do not treat unavailable counts as zero.</p>';
+      return;
+    }
+    const suppliers = [...new Map(data.receipts.map(row => [String(row.supplier_id), {id:String(row.supplier_id),label:partnerLabel(row.supplier_code,row.supplier_name)}])).values()].sort((a,b)=>a.label.localeCompare(b.label));
+    if (selectedSupplier !== "all" && !suppliers.some(s=>s.id===selectedSupplier)) { selectedSupplier="all"; selectedSupplierBatch="all"; }
+    const receipts = data.receipts.filter(row=>selectedSupplier==="all" || String(row.supplier_id)===selectedSupplier);
+    if (selectedSupplierBatch !== "all" && !receipts.some(row=>String(row.batch_id)===selectedSupplierBatch)) selectedSupplierBatch="all";
+    const selected = data.rows.filter(row=>(selectedSupplier==="all" || String(row.supplier_id)===selectedSupplier) && (selectedSupplierBatch==="all" || String(row.batch_id)===selectedSupplierBatch));
+    const rows=window.GREENLOOP_FILTERS.use('report-supplier-progress',selected,{before:reportContent,fields:[['model','Model']],onChange:()=>renderSupplierProgress(),searchFields:['supplier_code','supplier_name','model','invoice_number','batch_number','storage_gb']});
+    const sum = key => supplierTotal(rows,key);
+    const received=sum('received_quantity'),ready=sum('ready_quantity'),exported=sum('exported_quantity'),returned=sum('returned_quantity');
+    const pending=sum('initial_qc_pending')+sum('lab_glass_pending')+sum('parts_pending')+sum('final_qc_pending')+sum('other_quantity');
+    const percent=received?Math.round((ready+exported)/received*100):0;
+    const supplierOptions=suppliers.map(row=>`<option value="${escapeHtml(row.id)}"${row.id===selectedSupplier?' selected':''}>${escapeHtml(row.label)}</option>`).join('');
+    const batchOptions=receipts.map(row=>`<option value="${escapeHtml(row.batch_id)}"${String(row.batch_id)===selectedSupplierBatch?' selected':''}>${escapeHtml(row.batch_number)}${row.invoice_number?' · '+escapeHtml(row.invoice_number):''}${selectedSupplier==='all'?' · '+escapeHtml(row.supplier_code):''}</option>`).join('');
+    const matchKey = row => `${row.batch_id}|${String(row.group_model ?? row.model).trim().toLowerCase()}|${row.group_storage_gb ?? row.storage_gb ?? ''}`;
+    const visibleModels=new Set(rows.filter(row=>!row.receipt_balance).map(matchKey));
+    const balanceBatches=new Set(rows.filter(row=>row.receipt_balance).map(row=>String(row.batch_id)));
+    const returns=data.returns.filter(row=>row.receipt_balance?balanceBatches.has(String(row.batch_id)):visibleModels.has(matchKey(row)));
+    rowCount.textContent=`${rows.length} stock line${rows.length===1?'':'s'}`;
+    const storage = row => row.storage_gb ? (Number(row.storage_gb)>=1024 && Number(row.storage_gb)%1024===0?`${Number(row.storage_gb)/1024} TB`:`${row.storage_gb} GB`) : '—';
+    const fields=['stock_quantity','received_quantity','imei_entry_pending','initial_qc_pending','lab_glass_pending','parts_pending','final_qc_pending','ready_quantity','exported_quantity','returned_quantity','return_pending','other_quantity'];
+    const body=rows.map(row=>`<tr><td>${escapeHtml(partnerLabel(row.supplier_code,row.supplier_name))}</td><td>${escapeHtml(row.model)}</td><td>${escapeHtml(storage(row))}</td><td><strong>${escapeHtml(row.batch_number)}</strong>${row.invoice_number?`<small>${escapeHtml(row.invoice_number)}</small>`:''}</td><td>${escapeHtml(row.stock_channel)}</td>${fields.map(key=>`<td class="supplier-count${key==='returned_quantity'?' supplier-returned':''}">${escapeHtml(row[key])}</td>`).join('')}</tr>`).join('') || '<tr><td colspan="17" class="report-empty">No stock matches the selected supplier, batch and filters.</td></tr>';
+    const totals=`<tfoot><tr><th colspan="5">Filtered total</th>${fields.map(key=>`<td><strong>${sum(key)}</strong></td>`).join('')}</tr></tfoot>`;
+    const details=supplierReturnsOpen?`<section class="supplier-return-detail" aria-label="Returned phone details"><h3>Returned phones · ${returned}</h3><div class="report-table-wrap"><table class="report-table"><thead><tr><th>Supplier</th><th>Stock / Invoice</th><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>Returned</th><th>Reference / Reason</th></tr></thead><tbody>${returns.map(row=>`<tr><td>${escapeHtml(partnerLabel(row.supplier_code,row.supplier_name))}</td><td>${escapeHtml(row.batch_number)}<small>${escapeHtml(row.invoice_number||'')}</small></td><td>${escapeHtml(row.imei||'Not entered')}</td><td>${escapeHtml(row.model)}</td><td>${escapeHtml(storage(row))}</td><td>${escapeHtml(row.color||'—')}</td><td>${row.returned_at?escapeHtml(formatCell(row.returned_at,'date')):'Not recorded'}</td><td>${escapeHtml(row.return_number||row.slip_reference||'—')}<small>${escapeHtml(row.reason||'')}${row.notes?' · '+escapeHtml(row.notes):''}</small>${row.status_only?'<small>Recorded workflow status; return metadata unavailable.</small>':''}</td></tr>`).join('')||'<tr><td colspan="8" class="report-empty">No completed returns match these filters.</td></tr>'}</tbody></table></div></section>`:'';
+    const selectedReceipts=receipts.filter(row=>selectedSupplierBatch==='all'||String(row.batch_id)===selectedSupplierBatch);
+    const over=selectedReceipts.reduce((n,row)=>n+Number(row.over_entered||0),0);
+    window.GREENLOOP_FILTERS.find?.('report-supplier-progress')?.panel?.querySelectorAll('[data-clean-supplier-filter]').forEach(label=>label.remove());
+    reportContent.innerHTML=`<div class="supplier-report-tools"><label>Supplier<select id="supplier-progress-filter"><option value="all">All suppliers</option>${supplierOptions}</select></label><label>Stock / Batch<select id="supplier-progress-batch"><option value="all">All stock / batches</option>${batchOptions}</select></label><div class="supplier-progress-track"><span style="width:${Math.min(percent,100)}%"></span></div><strong>${percent}% Ready / Exported</strong></div>
+      <div class="supplier-report-summary">
+        <article><span>Stock quantity</span><strong>${sum('stock_quantity')}</strong></article><article><span>IMEIs entered</span><strong>${received}</strong></article><article><span>IMEI entry pending</span><strong>${sum('imei_entry_pending')}</strong></article><article><span>Workflow pending</span><strong>${pending}</strong></article><article class="ready"><span>Ready Stock</span><strong>${ready}</strong></article><article class="exported"><span>Exported</span><strong>${exported}</strong></article>
+        <button type="button" class="supplier-return-summary" data-supplier-returns aria-expanded="${supplierReturnsOpen}"><span>Returned phones</span><strong>${returned}</strong><small>${supplierReturnsOpen?'Hide details':'View details'}</small></button><article><span>Return pending</span><strong>${sum('return_pending')}</strong></article>
+      </div>${over?`<p class="supplier-return-note" role="status">${over} units exceed the receipt quantity. Review this receipt's entries and returns.</p>`:''}${details}
+      <div class="report-table-wrap"><table class="report-table supplier-progress-table"><thead><tr><th>Supplier</th><th>Model</th><th>GB</th><th>Stock / Batch</th><th>Channel</th><th>Stock quantity</th><th>IMEIs entered</th><th>IMEI entry pending</th><th>Initial QC</th><th>Lab &amp; Glass</th><th>Parts</th><th>Final QC</th><th>Ready Stock</th><th>Exported</th><th>Returned</th><th>Return pending</th><th>Other</th></tr></thead><tbody>${body}</tbody>${rows.length?totals:''}</table></div>`;
   }
 
   function getExportBoxGroups() {
@@ -986,7 +966,7 @@
       const [base, boxes, suppliers, deletions, changes, parts, stockReturns, receiptTotals] = await Promise.all([
         getClient().rpc("get_greenloop_reports", dates),
         getClient().rpc("get_export_box_report", dates),
-        getClient().rpc("get_supplier_stock_progress", dates),
+        getClient().rpc("get_supplier_progress_v2", dates),
         getClient().rpc("get_deletion_history", dates),
         canManageCorrections ? getClient().rpc("get_data_change_history", dates) : Promise.resolve({ data: [] }),
         getClient().rpc("get_open_parts_pending_count"),
@@ -1004,7 +984,7 @@
       if (next.stock_returns === null) warnings.push("Stock Return could not be loaded");
       next.stock_return_receipt_totals = !receiptTotals.error && Array.isArray(receiptTotals.data) ? receiptTotals.data : null;
       if (next.stock_return_receipt_totals === null) warnings.push("Return-adjusted receipt balances could not be loaded; model pending counts may include returned units");
-      for (const [key, label, response] of [["export_boxes", "Export boxes", boxes], ["supplier_progress", "Supplier progress", suppliers], ["deleted_history", "Deleted history", deletions], ["data_changes", "Data changes", changes]]) {
+      for (const [key, label, response] of [["export_boxes", "Export boxes", boxes], ["supplier_progress_v2", "Supplier progress", suppliers], ["deleted_history", "Deleted history", deletions], ["data_changes", "Data changes", changes]]) {
         next[key] = response.error ? [] : response.data || [];
         if (response.error) warnings.push(label + " could not be loaded");
       }
@@ -1015,7 +995,7 @@
       await addDeviceIdentityToReports(next);
       if (generation !== reportGeneration) return;
       reportData = next;
-      selectedExportBox = ""; exportBoxImeiFilter = ""; selectedSupplier = "all";
+      selectedExportBox = ""; exportBoxImeiFilter = ""; selectedSupplier = "all"; selectedSupplierBatch = "all"; supplierReturnsOpen = false;
       renderActiveReport();
       if (warnings.length) setMessage(warnings.join(". ") + ". Do not treat an unavailable report as zero records.");
     } catch (error) {
@@ -1177,11 +1157,11 @@
       filter.setSelectionRange(filter.value.length, filter.value.length);
     }
   });
-  // Supplier selection may live in the shared Filters panel outside reportContent.
-  app.addEventListener("change", (event) => {
-    if (event.target.id !== "supplier-progress-filter") return;
-    selectedSupplier = event.target.value || "all";
-    renderSupplierProgress();
+  // Filters are adopted into the shared panel; keep delegated listeners.
+  app.addEventListener("change", event => {
+    if(event.target.id === "supplier-progress-filter") { selectedSupplier=event.target.value||"all";selectedSupplierBatch="all";supplierReturnsOpen=false;renderSupplierProgress(); }
+    if(event.target.id === "supplier-progress-batch") { selectedSupplierBatch=event.target.value||"all";supplierReturnsOpen=false;renderSupplierProgress(); }
   });
+  app.addEventListener("click", event => { if(event.target.closest('[data-supplier-returns]')) { supplierReturnsOpen=!supplierReturnsOpen;renderSupplierProgress(); } });
   initialize().catch((error) => { permissionMessage.textContent = error.message || "Reports could not be loaded."; permissionMessage.hidden = false; });
 })();

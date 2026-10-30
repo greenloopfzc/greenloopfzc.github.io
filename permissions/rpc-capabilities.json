@@ -1677,5 +1677,13 @@
         "capability": "delete_imei_list"
       }
     }
+  },
+  "get_supplier_progress_v2": {
+    "page": "reports",
+    "capability": "view",
+    "read": true
+  },
+  "get_supplier_progress_version": {
+    "read": true
   }
 }
