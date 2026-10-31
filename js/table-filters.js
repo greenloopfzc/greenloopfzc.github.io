@@ -117,7 +117,7 @@
         const values = [...new Set((facets[key] || []).map(text).filter(Boolean))];
         if (draft && !values.includes(draft)) values.push(draft);
         select.replaceChildren(new Option('All', ''));
-        values.sort((a,b)=>a.localeCompare(b, undefined, {numeric:true})).forEach(v=>select.add(new Option(v.replaceAll('_', ' '), v)));
+        values.sort((a,b)=>a.localeCompare(b, undefined, {numeric:true})).forEach(v=>select.add(new Option(['department','failure_department','location','current_stage','status'].includes(key) && window.GREENLOOP_DEPT_NAME ? window.GREENLOOP_DEPT_NAME(v.replaceAll('_', ' ')) : v.replaceAll('_', ' '), v)));
         select.value = draft;
       });
     }

@@ -210,7 +210,7 @@
   function dateLabel(value) { return value ? new Date(`${value}T00:00:00`).toLocaleDateString([], { day: "2-digit", month: "short", year: "numeric" }) : "—"; }
   function dateTime(value) { return value ? new Date(value).toLocaleString([], { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true }) : "—"; }
   function money(value) { return `AED ${Number(value || 0).toFixed(2)}`; }
-  function title(value) { return String(value || "—").replaceAll("_", " "); }
+  function title(value) { return window.GREENLOOP_DEPT_NAME(String(value || "—").replaceAll("_", " ")); }
   function partnerLabel(code, name, fallback = "—") {
     if (typeof window.GREENLOOP_PARTNER_LABEL === "function") return window.GREENLOOP_PARTNER_LABEL(code, name, fallback);
     return String(code || "").trim() || fallback;
@@ -228,6 +228,7 @@
   function formatReportValue(row, key, type) {
     if (!window.GREENLOOP_CAN_VIEW_PARTNER_NAMES && key === "customer") return "Confidential customer";
     if (!window.GREENLOOP_CAN_VIEW_PARTNER_NAMES && key === "supplier_name") return escapeHtml(row.supplier_code || "Confidential supplier");
+    if (["location","failure_department","department","current_stage"].includes(key)) return escapeHtml(title(row[key]));
     return formatCell(row[key], type);
   }
 
