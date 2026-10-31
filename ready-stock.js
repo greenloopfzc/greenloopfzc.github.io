@@ -104,7 +104,7 @@
     // Keep the range status node in place while navigating to the rework form.
     rangeLabel.hidden = isRework;
     let reworkHelp = pageSubtitle.querySelector('.ready-stock-rework-help');
-    if (!reworkHelp) { reworkHelp = document.createElement('span'); reworkHelp.className = 'ready-stock-rework-help'; reworkHelp.textContent = 'Send one or more phones to Laboratory or Frame Department.'; pageSubtitle.append(reworkHelp); }
+    if (!reworkHelp) { reworkHelp = document.createElement('span'); reworkHelp.className = 'ready-stock-rework-help'; reworkHelp.textContent = 'Send one or more phones to Laboratory or B-DEPT.'; pageSubtitle.append(reworkHelp); }
     reworkHelp.hidden = !isRework;
     document.querySelector("#ready-stock-breadcrumb").textContent = isRework ? "Send for rework" : "Ready Stock";
     document.title = isRework ? "Send for rework | Greenloop" : "Ready Stock | Greenloop";
@@ -403,7 +403,7 @@
       if (bulkDraft.tooLarge || !bulkDraft.phones.length) { showToast("Enter a valid batch of up to 500 unique IMEIs."); bulkInput.focus(); return; }
     } else if (!/^\d{15}$/.test(imei)) { showToast("Enter a 15-digit Ready Stock IMEI."); reworkImei.focus(); return; }
     if (!isBulk && unconfirmedImeis.has(imei)) { showToast("Check this phone in the Check before retrying list first."); return; }
-    const departmentName = department === "frame" ? "Frame Department" : "Laboratory";
+    const departmentName = department === "frame" ? "B-DEPT" : "Laboratory";
     if (department === "laboratory" && !technician) { showToast("Select the Laboratory technician."); reworkTechnician.focus(); return; }
     if (!["laboratory", "frame"].includes(department)) { showToast("Select a rework department."); return; }
     if (!window.confirm(`Send ${isBulk ? bulkDraft.phones.length + " phones" : imei} from Ready Stock to ${departmentName}${department === "laboratory" ? " — " + reworkTechnician.selectedOptions[0].textContent : ""}?`)) return;

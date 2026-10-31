@@ -165,7 +165,7 @@
     const device = data.device || {};
     document.querySelector('#journey-detail-title').textContent = device.imei_1 || device.device_number || 'Device history';
     const row = loadedRows.find(item => item.device_id === selectedDevice);
-    const current = row?.current_stage || displayValue(device.current_status).replace(/_/g, ' ');
+    const current = window.GREENLOOP_DEPT_NAME(row?.current_stage || displayValue(device.current_status).replace(/_/g, ' '));
     document.querySelector('#journey-detail-stage').textContent = [device.model, device.storage_gb ? `${device.storage_gb} GB` : '', device.color, `Current stage: ${current}`].filter(Boolean).join(' · ');
     const records = Array.isArray(data.rows) ? data.rows : [];
     const fullActivity = records.length ? '<ol class="stock-journey-steps">' + records.map(item => {
@@ -173,14 +173,14 @@
       details.unshift(`<li><strong>Date & time:</strong> ${escapeHtml(journeyDate(item.occurred_at))}</li>`);
       details.push(`<li><strong>${item.stage === 'assignment' ? 'Assigned technician' : 'By'}:</strong> ${escapeHtml(item.actor || 'Not recorded')}</li>`);
       if (item.job_number) details.push(`<li><strong>Job:</strong> ${escapeHtml(item.job_number)}</li>`);
-      if (item.status) details.push(`<li><strong>Status:</strong> ${escapeHtml(displayValue(item.status).replace(/_/g, ' '))}</li>`);
+      if (item.status) details.push(`<li><strong>Status:</strong> ${escapeHtml(window.GREENLOOP_DEPT_NAME(displayValue(item.status).replace(/_/g, ' ')))}</li>`);
       for (const part of Array.isArray(item.parts) ? item.parts : []) details.push(`<li><strong>Part:</strong> ${escapeHtml(part.name || 'Not recorded')} · Qty ${escapeHtml(displayValue(part.quantity))}${part.unit_cost != null ? ' · Unit price AED ' + escapeHtml(formatMoney(part.unit_cost)) : ' · Price not recorded'}</li>`);
       if (item.cost != null) details.push(`<li><strong>Recorded cost:</strong> AED ${escapeHtml(formatMoney(item.cost))}</li>`);
       if (item.duration_seconds != null && Number.isFinite(Number(item.duration_seconds))) {
         const seconds = Math.max(0, Math.round(Number(item.duration_seconds)));
         details.push(`<li><strong>${escapeHtml(item.duration_label || 'Duration')}:</strong> ${Math.floor(seconds / 3600)}h ${Math.floor(seconds % 3600 / 60)}m ${seconds % 60}s</li>`);
       }
-      return `<li class="stock-journey-step"><h3>${escapeHtml(item.title || 'Recorded step')}</h3><ul>${details.join('')}</ul></li>`;
+      return `<li class="stock-journey-step"><h3>${escapeHtml(window.GREENLOOP_DEPT_NAME(item.title || 'Recorded step'))}</h3><ul>${details.join('')}</ul></li>`;
     }).join('') + '</ol>' : '<p>No recorded steps are available for this phone yet.</p>';
     detailBody.innerHTML = window.GREENLOOP_STOCK_JOURNEY.render(records, {escape:escapeHtml,date:journeyDate,money:formatMoney}) +
       (records.length ? '<details class="journey-full-activity"><summary>Full activity ('+records.length+' records)</summary>'+fullActivity+'</details>' : '');

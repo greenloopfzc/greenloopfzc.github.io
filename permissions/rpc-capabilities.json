@@ -1189,6 +1189,18 @@
     },
     "get_qc_auto_rules_version": {
       "read": true
+    },
+    "get_b_dept_rows_v1": {
+      "page": "frame_department",
+      "capability": "view",
+      "read": true
+    },
+    "record_b_dept_result_v1": {
+      "page": "frame_department",
+      "capability": "entry"
+    },
+    "get_b_dept_version": {
+      "read": true
     }
   },
   "get_box_status_v1": {

@@ -86,7 +86,7 @@
       ["Lab & Glass · 2+ Days", null, "Waiting 48 hours or more", "lab-delay-card", "#lab-delay-report", "◷"],
       ["Parts", workflow.parts, "Open part requests", "rma-stock", "parts.html", "▦"],
       ["Final QC", workflow.final_qc, "Waiting for final check", "final-qc-stock", "final-qc.html", "◉"],
-      ["Frame Department", workflow.frame, "Waiting for frame work", "frame-stock", "laboratory.html#frame", "□"],
+      ["B-DEPT", workflow.frame, "Waiting for frame work", "frame-stock", "laboratory.html#frame", "□"],
       ["Ready Stock", workflow.ready_stock, "Available now", "ready-stock", "ready-stock.html", "▤"],
       ["Export Data", workflow.export_data, "IMEIs in export boxes", "export-stock", "export-box.html", "↝"]
     ];
@@ -112,7 +112,7 @@
     liveHeadlinesSignature = signature;
     liveHeadlines.hidden = false;
     if (!headlines.length) {
-      const emptyMarkup = '<span class="live-headline-item"><strong>NO LIVE ACTIVITY</strong><span>New Stock Received, IMEI, QC, Lab, Frame, Ready Stock, and Export activity will appear here automatically.</span></span>';
+      const emptyMarkup = '<span class="live-headline-item"><strong>NO LIVE ACTIVITY</strong><span>New Stock Received, IMEI, QC, Lab, B-DEPT, Ready Stock, and Export activity will appear here automatically.</span></span>';
       liveHeadlinesItems.innerHTML = emptyMarkup + emptyMarkup;
       setLiveHeadlineSpeed();
       return;

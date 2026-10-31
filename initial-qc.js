@@ -187,7 +187,7 @@
       <td>${requirementGroup("part")}</td>
       <td>${requirementGroup("service")}</td>
       <td><div class="qc-bulk-technician"><select data-carry-field="technician">${technicianOptions()}</select><button type="button" data-add-technician title="Add technician">+</button><button type="button" class="remove" data-remove-technician title="Remove technician">−</button></div></td>
-      <td class="qc-row-save-cell"><label class="qc-frame-route" title="No-work phone: send directly to Frame Department"><input type="checkbox" data-route-frame><span>Frame</span></label><button type="button" class="qc-row-save" data-save-row>Save</button></td>
+      <td class="qc-row-save-cell"><label class="qc-frame-route" title="No-work phone: send directly to B-DEPT"><input type="checkbox" data-route-frame><span>B-DEPT</span></label><button type="button" class="qc-row-save" data-save-row>Save</button></td>
     </tr>`;
   }
 
@@ -625,7 +625,7 @@
       || submission.parts.length > 0
       || Boolean(submission.technicianId);
     if (submission.routeToFrame && hasWork) {
-      const errorText = "Frame direct route needs Parts, Service, and Technician to be blank.";
+      const errorText = "B-DEPT direct route needs Parts, Service, and Technician to be blank.";
       setRowState(row, errorText, "is-error");
       return { ok: false, error: errorText };
     }
@@ -669,7 +669,7 @@
     row.querySelectorAll("input, select, button").forEach((control) => { control.disabled = true; });
     rowButton.textContent = "Saved";
     const route = submission.routeToFrame ? "frame" : (hasWork ? "laboratory" : "final_qc");
-    setRowState(row, route === "frame" ? "Completed - Frame" : (submission.parts.length ? "Completed - Lab & Parts" : hasWork ? "Completed - Laboratory" : "Completed - Final QC"), "is-completed");
+    setRowState(row, route === "frame" ? "Completed - B-DEPT" : (submission.parts.length ? "Completed - Lab & Parts" : hasWork ? "Completed - Laboratory" : "Completed - Final QC"), "is-completed");
     return { ok: true, hasWork, route, partsQueued:hasWork&&submission.parts.length>0 };
     } catch (error) {
       setRowState(row, error.message || "Could not save", "is-error");
@@ -692,7 +692,7 @@
       return;
     }
     await loadPendingCount();
-    showToast(result.route === "frame" ? "Initial QC saved. Phone sent directly to Frame." : (result.partsQueued ? "Initial QC saved. Phone sent to Laboratory and required parts sent to Parts." : result.hasWork ? "Initial QC saved. Phone sent to Laboratory." : "Initial QC saved. Phone sent directly to Final QC."));
+    showToast(result.route === "frame" ? "Initial QC saved. Phone sent directly to B-DEPT." : (result.partsQueued ? "Initial QC saved. Phone sent to Laboratory and required parts sent to Parts." : result.hasWork ? "Initial QC saved. Phone sent to Laboratory." : "Initial QC saved. Phone sent directly to Final QC."));
     focusNextInspectionRow(row);
   }
 
@@ -732,7 +732,7 @@
 
     setSubmitting(button, false);
     await loadPendingCount();
-    if (completed) showToast(`${completed} Initial QC completed: ${sentToLab} to Laboratory, ${sentToFrame} direct to Frame, ${directFinalQc} direct to Final QC.`);
+    if (completed) showToast(`${completed} Initial QC completed: ${sentToLab} to Laboratory, ${sentToFrame} direct to B-DEPT, ${directFinalQc} direct to Final QC.`);
     if (errors.length) {
       setMessage(`${completed} completed. ${errors.length} row(s) need correction. ${errors[0]}`);
     } else {

@@ -5,8 +5,8 @@
   const field=(row,...names)=>text((row.details||[]).find(d=>names.some(n=>norm(n)===norm(d.label)))?.value);
   const stamp=r=>{const t=Date.parse(r.occurred_at);return Number.isFinite(t)?t:null;};
   const prefix=r=>text(r.id).split(':')[0];
-  const titles={stock_received:'Stock Received',imei_entry:'IMEI Entry',initial_qc:'Initial QC',laboratory:'Laboratory',glass:'Glass',final_qc:'Final QC',frame:'Frame',ready_stock:'Ready Stock',export:'Export',stock_return:'Stock Return',rework:'Rework',other:'Recorded activity'};
-  function place(v){const n=norm(v);if(/^(laboratory|lab)$/.test(n))return 'laboratory';if(n==='glass')return 'glass';if(n.includes('initial qc'))return 'initial_qc';if(n.includes('final qc'))return 'final_qc';if(n.includes('frame'))return 'frame';if(n.includes('ready stock'))return 'ready_stock';if(/export|outbound/.test(n))return 'export';return '';}
+  const titles={stock_received:'Stock Received',imei_entry:'IMEI Entry',initial_qc:'Initial QC',laboratory:'Laboratory',glass:'Glass',final_qc:'Final QC',frame:'B-DEPT',ready_stock:'Ready Stock',export:'Export',stock_return:'Stock Return',rework:'Rework',other:'Recorded activity'};
+  function place(v){const n=norm(v);if(/^(laboratory|lab)$/.test(n))return 'laboratory';if(n==='glass')return 'glass';if(n.includes('initial qc'))return 'initial_qc';if(n.includes('final qc'))return 'final_qc';if(n.includes('frame')||n.includes('b-dept'))return 'frame';if(n.includes('ready stock'))return 'ready_stock';if(/export|outbound/.test(n))return 'export';return '';}
   function kind(r){
     const id=prefix(r),s=norm(r.stage),t=norm(r.title);
     if(id==='assignment'||s==='assignment'||id.startsWith('timer-')||s==='technician'||/technician planned|assigned to technician/.test(t))return 'support';
@@ -19,7 +19,7 @@
     if(id==='initial-qc'||s==='initial qc'||/^initial qc/.test(t))return 'initial_qc';
     if(id==='final-qc'||s==='final qc'||/^(phone received at final qc|final qc)/.test(t))return 'final_qc';
     if(s==='ready stock'||/passed.*ready stock/.test(t))return 'ready_stock';
-    if(id==='frame'||s==='frame'||/^frame/.test(t))return 'frame';
+    if(id==='frame'||s==='frame'||/^(?:frame|b-dept)/.test(t))return 'frame';
     if(id==='supplier-return'||s==='stock return')return 'stock_return';
     if(/^(export-box|dispatch)$/.test(id)||s==='export')return 'export';
     if(s==='rework')return 'rework';

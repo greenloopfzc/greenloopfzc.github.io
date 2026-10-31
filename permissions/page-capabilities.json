@@ -1,5 +1,5 @@
 {
-  "version": "20261030-stock-parts-cost-1",
+  "version": "20261031-b-dept-1",
   "pages": [
     {
       "key": "overview",
@@ -328,8 +328,8 @@
     },
     {
       "key": "frame_department",
-      "label": "Frame Department",
-      "description": "Frame work, grades and pass / fail decisions.",
+      "label": "B-DEPT",
+      "description": "B Department: Final Battery Health, grades and pass / fail decisions.",
       "capabilities": [
         {
           "key": "view",

@@ -19,19 +19,19 @@
     <link rel="stylesheet" href="css/ready-stock.css?v=20261028-ready-stock-imeis-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="js/imei-stage-notice.js?v=20261023-dual-imei-1"></script>
-  <script defer src="js/permission-catalog.js?v=20261030-stock-parts-cost-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261031-qc-auto-rules-1"></script>
+  <script defer src="js/permission-catalog.js?v=20261031-b-dept-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261031-b-dept-1"></script>
 <script defer src="js/page-capabilities.js?v=20261030-supplier-progress-1"></script>
 <link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
 <script defer src="js/office-access.js?v=20261024-office-access-1"></script>
-<script defer src="js/config.js?v=20261030-user-password-1"></script>
+<script defer src="js/config.js?v=20261031-b-dept-1"></script>
   <script defer src="js/login-activity.js?v=20261013-search-tv-1"></script>
   <link rel="stylesheet" href="css/record-search.css?v=20261017-find-record-popup-1">
   <script defer src="js/record-search.js?v=20261027-performance-1"></script>
-    <script defer src="js/part-notifications.js?v=20261027-performance-1"></script>
+    <script defer src="js/part-notifications.js?v=20261031-b-dept-1"></script>
     <script defer src="js/employee-updates.js?v=20261027-performance-1"></script>
   <script defer src="js/storage-options.js?v=20261027-iphone-entry-options-1"></script>
-  <script defer src="js/ready-stock.js?v=20261028-ready-stock-imeis-1"></script>
+  <script defer src="js/ready-stock.js?v=20261031-b-dept-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
     <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261003-qc-duplicate-stage-1">
   <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
@@ -79,12 +79,12 @@
             </section>
             <section id="ready-stock-rework-view" aria-label="Send for rework" hidden>
               <section class="ready-stock-rework">
-                <div><p class="panel-kicker">Customer change</p><h2>Send Ready Stock for rework</h2><p>Laboratory rework requires a technician; Frame does not. In Bulk, the selected department, technician and work required apply to every phone in the batch.</p></div>
+                <div><p class="panel-kicker">Customer change</p><h2>Send Ready Stock for rework</h2><p>Laboratory rework requires a technician; B-DEPT does not. In Bulk, the selected department, technician and work required apply to every phone in the batch.</p></div>
                 <form id="ready-stock-rework-form">
                   <div class="ready-rework-mode" role="group" aria-label="Rework entry mode"><button id="ready-rework-single-mode" class="secondary-button" type="button" aria-pressed="true">Single phone</button><button id="ready-rework-bulk-mode" class="secondary-button" type="button" aria-pressed="false">Bulk phones</button></div>
                   <label id="ready-rework-single-field">IMEI<input id="ready-stock-rework-imei" inputmode="numeric" maxlength="15" placeholder="Scan 15-digit IMEI" required></label>
                   <div id="ready-rework-bulk-field" class="ready-rework-bulk-field" hidden><label for="ready-rework-imeis">Scan or paste IMEIs</label><textarea id="ready-rework-imeis" rows="6" inputmode="numeric" spellcheck="false" placeholder="123456789012345&#10;123456789012346" aria-describedby="ready-rework-bulk-help ready-rework-count" disabled></textarea><p id="ready-rework-bulk-help">Scan each phone and press Enter, or paste one IMEI per line. Maximum 500 phones per batch.</p><p id="ready-rework-count" role="status">0 phones</p></div>
-                  <label>Department<select id="ready-stock-rework-department" required><option value="laboratory">Laboratory</option><option value="frame">Frame Department</option></select></label>
+                  <label>Department<select id="ready-stock-rework-department" required><option value="laboratory">Laboratory</option><option value="frame">B-DEPT</option></select></label>
                   <label id="ready-stock-rework-technician-wrap">Laboratory technician<select id="ready-stock-rework-technician" disabled><option value="">Loading technicians...</option></select></label>
                   <label class="ready-stock-rework-reason">Customer demand / work required <small>(optional)</small><textarea id="ready-stock-rework-reason" rows="2" placeholder="Example: Change housing to Blue"></textarea></label>
                   <button id="ready-stock-rework-submit" class="primary-button" type="submit">Send for rework</button>

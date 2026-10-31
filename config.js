@@ -1,3 +1,4 @@
+window.GREENLOOP_DEPT_NAME = value => String(value ?? "").replace(/\bframe(?:[ -]+department)?\b/gi, "B-DEPT");
 // GreenLoop audit release: 20260918-audit-2
 window.GREENLOOP_CONFIG = Object.freeze({
   supabaseUrl: "https://prypklagfznpdlleldll.supabase.co",
@@ -189,9 +190,9 @@ document.addEventListener("click", (event) => {
     "Parts Inventory": "inventory.html",
     "Laboratory": "laboratory.html",
     "Lab & Glass": "laboratory.html",
-    "Lab, Glass & Frame": "laboratory.html",
+    "Lab, Glass & B-DEPT": "laboratory.html",
     "Glass": "laboratory.html",
-    "Frame": "laboratory.html#frame",
+    "B-DEPT": "laboratory.html#frame",
     "Final QC": "final-qc.html",
     "Ready Stock": "ready-stock.html",
     "Export Boxes": "export-box.html",
@@ -236,7 +237,7 @@ document.addEventListener("click", (event) => {
     item("Lab & Glass", "laboratory.html", "⌁", (page === "laboratory.html" || page === "glass.html" || page === "lab-bulk-transfer.html") && window.location.hash !== "#frame"),
     item("Parts", "parts.html", "▦", page === "parts.html"),
     item("Final QC", "final-qc.html", "◉", page === "final-qc.html"),
-    item("Frame Department", "laboratory.html#frame", "□", page === "laboratory.html" && window.location.hash === "#frame"),
+    item("B-DEPT", "laboratory.html#frame", "□", page === "laboratory.html" && window.location.hash === "#frame"),
     item("Ready Stock", "ready-stock.html", "▤", page === "ready-stock.html"),
     item("Stock Journey", "ready-stock-journey.html", "≡", page === "ready-stock-journey.html"),
     '<p class="nav-label">Control</p>',

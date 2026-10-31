@@ -24,7 +24,7 @@
     initial_qc: "Initial QC", parts: "Parts", part_request: "Parts", part_issue: "Parts",
     part_installation: "Parts", manual_part: "Parts", part_return: "Parts return",
     laboratory: "Laboratory", laboratory_work: "Laboratory", lab_glass: "Lab & Glass", glass: "Glass",
-    frame: "Frame Department", frame_department: "Frame Department", final_qc: "Final QC",
+    frame: "B-DEPT", frame_department: "B-DEPT", final_qc: "Final QC",
     ready_stock: "Ready Stock", rework: "Rework", export: "Export Boxes", export_box: "Export Boxes",
     stock_return: "Stock Return", supplier_return: "Stock Return", movement: "Location change",
     correction: "Data correction", job: "Job history", event: "Recorded activity",
@@ -46,7 +46,7 @@
   function scalar(value) { return ["string", "number", "boolean"].includes(typeof value) ? String(value).trim() : ""; }
   function escapeHtml(value) { return scalar(value).replace(/[&<>'"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]); }
   function label(value) {
-    return scalar(value).replaceAll("_", " ").replace(/\b\w/g, character => character.toUpperCase()).replace(/\bQc\b/g, "QC").replace(/\bImei\b/g, "IMEI") || missing;
+    return window.GREENLOOP_DEPT_NAME(scalar(value).replaceAll("_", " ").replace(/\b\w/g, character => character.toUpperCase()).replace(/\bQc\b/g, "QC").replace(/\bImei\b/g, "IMEI")) || missing;
   }
   function number(value) {
     if (value === null || value === undefined || typeof value === "boolean" || String(value).trim() === "") return null;
@@ -98,7 +98,7 @@ function buildStageSections(sortedRows) {
   const value = (row, label) => (Array.isArray(row.details) ? row.details : []).find(item => text(item?.label) === text(label))?.value;
   const titles = {
     stock_received: "Stock Received", imei_entry: "IMEI Entry", initial_qc: "Initial QC",
-    lab_glass: "Lab & Glass", final_qc: "Final QC", frame: "Frame Department",
+    lab_glass: "Lab & Glass", final_qc: "Final QC", frame: "B-DEPT",
     ready_stock: "Ready Stock", export: "Export", stock_return: "Stock Return",
     rework: "Rework", parts: "Parts", other: "Other recorded details"
   };
@@ -116,6 +116,7 @@ function buildStageSections(sortedRows) {
   };
   function phase(row) {
     const prefix = scalar(row.id).split(":")[0], stage = text(row.stage), title = text(row.title);
+    if (/^b-dept/.test(title)) return "frame";
     if (/^(?:receipt|individual-receipt)$/.test(prefix)) return "stock_received";
     if (prefix === "entry") return "imei_entry";
     if (prefix === "initial-qc") return "initial_qc";
@@ -154,7 +155,7 @@ function buildStageSections(sortedRows) {
   const dated = entry => entry.at !== null && Number.isFinite(entry.at);
   const sameJob = (a, b) => Boolean(a.job) && a.job === b.job;
   const ordered = entries.filter(dated).sort((a, b) => a.at - b.at || a.index - b.index);
-  // Same job and timestamp only: QC/Frame, then Ready, then Export. Unrelated
+  // Same job and timestamp only: QC/B-DEPT, then Ready, then Export. Unrelated
   // equal-time rows keep their original slots; no timestamps are altered.
   const rank = { final_qc: 0, frame: 0, ready_stock: 1, export: 2 }, ties = new Map();
   ordered.forEach((entry, index) => {
@@ -225,7 +226,7 @@ function buildStageSections(sortedRows) {
     return "";
   }
   function place(value) {
-    const names = { LAB:"Lab & Glass", LABORATORY:"Laboratory", LAB_GLASS:"Lab & Glass", GLASS:"Glass", "FINAL-QC":"Final QC", FINAL_QC:"Final QC", "INITIAL-QC":"Initial QC", INITIAL_QC:"Initial QC", FRAME:"Frame Department", READY:"Ready Stock", "READY-STOCK":"Ready Stock", READY_STOCK:"Ready Stock", PARTS:"Parts", OUTBOUND:"Export" };
+    const names = { LAB:"Lab & Glass", LABORATORY:"Laboratory", LAB_GLASS:"Lab & Glass", GLASS:"Glass", "FINAL-QC":"Final QC", FINAL_QC:"Final QC", "INITIAL-QC":"Initial QC", INITIAL_QC:"Initial QC", FRAME:"B-DEPT", READY:"Ready Stock", "READY-STOCK":"Ready Stock", READY_STOCK:"Ready Stock", PARTS:"Parts", OUTBOUND:"Export" };
     return names[scalar(value).toUpperCase()] || scalar(value);
   }
   const safe = value => escapeHtml(scalar(value) || missing);
@@ -237,7 +238,7 @@ function buildStageSections(sortedRows) {
     if (explicit) return place(explicit);
     const title = scalar(row.title).toLowerCase().replaceAll("_"," ");
     if (/parallel routing|parts and laboratory/.test(title)) return "Parts and Laboratory";
-    if (/to frame|routed to frame/.test(title)) return "Frame Department";
+    if (/to frame|routed to frame/.test(title)) return "B-DEPT";
     if (/to final qc|lab parts skipped/.test(title)) return "Final QC";
     if (/to ready stock/.test(title)) return "Ready Stock";
     if (/to laboratory/.test(title)) return "Laboratory";
@@ -348,7 +349,7 @@ function buildStageSections(sortedRows) {
     // Match the workflow status names used by Stock Journey. Do not infer the
     // current stage from an older job's last history event.
     const status=scalar(device.current_status).toLowerCase();
-    const names={received:"IMEI Entry — saved",initial_qc_pending:"Initial QC",initial_qc_completed:"Initial QC — completed",no_work_required:"Initial QC — no work required",parts_pending:"Parts",laboratory_pending:"Laboratory",laboratory_in_progress:"Laboratory",glass_pending:"Glass",glass_in_progress:"Glass",frame_pending:"Frame Department",frame_in_progress:"Frame Department",final_qc_pending:"Final QC",qc_failed:"Final QC — failed",qc_passed:"Ready Stock",production_pending:"Ready Stock",production_completed:"Ready Stock",ready_for_packing:"Ready Stock",ready_for_shipment:"Ready Stock",shipped:"Export / Shipped",supplier_return_requested:"Stock Return — requested",return_pending:"Stock Return — pending",returned_to_supplier:"Returned to supplier"};
+    const names={received:"IMEI Entry — saved",initial_qc_pending:"Initial QC",initial_qc_completed:"Initial QC — completed",no_work_required:"Initial QC — no work required",parts_pending:"Parts",laboratory_pending:"Laboratory",laboratory_in_progress:"Laboratory",glass_pending:"Glass",glass_in_progress:"Glass",frame_pending:"B-DEPT",frame_in_progress:"B-DEPT",final_qc_pending:"Final QC",qc_failed:"Final QC — failed",qc_passed:"Ready Stock",production_pending:"Ready Stock",production_completed:"Ready Stock",ready_for_packing:"Ready Stock",ready_for_shipment:"Ready Stock",shipped:"Export / Shipped",supplier_return_requested:"Stock Return — requested",return_pending:"Stock Return — pending",returned_to_supplier:"Returned to supplier"};
     return names[status] || scalar(device.current_status);
   }
   function renderActivity(row) {
@@ -357,7 +358,7 @@ function buildStageSections(sortedRows) {
       details.push(`<li>${fact("Part",[scalar(part.name),number(part.quantity)===null ? "" : "× "+part.quantity,number(part.unit_cost)===null ? "Price not recorded" : money(part.unit_cost)+" / part"].filter(Boolean).join(" · "))}</li>`);
     }
     if(number(row.duration_seconds)!==null)details.push(`<li>${fact(row.duration_label || "Recorded time",duration(row.duration_seconds))}</li>`);
-    return `<li class="history-activity-record" data-record-id="${escapeHtml(row.id)}"><h4>${safe(row.title || stages[row.stage] || row.stage)}</h4><p>${safe(journeyMoment(row.occurred_at))} · ${fact("By",row.actor)}${scalar(row.status) ? " · "+fact("Status",label(row.status)) : ""}${scalar(row.job_number) ? " · "+fact("Job",row.job_number) : ""}</p>${details.length ? `<ul class="history-bullets">${details.join("")}</ul>` : ""}</li>`;
+    return `<li class="history-activity-record" data-record-id="${escapeHtml(row.id)}"><h4>${safe(window.GREENLOOP_DEPT_NAME(row.title || stages[row.stage] || row.stage))}</h4><p>${safe(journeyMoment(row.occurred_at))} · ${fact("By",row.actor)}${scalar(row.status) ? " · "+fact("Status",label(row.status)) : ""}${scalar(row.job_number) ? " · "+fact("Job",row.job_number) : ""}</p>${details.length ? `<ul class="history-bullets">${details.join("")}</ul>` : ""}</li>`;
   }
   function renderBasicTable(device,rows) {
     const names=Boolean(window.GREENLOOP_CAN_VIEW_PARTNER_NAMES);

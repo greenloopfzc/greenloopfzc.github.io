@@ -120,7 +120,7 @@
     if (isFrame && gradeSelect) gradeSelect.value = "";
     row.querySelectorAll("[data-final-grade], [data-add-grade], [data-remove-grade]").forEach((control) => {
       control.disabled = isFrame;
-      control.title = isFrame ? "Frame Department will decide the Final Grade" : control.dataset.originalTitle || control.title;
+      control.title = isFrame ? "B-DEPT will decide the Final Grade" : control.dataset.originalTitle || control.title;
     });
   }
 
@@ -160,7 +160,7 @@
       <td class="final-auto-cell" data-auto="initial-grade">-</td>
       <td class="final-grade-cell"><div class="final-grade-control"><select data-final-grade>${gradeOptions()}</select><button type="button" data-add-grade title="Add final grade">+</button><button type="button" class="remove" data-remove-grade title="Remove final grade">−</button></div></td>
       <td class="final-result-cell pass"><label><input type="checkbox" data-result="pass"><span>Pass</span></label></td>
-      <td class="final-result-cell frame"><label><input type="checkbox" data-result="frame"><span>Frame</span></label></td>
+      <td class="final-result-cell frame"><label><input type="checkbox" data-result="frame"><span>B-DEPT</span></label></td>
       <td class="final-result-cell fail"><label><input type="checkbox" data-result="fail"><span>Fail</span></label></td>
       <td class="final-save-cell"><button type="button" class="final-row-save" data-save-row>Save</button></td>
     </tr>`;
@@ -502,7 +502,7 @@
     const batteryUnavailable = getDevice(step)?.device_platform === "android" && row.querySelector("[data-battery-unavailable]").checked;
     const finalBattery = batteryUnavailable || finalBatteryText === "" ? null : Number(finalBatteryText);
     if (!result) {
-      const errorText = "Tick Pass, Frame, or Fail.";
+      const errorText = "Tick Pass, B-DEPT, or Fail.";
       row.classList.add("is-error");
       setRowState(row, errorText, "is-error");
       return { ok: false, error: errorText };
@@ -542,7 +542,7 @@
         p_final_grade: null,
         p_final_battery_health: finalBattery,
         p_battery_health_unavailable: batteryUnavailable,
-        p_notes: "Final QC routed to Frame for required work"
+        p_notes: "Final QC routed to B-DEPT for required work"
       })
       : await getClient().rpc("complete_final_qc_with_final_grade_v2", {
         p_job_id: getJob(step).id,
@@ -572,7 +572,7 @@
     rowButton.textContent = "Saved";
     setRowState(row, result === "pass"
       ? `Passed - Attempt ${response?.attempt_number || "-"}`
-      : result === "frame" ? "Sent to Frame - Grade pending" : "Failed - Laboratory rework", "is-completed");
+      : result === "frame" ? "Sent to B-DEPT - Grade pending" : "Failed - Laboratory rework", "is-completed");
     queueSteps = queueSteps.filter((candidate) => candidate.id !== step.id);
     queueCount.textContent = `${queueSteps.length} waiting`;
     return { ok: true, result };
@@ -599,7 +599,7 @@
     showToast(result.result === "pass"
       ? "Final QC passed. Phone sent to Ready Stock."
       : result.result === "frame"
-        ? "Phone sent to Frame. A Frame Pass will send it to Ready Stock."
+        ? "Phone sent to B-DEPT. A B-DEPT Pass will send it to Ready Stock."
         : "Final QC failed. Phone returned to Laboratory.");
     focusNextInspection(row);
   }
@@ -635,7 +635,7 @@
     }
     setSubmitting(button, false);
     renderPendingJobs(pendingSearch.value);
-    if (passed + framed + failed) showToast(`${passed} ready, ${framed} sent to Frame, and ${failed} failed.`);
+    if (passed + framed + failed) showToast(`${passed} ready, ${framed} sent to B-DEPT, and ${failed} failed.`);
     if (errors.length) setMessage(`${passed + framed + failed} completed. ${errors.length} row(s) need correction. ${errors[0]}`);
     else setMessage(`${passed + framed + failed} scanned Final QC row(s) completed successfully.`, true);
   }

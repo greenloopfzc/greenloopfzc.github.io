@@ -9,7 +9,7 @@
     { file: "laboratory.html", key: ["laboratory", "glass"], badgeKey: "lab_glass", label: "Lab & Glass" },
     { file: "parts.html", key: "parts", label: "Parts" },
     { file: "final-qc.html", key: "final_qc", label: "Final QC" },
-    { file: "laboratory.html#frame", key: "frame", badgeKey: "frame", label: "Frame Department" }
+    { file: "laboratory.html#frame", key: "frame", badgeKey: "frame", label: "B-DEPT" }
   ];
   let supabaseClient;
   let refreshTimer, pollTimer, channel, authSubscription;

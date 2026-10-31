@@ -11,7 +11,7 @@
     initial_qc_findings: "Initial QC findings", initial_qc_part_requirements: "Initial QC parts required",
     final_qc_inspections: "Final QC inspections", final_qc_check_results: "Final QC check results",
     laboratory_work_records: "Laboratory work", glass_work_records: "Glass work",
-    frame_department_results: "Frame department results", technician_job_timers: "Technician work times",
+    frame_department_results: "B-DEPT results", technician_job_timers: "Technician work times",
     job_part_requests: "Parts requested", part_issue_transactions: "Parts issued",
     part_installations: "Parts installed", lab_manual_part_installations: "Manual parts installed",
     lab_part_return_requests: "Part return requests", part_return_audit: "Part return history",
@@ -87,7 +87,7 @@
     if (date) return `<time title="Saved value: ${escape(value)}">${escape(date)}</time>`;
     if (key === "scope" && ["single", "all"].includes(value)) return value === "single" ? "Single IMEI" : "All IMEIs";
     if (key === "selected_pages" && typeof value === "string") {
-      const pages = { dashboard: "Dashboard", laboratory: "Lab & Glass", lab_glass: "Lab & Glass", lab_live_board: "Lab Live Board", imei_entry: "IMEI Entry", imei_search: "IMEI Search", stock_received: "Stock Received", initial_qc: "Initial QC", final_qc: "Final QC", frame_department: "Frame Department", ready_stock: "Ready Stock", export_boxes: "Export Boxes", user_access: "User Access" };
+      const pages = { dashboard: "Dashboard", laboratory: "Lab & Glass", lab_glass: "Lab & Glass", lab_live_board: "Lab Live Board", imei_entry: "IMEI Entry", imei_search: "IMEI Search", stock_received: "Stock Received", initial_qc: "Initial QC", final_qc: "Final QC", frame_department: "B-DEPT", ready_stock: "Ready Stock", export_boxes: "Export Boxes", user_access: "User Access" };
       return `<span title="Saved value: ${escape(value)}">${escape(own(pages, value) ? pages[value] : friendly(value))}</span>`;
     }
     if (typeof value === "string" && /(?:^record_type$|^deletion_method$|^status$|_status$|^stage$|_stage$|^department$)/.test(key)) return escape(friendly(value));

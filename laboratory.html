@@ -10,28 +10,28 @@
   <script src="js/appearance.js?v=20261017-settings-appearance-1"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#0d5c43">
-    <meta name="description" content="Greenloop Laboratory and Frame technician workbench.">
+    <meta name="description" content="Greenloop Laboratory and B-DEPT technician workbench.">
     <title>Laboratory | Greenloop</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css?v=20261016-strict-view-only-1">
-    <link rel="stylesheet" href="css/laboratory.css?v=20261029-lab-phone-cards-1">
+    <link rel="stylesheet" href="css/laboratory.css?v=20261031-b-dept-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="js/imei-stage-notice.js?v=20261023-dual-imei-1"></script>
-  <script defer src="js/permission-catalog.js?v=20261030-stock-parts-cost-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261031-qc-auto-rules-1"></script>
+  <script defer src="js/permission-catalog.js?v=20261031-b-dept-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261031-b-dept-1"></script>
 <script defer src="js/page-capabilities.js?v=20261030-supplier-progress-1"></script>
 <link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
 <script defer src="js/office-access.js?v=20261024-office-access-1"></script>
-<script defer src="js/config.js?v=20261030-user-password-1"></script>
+<script defer src="js/config.js?v=20261031-b-dept-1"></script>
   <script defer src="js/login-activity.js?v=20261013-search-tv-1"></script>
   <link rel="stylesheet" href="css/record-search.css?v=20261017-find-record-popup-1">
   <script defer src="js/record-search.js?v=20261027-performance-1"></script>
-    <script defer src="js/part-notifications.js?v=20261027-performance-1"></script>
+    <script defer src="js/part-notifications.js?v=20261031-b-dept-1"></script>
   <script defer src="js/employee-updates.js?v=20261027-performance-1"></script>
   <link rel="stylesheet" href="css/lab-bulk-transfer.css?v=20261030-lab-bulk-transfer-1">
-  <script defer src="js/laboratory.js?v=20261030-lab-bulk-transfer-1"></script>
+  <script defer src="js/laboratory.js?v=20261031-b-dept-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
     <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261003-qc-duplicate-stage-1">
   <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
@@ -53,7 +53,7 @@
       <main class="app-main">
         <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Dashboard</a><span>/</span><strong id="breadcrumb-stage">Laboratory</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
         <div class="page-content lab-page-content">
-          <section class="page-heading lab-heading"><div><p class="eyebrow dashboard-eyebrow">Lab, Glass &amp; Frame</p><h1 id="page-title">Technician workbench</h1><p id="page-subtitle" class="heading-subtitle">Select a technician. Every assigned IMEI appears on one simple line.</p></div><a class="quiet-link" href="initial-qc.html">← Back to Initial QC</a></section>
+          <section class="page-heading lab-heading"><div><p class="eyebrow dashboard-eyebrow">Lab, Glass &amp; B-DEPT</p><h1 id="page-title">Technician workbench</h1><p id="page-subtitle" class="heading-subtitle">Select a technician. Every assigned IMEI appears on one simple line.</p></div><a class="quiet-link" href="initial-qc.html">← Back to Initial QC</a></section>
           <div id="permission-message" class="access-message" hidden></div>
           <section id="lab-app" class="lab-app" hidden>
             <section id="technician-board" class="technician-board">
@@ -61,17 +61,17 @@
               <div class="technician-board-heading"><div><p class="panel-kicker">Technicians</p><h2 id="technician-board-title">Select a technician</h2><p>Click a name to see all assigned phones.</p></div><div class="technician-board-actions"><button id="refresh-lab" class="secondary-button" type="button">Refresh</button><button id="add-lab-technician" class="secondary-button" type="button">+ Add technician</button><button id="remove-lab-technician" class="secondary-button danger-button" type="button">− Remove selected</button></div></div>
               <div id="technician-cards" class="technician-cards" role="list"></div>
             </section>
-            <div id="frame-view-tabs" class="frame-view-tabs" role="tablist" aria-label="Frame Department views" hidden><button id="frame-pending-tab" class="frame-view-tab" type="button" role="tab" aria-selected="true" aria-controls="frame-pending-panel" data-frame-view="pending">Pending Work <span id="frame-pending-tab-count">0</span></button><button id="frame-history-tab" class="frame-view-tab" type="button" role="tab" aria-selected="false" aria-controls="frame-report-panel" tabindex="-1" data-frame-view="history">History <span id="frame-history-tab-count">0</span></button></div>
+            <div id="frame-view-tabs" class="frame-view-tabs" role="tablist" aria-label="B-DEPT views" hidden><button id="frame-pending-tab" class="frame-view-tab" type="button" role="tab" aria-selected="true" aria-controls="frame-pending-panel" data-frame-view="pending">Pending Work <span id="frame-pending-tab-count">0</span></button><button id="frame-history-tab" class="frame-view-tab" type="button" role="tab" aria-selected="false" aria-controls="frame-report-panel" tabindex="-1" data-frame-view="history">History <span id="frame-history-tab-count">0</span></button></div>
             <section id="frame-pending-panel" class="technician-lines-panel">
               <div class="technician-lines-heading"><div><p id="lines-kicker" class="panel-kicker">Selected technician</p><h2 id="technician-lines-title">Assigned phone lines</h2><p id="technician-lines-help">Review the lower line, order required parts, then complete the job after Parts has issued them.</p></div><div class="technician-line-tools"><div class="frame-lines-actions"><span id="technician-lines-count" class="queue-count">0 lines</span><button id="refresh-frame" class="secondary-button" type="button" hidden>Refresh</button></div></div></div>
               <p id="lab-board-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
               <div class="technician-lines-scroll"><table class="technician-lines-table"><thead><tr id="technician-lines-head"><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>BH</th><th>QC 1 Parts</th><th>QC 1 Service</th><th>Lab Parts</th><th>Lab Service</th><th>Extra Parts Req.</th><th>Extra Service Req.</th><th>Save</th></tr></thead><tbody id="technician-work-rows"><tr><td colspan="12" class="technician-lines-empty">Select a technician.</td></tr></tbody></table></div>
             </section>
             <section id="frame-report-panel" class="frame-report-panel" hidden>
-              <div class="frame-report-heading"><div><p class="panel-kicker">Frame performance</p><h2>Pass and Fail history</h2></div><div class="frame-report-counts"><span id="frame-pass-count">0 Pass</span><span id="frame-fail-count">0 Fail</span></div></div>
-              <div class="frame-report-scroll"><table><thead><tr><th>Time</th><th>IMEI</th><th>Supplier</th><th>Model</th><th>Result</th><th>Recorded by</th></tr></thead><tbody id="frame-report-rows"><tr><td colspan="6">No Frame results recorded yet.</td></tr></tbody></table></div>
+              <div class="frame-report-heading"><div><p class="panel-kicker">B-DEPT performance</p><h2>Pass and Fail history</h2></div><div class="frame-report-counts"><span id="frame-pass-count">0 Pass</span><span id="frame-fail-count">0 Fail</span></div></div>
+              <div class="frame-report-scroll"><table><thead><tr><th>Time</th><th>IMEI</th><th>Supplier</th><th>Model</th><th>Result</th><th>Recorded by</th></tr></thead><tbody id="frame-report-rows"><tr><td colspan="6">No B-DEPT results recorded yet.</td></tr></tbody></table></div>
             </section>
-            <details class="lab-workflow-help"><summary>Workflow help</summary><p id="workflow-rule-text">Initial QC sends required parts directly to Parts. Laboratory orders additional parts and saves services. Return an issued part before ordering its replacement. Laboratory completion sends the phone to Final QC. Direct Final QC Pass decides the Final Grade. Frame phones receive Final Grade in Frame Department and then go to Ready Stock.</p></details>
+            <details class="lab-workflow-help"><summary>Workflow help</summary><p id="workflow-rule-text">Initial QC sends required parts directly to Parts. Laboratory orders additional parts and saves services. Return an issued part before ordering its replacement. Laboratory completion sends the phone to Final QC. Direct Final QC Pass decides the Final Grade. B-DEPT phones receive Final Grade in B-DEPT and then go to Ready Stock.</p></details>
           </section>
         </div>
       </main>

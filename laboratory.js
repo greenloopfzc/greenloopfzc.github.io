@@ -98,9 +98,9 @@
   function configureMode() {
     if (!isFrameMode) return;
     document.body.classList.add("frame-mode");
-    document.title = "Frame Department | Greenloop";
-    document.querySelector("#breadcrumb-stage").textContent = "Frame Department";
-    document.querySelector("#page-title").textContent = "Frame Department";
+    document.title = "B-DEPT | Greenloop";
+    document.querySelector("#breadcrumb-stage").textContent = "B-DEPT";
+    document.querySelector("#page-title").textContent = "B-DEPT";
     document.querySelector("#page-subtitle").textContent = "Complete pending phones or review previous results.";
     document.querySelector(".lab-heading .quiet-link").href = "final-qc.html";
     document.querySelector(".lab-heading .quiet-link").textContent = "← Back to Final QC";
@@ -114,10 +114,10 @@
     showFrameView('pending');
     linesKicker.hidden = true;
     technicianLinesTitle.textContent = "Pending work";
-    technicianLinesHelp.textContent = "Select Final Grade and Pass, or choose Fail.";
+    technicianLinesHelp.textContent = "Review Final BH and Final Grade, then select Pass or Fail. Initial BH stays in history.";
     refreshFrameButton.hidden = false;
-    linesHead.innerHTML = "<th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>BH</th><th>Supplier code</th><th>Supplier grade</th><th>Initial grade</th><th>Final grade</th><th>Pass</th><th>Fail</th><th>Save</th>";
-    document.querySelector("#workflow-rule-text").textContent = "Frame Department decides the Final Grade. Frame Pass sends the phone directly to Ready Stock. Frame Fail keeps it pending in Frame and adds to the permanent failure report.";
+    linesHead.innerHTML = "<th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>Initial BH</th><th>Final BH</th><th>Supplier code</th><th>Supplier grade</th><th>Initial grade</th><th>Final grade</th><th>Pass</th><th>Fail</th><th>Save</th>";
+    document.querySelector("#workflow-rule-text").textContent = "B-DEPT decides the Final Grade. B-DEPT Pass sends the phone directly to Ready Stock. B-DEPT Fail keeps it pending in B-DEPT and adds to the permanent failure report.";
   }
 
   function showFrameView(view, moveFocus = false) {
@@ -267,7 +267,7 @@
     technicianLinesCount.textContent = focusedImei ? `${filtered.length} matching phone${filtered.length === 1 ? "" : "s"}` : `${filtered.length} repair line${filtered.length === 1 ? "" : "s"}${awaitingFinalQc ? ` - ${awaitingFinalQc} Final QC receipt` : ""}`;
     if (!activeTechnicianId) { technicianWorkRows.innerHTML = '<tr><td colspan="12" class="technician-lines-empty">Select a technician.</td></tr>'; return; }
     if (!filtered.length) {
-      technicianWorkRows.innerHTML = `<tr><td colspan="12" class="technician-lines-empty">${focusedImei ? `No pending line for IMEI ${escapeHtml(focusedImei)}. Use Show all to return to this technician’s phones.` : awaitingFinalQc ? `${escapeHtml(selectedTech?.full_name || "This technician")} has ${awaitingFinalQc} phone${awaitingFinalQc === 1 ? "" : "s"} awaiting Final QC receipt.` : `${escapeHtml(selectedTech?.full_name || "This technician")} has no ${isFrameMode ? "Frame" : "Laboratory"} phones pending.`}</td></tr>`;
+      technicianWorkRows.innerHTML = `<tr><td colspan="12" class="technician-lines-empty">${focusedImei ? `No pending line for IMEI ${escapeHtml(focusedImei)}. Use Show all to return to this technician’s phones.` : awaitingFinalQc ? `${escapeHtml(selectedTech?.full_name || "This technician")} has ${awaitingFinalQc} phone${awaitingFinalQc === 1 ? "" : "s"} awaiting Final QC receipt.` : `${escapeHtml(selectedTech?.full_name || "This technician")} has no ${isFrameMode ? "B-DEPT" : "Laboratory"} phones pending.`}</td></tr>`;
       return;
     }
     if(focusedStepId&&filtered.some(row=>String(row.step_id)===String(focusedStepId)))activePhoneStepId=String(focusedStepId);
@@ -278,7 +278,7 @@
         ? window.GREENLOOP_SUPPLIER_RECEIPT_LABEL(row.supplier_code, row.planned_quantity, row.supplier_name, "—")
         : (row.supplier_code || "—");
       const saveCell = isFrameMode
-        ? `<button class="line-save frame" type="button" data-complete-frame="${escapeHtml(row.step_id)}">Complete Frame</button><small class="line-status">Returns to Final QC</small>`
+        ? `<button class="line-save frame" type="button" data-complete-frame="${escapeHtml(row.step_id)}">Complete B-DEPT</button><small class="line-status">Returns to Final QC</small>`
         : actionCell(row);
       if (isFrameMode) {
         return `<tr data-step-id="${escapeHtml(row.step_id)}"><td><strong class="line-imei">${escapeHtml(row.imei || "—")}</strong><small class="line-supplier">${escapeHtml(supplier)}</small></td><td>${escapeHtml(row.model || "—")}</td><td>${escapeHtml(row.storage_gb == null ? "—" : `${row.storage_gb} GB`)}</td><td>${escapeHtml(row.color || "—")}</td><td>${escapeHtml(row.battery_health == null ? "—" : `${row.battery_health}%`)}</td><td>${readOnlyList(qcParts)}</td><td>${readOnlyList(qcServices)}</td><td>${readOnlyList(labPartNames(row))}</td><td>${readOnlyList(labServiceNames(row))}</td><td>—</td><td>—</td><td>${saveCell}</td></tr>`;
@@ -306,7 +306,7 @@
     technicianLinesCount.textContent = `${technicianRows.length} waiting`;
     document.querySelector("#frame-pending-tab-count").textContent = technicianRows.length;
     if (!technicianRows.length) {
-      technicianWorkRows.innerHTML = '<tr><td colspan="12" class="technician-lines-empty">No phones are waiting in Frame.</td></tr>';
+      technicianWorkRows.innerHTML = '<tr><td colspan="13" class="technician-lines-empty">No phones are waiting in B-DEPT.</td></tr>';
       return;
     }
     technicianWorkRows.innerHTML = technicianRows.map((row) => {
@@ -319,6 +319,7 @@
         <td>${escapeHtml(row.storage_gb == null ? "—" : `${row.storage_gb} GB`)}</td>
         <td>${escapeHtml(row.color || "—")}</td>
         <td>${escapeHtml(row.battery_health == null ? "—" : `${row.battery_health}%`)}</td>
+        <td class="b-dept-final-bh"><input type="number" min="0" max="100" step="1" inputmode="numeric" data-b-dept-bh aria-label="Final Battery Health" placeholder="BH %" value="${escapeHtml(row.final_battery_health == null ? "" : row.final_battery_health)}" ${row.final_battery_health_unavailable?'disabled':''}><label ${row.device_platform==='android'?'':'hidden'}><input type="checkbox" data-b-dept-unavailable aria-label="Final Battery Health not available" ${row.final_battery_health_unavailable?'checked':''}>Not available</label><small>${escapeHtml(row.battery_source || 'Initial BH')}</small></td>
         <td class="frame-supplier">${escapeHtml(supplier)}</td>
         <td>${escapeHtml(row.supplier_grade || "—")}</td>
         <td>${escapeHtml(row.initial_grade || "—")}</td>
@@ -341,8 +342,8 @@
     document.querySelector("#frame-history-tab-count").textContent = data.total ?? rows.length;
     framePassCount.textContent = `${data.totals.pass} Pass`;
     frameFailCount.textContent = `${data.totals.fail} Fail`;
-    frameReportRows.innerHTML = rows.length ? rows.map((row) => `<tr><td>${escapeHtml(formatDateTime(row.reviewed_at))}</td><td><strong>${escapeHtml(row.imei || "—")}</strong></td><td>${escapeHtml(row.supplier_code || "—")}</td><td>${escapeHtml(row.model || "—")}</td><td><span class="frame-result ${escapeHtml(row.result)}">${escapeHtml(String(row.result || "").toUpperCase())}</span></td><td>${escapeHtml(row.reviewed_by_name || "System")}</td></tr>`).join("") : '<tr><td colspan="6" class="technician-lines-empty">No Frame results recorded yet.</td></tr>';
-    },onError:()=>{frameReportRows.innerHTML='<tr><td colspan="6">Frame results unavailable.</td></tr>';framePassCount.textContent=frameFailCount.textContent='Unavailable';}
+    frameReportRows.innerHTML = rows.length ? rows.map((row) => `<tr><td>${escapeHtml(formatDateTime(row.reviewed_at))}</td><td><strong>${escapeHtml(row.imei || "—")}</strong></td><td>${escapeHtml(row.supplier_code || "—")}</td><td>${escapeHtml(row.model || "—")}</td><td><span class="frame-result ${escapeHtml(row.result)}">${escapeHtml(String(row.result || "").toUpperCase())}</span></td><td>${escapeHtml(row.reviewed_by_name || "System")}</td></tr>`).join("") : '<tr><td colspan="6" class="technician-lines-empty">No B-DEPT results recorded yet.</td></tr>';
+    },onError:()=>{frameReportRows.innerHTML='<tr><td colspan="6">B-DEPT results unavailable.</td></tr>';framePassCount.textContent=frameFailCount.textContent='Unavailable';}
   });
   async function loadFrameReport(){return frameFilters.load();}
 
@@ -386,7 +387,7 @@
   }
   async function loadFrameRows() {
     setBoardMessage();
-    const { data, error } = await getClient().rpc("get_frame_department_rows");
+    const { data, error } = await getClient().rpc("get_b_dept_rows_v1");
     if (error) throw error;
     const rows = data || [];
     const jobIds = [...new Set(rows.map((row) => row.job_id).filter(Boolean))];
@@ -591,21 +592,29 @@
     if (!result) return;
     const finalGrade = row.querySelector("[data-frame-final-grade]")?.value || "";
     if (result === "pass" && !finalGrade) {
-      setBoardMessage("Select the Final Grade before passing this Frame phone to Ready Stock.");
+      setBoardMessage("Select the Final Grade before passing this B-DEPT phone to Ready Stock.");
       row.querySelector("[data-frame-final-grade]")?.focus();
       return;
     }
+    const bhInput = row.querySelector('[data-b-dept-bh]');
+    const unavailable = row.querySelector('[data-b-dept-unavailable]').checked;
+    const bhText = bhInput.value.trim(), bh = bhText === "" ? null : Number(bhText);
+    if ((!unavailable && result === "pass" && bh === null) || bh !== null && (!Number.isInteger(bh) || bh < 0 || bh > 100)) {
+      setBoardMessage("Enter Final Battery Health from 0 to 100 before passing this phone."); bhInput.focus(); return;
+    }
     setSubmitting(button, true, "Saving...");
-    const { error } = await getClient().rpc("record_frame_department_result_v3", {
+    const { error } = await getClient().rpc("record_b_dept_result_v1", {
       p_work_order_step_id: button.dataset.completeFrame,
       p_result: result,
       p_final_grade: result === "pass" ? finalGrade : null,
-      p_notes: result === "pass" ? "Frame work passed" : "Frame work failed; remains pending"
+      p_final_battery_health: unavailable ? null : bh,
+      p_battery_health_unavailable: unavailable,
+      p_notes: result === "pass" ? "B-DEPT work passed" : "B-DEPT work failed; remains pending"
     });
     setSubmitting(button, false);
     if (error) { setBoardMessage(error.message); return; }
     row.dataset.saved = "yes";
-    showToast(result === "pass" ? `Frame passed with grade ${finalGrade}. Phone sent directly to Ready Stock.` : "Frame failed. Phone remains in Frame and the failure was recorded.");
+    showToast(result === "pass" ? `B-DEPT passed with grade ${finalGrade}. Phone sent directly to Ready Stock.` : "B-DEPT failed. Phone remains in B-DEPT and the failure was recorded.");
     document.dispatchEvent(new CustomEvent("greenloop:notifications-changed"));
     await refreshAll();
   }
@@ -724,6 +733,11 @@
       markLineChanged(row);
       return;
     }
+    if (event.target.matches('[data-b-dept-unavailable]')) {
+      const input = event.target.closest('tr').querySelector('[data-b-dept-bh]');
+      input.disabled = event.target.checked; if (event.target.checked) input.value = "";
+      return;
+    }
     const checkbox = event.target.closest("[data-frame-result]");
     if (!checkbox) return;
     const row = checkbox.closest("tr");
@@ -732,7 +746,7 @@
     const status = row.querySelector(".line-status");
     const result = row.querySelector("[data-frame-result]:checked")?.dataset.frameResult || "";
     button.disabled = !result;
-    status.textContent = result === "pass" ? "Select Final Grade, then move to Ready Stock" : result === "fail" ? "Will stay in Frame" : "Select Pass or Fail";
+    status.textContent = result === "pass" ? "Select Final Grade, then move to Ready Stock" : result === "fail" ? "Will stay in B-DEPT" : "Select Pass or Fail";
   });
   document.querySelector('#open-lab-bulk')?.addEventListener('click',event=>{
     if([...lineDrafts.values()].some(d=>d.partsDirty||d.servicesDirty)||technicianWorkRows.querySelector('tr[data-busy="yes"]')){
