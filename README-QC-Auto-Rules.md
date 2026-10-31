@@ -17,3 +17,5 @@ Run outputs/Publish-GreenLoop-QC-Auto-Rules.ps1. It checks previous installation
 Supabase SQL result must be installed_qc_auto_rules_version = 20261031-qc-auto-rules-1. Paste the copied SQL directly into a new SQL Editor query. This release needs no new Edge Function deployment, JWT setting or encryption key.
 
 Local database and browser tests use disposable fixtures, not live business records. A local test pass does not mean the update is installed on the live website.
+
+Installer compatibility: reviewed predecessor routines may contain Windows CRLF or Unix LF line endings. The installer normalizes line endings before exact code-boundary checks; all integrity and access checks still apply.
