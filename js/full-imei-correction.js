@@ -4,7 +4,7 @@
   const sections=['IMEI Entry','Receiving / Ready Stock','Initial QC','Lab & Glass','Parts','Final QC / Frame','Correction History'];
   let host=null,root=null,dialog=null,options={},data=null,drafts=new Map(),section=sections[0],epoch=0,saving=false,loading=false,locked=false;
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const label=k=>({imei_1:'Primary IMEI',storage_gb:'Storage (GB)',gc_grade:'GC grade',names:'Services (one per line)',assigned_technician_roster_id:'Assigned technician',technician_roster_id:'Technician',inspected_by:'Inspected by',reviewed_by:'Reviewed by',receiving_batch_id:'Stock / Batch',supplier_id:'Supplier code',battery_health:'Battery health (%)',final_battery_health:'Final battery health (%)'}[k]||k.replace(/_/g,' ').replace(/^./,c=>c.toUpperCase()));
+  const label=k=>({imei_1:'Primary IMEI',storage_gb:'Storage (GB)',gc_grade:'GL grade',names:'Services (one per line)',assigned_technician_roster_id:'Assigned technician',technician_roster_id:'Technician',inspected_by:'Inspected by',reviewed_by:'Reviewed by',receiving_batch_id:'Stock / Batch',supplier_id:'Supplier code',battery_health:'Battery health (%)',final_battery_health:'Final battery health (%)'}[k]||k.replace(/_/g,' ').replace(/^./,c=>c.toUpperCase()));
   const allowed=()=>!locked&&window.GREENLOOP_PAGE_ACCESS?.pageKey==='reports'&&window.GREENLOOP_CAN?.('view','reports')&&window.GREENLOOP_CAN?.('workflow_correction','reports');
   const key=e=>e.kind+'|'+e.row_key;
   const eq=(a,b)=>JSON.stringify(a)===JSON.stringify(b);

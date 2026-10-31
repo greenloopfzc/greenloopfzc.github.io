@@ -152,7 +152,7 @@
   function refreshRequirementOptions(){
     for(const select of tableBody.querySelectorAll('[data-requirement], [data-carry-field="supplierGrade"], [data-carry-field="gcGrade"]')){const row=select.closest('tr');if(row?.dataset.completed==='yes'||row?.dataset.saving==='yes')continue;const value=select.value;select.innerHTML=select.dataset.requirement?requirementOptions(select.dataset.requirement,value):gradeOptions(select.dataset.carryField==='supplierGrade');if(value&&![...select.options].some(o=>o.value===value))select.insertAdjacentHTML('beforeend',`<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`);select.value=value;}
   }
-  const dropdownLabels={part:'Part',service:'Service',supplier_grade:'Supplier Grade',gc_grade:'GC Grade'};
+  const dropdownLabels={part:'Part',service:'Service',supplier_grade:'Supplier Grade',gc_grade:'GL Grade'};
   function optionMessage(text='',success=false){const el=document.querySelector('#qc-options-message');el.textContent=text;el.hidden=!text;el.dataset.state=success?'success':'error';}
   function updateOptionForm(){const kind=document.querySelector('#qc-options-kind').value,label=dropdownLabels[kind];document.querySelector('#qc-options-save').textContent='Add '+label;document.querySelector('#qc-options-name').placeholder=kind==='part'?'Enter new part name':kind==='service'?'Enter new service name':'e.g. D';}
   document.querySelector('#qc-manage-options').addEventListener('click',()=>{if(!canManageWorkOptions())return;optionMessage();updateOptionForm();document.querySelector('#qc-options-dialog').showModal();document.querySelector('#qc-options-name').focus();});
@@ -210,12 +210,37 @@
     list.innerHTML = selectedValues.map((value) => requirementSelect(kind, value)).join("");
   }
 
+  function manualPartValues(row) {
+    return [...row.querySelectorAll('[data-requirement="part"]')].filter(s => s.dataset.autoHousing !== "yes").map(s => s.value).filter(Boolean);
+  }
+
+  function applyGradeHousing(row) {
+    if (row.dataset.completed === "yes") return;
+    const required = row.querySelector('[data-carry-field="gcGrade"]').value.trim().toUpperCase() === "D";
+    const list = row.querySelector('[data-requirement-group="part"] .qc-bulk-requirement-list');
+    for (const select of list.querySelectorAll('[data-auto-housing]')) {
+      if (select.value.trim().toLowerCase() !== "housing") delete select.dataset.autoHousing;
+      else if (!required) { if (list.children.length > 1) select.remove(); else { select.value = ""; delete select.dataset.autoHousing; } }
+    }
+    if (required && ![...list.querySelectorAll('select')].some(s => s.value.trim().toLowerCase() === "housing")) {
+      let housing = workItems.find(i => i.kind === "part" && i.label.trim().toLowerCase() === "housing");
+      if (!housing) { housing = {label:"Housing",kind:"part",partName:"Housing",action:"Replace or use Housing"}; workItems.push(housing); }
+      let select = [...list.querySelectorAll('select')].find(s => !s.value);
+      if (!select) { list.insertAdjacentHTML("beforeend", requirementSelect("part")); select = list.lastElementChild; }
+      select.innerHTML = requirementOptions("part", housing.label); select.value = housing.label;
+      select.dataset.autoHousing = "yes"; select.title = "Automatically required for GL Grade D";
+    }
+    const frame = row.querySelector('[data-route-frame]');
+    if (required) { frame.checked = false; frame.disabled = true; frame.dataset.autoFrameLocked = "yes"; }
+    else if (frame.dataset.autoFrameLocked === "yes") { delete frame.dataset.autoFrameLocked; frame.disabled = window.GREENLOOP_CAN?.('entry','initial_qc') !== true; }
+  }
+
   function rowSnapshot(row) {
     return {
       supplierGrade: row.querySelector('[data-carry-field="supplierGrade"]')?.value || "",
       gcGrade: row.querySelector('[data-carry-field="gcGrade"]')?.value || "",
       technician: row.querySelector('[data-carry-field="technician"]')?.value || "",
-      parts: valuesForGroup(row, "part"),
+      parts: manualPartValues(row),
       services: valuesForGroup(row, "service")
     };
   }
@@ -226,6 +251,7 @@
     row.querySelector('[data-carry-field="technician"]').value = snapshot.technician;
     setGroupValues(row, "part", snapshot.parts);
     setGroupValues(row, "service", snapshot.services);
+    applyGradeHousing(row);
   }
 
   function createRows(quantity) {
@@ -250,7 +276,7 @@
     let nextRow = row.nextElementSibling;
     const key = manualKey(field);
     while (nextRow) {
-      if (nextRow.dataset[key] !== "yes" && nextRow.dataset.completed !== "yes") nextRow.querySelector(`[data-carry-field="${field}"]`).value = source.value;
+      if (nextRow.dataset[key] !== "yes" && nextRow.dataset.completed !== "yes") { nextRow.querySelector(`[data-carry-field="${field}"]`).value = source.value; if (field === "gcGrade") applyGradeHousing(nextRow); }
       nextRow = nextRow.nextElementSibling;
     }
   }
@@ -258,11 +284,11 @@
   function carryRequirementGroup(row, kind) {
     // Never let an exception on a middle row alter the phones below it.
     if (row !== tableBody.firstElementChild) return;
-    const values = valuesForGroup(row, kind);
+    const values = kind === "part" ? manualPartValues(row) : valuesForGroup(row, kind);
     let nextRow = row.nextElementSibling;
     const key = manualKey(kind === "part" ? "parts" : "services");
     while (nextRow) {
-      if (nextRow.dataset[key] !== "yes" && nextRow.dataset.completed !== "yes") setGroupValues(nextRow, kind, values);
+      if (nextRow.dataset[key] !== "yes" && nextRow.dataset.completed !== "yes") { setGroupValues(nextRow, kind, values); if (kind === "part") applyGradeHousing(nextRow); }
       nextRow = nextRow.nextElementSibling;
     }
   }
@@ -360,6 +386,7 @@
     if (!gcGrade.value && device.gc_grade) {
       gcGrade.value = String(device.gc_grade).toUpperCase();
       carrySimpleField(row, "gcGrade");
+      applyGradeHousing(row);
     }
     row.classList.remove("is-error");
     row.classList.add("is-loaded");
@@ -509,6 +536,7 @@
         if (!selectedJob) return;
         row.querySelector('[data-carry-field="supplierGrade"]').value = selectedJob.supplier_grade ? String(selectedJob.supplier_grade).toUpperCase() : "";
         row.querySelector('[data-carry-field="gcGrade"]').value = selectedJob.device?.gc_grade ? String(selectedJob.device.gc_grade).toUpperCase() : "";
+        applyGradeHousing(row);
       });
 
       const loadedCount = rows.filter((row) => rowJobs.has(row.dataset.rowId)).length;
@@ -531,6 +559,7 @@
   }
 
   function buildRowSubmission(row) {
+    applyGradeHousing(row);
     const partsSelected = uniqueValues(valuesForGroup(row, "part"));
     const servicesSelected = uniqueValues(valuesForGroup(row, "service"));
     const selectedLabels = [...partsSelected, ...servicesSelected];
@@ -797,12 +826,14 @@
     if (simpleSelect) {
       const field = simpleSelect.dataset.carryField;
       row.dataset[manualKey(field)] = "yes";
+      if (field === "gcGrade") applyGradeHousing(row);
       carrySimpleField(row, field);
       return;
     }
     const requirement = event.target.closest("[data-requirement]");
     if (requirement) {
       const kind = requirement.dataset.requirement;
+      if (kind === "part") applyGradeHousing(row);
       row.dataset[manualKey(kind === "part" ? "parts" : "services")] = "yes";
       carryRequirementGroup(row, kind);
     }
@@ -830,6 +861,7 @@
       if (selects.length === 1 && !selects[0].value) return;
       if (window.prompt(`Enter deletion code to remove this ${kind}:`) !== "1213") return;
       if (selects.length > 1) selects[selects.length - 1].remove(); else selects[0].value = "";
+      if (kind === "part") applyGradeHousing(row);
       row.dataset[manualKey(kind === "part" ? "parts" : "services")] = "yes";
       carryRequirementGroup(row, kind);
       return;

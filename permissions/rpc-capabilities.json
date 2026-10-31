@@ -1181,6 +1181,14 @@
     },
     "get_my_office_access_v1": {
       "read": true
+    },
+    "get_final_qc_battery_defaults_v1": {
+      "page": "final_qc",
+      "capability": "view",
+      "read": true
+    },
+    "get_qc_auto_rules_version": {
+      "read": true
     }
   },
   "get_box_status_v1": {

@@ -17,7 +17,7 @@
     <link rel="stylesheet" href="css/styles.css?v=20261016-strict-view-only-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script defer src="js/permission-catalog.js?v=20261030-stock-parts-cost-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261030-user-password-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261031-qc-auto-rules-1"></script>
 <script defer src="js/page-capabilities.js?v=20261030-supplier-progress-1"></script>
 <script defer src="js/imei-stage-notice.js?v=20261023-dual-imei-1"></script>
 <link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
@@ -126,7 +126,7 @@
                   <div class="form-grid three-columns detail-grid">
                     <div class="form-field"><label for="ownership-type">Ownership type</label><select id="ownership-type" name="ownership-type"><option value="">Use automatic default</option><option value="company_owned">Company owned</option><option value="customer_owned">Customer owned</option></select><select id="job-type" name="job-type" hidden></select></div>
                     <div class="form-field"><label for="supplier-grade">Supplier grade</label><select id="supplier-grade" name="supplier-grade"><option value="">Not recorded</option><option>A+</option><option>A</option><option>B</option><option>C</option><option>Unsorted</option></select></div>
-                    <div class="form-field"><label for="gc-grade">GC grade</label><select id="gc-grade" name="gc-grade"><option value="">Not recorded</option><option>A+</option><option>A</option><option>B</option><option>C</option></select></div>
+                    <div class="form-field"><label for="gc-grade">GL grade</label><select id="gc-grade" name="gc-grade"><option value="">Not recorded</option><option>A+</option><option>A</option><option>B</option><option>C</option></select></div>
                   </div>
                   <div class="party-block" id="supplier-block"><div class="form-field"><label for="supplier-id">Supplier</label><select id="supplier-id" name="supplier-id"><option value="">Loading suppliers...</option></select></div><button class="mini-action" id="add-supplier" type="button">+ Add supplier</button></div>
                   <div class="party-block" id="customer-block" hidden><div class="form-field"><label for="customer-id">Customer</label><select id="customer-id" name="customer-id"><option value="">Loading customers...</option></select></div><button class="mini-action" id="add-customer" type="button">+ Add customer</button></div>

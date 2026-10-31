@@ -20,7 +20,7 @@
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="js/imei-stage-notice.js?v=20261023-dual-imei-1"></script>
   <script defer src="js/permission-catalog.js?v=20261030-stock-parts-cost-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261030-user-password-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261031-qc-auto-rules-1"></script>
 <script defer src="js/page-capabilities.js?v=20261030-supplier-progress-1"></script>
 <link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
 <script defer src="js/office-access.js?v=20261024-office-access-1"></script>
@@ -33,7 +33,7 @@
   <link rel="stylesheet" href="css/qc-handover.css?v=20261030-qc-handover-1">
   <script defer src="js/qc-handover-pdf.js?v=20261030-qc-pdf-design-1"></script>
   <script defer src="js/qc-handover.js?v=20261030-qc-pdf-design-1"></script>
-  <script defer src="js/initial-qc.js?v=20261030-qc-handover-1"></script>
+  <script defer src="js/initial-qc.js?v=20261031-qc-auto-rules-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
     <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261003-qc-duplicate-stage-1">
   <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
@@ -82,7 +82,7 @@
                 <div id="qc-top-scroll" class="qc-top-scroll" aria-label="Horizontal table scroll"><div id="qc-top-scroll-track"></div></div>
                 <div id="qc-bulk-scroll" class="qc-bulk-scroll">
                   <table class="qc-bulk-table">
-                    <thead><tr><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>BH</th><th>Supplier code</th><th>Supplier grade</th><th>GC grade</th><th>Parts needed</th><th>Service needed</th><th>Assign technician</th><th>Save / route</th></tr></thead>
+                    <thead><tr><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>BH</th><th>Supplier code</th><th>Supplier grade</th><th>GL grade</th><th>Parts needed</th><th>Service needed</th><th>Assign technician</th><th>Save / route</th></tr></thead>
                     <tbody id="qc-bulk-body"></tbody>
                   </table>
                 </div>
@@ -106,7 +106,7 @@
         <div class="qc-pending-table-wrap"><table class="qc-pending-table"><thead><tr><th>#</th><th>IMEI</th><th>Supplier code</th><th>Model</th><th>GB</th><th>Color</th></tr></thead><tbody id="pending-list-body"></tbody></table></div>
       </section>
     </div>
-    <dialog id="qc-options-dialog" class="qc-options-dialog" aria-labelledby="qc-options-title"><header><div><p class="panel-kicker">Initial QC choices</p><h2 id="qc-options-title">Manage Dropdowns</h2></div><button id="qc-options-close" type="button" class="icon-button" data-capability="view" aria-label="Close names">×</button></header><p>Add parts, services, Supplier Grades or GC Grades. Each grade list is managed separately.</p><form id="qc-options-form"><label>Type<select id="qc-options-kind" name="kind" data-capability="manage_options" data-capability-page="initial_qc"><option value="part">Part</option><option value="service">Service</option><option value="supplier_grade">Supplier Grade</option><option value="gc_grade">GC Grade</option></select></label><label>New name<input id="qc-options-name" name="name" maxlength="120" required autocomplete="off" data-capability="manage_options" data-capability-page="initial_qc" placeholder="Enter new part name"></label><p id="qc-options-message" class="form-message receiving-message" role="status" aria-live="polite" hidden></p><button id="qc-options-save" type="submit" class="primary-button" data-capability="manage_options" data-capability-page="initial_qc">Add Part</button></form></dialog>
+    <dialog id="qc-options-dialog" class="qc-options-dialog" aria-labelledby="qc-options-title"><header><div><p class="panel-kicker">Initial QC choices</p><h2 id="qc-options-title">Manage Dropdowns</h2></div><button id="qc-options-close" type="button" class="icon-button" data-capability="view" aria-label="Close names">×</button></header><p>Add parts, services, Supplier Grades or GL Grades. Each grade list is managed separately.</p><form id="qc-options-form"><label>Type<select id="qc-options-kind" name="kind" data-capability="manage_options" data-capability-page="initial_qc"><option value="part">Part</option><option value="service">Service</option><option value="supplier_grade">Supplier Grade</option><option value="gc_grade">GL Grade</option></select></label><label>New name<input id="qc-options-name" name="name" maxlength="120" required autocomplete="off" data-capability="manage_options" data-capability-page="initial_qc" placeholder="Enter new part name"></label><p id="qc-options-message" class="form-message receiving-message" role="status" aria-live="polite" hidden></p><button id="qc-options-save" type="submit" class="primary-button" data-capability="manage_options" data-capability-page="initial_qc">Add Part</button></form></dialog>
     <dialog id="qc-handover-warning" class="qc-handover-dialog" aria-labelledby="qc-handover-warning-title"><h2 id="qc-handover-warning-title">Check technician assignments</h2><p id="qc-handover-warning-text"></p><div class="qc-handover-warning-actions"><button id="qc-handover-warning-close" type="button" class="primary-button" data-capability="entry" data-capability-page="initial_qc">OK</button></div></dialog>
     <dialog id="qc-handover-preview" class="qc-handover-dialog qc-handover-preview" aria-labelledby="qc-handover-preview-title"><header><h2 id="qc-handover-preview-title">Initial QC Handover - PDF View</h2><button id="qc-handover-close" type="button" class="secondary-button" data-capability="entry" data-capability-page="initial_qc">Close</button></header><iframe id="qc-handover-frame" title="Technician handover PDF"></iframe><footer><a id="qc-handover-open" class="secondary-button" target="_blank" rel="noopener" data-capability="entry" data-capability-page="initial_qc">Open PDF</a><a id="qc-handover-file" class="primary-button" download data-capability="entry" data-capability-page="initial_qc">Download PDF</a></footer></dialog>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
