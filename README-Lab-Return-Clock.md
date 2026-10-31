@@ -9,3 +9,5 @@ The workbench, 48-hour dashboard report and ongoing IMEI/stock-journey delay evi
 This is a read-only reporting change. It does not edit phone history, assignments, stock, parts, grades, battery health, users or permissions. Existing access checks and Office Only restrictions remain in place. Existing phones with recorded movements receive the corrected clock immediately after installation; refresh the page.
 
 Run outputs/Publish-GreenLoop-Lab-Return-Clock.ps1. It preserves the preceding GL Grade / Housing and Diagnostic Battery update and installs that prerequisite if missing. Required new SQL result: installed_lab_return_clock_version = 20261031-lab-return-clock-1. No new Edge deployment, JWT setting or secret is needed for this release.
+
+Installer compatibility: reviewed predecessor routines may contain Windows CRLF or Unix LF line endings. The installer normalizes line endings before exact code-boundary checks; all integrity and access checks still apply.

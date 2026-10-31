@@ -6,7 +6,7 @@ do $$begin
  if to_regprocedure('public.get_lab_return_clock_version()')is not null then if public.get_lab_return_clock_version()is distinct from '20261031-lab-return-clock-1'then raise exception 'Existing Lab return clock needs review.';end if;end if;
 end;$$;
 do $patch$declare f regprocedure:='greenloop_private.lab_stays_v1(uuid)'::regprocedure;ddl text;needle text;t record;begin
- ddl:=pg_get_functiondef(f);
+ ddl:=replace(pg_get_functiondef(f),chr(13)||chr(10),chr(10));
  if strpos(ddl,'greenloop-lab-return-clock-230')=0 then
   needle:='), stays as(select e.device_id,e.job_id,min(e.moved_at) arrived,e.ended from entries e group by e.device_id,e.job_id,e.ended)';
   if strpos(ddl,needle)=0 then raise exception 'Reviewed Lab stay grouping differs. Nothing was installed.';end if;

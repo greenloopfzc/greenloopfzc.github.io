@@ -53,11 +53,12 @@ do $wrap$declare f record;impl text;sig text;body text;begin
 end;$wrap$;
 
 
+-- Accept CRLF and LF formatting of the same reviewed predecessor routines.
 -- Only reviewed implementations change. Existing public role, page/action,
 -- Office Only and stock/workflow guards remain in place.
 do $patch$declare impl text;ddl text;needle text;replacement text;f regprocedure;changed regprocedure[]:='{}';t record;begin
  select implementation into impl from greenloop_private.capability_routines where to_regprocedure(identity)='public.complete_initial_qc_lab_first(uuid,text,text,text,jsonb,jsonb,uuid,text,text)'::regprocedure;
- if impl is null then raise exception 'Reviewed Lab-first Initial QC routine is missing.';end if;ddl:=pg_get_functiondef(to_regprocedure(impl));
+ if impl is null then raise exception 'Reviewed Lab-first Initial QC routine is missing.';end if;ddl:=replace(pg_get_functiondef(to_regprocedure(impl)),chr(13)||chr(10),chr(10));
  if strpos(ddl,'greenloop-qc-auto-rules-229')=0 then
   needle:='  perform greenloop_private.qdp_validate(p_part_requests);';if strpos(ddl,needle)=0 then raise exception 'Initial QC Parts validation boundary differs.';end if;
   ddl:=replace(ddl,needle,E'  -- greenloop-qc-auto-rules-229\n  p_part_requests:=greenloop_private.qca_housing(p_gc_grade,p_part_requests);\n'||needle);
@@ -67,19 +68,19 @@ do $patch$declare impl text;ddl text;needle text;replacement text;f regprocedure
   needle:='  for v_part in';if strpos(ddl,needle)=0 then raise exception 'Initial QC requirements boundary differs.';end if;ddl:=replace(ddl,needle,E'  perform set_config(''greenloop.qca_lab_entry'',coalesce(v_qca_context,''''),true);\n\n'||needle);execute ddl;
  end if;changed:=array_append(changed,to_regprocedure(impl));
  select implementation into impl from greenloop_private.capability_routines where to_regprocedure(identity)='public.complete_scanned_initial_qc_with_roster_and_grades(uuid,text,text,text,jsonb,jsonb,uuid,text,text)'::regprocedure;
- if impl is null then raise exception 'Reviewed graded Initial QC routine is missing.';end if;ddl:=pg_get_functiondef(to_regprocedure(impl));
+ if impl is null then raise exception 'Reviewed graded Initial QC routine is missing.';end if;ddl:=replace(pg_get_functiondef(to_regprocedure(impl)),chr(13)||chr(10),chr(10));
  if strpos(ddl,'greenloop-qc-auto-rules-229')=0 then
   needle:='  select job.device_id';if strpos(ddl,needle)=0 then raise exception 'Graded Initial QC completion boundary differs.';end if;
   replacement:=E'  -- greenloop-qc-auto-rules-229\n  if v_gc_grade=''D''and current_setting(''greenloop.qca_lab_entry'',true)is distinct from p_job_id::text then\n    return query select *from public.complete_initial_qc_lab_first(p_job_id,p_overall_condition,p_cosmetic_condition,p_notes,p_findings,p_part_requests,p_assigned_technician_roster_id,p_supplier_grade,p_gc_grade);\n    return;\n  end if;\n\n';execute replace(ddl,needle,replacement||needle);
  end if;changed:=array_append(changed,to_regprocedure(impl));
  select implementation into impl from greenloop_private.capability_routines where to_regprocedure(identity)='public.complete_initial_qc_direct_to_frame_v2(uuid,text,text,text,jsonb,jsonb,uuid,text,text)'::regprocedure;
- if impl is null then raise exception 'Reviewed direct Frame routine is missing.';end if;ddl:=pg_get_functiondef(to_regprocedure(impl));
+ if impl is null then raise exception 'Reviewed direct Frame routine is missing.';end if;ddl:=replace(pg_get_functiondef(to_regprocedure(impl)),chr(13)||chr(10),chr(10));
  if strpos(ddl,'greenloop-qc-auto-rules-229')=0 then
   needle:='  if jsonb_typeof(coalesce(p_findings';if strpos(ddl,needle)=0 then raise exception 'Direct Frame validation boundary differs.';end if;
   execute replace(ddl,needle,E'  -- greenloop-qc-auto-rules-229\n  if upper(btrim(p_gc_grade))=''D''then raise exception ''Grade D requires Housing. Send this phone to Lab & Parts.''using errcode=''22023'';end if;\n'||needle);
  end if;changed:=array_append(changed,to_regprocedure(impl));
  for impl in select implementation from greenloop_private.capability_routines where to_regprocedure(identity)in('public.complete_final_qc_with_final_grade_v2(uuid,final_qc_result,text,smallint,text,work_department,text,jsonb,boolean)'::regprocedure,'public.route_final_qc_pass_to_frame_v3(uuid,text,smallint,text,boolean)'::regprocedure)loop
-  ddl:=pg_get_functiondef(to_regprocedure(impl));
+  ddl:=replace(pg_get_functiondef(to_regprocedure(impl)),chr(13)||chr(10),chr(10));
   if strpos(ddl,'greenloop-qc-auto-rules-229')=0 then
    needle:='  perform greenloop_private.validate_mobile_battery(v_platform,p_final_battery_health,p_battery_health_unavailable,';if strpos(ddl,needle)=0 then raise exception 'Final battery validation boundary differs.';end if;
    execute replace(ddl,needle,E'  -- greenloop-qc-auto-rules-229\n  if greenloop_private.qca_job_battery(p_job_id)then p_final_battery_health:=100;p_battery_health_unavailable:=false;end if;\n'||needle);
