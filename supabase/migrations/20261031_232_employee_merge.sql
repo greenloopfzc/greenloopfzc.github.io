@@ -11,7 +11,34 @@ create or replace function greenloop_private.em_audit_immutable()returns trigger
 drop trigger if exists employee_merge_audit_immutable on greenloop_private.employee_merge_audit;
 create trigger employee_merge_audit_immutable before update or delete on greenloop_private.employee_merge_audit for each row execute function greenloop_private.em_audit_immutable();
 -- Narrow metadata-only maintenance boundary; no issued quantities, prices or stock may change.
-do $patch$declare f regprocedure;ddl text;needle text;impl text;begin
+do $patch$declare f regprocedure;ddl text;needle text;impl text;replacement text;begin
+ f:='greenloop_private.supplier_return_work_guard()'::regprocedure;ddl:=replace(pg_get_functiondef(f),chr(13)||chr(10),chr(10));
+ if strpos(ddl,'greenloop-employee-merge-232')=0 then
+ needle:=' raise exception ''This phone is held for Supplier Return or has been returned to the supplier. New work, stock-out, and editing are blocked.'' using errcode=''55000'';';
+ if strpos(ddl,needle)=0 then raise exception 'Reviewed Supplier Return guard differs.';end if;
+ replacement:=$metadata$
+ -- greenloop-employee-merge-232: approved identity metadata only, never operational edits.
+ if tg_op='UPDATE'and exists(select 1 from greenloop_private.employee_merge_context where pid=pg_backend_pid()and tx=txid_current())then
+  if tg_table_name='job_work_order_steps'
+   and(v_row-array['assigned_technician_roster_id','assigned_technician_name','updated_at'])=(v_old-array['assigned_technician_roster_id','assigned_technician_name','updated_at'])
+   and v_row->>'assigned_technician_name'='EHTESHAM'
+   and exists(select 1 from greenloop_private.employee_merge_aliases a where a.canonical_roster_id=(v_row->>'assigned_technician_roster_id')::uuid
+    and(a.roster_id=nullif(v_old->>'assigned_technician_roster_id','')::uuid or v_old->>'assigned_technician_roster_id'is null and greenloop_private.ed_key(v_old->>'assigned_technician_name')in('ehtasham','ehtesham')))
+  then return new;end if;
+  if tg_table_name='technician_job_timers'
+   and(v_row-array['technician_roster_id','technician_name','updated_at'])=(v_old-array['technician_roster_id','technician_name','updated_at'])
+   and v_row->>'technician_name'='EHTESHAM'
+   and exists(select 1 from greenloop_private.employee_merge_aliases a where a.canonical_roster_id=(v_row->>'technician_roster_id')::uuid
+    and(a.roster_id=nullif(v_old->>'technician_roster_id','')::uuid or v_old->>'technician_roster_id'is null and greenloop_private.ed_key(v_old->>'technician_name')in('ehtasham','ehtesham')))
+  then return new;end if;
+  if tg_table_name='job_part_requests'
+   and(v_row-array['requested_for_technician','updated_at'])=(v_old-array['requested_for_technician','updated_at'])
+   and v_row->>'requested_for_technician'='EHTESHAM'and greenloop_private.ed_key(v_old->>'requested_for_technician')in('ehtasham','ehtesham')
+   and exists(select 1 from greenloop_private.employee_merge_aliases)
+  then return new;end if;
+ end if;
+$metadata$;
+ execute replace(ddl,needle,replacement||needle);end if;
  f:='greenloop_private.pf_guard()'::regprocedure;ddl:=replace(pg_get_functiondef(f),chr(13)||chr(10),chr(10));
  if strpos(ddl,'greenloop-employee-merge-232')=0 then
  needle:=' if exists(select 1 from greenloop_private.parts_flow_context';if strpos(ddl,needle)=0 then raise exception 'Reviewed Parts guard differs.';end if;
@@ -94,7 +121,7 @@ create table if not exists greenloop_private.employee_merge_installation(kind te
 alter table greenloop_private.employee_merge_installation enable row level security;revoke all on greenloop_private.employee_merge_installation from public,anon,authenticated;
 create or replace function public.get_employee_merge_version()returns text language sql stable security definer set search_path=pg_catalog,public as $$
  select case when public.get_b_dept_version()='20261031-b-dept-1'
- and(select count(*)=11 and bool_and(coalesce(hash=case kind when 'function'then md5(pg_get_functiondef(to_regprocedure(identity)))else md5(pg_get_viewdef(to_regclass(identity),true))end,false))from greenloop_private.employee_merge_installation)
+ and(select count(*)=12 and bool_and(coalesce(hash=case kind when 'function'then md5(pg_get_functiondef(to_regprocedure(identity)))else md5(pg_get_viewdef(to_regclass(identity),true))end,false))from greenloop_private.employee_merge_installation)
  and exists(select 1 from greenloop_private.employee_merge_audit where merge_key='EHTASHAM+EHTESHAM')
  and not exists(select 1 from greenloop_private.employee_merge_installation where kind='function'and identity like 'greenloop_private.%'and(has_function_privilege('anon',to_regprocedure(identity),'EXECUTE')or has_function_privilege('authenticated',to_regprocedure(identity),'EXECUTE')))
  and not exists(select 1 from unnest(array['employee_merge_aliases','employee_merge_context','employee_merge_audit','employee_merge_installation'])t where has_table_privilege('anon','greenloop_private.'||t,'SELECT,INSERT,UPDATE,DELETE,TRUNCATE')or has_table_privilege('authenticated','greenloop_private.'||t,'SELECT,INSERT,UPDATE,DELETE,TRUNCATE'))

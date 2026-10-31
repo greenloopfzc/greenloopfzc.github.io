@@ -8,6 +8,8 @@ The existing Ehtesham identity is retained when available; otherwise the existin
 
 Existing work-step and timer rows are relinked to the canonical roster ID without copying/deleting rows or changing recorded timer durations. Parts request employee labels are updated without changing parts, quantities, issues, returns or prices. User accounts, logins, roles and page permissions are not merged or changed.
 
+Phones held for Supplier Return or already returned are included in this identity merge. A private transaction context allows only verified alias-to-canonical employee metadata changes on their work steps, timers and Parts labels. Their return records, status, approvals, handover slips and operational edit protections stay intact. Failed installation attempts roll back completely; run this revised installer in a new SQL query.
+
 Raw damage reports and their original spelling snapshots remain untouched. A one-to-one read projection maps their existing report IDs to the canonical employee, including legacy name-only records. Corrections/deletions retain their existing effective state. Cards, employee history, TV views, Original/Copy totals and PDF exports use that same projection. TV allowlists map either approved identity to one canonical key.
 
 Existing monthly payable rules run once for the merged person. The merged payable is recalculated from preserved incidents, not obtained by adding two separately calculated employee payables. Existing missing-price/department-conflict rules remain in force.
