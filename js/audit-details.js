@@ -90,7 +90,7 @@
       const pages = { dashboard: "Dashboard", laboratory: "Lab & Glass", lab_glass: "Lab & Glass", lab_live_board: "Lab Live Board", imei_entry: "IMEI Entry", imei_search: "IMEI Search", stock_received: "Stock Received", initial_qc: "Initial QC", final_qc: "Final QC", frame_department: "B-DEPT", ready_stock: "Ready Stock", export_boxes: "Export Boxes", user_access: "User Access" };
       return `<span title="Saved value: ${escape(value)}">${escape(own(pages, value) ? pages[value] : friendly(value))}</span>`;
     }
-    if (typeof value === "string" && /(?:^record_type$|^deletion_method$|^status$|_status$|^stage$|_stage$|^department$)/.test(key)) return escape(friendly(value));
+    if (typeof value === "string" && /(?:^record_type$|^deletion_method$|^status$|_status$|^stage$|_stage$|^department$)/.test(key)) return escape(window.GREENLOOP_DEPT_NAME ? window.GREENLOOP_DEPT_NAME(friendly(value)) : friendly(value));
     return escape(value);
   }
 
