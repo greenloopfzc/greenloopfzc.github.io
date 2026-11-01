@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en" data-global-imei-search="off">
+  <head>
+    <meta charset="utf-8">
+  <script src="js/appearance.js?v=20261017-settings-appearance-1"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0d5c43">
+    <meta name="description" content="Phone times, pending work and Pass / Fail history in B-DEPT.">
+    <title>B-DEPT Performance Report | Greenloop</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css?v=20261016-strict-view-only-1">
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="js/imei-stage-notice.js?v=20261023-dual-imei-1"></script>
+  <script defer src="js/permission-catalog.js?v=20261101-b-dept-report-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261101-b-dept-report-1"></script>
+<script defer src="js/page-capabilities.js?v=20261030-supplier-progress-1"></script>
+<link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
+<script defer src="js/office-access.js?v=20261024-office-access-1"></script>
+<script defer src="js/config.js?v=20261101-b-dept-report-1"></script>
+  <script defer src="js/login-activity.js?v=20261013-search-tv-1"></script>
+  <link rel="stylesheet" href="css/record-search.css?v=20261017-find-record-popup-1">
+  <script defer src="js/record-search.js?v=20261027-performance-1"></script>
+    <script defer src="js/part-notifications.js?v=20261031-b-dept-1"></script>
+      <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
+    <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261003-qc-duplicate-stage-1">
+  <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
+  <link rel="stylesheet" href="css/sidebar-compact.css?v=20261009-sidebar-pdf-1">
+  <script defer src="js/sidebar-compact.js?v=20261009-sidebar-pdf-1"></script>
+  <link rel="stylesheet" href="css/clean-layout.css?v=20261017-clean-layout-1">
+  <script defer src="js/clean-layout.js?v=20261030-supplier-progress-1"></script>
+  <script defer src="js/suspicious-badge.js?v=20261017-suspicious-activity-1"></script>
+
+
+
+
+<link rel="stylesheet" href="css/b-dept-report.css?v=20261101-b-dept-report-1">
+<script defer src="js/b-dept-report-exports.js?v=20261101-b-dept-report-1"></script>
+<script defer src="js/b-dept-report.js?v=20261101-b-dept-report-1"></script>
+</head>
+<body class="app-page">
+    <div class="app-shell">
+      <aside id="sidebar" class="sidebar" aria-label="Main navigation">
+        <div class="sidebar-top"><a class="app-brand" href="dashboard.html"><span class="gl-wordmark"><img src="assets/greenloop-fzc-logo.jpg" alt="Greenloop FZC" width="1280" height="427"></span></a><button id="close-menu" hidden aria-hidden="true" tabindex="-1" class="icon-button close-menu" type="button" aria-label="Close menu">×</button></div>
+        <nav class="sidebar-nav"></nav>
+        <div class="sidebar-user"><span class="user-avatar">SA</span><span><strong>System Admin</strong><small>Super Admin</small></span></div>
+      </aside>
+      <div id="menu-backdrop" class="menu-backdrop" hidden></div>
+      <main class="app-main">
+        <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Dashboard</a><span>/</span><strong>B-DEPT Performance Report</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
+        <div class="page-content bdr-content"><section class="page-heading"><div><p class="eyebrow">B-DEPT / Performance</p><h1>B-DEPT Performance Report</h1><p>Phone times and recorded Pass / Fail history.</p></div><a class="secondary-button" href="laboratory.html#frame">← Back to B-DEPT</a></section>
+<p id="permission-message" class="access-message" role="status" hidden></p>
+<section id="bdr-app" hidden>
+<div class="bdr-summary" id="bdr-summary" aria-label="Filtered report totals"></div>
+<section class="bdr-panel"><div class="bdr-toolbar"><div class="bdr-search" data-capability="search" data-capability-page="frame_department"><label for="bdr-search">Find phone</label><input id="bdr-search" type="search" placeholder="IMEI, model, color or supplier code" autocomplete="off" data-search-read-only></div><div class="bdr-actions"><button id="bdr-filters-toggle" class="secondary-button" type="button" aria-expanded="false" aria-controls="bdr-filters" data-capability="search" data-capability-page="frame_department" data-search-read-only>Filters</button><button id="bdr-refresh" class="secondary-button" type="button" data-search-read-only data-capability="view" data-capability-page="frame_department">Refresh</button><button type="button" class="secondary-button" data-bdr-export="view" data-capability="download" data-capability-page="frame_department">PDF View</button><button type="button" class="secondary-button" data-bdr-export="pdf" data-capability="download" data-capability-page="frame_department">Download PDF</button><button type="button" class="secondary-button" data-bdr-export="excel" data-capability="download" data-capability-page="frame_department">Download Excel</button></div></div>
+<form id="bdr-filters" class="bdr-filters" hidden data-capability="search" data-capability-page="frame_department">
+<label>Date basis<select data-filter="date_basis" data-search-read-only><option value="arrival">First arrival in B-DEPT</option><option value="result">Latest result date</option></select></label><label>From<input type="date" data-filter="from" data-search-read-only></label><label>To<input type="date" data-filter="to" data-search-read-only></label>
+<label>Status<select data-filter="status" data-search-read-only><option value="">All statuses</option><option>Pending</option><option>Passed</option><option value="Has Fail">Has Fail history</option><option>Supplier Return</option><option>Transferred</option></select></label>
+<label>Model<select data-filter="model" data-search-read-only><option value="">All models</option></select></label><label>GB<select data-filter="storage_gb" data-search-read-only><option value="">All storage</option></select></label><label>Color<select data-filter="color" data-search-read-only><option value="">All colors</option></select></label><label>Supplier code<select data-filter="supplier_code" data-search-read-only><option value="">All codes</option></select></label><label>Last recorded by<select data-filter="reviewed_by" data-search-read-only><option value="">All staff</option></select></label>
+<label>Pending age<select data-filter="overdue" data-search-read-only><option value="">All ages</option><option value="true">48+ hours in B-DEPT</option></select></label><button id="bdr-clear" class="secondary-button" type="button" data-search-read-only>Clear filters</button></form>
+<p id="bdr-selection" class="bdr-selection"></p><p id="bdr-message" class="bdr-message" role="status" aria-live="polite"></p>
+<div class="bdr-table-scroll"><table id="bdr-table"><thead><tr><th><button type="button" data-sort="imei" data-search-read-only>Phone / IMEI <span>↕</span></button></th><th><button type="button" data-sort="supplier_code" data-search-read-only>Supplier code <span>↕</span></button></th><th><button type="button" data-sort="arrived_at" data-search-read-only>First arrival <span>↓</span></button></th><th><button type="button" data-sort="last_reviewed_at" data-search-read-only>Latest result <span>↕</span></button></th><th><button type="button" data-sort="status" data-search-read-only>Status <span>↕</span></button></th><th><button type="button" data-sort="fail_attempts" data-search-read-only>Fail attempts <span>↕</span></button></th><th><button type="button" data-sort="elapsed_seconds" data-search-read-only>Total time <span>↕</span></button></th><th>History</th></tr></thead><tbody id="bdr-rows"></tbody></table></div>
+<div class="bdr-pagination"><span id="bdr-count"></span><button type="button" id="bdr-prev" data-capability="view" data-capability-page="frame_department" class="secondary-button" data-search-read-only>Previous</button><button type="button" id="bdr-next" data-capability="view" data-capability-page="frame_department" class="secondary-button" data-search-read-only>Next</button></div>
+<details class="bdr-notes"><summary>How this report is counted</summary><p>One line per phone job. Pass / Fail attempts stay in its history. Dates select phones by first arrival or latest result; the totals cover the full B-DEPT history of those phones. Time includes recorded periods inside B-DEPT and stops when the phone passes or leaves. Time outside B-DEPT is excluded. Missing arrival records show “Time not recorded”. Average time includes passed phones with recorded times. All dates use UAE (UTC+4).</p></details>
+</section></section></div></main></div>
+<dialog id="bdr-history" class="bdr-dialog"><header><div><p class="eyebrow">Recorded B-DEPT history</p><h2 id="bdr-history-title"></h2></div><button type="button" id="bdr-history-close" data-capability="view" data-capability-page="frame_department" class="secondary-button" data-search-read-only>Close</button></header><div id="bdr-history-body"></div></dialog>
+<dialog id="bdr-pdf" class="bdr-dialog bdr-pdf"><header><h2>B-DEPT Performance Report</h2><a id="bdr-pdf-open" class="secondary-button" target="_blank" rel="noopener" data-capability="download" data-capability-page="frame_department">Open PDF</a><button type="button" id="bdr-pdf-close" data-capability="view" data-capability-page="frame_department" class="secondary-button" data-search-read-only>Close</button></header><iframe id="bdr-pdf-frame" title="B-DEPT Performance PDF preview"></iframe></dialog>
+</body></html>

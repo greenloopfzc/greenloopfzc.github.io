@@ -19,19 +19,19 @@
     <link rel="stylesheet" href="css/laboratory.css?v=20261031-b-dept-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="js/imei-stage-notice.js?v=20261023-dual-imei-1"></script>
-  <script defer src="js/permission-catalog.js?v=20261031-b-dept-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261031-b-dept-1"></script>
+  <script defer src="js/permission-catalog.js?v=20261101-b-dept-report-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261101-b-dept-report-1"></script>
 <script defer src="js/page-capabilities.js?v=20261030-supplier-progress-1"></script>
 <link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
 <script defer src="js/office-access.js?v=20261024-office-access-1"></script>
-<script defer src="js/config.js?v=20261031-b-dept-1"></script>
+<script defer src="js/config.js?v=20261101-b-dept-report-1"></script>
   <script defer src="js/login-activity.js?v=20261013-search-tv-1"></script>
   <link rel="stylesheet" href="css/record-search.css?v=20261017-find-record-popup-1">
   <script defer src="js/record-search.js?v=20261027-performance-1"></script>
     <script defer src="js/part-notifications.js?v=20261031-b-dept-1"></script>
   <script defer src="js/employee-updates.js?v=20261027-performance-1"></script>
   <link rel="stylesheet" href="css/lab-bulk-transfer.css?v=20261030-lab-bulk-transfer-1">
-  <script defer src="js/laboratory.js?v=20261031-b-dept-1"></script>
+  <script defer src="js/laboratory.js?v=20261101-b-dept-report-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
     <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261003-qc-duplicate-stage-1">
   <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
@@ -41,6 +41,7 @@
   <script defer src="js/clean-layout.js?v=20261030-supplier-progress-1"></script>
   <script defer src="js/suspicious-badge.js?v=20261017-suspicious-activity-1"></script>
   <link rel="stylesheet" href="css/parts-flow.css?v=20261026-parts-simple-1">
+<link rel="stylesheet" href="css/b-dept-report.css?v=20261101-b-dept-report-1">
 </head>
   <body class="app-page">
     <div class="app-shell">
@@ -61,6 +62,7 @@
               <div class="technician-board-heading"><div><p class="panel-kicker">Technicians</p><h2 id="technician-board-title">Select a technician</h2><p>Click a name to see all assigned phones.</p></div><div class="technician-board-actions"><button id="refresh-lab" class="secondary-button" type="button">Refresh</button><button id="add-lab-technician" class="secondary-button" type="button">+ Add technician</button><button id="remove-lab-technician" class="secondary-button danger-button" type="button">− Remove selected</button></div></div>
               <div id="technician-cards" class="technician-cards" role="list"></div>
             </section>
+            <a id="open-b-dept-report" class="bdr-launch" href="b-dept-report.html" data-capability="view" data-capability-page="frame_department" hidden><span class="bdr-launch-icon" aria-hidden="true">▤</span><span><strong>B-DEPT Performance Report</strong><small>Phone times · Pass / Fail history · Date-wise reports</small></span><span class="bdr-launch-arrow" aria-hidden="true">→</span></a>
             <div id="frame-view-tabs" class="frame-view-tabs" role="tablist" aria-label="B-DEPT views" hidden><button id="frame-pending-tab" class="frame-view-tab" type="button" role="tab" aria-selected="true" aria-controls="frame-pending-panel" data-frame-view="pending">Pending Work <span id="frame-pending-tab-count">0</span></button><button id="frame-history-tab" class="frame-view-tab" type="button" role="tab" aria-selected="false" aria-controls="frame-report-panel" tabindex="-1" data-frame-view="history">History <span id="frame-history-tab-count">0</span></button></div>
             <section id="frame-pending-panel" class="technician-lines-panel">
               <div class="technician-lines-heading"><div><p id="lines-kicker" class="panel-kicker">Selected technician</p><h2 id="technician-lines-title">Assigned phone lines</h2><p id="technician-lines-help">Review the lower line, order required parts, then complete the job after Parts has issued them.</p></div><div class="technician-line-tools"><div class="frame-lines-actions"><span id="technician-lines-count" class="queue-count">0 lines</span><button id="refresh-frame" class="secondary-button" type="button" hidden>Refresh</button></div></div></div>

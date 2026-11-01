@@ -1,5 +1,5 @@
 {
-  "version": "20261031-b-dept-1",
+  "version": "20261101-b-dept-report-1",
   "pages": [
     {
       "key": "overview",
@@ -355,6 +355,11 @@
           "key": "manage_options",
           "label": "Manage names & dropdown choices",
           "write": true
+        },
+        {
+          "key": "download",
+          "label": "B-DEPT report: PDF View / Download and Excel",
+          "write": false
         }
       ]
     },

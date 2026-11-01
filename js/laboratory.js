@@ -105,6 +105,7 @@
     document.querySelector(".lab-heading .quiet-link").href = "final-qc.html";
     document.querySelector(".lab-heading .quiet-link").textContent = "← Back to Final QC";
     technicianBoard.hidden = true;
+    document.querySelector("#open-b-dept-report").hidden = false;
     technicianImeiScanWrap.hidden = true;
     frameViewTabs.hidden = false;
     framePendingPanel.setAttribute('role', 'tabpanel');
