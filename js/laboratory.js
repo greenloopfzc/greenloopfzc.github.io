@@ -107,6 +107,7 @@
     technicianBoard.hidden = true;
     document.querySelector("#open-b-dept-report").hidden = false;
     technicianImeiScanWrap.hidden = true;
+    document.querySelector("#frame-view-controls").hidden = false;
     frameViewTabs.hidden = false;
     framePendingPanel.setAttribute('role', 'tabpanel');
     framePendingPanel.setAttribute('aria-labelledby', 'frame-pending-tab');
