@@ -40,9 +40,25 @@ do $patch$declare f regprocedure;ddl text;needle text;impl text;replacement text
 $metadata$;
  execute replace(ddl,needle,replacement||needle);end if;
  f:='greenloop_private.pf_guard()'::regprocedure;ddl:=replace(pg_get_functiondef(f),chr(13)||chr(10),chr(10));
- if strpos(ddl,'greenloop-employee-merge-232')=0 then
- needle:=' if exists(select 1 from greenloop_private.parts_flow_context';if strpos(ddl,needle)=0 then raise exception 'Reviewed Parts guard differs.';end if;
- execute replace(ddl,needle,E' -- greenloop-employee-merge-232\n if tg_table_name=''job_part_requests''and tg_op=''UPDATE''and exists(select 1 from greenloop_private.employee_merge_context where pid=pg_backend_pid()and tx=txid_current())then\n  if to_jsonb(new)-''requested_for_technician''is distinct from to_jsonb(old)-''requested_for_technician''then raise exception ''Employee merge cannot change Parts data.'';end if;return new;\n end if;\n'||needle);end if;
+ if strpos(ddl,'greenloop-employee-merge-parts-232b')=0 then
+ replacement:=$parts$
+ -- greenloop-employee-merge-232 / greenloop-employee-merge-parts-232b
+ if tg_table_name='job_part_requests'and tg_op='UPDATE'and exists(select 1 from greenloop_private.employee_merge_context where pid=pg_backend_pid()and tx=txid_current())then
+  if (to_jsonb(new)-array['requested_for_technician','updated_at'])is distinct from(to_jsonb(old)-array['requested_for_technician','updated_at'])then
+   raise exception 'Employee merge cannot change Parts data. Changed fields: %',(select string_agg(k,', 'order by k)from jsonb_object_keys(to_jsonb(new))k where k not in('requested_for_technician','updated_at')and(to_jsonb(new)->k)is distinct from(to_jsonb(old)->k));
+  end if;
+  if new.requested_for_technician is distinct from 'EHTESHAM'or greenloop_private.ed_key(old.requested_for_technician)not in('ehtasham','ehtesham')or old.requested_for_technician is null or not exists(select 1 from greenloop_private.employee_merge_aliases)then raise exception 'Employee merge Parts identity needs review.';end if;
+  -- An automatic touch trigger may run first. Keep the original business timestamp.
+  new.updated_at:=old.updated_at;
+  return new;
+ end if;
+$parts$;
+ if strpos(ddl,'greenloop-employee-merge-232')>0 then
+  needle:=E' -- greenloop-employee-merge-232\n if tg_table_name=''job_part_requests''and tg_op=''UPDATE''and exists(select 1 from greenloop_private.employee_merge_context where pid=pg_backend_pid()and tx=txid_current())then\n  if to_jsonb(new)-''requested_for_technician''is distinct from to_jsonb(old)-''requested_for_technician''then raise exception ''Employee merge cannot change Parts data.'';end if;return new;\n end if;\n';
+  if strpos(ddl,needle)=0 then raise exception 'Reviewed employee Parts boundary differs.';end if;execute replace(ddl,needle,replacement);
+ else
+  needle:=' if exists(select 1 from greenloop_private.parts_flow_context';if strpos(ddl,needle)=0 then raise exception 'Reviewed Parts guard differs.';end if;execute replace(ddl,needle,replacement||needle);
+ end if;end if;
  f:='greenloop_private.ed_guard()'::regprocedure;ddl:=replace(pg_get_functiondef(f),chr(13)||chr(10),chr(10));
  if strpos(ddl,'greenloop-employee-merge-232')=0 then
  needle:=' if current_setting(''role'',true)';if strpos(ddl,needle)=0 then raise exception 'Reviewed employee guard differs.';end if;
