@@ -17,8 +17,8 @@
     <link rel="stylesheet" href="css/styles.css?v=20261016-strict-view-only-1">
     <link rel="stylesheet" href="css/user-access.css?v=20261021-requested-rollback-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script defer src="js/permission-catalog.js?v=20261101-tv-overdue-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261101-tv-overdue-1"></script>
+  <script defer src="js/permission-catalog.js?v=20261102-tv-month-sunday-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261102-tv-month-sunday-1"></script>
 <script defer src="js/page-capabilities.js?v=20261030-supplier-progress-1"></script>
 <script defer src="js/imei-stage-notice.js?v=20261023-dual-imei-1"></script>
 <link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
@@ -30,7 +30,7 @@
     <script defer src="js/part-notifications.js?v=20261031-b-dept-1"></script>
     <script defer src="js/office-access-admin.js?v=20261024-office-access-1"></script>
 <script defer src="js/user-password.js?v=20261030-user-password-1"></script>
-<script defer src="js/user-access.js?v=20261101-tv-overdue-1"></script>
+<script defer src="js/user-access.js?v=20261102-tv-month-sunday-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
     <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
   <link rel="stylesheet" href="css/sidebar-compact.css?v=20261009-sidebar-pdf-1">
@@ -40,7 +40,7 @@
   <script defer src="js/suspicious-badge.js?v=20261017-suspicious-activity-1"></script>
 <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261003-qc-duplicate-stage-1">
   <link rel="stylesheet" href="css/user-password.css?v=20261030-user-password-1">
-<link rel="stylesheet" href="css/tv-overdue-admin.css?v=20261101-tv-overdue-1">
+<link rel="stylesheet" href="css/tv-overdue-admin.css?v=20261102-tv-month-sunday-1">
 </head>
   <body class="app-page">
     <div class="app-shell">
@@ -116,7 +116,7 @@
 <section id="tv-rotation-settings" class="tv-rotation-settings" aria-labelledby="tv-rotation-title">
 <h3 id="tv-rotation-title">TV windows and overdue phones</h3><div class="tv-rotation-modes"><label><input id="access-tv-damage-window" type="checkbox"> Damage Report</label><label><input id="access-tv-overdue-window" type="checkbox"> Overdue Lab &amp; Glass cards + phone details</label></div>
 <p class="permission-help">Select one window, or select both to switch automatically. Only selected employees with phones pending longer than the days limit appear in the overdue view.</p>
-<div class="tv-rotation-fields"><label>Damage window · seconds<input id="access-tv-damage-seconds" type="number" min="5" max="3600" step="1" value="10" required></label><label>Overdue window · seconds<input id="access-tv-pending-seconds" type="number" min="5" max="3600" step="1" value="10" required></label><label>Pending longer than · days<input id="access-tv-overdue-days" type="number" min="1" max="365" step="1" value="2" required></label></div><p class="permission-help">Defaults: 10 seconds per window, over 2 days. Opening phone details pauses switching until the employee cards are reopened.</p></section>
+<div class="tv-rotation-fields"><label>Damage window · seconds<input id="access-tv-damage-seconds" type="number" min="5" max="3600" step="1" value="10" required></label><label>Overdue window · seconds<input id="access-tv-pending-seconds" type="number" min="5" max="3600" step="1" value="10" required></label><label>Pending longer than · days<input aria-describedby="tv-sunday-rule" id="access-tv-overdue-days" type="number" min="1" max="365" step="1" value="2" required></label></div><p id="tv-sunday-rule" class="permission-help">Sunday hours are excluded from the overdue TV clock. One counted day is 24 hours outside Sunday, using UAE time.</p><p class="permission-help">Defaults: 10 seconds per window, over 2 days. Opening phone details pauses switching until the employee cards are reopened.</p></section>
                     <div id="damage-tv-choices" class="damage-tv-choices" hidden>
                       <label><input id="access-tv-parts" type="checkbox"> <span><strong>Parts details</strong><small>Model, part, quantity, source, reason and dates</small></span></label>
                       <label><input id="access-tv-original" type="checkbox"> <span><strong>Original prices</strong><small>Original unit prices, totals and payable</small></span></label>

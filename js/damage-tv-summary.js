@@ -4,7 +4,7 @@
   root.GREENLOOP_DAMAGE_SUMMARY = function (api, hooks) {
     var display=root.GREENLOOP_DAMAGE_DISPLAY;
     var scope = null, offset = 0, last = null, request = 0, cardRequest = 0, limit = 6;
-    var titles = {today:"Today's damaged parts", month:"This month's damages", all:"All damaged parts", value:"Total damage value", payable:"This Month Payable"};
+    var titles = {today:"Today's damaged parts", month:"This month's damages", all:"This month’s damaged parts", value:"This month’s damage value", payable:"This Month Payable"};
     function get(id) { return document.getElementById(id); }
     function text(id, value) { get(id).textContent = value; }
     function esc(value) { return String(value === null || value === undefined ? "" : value).replace(/[&<>"']/g, function (c) { return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
@@ -106,6 +106,6 @@
     get("damage-summary-next").onclick=function(){if(last && last.has_more)load(offset+limit);};
     get("damage-summary-retry").onclick=function(){load(offset);};
     document.addEventListener('keydown',function(event){if(scope && (event.keyCode===27 || event.keyCode===10009)){event.preventDefault();close(true);}});
-    return {refresh:refresh,close:close,clear:function(){cardRequest++;close(false);text("damage-payable",'—');text("damage-payable-period",'Month to date · UAE');text("damage-summary-table-wrap",'');text("damage-summary-totals",'');status('');}};
+    return {isOpen:function(){return !!scope;},refresh:refresh,close:close,clear:function(){cardRequest++;close(false);text("damage-payable",'—');text("damage-payable-period",'Month to date · UAE');text("damage-summary-table-wrap",'');text("damage-summary-totals",'');status('');}};
   };
 }(window));

@@ -11,15 +11,15 @@
   <script>window.GREENLOOP_TV_CONFIG = {"loginActivity":true,"pageKey":"damage_report","supabaseUrl":"https://prypklagfznpdlleldll.supabase.co","supabaseAnonKey":"sb_publishable_hMIRbfKmh4vhGvEgVcPjow_F21WmwXt"};</script>
   <link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
 <script defer src="js/office-access.js?v=20261024-office-access-1"></script>
-<script defer src="js/tv-api.js?v=20261101-tv-overdue-1"></script>
+<script defer src="js/tv-api.js?v=20261102-tv-month-sunday-1"></script>
   <script defer src="js/damage-tv-permissions.js?v=20261016-page-capabilities-1"></script>
-  <script defer src="js/damage-tv-summary.js?v=20261016-page-capabilities-1"></script>
-  <script defer src="js/tv-overdue.js?v=20261101-tv-overdue-1"></script>
-  <script defer src="js/damage-tv.js?v=20261101-tv-overdue-1"></script>
+  <script defer src="js/damage-tv-summary.js?v=20261102-tv-month-sunday-1"></script>
+  <script defer src="js/tv-overdue.js?v=20261102-tv-month-sunday-1"></script>
+  <script defer src="js/damage-tv.js?v=20261102-tv-month-sunday-1"></script>
   <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
   <link rel="stylesheet" href="css/damage-tv-display.css?v=20261017-damage-dark-cards-1">
   <link rel="stylesheet" href="css/damage-tv-summary.css?v=20261017-damage-dark-cards-1">
-<link rel="stylesheet" href="css/tv-overdue.css?v=20261101-tv-overdue-1">
+<link rel="stylesheet" href="css/tv-overdue.css?v=20261102-tv-month-sunday-1">
 </head>
 <body class="tv-page damage-tv-page">
   <div class="tv-wrap">
@@ -100,8 +100,8 @@
         <div class="damage-summary" aria-label="Damage summaries: select a card to open details">
           <button type="button" id="damage-summary-today" data-damage-summary="today" aria-controls="damage-summary-detail" aria-expanded="false" class="damage-stat"><span>Today’s damaged parts</span><strong id="damage-today">0</strong><small>UAE calendar day · View details</small></button>
           <button type="button" id="damage-summary-month" data-damage-summary="month" aria-controls="damage-summary-detail" aria-expanded="false" class="damage-stat"><span>This month</span><strong id="damage-month">0</strong><small>Month to date · View details</small></button>
-          <button type="button" id="damage-summary-all" data-damage-summary="all" aria-controls="damage-summary-detail" aria-expanded="false" class="damage-stat"><span>Total damaged parts</span><strong id="damage-total">0</strong><small>All history · View details</small></button>
-          <button type="button" id="damage-summary-value" data-damage-summary="value" aria-controls="damage-summary-detail" aria-expanded="false" class="damage-stat damage-stat-value"><span>Total damage value</span><strong id="damage-value">—</strong><small id="damage-unpriced">Recorded prices · currencies separate</small></button>
+          <button type="button" id="damage-summary-all" data-damage-summary="all" aria-controls="damage-summary-detail" aria-expanded="false" class="damage-stat"><span>This month’s damaged parts</span><strong id="damage-total">0</strong><small>This month · View details</small></button>
+          <button type="button" id="damage-summary-value" data-damage-summary="value" aria-controls="damage-summary-detail" aria-expanded="false" class="damage-stat damage-stat-value"><span>This month’s damage value</span><strong id="damage-value">—</strong><small id="damage-unpriced">Recorded prices · currencies separate</small></button>
           <button type="button" id="damage-summary-payable" data-damage-summary="payable" aria-controls="damage-summary-detail" aria-expanded="false" class="damage-stat damage-stat-value damage-stat-payable"><span>This Month Payable</span><strong id="damage-payable">—</strong><small id="damage-payable-period">Month to date · UAE</small></button>
         </div>
         <section id="damage-summary-detail" class="damage-summary-detail" aria-labelledby="damage-summary-title" style="display:none">
@@ -127,7 +127,7 @@
           <header class="tvr-heading"><p class="tv-eyebrow">LAB &amp; GLASS / OVERDUE PHONES</p><h2 id="tvr-title">Pending over 2 days</h2><p id="tvr-total" role="status"></p></header>
           <p id="tvr-message" class="tv-message" role="status" aria-live="polite"></p>
           <section id="tvr-cards-view" aria-label="Employees with overdue phones"><div id="tvr-cards" class="tvr-cards"></div></section>
-          <section id="tvr-detail" class="tvr-detail" style="display:none" aria-labelledby="tvr-detail-title"><header><button id="tvr-back" class="tv-button" type="button">Back to employees</button><h2 id="tvr-detail-title" tabindex="-1"></h2><p id="tvr-detail-info"></p><p class="tvr-reading-note">Screen switching is paused while phone details are open.</p></header><div class="tvr-table-wrap"><table><thead><tr><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>BH</th><th>Supplier code</th><th>Department</th><th>Lab arrival · UAE</th><th>Time pending</th></tr></thead><tbody id="tvr-phone-rows"></tbody></table></div><div class="tvr-pager"><button id="tvr-prev" class="tv-button" type="button">Previous</button><span id="tvr-phone-range"></span><button id="tvr-next" class="tv-button" type="button">Next</button><button id="tvr-details-refresh" class="tv-button" type="button">Refresh phones</button></div></section>
+          <section id="tvr-detail" class="tvr-detail" style="display:none" aria-labelledby="tvr-detail-title"><header><button id="tvr-back" class="tv-button" type="button">Back to employees</button><h2 id="tvr-detail-title" tabindex="-1"></h2><p id="tvr-detail-info"></p><p class="tvr-reading-note">Screen switching is paused while phone details are open.</p></header><div class="tvr-table-wrap"><table><thead><tr><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>BH</th><th>Supplier code</th><th>Department</th><th>Lab arrival · UAE</th><th>Counted time · Sunday excluded</th></tr></thead><tbody id="tvr-phone-rows"></tbody></table></div><div class="tvr-pager"><button id="tvr-prev" class="tv-button" type="button">Previous</button><span id="tvr-phone-range"></span><button id="tvr-next" class="tv-button" type="button">Next</button><button id="tvr-details-refresh" class="tv-button" type="button">Refresh phones</button></div></section>
         </section>
       </section>
     </main>

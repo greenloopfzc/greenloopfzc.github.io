@@ -70,7 +70,7 @@
       var previous = get("damage-history-prev"), next = get("damage-history-next");
       if (previous) previous.disabled = pending || !detail || detail.offset === 0;
       if (next) next.disabled = pending || !detail || !detail.has_more;
-      text("damage-view-help", view === "all" ? "Select an employee to read their complete history. Totals include all recorded damage." : "Newest first \u00b7 UAE dates \u00b7 History controls pause Auto View so you can read.");
+      text("damage-view-help", view === "all" ? "Select an employee to read their this month’s details. Totals include this month only. Previous months remain in Reports." : "Newest first \u00b7 UAE dates \u00b7 History controls pause Auto View so you can read.");
     }
     function autoProgress() {
       var progress = get("damage-auto-progress"), fill = get("damage-auto-fill");
@@ -131,7 +131,7 @@
     function dualValues(employee) { return display.dual(moneyValues(employee),moneyValues(employee,true)); }
     function boardValues(data) {
       get("damage-value").innerHTML = dualValues({value_totals:data.value_totals,copy_value_totals:data.copy_value_totals,total_damage:data.total_count});
-      text("damage-unpriced", "All history · Separate valuations");
+      text("damage-unpriced", "This month · Separate valuations");
     }
     function selectEmployee(id, automatic) {
       var employee = findEmployee(id);
@@ -231,7 +231,7 @@
       var d=display.get(),notes=[];
       if(d.show_original && employee.unpriced_quantity)notes.push('Original '+count(employee.unpriced_quantity));
       if(d.show_copy && employee.copy_unpriced_quantity)notes.push('Copy '+count(employee.copy_unpriced_quantity));
-      return '<div class="damage-value-summary">'+(display.prices() ? '<span><small>TOTAL VALUE · ALL RECORDS</small><strong>'+dualValues(employee)+'</strong></span>' : '')+'<span class="damage-record-count">'+count(employee.record_count)+' entries'+(notes.length ? ' · Unpriced parts: '+notes.join(' / ') : '')+'</span></div>';
+      return '<div class="damage-value-summary">'+(display.prices() ? '<span><small>TOTAL VALUE · THIS MONTH</small><strong>'+dualValues(employee)+'</strong></span>' : '')+'<span class="damage-record-count">'+count(employee.record_count)+' entries'+(notes.length ? ' · Unpriced parts: '+notes.join(' / ') : '')+'</span></div>';
     }
     function rowTotal(row, copy) {
       var saved=row[copy ? 'copy_entry_total' : 'entry_total'];
@@ -243,8 +243,8 @@
     }
     function cardMarkup(employee) {
       var rows = employee.rows || [], html = '', i, row, date;
-      html += '<header class="damage-employee-header tv-clear"><div class="damage-identity"><span class="damage-avatar" aria-hidden="true">' + escape(initials(employee.name)) + '</span><p class="damage-identity-label">EMPLOYEE DAMAGE HISTORY</p><h2>' + escape(employee.name) + '</h2></div>' +
-        (display.get().show_parts ? '<p class="damage-employee-total"><span>DAMAGED PARTS</span><strong>' + count(employee.total_damage) + '</strong><small>All recorded history</small></p>' : '') + valueSummary(employee) + '</header>' +
+      html += '<header class="damage-employee-header tv-clear"><div class="damage-identity"><span class="damage-avatar" aria-hidden="true">' + escape(initials(employee.name)) + '</span><p class="damage-identity-label">EMPLOYEE DAMAGE · THIS MONTH</p><h2>' + escape(employee.name) + '</h2></div>' +
+        (display.get().show_parts ? '<p class="damage-employee-total"><span>DAMAGED PARTS</span><strong>' + count(employee.total_damage) + '</strong><small>This month</small></p>' : '') + valueSummary(employee) + '</header>' +
         '<div class="damage-auto-caption"><span id="damage-auto-label"></span><strong id="damage-up-next"></strong><span id="damage-countdown"></span></div>' +
         '<div id="damage-auto-progress" class="damage-auto-progress" role="progressbar" aria-label="Time until next employee" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="display:none"><span id="damage-auto-fill"></span></div>' +
         '<div class="damage-table-shell"><table class="damage-table" aria-label="Damage history for ' + escape(employee.name) + '">' +
@@ -280,7 +280,7 @@
           (employees[i].unpriced_quantity && employees[i].value_totals && employees[i].value_totals.length ? '<span class="damage-compact-unpriced">' + count(employees[i].unpriced_quantity) + ' parts without price</span>' : '') + '</button></div>';
       }
       get("damage-employees").innerHTML = html || '<p class="tv-empty">No active employees are available.</p>';
-      text("damage-range", employees.length + " employees · Select a card for complete history"); controls(); autoProgress();
+      text("damage-range", employees.length + " employees · Select a card for this month’s details"); controls(); autoProgress();
       var target = focused && get(focused);
       if (target && target.disabled && /^damage-history-/.test(focused)) target = get("damage-detail");
       if (target && !target.disabled && target.getClientRects().length) target.focus();
@@ -420,7 +420,7 @@
       showLogin("This page did not finish loading. Reload the page and check the TV internet connection."); submit.disabled = true; return;
     }
     summaries = window.GREENLOOP_DAMAGE_SUMMARY(api, {onOpen:showAll, expired:expired, date:uaeDate, onExpired:function(error){showLogin(error.message || "Please sign in again.");username.focus();}});
-    rotation=window.GREENLOOP_TV_ROTATION(api,{damage:function(){showAll();refresh();},refreshDamage:refresh,clearDamage:function(){generation++;loading=false;clear();},damageReading:function(){return (view==="detail"&&!autoView)||get("damage-summary-detail").style.display!=="none";},pauseDamage:pauseAuto,live:function(){connection("Live · 30 sec refresh");clock();},date:uaeDate,expired:function(error){showLogin(error&&error.message||"Please sign in again.");username.focus();}});
+    rotation=window.GREENLOOP_TV_ROTATION(api,{damage:function(){showAll();refresh();},refreshDamage:refresh,clearDamage:function(){generation++;loading=false;clear();},damageReading:function(){return (view==="detail"&&!autoView)||(summaries&&summaries.isOpen());},resumeDamage:showAll,pauseDamage:pauseAuto,live:function(){connection("Live · 30 sec refresh");clock();},date:uaeDate,expired:function(error){showLogin(error&&error.message||"Please sign in again.");username.focus();}});
     api.onSessionInvalidated = function (error) { showLogin(error && error.message || "Please sign in again."); username.focus(); };
     get("tv-show-password").onclick = function () {
       var show = password.type === "password"; password.type = show ? "text" : "password";
