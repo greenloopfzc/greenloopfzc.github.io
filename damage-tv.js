@@ -10,7 +10,7 @@
     var active = false, loading = false, busy = false, generation = 0, theme = "light";
     function historySize() { var height = window.innerHeight || document.documentElement.clientHeight; return height <= 650 ? 3 : height <= 800 ? 4 : 6; }
     var rowSize = historySize(), employees = [], rosterRequest = 0, selection = 0, detail = null;
-    var autoView = false, autoTimer = null, view = "all";
+    var autoView = false, autoTimer = null, view = "all", rotation = null;
     var activity = [], updatesPaused = false;
     var tvMode = false, idleTimer = null, autoDeadline = 0, summaries = null;
     function text(id, value) { get(id).textContent = String(value === null || value === undefined ? "" : value); }
@@ -207,6 +207,8 @@
       submit.textContent = value ? "Signing in..." : "Sign in to damage report";
     }
     function showLogin(value) {
+      if(!get("tv-board")){active=false;loading=false;generation++;if(rotation)rotation.stop();return;}
+      if(rotation)rotation.stop();
       active = false; loading = false; generation++; syncThemeAccess(); clear();
       get("tv-restoring").style.display = "none"; board.style.display = "none"; login.style.display = "block";
       password.value = ""; password.type = "password";
@@ -284,7 +286,7 @@
       if (target && !target.disabled && target.getClientRects().length) target.focus();
     }
     function refresh(retried) {
-      if (!active || loading || (detail && detail.loading)) return;
+      if (!active || loading || (detail && detail.loading) || (rotation && !rotation.isDamageView())) return;
       var ticket = generation, request = ++rosterRequest, collected = [], seen = {}, first = null;
       loading = true; controls();
       function current() { return ticket === generation && request === rosterRequest && active; }
@@ -387,7 +389,7 @@
       active = true; loading = false; syncThemeAccess();
       get("tv-restoring").style.display = "none"; login.style.display = "none"; board.style.display = "block";
       message("tv-login-message", ""); message("tv-board-message", "Loading damage report...");
-      pauseAuto(); refresh(); clock(); get("damage-all").focus(); wakeControls();
+      pauseAuto(); rotation.start(); clock(); wakeControls();
     }
     function canChangeDisplayMode() {
       return !!api && active && typeof api.canAppearance === "function" && api.canAppearance("display_mode");
@@ -414,10 +416,11 @@
       if (!canChangeDisplayMode()) { syncThemeAccess(); return; }
       pauseAuto(); setTheme(theme === "light" ? "dark" : "light");
     };
-    if (!api || typeof api.restore !== "function" || typeof api.login !== "function" || typeof api.logout !== "function" || typeof api.loadDamageCards !== "function" || typeof api.loadEmployeeDamageRows !== "function" || typeof api.loadDamageSummary !== "function" || typeof window.GREENLOOP_DAMAGE_SUMMARY !== "function") {
+    if (!api || typeof api.restore !== "function" || typeof api.login !== "function" || typeof api.logout !== "function" || typeof api.loadDamageCards !== "function" || typeof api.loadEmployeeDamageRows !== "function" || typeof api.loadDamageSummary !== "function" || typeof window.GREENLOOP_DAMAGE_SUMMARY !== "function" || typeof window.GREENLOOP_TV_ROTATION !== "function" || typeof api.loadTvRotation !== "function") {
       showLogin("This page did not finish loading. Reload the page and check the TV internet connection."); submit.disabled = true; return;
     }
     summaries = window.GREENLOOP_DAMAGE_SUMMARY(api, {onOpen:showAll, expired:expired, date:uaeDate, onExpired:function(error){showLogin(error.message || "Please sign in again.");username.focus();}});
+    rotation=window.GREENLOOP_TV_ROTATION(api,{damage:function(){showAll();refresh();},refreshDamage:refresh,clearDamage:function(){generation++;loading=false;clear();},damageReading:function(){return (view==="detail"&&!autoView)||get("damage-summary-detail").style.display!=="none";},pauseDamage:pauseAuto,live:function(){connection("Live · 30 sec refresh");clock();},date:uaeDate,expired:function(error){showLogin(error&&error.message||"Please sign in again.");username.focus();}});
     api.onSessionInvalidated = function (error) { showLogin(error && error.message || "Please sign in again."); username.focus(); };
     get("tv-show-password").onclick = function () {
       var show = password.type === "password"; password.type = show ? "text" : "password";
@@ -447,7 +450,7 @@
       else if (direction) historyPage(Number(direction));
     };
     get("damage-all").onclick = showAll;
-    get("tv-refresh").onclick = function () { pauseAuto(); refresh(); };
+    get("tv-refresh").onclick = function () { pauseAuto(); rotation.refresh(); };
     get("damage-prev").onclick = function () { var index = selectedIndex(); if (index > 0) selectEmployee(employees[index - 1].id, false); };
     get("damage-next").onclick = function () { var index = selectedIndex(); if (index >= 0 && index + 1 < employees.length) selectEmployee(employees[index + 1].id, false); };
     get("tv-auto-toggle").onclick = function () {
@@ -494,9 +497,10 @@
     window.addEventListener("offline", function () { if (active) connection("Offline · saved display"); });
     window.setInterval(function () { if (active && !document.hidden) { clock(); autoProgress(); } }, 100);
     clock();
-    window.setInterval(function () { if (!document.hidden) refresh(); }, 30000);
-    document.addEventListener("visibilitychange", function () { stopTimer(); tickerState(); wakeControls(); if (!document.hidden) { scheduleAuto(); refresh(); } });
-    window.addEventListener("online", function () { refresh(); });
+    window.setInterval(function () { if (!document.hidden) rotation.refresh(); }, 30000);
+    document.addEventListener("visibilitychange", function () { stopTimer(); tickerState(); wakeControls(); if (!document.hidden) { scheduleAuto(); rotation.refresh(); } });
+    window.addEventListener("online", function () { rotation.refresh(); });
+    window.addEventListener("greenloop:office-locked",function(){active=false;loading=false;generation++;stopTimer();});
     var restoreTicket = generation;
     api.restore(function (error, result) {
       if (restoreTicket !== generation) return;

@@ -177,6 +177,7 @@
         if (!status) { finish(error("NETWORK", "Cannot reach Greenloop. Check the TV internet connection and try again.")); return; }
         var value = xhr.responseText ? parse(xhr.responseText) : null;
         if (status < 200 || status >= 300) {
+          if(value && value.details === "GREENLOOP_OFFICE_ONLY" && window.GREENLOOP_OFFICE)window.GREENLOOP_OFFICE.lock(value.message);
           var problem = error(status === 429 ? "RATE_LIMIT" : "HTTP", status === 429 ? "Too many sign-in attempts. Please wait and try again." : "Greenloop could not complete this request. Please try again.");
           problem.status = status;
           problem.serverCode = value && typeof value.code === "string" ? value.code : "";
@@ -208,6 +209,7 @@
     return validSession(result) ? result : null;
   }
   function finishRefresh(problem) {
+    if(!problem && session && window.GREENLOOP_OFFICE)window.GREENLOOP_OFFICE.check(session.access_token,function(){});
     var callbacks = refreshWaiters.slice(0), index;
     refreshWaiters = [];
     refreshing = false;
@@ -364,7 +366,11 @@
     window.setInterval(function () { if (!window.document.hidden && syncSession()) loginPresence(false); }, 30000);
     window.document.addEventListener("visibilitychange", function () { if (!window.document.hidden && syncSession()) loginPresence(false); });
   }
-  function signedIn(callback, checkedProfile) {
+  function signedIn(callback, checkedProfile, officeChecked) {
+    if(!officeChecked){
+      if(!window.GREENLOOP_OFFICE){callback(error("OFFICE_ACCESS","Office access verification is unavailable."));return;}
+      window.GREENLOOP_OFFICE.check(session.access_token,function(allowed){if(!allowed){callback(error("OFFICE_ACCESS","Office access only. Please connect to the office network."));return;}signedIn(callback,checkedProfile,true);});return;
+    }
     if(!checkedProfile && pageKey==="lab_live_board") {
       authorised("POST","/rest/v1/rpc/get_my_damage_tv_settings_v1",{},function(problem,d){
         if(problem){callback(problem);return;}
@@ -624,6 +630,11 @@
     var valid=restrictedReport(report,kind,offset,limit,rowLimit,employeeId,scope);
     callback(valid ? null : error("INVALID_RESPONSE","The restricted TV report could not be verified. Select Refresh."),valid ? report : null);return true;
   }
+  function rotationSettings(s) {return s&&typeof s.show_damage==="boolean"&&typeof s.show_overdue==="boolean"&&count(s.damage_seconds)&&s.damage_seconds>=5&&s.damage_seconds<=3600&&count(s.pending_seconds)&&s.pending_seconds>=5&&s.pending_seconds<=3600&&count(s.overdue_days)&&s.overdue_days>=1&&s.overdue_days<=365&&/^\d+$/.test(s.revision)&&/^\d+$/.test(s.access_revision);}
+  function overdueRead(name,args,validate,callback){checkAccess(function(problem){if(problem){callback(problem);return;}authorised("POST","/rest/v1/rpc/"+name,args,function(problem,data){if(problem){callback(problem);return;}if(!validate(data)){callback(error("INVALID_RESPONSE","TV pending-phone data could not be verified. Refresh to retry."));return;}callback(null,data);});});}
+  api.loadTvRotation=function(callback){overdueRead("get_my_tv_rotation_v1",{},rotationSettings,callback);};
+  api.loadOverdueCards=function(offset,limit,callback){overdueRead("get_tv_overdue_cards_v1",{p_offset:offset,p_limit:limit},function(d){if(!d||!rotationSettings(d.settings)||!timestamp(d.server_now)||!count(d.employee_count)||!count(d.phone_count)||d.offset!==offset||d.has_more!==(offset+limit<d.employee_count)||!array(d.employees)||d.employees.length!==Math.min(limit,Math.max(0,d.employee_count-offset)))return false;var seen={};return d.employees.every(function(e){if(!e||typeof e.employee_key!=="string"||!e.employee_key||seen[e.employee_key]||typeof e.employee_name!=="string"||!e.employee_name||!count(e.phone_count)||e.phone_count<1||!isFinite(Number(e.oldest_seconds))||Number(e.oldest_seconds)<=d.settings.overdue_days*86400)return false;seen[e.employee_key]=true;return true;});},callback);};
+  api.loadOverduePhones=function(employee,offset,limit,callback){overdueRead("get_tv_overdue_phones_v1",{p_employee_key:employee,p_offset:offset,p_limit:limit},function(d){if(!d||!rotationSettings(d.settings)||!timestamp(d.server_now)||d.employee_key!==employee||!count(d.phone_count)||d.offset!==offset||d.has_more!==(offset+limit<d.phone_count)||!array(d.rows)||d.rows.length!==Math.min(limit,Math.max(0,d.phone_count-offset))||(d.phone_count>0&&typeof d.employee_name!=="string"))return false;var seen={};return d.rows.every(function(p){if(!p||p.employee_key!==employee||typeof p.device_id!=="string"||!p.device_id||seen[p.device_id]||typeof p.imei!=="string"||typeof p.model!=="string"||!timestamp(p.entered_at)||!isFinite(Number(p.elapsed_seconds))||Number(p.elapsed_seconds)<=d.settings.overdue_days*86400)return false;seen[p.device_id]=true;return true;});},callback);};
   api.loadDamageCards = function (offset, limit, rowLimit, callback) {
     callback = typeof callback === "function" ? callback : noop;
     if (!pageArguments(offset, limit) || !pageArguments(0, rowLimit)) {

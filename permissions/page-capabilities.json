@@ -1,5 +1,5 @@
 {
-  "version": "20261101-b-dept-report-1",
+  "version": "20261101-tv-overdue-1",
   "pages": [
     {
       "key": "overview",
@@ -228,6 +228,11 @@
         {
           "key": "payable",
           "label": "Show payable amounts",
+          "write": false
+        },
+        {
+          "key": "overdue_pending",
+          "label": "TV: overdue Lab cards and phone details",
           "write": false
         }
       ]

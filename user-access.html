@@ -17,8 +17,8 @@
     <link rel="stylesheet" href="css/styles.css?v=20261016-strict-view-only-1">
     <link rel="stylesheet" href="css/user-access.css?v=20261021-requested-rollback-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script defer src="js/permission-catalog.js?v=20261101-b-dept-report-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261101-b-dept-report-1"></script>
+  <script defer src="js/permission-catalog.js?v=20261101-tv-overdue-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261101-tv-overdue-1"></script>
 <script defer src="js/page-capabilities.js?v=20261030-supplier-progress-1"></script>
 <script defer src="js/imei-stage-notice.js?v=20261023-dual-imei-1"></script>
 <link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
@@ -30,7 +30,7 @@
     <script defer src="js/part-notifications.js?v=20261031-b-dept-1"></script>
     <script defer src="js/office-access-admin.js?v=20261024-office-access-1"></script>
 <script defer src="js/user-password.js?v=20261030-user-password-1"></script>
-<script defer src="js/user-access.js?v=20261030-user-password-1"></script>
+<script defer src="js/user-access.js?v=20261101-tv-overdue-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
     <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
   <link rel="stylesheet" href="css/sidebar-compact.css?v=20261009-sidebar-pdf-1">
@@ -40,6 +40,7 @@
   <script defer src="js/suspicious-badge.js?v=20261017-suspicious-activity-1"></script>
 <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261003-qc-duplicate-stage-1">
   <link rel="stylesheet" href="css/user-password.css?v=20261030-user-password-1">
+<link rel="stylesheet" href="css/tv-overdue-admin.css?v=20261101-tv-overdue-1">
 </head>
   <body class="app-page">
     <div class="app-shell">
@@ -109,16 +110,20 @@
 
                   <section id="user-password" class="user-password" hidden aria-label="Selected user password"><label for="access-stored-password">Password</label><div class="user-password-row"><input id="access-stored-password" type="password" readonly autocomplete="off" placeholder="Password hidden" aria-label="Selected account password" data-capability="manage_access" data-capability-page="user_access"><button type="button" id="show-user-password" class="secondary-button" aria-pressed="false" data-capability="manage_access" data-capability-page="user_access" disabled>Show</button><button type="button" id="change-user-password" class="secondary-button" data-capability="manage_access" data-capability-page="user_access" disabled>Change Password</button></div><p id="user-password-help"></p><p id="user-password-message" class="user-password-message" role="status" hidden></p></section>
                   <fieldset class="damage-tv-settings" id="damage-tv-settings">
-                    <legend>Damage TV display</legend>
+                    <legend>TV display</legend>
                     <label class="damage-tv-switch"><input id="access-tv-only" type="checkbox"> TV Display Only</label>
                     <p class="permission-help" id="damage-tv-mode-help">Open the damage wall directly. Entry, PDF and other software pages are blocked for this account.</p>
+<section id="tv-rotation-settings" class="tv-rotation-settings" aria-labelledby="tv-rotation-title">
+<h3 id="tv-rotation-title">TV windows and overdue phones</h3><div class="tv-rotation-modes"><label><input id="access-tv-damage-window" type="checkbox"> Damage Report</label><label><input id="access-tv-overdue-window" type="checkbox"> Overdue Lab &amp; Glass cards + phone details</label></div>
+<p class="permission-help">Select one window, or select both to switch automatically. Only selected employees with phones pending longer than the days limit appear in the overdue view.</p>
+<div class="tv-rotation-fields"><label>Damage window · seconds<input id="access-tv-damage-seconds" type="number" min="5" max="3600" step="1" value="10" required></label><label>Overdue window · seconds<input id="access-tv-pending-seconds" type="number" min="5" max="3600" step="1" value="10" required></label><label>Pending longer than · days<input id="access-tv-overdue-days" type="number" min="1" max="365" step="1" value="2" required></label></div><p class="permission-help">Defaults: 10 seconds per window, over 2 days. Opening phone details pauses switching until the employee cards are reopened.</p></section>
                     <div id="damage-tv-choices" class="damage-tv-choices" hidden>
                       <label><input id="access-tv-parts" type="checkbox"> <span><strong>Parts details</strong><small>Model, part, quantity, source, reason and dates</small></span></label>
                       <label><input id="access-tv-original" type="checkbox"> <span><strong>Original prices</strong><small>Original unit prices, totals and payable</small></span></label>
                       <label><input id="access-tv-copy" type="checkbox"> <span><strong>Copy prices</strong><small>Copy unit prices, totals and payable</small></span></label>
                     </div>
                     <section id="tv-employee-selection" class="tv-employee-selection" hidden aria-labelledby="tv-employee-title">
-                      <div class="tv-employee-heading"><div><h3 id="tv-employee-title">Employees to show on TV</h3><p class="permission-help">Cards, details, live updates and totals include only selected employees.</p></div><div class="tv-employee-actions"><button id="tv-employees-all" class="secondary-button" type="button">Select All</button><button id="tv-employees-none" class="secondary-button" type="button">Clear All</button></div></div>
+                      <div class="tv-employee-heading"><div><h3 id="tv-employee-title">Employees to show on TV</h3><p class="permission-help">Both TV windows, phone details, damage updates and totals include only selected employees.</p></div><div class="tv-employee-actions"><button id="tv-employees-all" class="secondary-button" type="button">Select All</button><button id="tv-employees-none" class="secondary-button" type="button">Clear All</button></div></div>
                       <label class="tv-employee-all"><input id="tv-employees-future" type="checkbox"> All employees, including new employees added later</label>
                       <p id="tv-employee-count" class="permission-help" role="status" aria-live="polite"></p>
                       <div id="tv-employee-list" class="tv-employee-list" role="group" aria-label="Employees to show on TV"></div>

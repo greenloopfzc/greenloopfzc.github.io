@@ -250,16 +250,24 @@
     renderAppearance(appearanceOptions, user.capabilities);
     [fullName, username, active].forEach(field => { field.disabled = !can("manage_access"); });
     document.querySelector("#save-access").disabled = savingAccess || !can("manage_access");
+    renderTvRotation(user.tv_rotation);
     const settings=user.tv_display;
     tvOnly.checked=settings.tv_only;
     tvOnly.disabled=settings.protected_account || !can("manage_access");
     [tvParts,tvOriginal,tvCopy].forEach(field => { field.disabled = !can("manage_access"); });
-    tvParts.checked=settings.show_parts;tvOriginal.checked=settings.show_original;tvCopy.checked=settings.show_copy;
+    tvParts.checked=user.tv_rotation.damage_parts;tvOriginal.checked=user.tv_rotation.damage_original;tvCopy.checked=user.tv_rotation.damage_copy;
     renderTvEmployees(user.tv_employee_keys);
-    document.querySelector("#damage-tv-mode-help").textContent=settings.protected_account ? "Administrator account: use a separate staff account for the TV." : "Open the damage wall directly. Entry, PDF and other software pages are blocked for this account.";
+    document.querySelector("#damage-tv-mode-help").textContent=settings.protected_account ? "Administrator account: use a separate staff account for the TV." : "Open the selected TV windows directly. Entry, PDF and other software pages are blocked for this account.";
     tvModeChanged();
   }
 
+  const tvRotationFields = Object.fromEntries(['damage-window','overdue-window','damage-seconds','pending-seconds','overdue-days'].map(key=>[key,document.getElementById('access-tv-'+key)]));
+  function validTvRotation(s){return s&&typeof s.show_damage==='boolean'&&typeof s.show_overdue==='boolean'&&Number.isInteger(s.damage_seconds)&&s.damage_seconds>=5&&s.damage_seconds<=3600&&Number.isInteger(s.pending_seconds)&&s.pending_seconds>=5&&s.pending_seconds<=3600&&Number.isInteger(s.overdue_days)&&s.overdue_days>=1&&s.overdue_days<=365&&/^\d+$/.test(s.revision);}
+  function renderTvRotation(s){if(!validTvRotation(s))throw new Error('TV window settings could not be verified. Refresh before saving.');tvRotationFields['damage-window'].checked=s.show_damage;tvRotationFields['overdue-window'].checked=s.show_overdue;tvRotationFields['damage-seconds'].value=s.damage_seconds;tvRotationFields['pending-seconds'].value=s.pending_seconds;tvRotationFields['overdue-days'].value=s.overdue_days;syncTvRotation();}
+  function syncTvRotation(){const damage=tvRotationFields['damage-window'].checked,overdue=tvRotationFields['overdue-window'].checked,locked=!can('manage_access');for(const key of ['damage-window','overdue-window'])tvRotationFields[key].disabled=locked;tvRotationFields['damage-seconds'].disabled=locked||!damage||!overdue;tvRotationFields['pending-seconds'].disabled=locked||!damage||!overdue;tvRotationFields['overdue-days'].disabled=locked||!overdue;}
+  function selectedTvRotation(){return{show_damage:tvRotationFields['damage-window'].checked,show_overdue:tvRotationFields['overdue-window'].checked,damage_seconds:Number(tvRotationFields['damage-seconds'].value),pending_seconds:Number(tvRotationFields['pending-seconds'].value),overdue_days:Number(tvRotationFields['overdue-days'].value)};}
+  document.getElementById('tv-rotation-settings').addEventListener('change',event=>{if(!can('manage_access'))return;syncTvRotation();if(event.target===tvRotationFields['overdue-window']){const card=roleOptions.querySelector('[data-page-permission="damage_report"]');if(card){const cap=card.querySelector('[data-access-capability="overdue_pending"]');if(cap)cap.checked=event.target.checked;if(event.target.checked)card.querySelector('[data-page-view]').checked=true;tvModeChanged();}}});
+  roleOptions.addEventListener('change',event=>{if(event.target.matches('[data-access-capability="overdue_pending"]')){tvRotationFields['overdue-window'].checked=event.target.checked;syncTvRotation();}});
   const tvOnly = document.querySelector("#access-tv-only");
   const tvParts = document.querySelector("#access-tv-parts");
   const tvOriginal = document.querySelector("#access-tv-original");
@@ -291,6 +299,7 @@
   tvEmployeeList.addEventListener("change", () => { tvEmployeeAll.checked = false; tvEmployeeCount(); });
   function tvModeChanged() {
     const locked = tvOnly.checked;
+    syncTvRotation();
     document.querySelector("#damage-tv-choices").hidden = !locked;
     document.querySelector("#tv-employee-selection").hidden = !locked;
     document.querySelector("#access-page-permissions").hidden=locked;
@@ -334,27 +343,30 @@
   async function loadUsers(preferredUserId = selectedUserId) {
     if (!can("view")) return;
     await loadProductionCatalog();
-    const [matrixResult, capabilityResult, tvResult, partnerResult, employeesResult, officeResult] = await Promise.all([
+    const [matrixResult, capabilityResult, tvResult, partnerResult, employeesResult, officeResult, rotationResult] = await Promise.all([
       getClient().rpc("get_user_page_access_matrix_v2"),
       getClient().rpc("get_user_page_capabilities_v1"),
       getClient().rpc("get_user_damage_tv_settings_v1"),
       getClient().rpc("get_user_partner_name_access_matrix"),
       getClient().rpc("get_damage_tv_employee_access_v1"),
-      getClient().rpc("get_office_access_settings_v1")
+      getClient().rpc("get_office_access_settings_v1"),
+      getClient().rpc("get_user_tv_rotation_v1")
     ]);
-    for (const result of [matrixResult, capabilityResult, tvResult, partnerResult, employeesResult, officeResult]) if (result.error) throw result.error;
+    for (const result of [matrixResult, capabilityResult, tvResult, partnerResult, employeesResult, officeResult, rotationResult]) if (result.error) throw result.error;
     window.GREENLOOP_OFFICE_ADMIN.update(officeResult.data);
     const officeAccounts = new Map(officeResult.data.accounts.map(row => [String(row.user_id), row]));
     const employeeAccess = employeesResult.data;
     if (!Array.isArray(employeeAccess?.employees) || !Array.isArray(employeeAccess?.accounts) || employeeAccess.employees.some(e => typeof e.key !== "string" || typeof e.name !== "string")) throw new Error("TV employee choices could not be verified. Refresh before saving.");
     tvEmployeeChoices = employeeAccess.employees;
     const employeeSettings = new Map(employeeAccess.accounts.map(row => [String(row.user_id), row.employee_keys]));
+    if(!Array.isArray(rotationResult.data)||rotationResult.data.some(s=>!validTvRotation(s)))throw new Error("TV window settings could not be verified. Refresh before saving.");
+    const rotationSettings=new Map(rotationResult.data.map(s=>[String(s.user_id),s]));
     const tvSettings = new Map((tvResult.data || []).map(row => [String(row.user_id), row]));
     const capabilitySettings = new Map((capabilityResult.data || []).map(row => [String(row.user_id), capabilityObject(row.capabilities)]));
     const partnerSettings = new Map((partnerResult.data || []).map(row => [String(row.user_id), ["view", "edit"].includes(row.access_level) || row.can_view === true ? "view" : "none"]));
-    const nextUsers = (matrixResult.data || []).map(user => ({...user, office_access:officeAccounts.get(String(user.user_id)), tv_employee_keys:employeeSettings.get(String(user.user_id)), tv_display:tvSettings.get(String(user.user_id)), capabilities:capabilitySettings.get(String(user.user_id)), partner_names_access:partnerSettings.get(String(user.user_id)) || "none"}));
+    const nextUsers = (matrixResult.data || []).map(user => ({...user, tv_rotation:rotationSettings.get(String(user.user_id)), office_access:officeAccounts.get(String(user.user_id)), tv_employee_keys:employeeSettings.get(String(user.user_id)), tv_display:tvSettings.get(String(user.user_id)), capabilities:capabilitySettings.get(String(user.user_id)), partner_names_access:partnerSettings.get(String(user.user_id)) || "none"}));
     if (nextUsers.some(user => user.tv_employee_keys !== null && (!Array.isArray(user.tv_employee_keys) || user.tv_employee_keys.some(key => typeof key !== "string")))) throw new Error("TV employee selections could not be verified. Refresh before saving.");
-    if (nextUsers.some(user => !user.tv_display || !user.capabilities)) throw new Error("Account permissions could not be verified. Refresh the account list.");
+    if (nextUsers.some(user => !user.tv_display || !user.capabilities || !user.tv_rotation)) throw new Error("Account permissions could not be verified. Refresh the account list.");
     users = nextUsers;
     const preferred = String(preferredUserId || "");
     selectedUserId = users.some((user) => String(user.user_id) === preferred)
@@ -418,16 +430,19 @@
     event.preventDefault();
     if (savingAccess || window.GREENLOOP_PASSWORD_ADMIN?.isBusy() || !can("manage_access")) return;
     if (!editor.checkValidity()) { editor.reportValidity(); return; }
-    if(tvOnly.checked && !tvParts.checked && !tvOriginal.checked && !tvCopy.checked){setMessage(message,"Choose at least one TV display option.");return;}
+    const rotation=selectedTvRotation();
+    if(!rotation.show_damage&&!rotation.show_overdue){setMessage(message,"Select at least one TV window.");return;}
+    if(tvOnly.checked && rotation.show_damage && !tvParts.checked && !tvOriginal.checked && !tvCopy.checked){setMessage(message,"Choose at least one TV display option.");return;}
     const selected = collectSelection(roleOptions);
     if (tvOnly.checked) {
       const appearance = selected.capabilities.appearance;
       selected.capabilities = Object.fromEntries(capabilityGuideData.map(page => [page.key, []]));
       selected.capabilities.appearance = appearance;
-      selected.capabilities.damage_report = ["view", ...(tvParts.checked ? ["parts_details"] : []), ...(tvOriginal.checked ? ["original_prices"] : []), ...(tvCopy.checked ? ["copy_prices"] : []), ...(tvOriginal.checked || tvCopy.checked ? ["payable"] : [])];
+      selected.capabilities.damage_report = ["view", ...(rotation.show_overdue ? ["overdue_pending"] : []), ...(tvParts.checked ? ["parts_details"] : []), ...(tvOriginal.checked ? ["original_prices"] : []), ...(tvCopy.checked ? ["copy_prices"] : []), ...(tvOriginal.checked || tvCopy.checked ? ["payable"] : [])];
       selected.pagePermissions = {...Object.fromEntries(specialPages.map(key => [key, "none"])), damage_report:"view"};
       selected.partnerNamesAccess = "none";
     }
+    if(!tvOnly.checked){const caps=selected.capabilities.damage_report||[];selected.capabilities.damage_report=[...new Set([...caps.filter(c=>c!=='overdue_pending'),...(rotation.show_overdue?['view','overdue_pending']:[])])];if(rotation.show_overdue&&selected.pagePermissions.damage_report==='none')selected.pagePermissions.damage_report='view';}
     const partnerNamesAccess = selected.partnerNamesAccess;
     if (!selectedUserId) return;
     const targetUserId = selectedUserId;
@@ -438,8 +453,9 @@
     button.textContent = "Saving...";
     let pagesSaved = false;
     try {
-    const { data: saved, error } = await getClient().rpc("save_user_access_office_v1", {
+    const { data: saved, error } = await getClient().rpc("save_user_access_tv_rotation_v1", {
       p_user_id: targetUserId,
+      p_rotation:rotation,p_rotation_revision:users.find(user=>String(user.user_id)===String(targetUserId)).tv_rotation.revision,
       p_network_mode:window.GREENLOOP_OFFICE_ADMIN.selection().mode,p_network_revision:window.GREENLOOP_OFFICE_ADMIN.selection().revision,
       p_full_name: fullName.value.trim(),
       p_login_username: username.value.trim(),

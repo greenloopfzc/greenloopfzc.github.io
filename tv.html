@@ -5,19 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#eaf0f4">
   <meta name="description" content="Greenloop Live Damage Report: employee damage cards, all-time counts and complete damage history.">
-  <title>Live Damage Report | Greenloop</title>
+  <title>Greenloop TV Display</title>
   <link rel="stylesheet" href="css/tv.css?v=20261005-damage-tv-views-1">
   <link rel="stylesheet" href="css/damage-tv.css?v=20261017-damage-dark-cards-1">
   <script>window.GREENLOOP_TV_CONFIG = {"loginActivity":true,"pageKey":"damage_report","supabaseUrl":"https://prypklagfznpdlleldll.supabase.co","supabaseAnonKey":"sb_publishable_hMIRbfKmh4vhGvEgVcPjow_F21WmwXt"};</script>
   <link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
 <script defer src="js/office-access.js?v=20261024-office-access-1"></script>
-<script defer src="js/tv-api.js?v=20261024-office-access-1"></script>
+<script defer src="js/tv-api.js?v=20261101-tv-overdue-1"></script>
   <script defer src="js/damage-tv-permissions.js?v=20261016-page-capabilities-1"></script>
   <script defer src="js/damage-tv-summary.js?v=20261016-page-capabilities-1"></script>
-  <script defer src="js/damage-tv.js?v=20261017-settings-appearance-1"></script>
+  <script defer src="js/tv-overdue.js?v=20261101-tv-overdue-1"></script>
+  <script defer src="js/damage-tv.js?v=20261101-tv-overdue-1"></script>
   <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
   <link rel="stylesheet" href="css/damage-tv-display.css?v=20261017-damage-dark-cards-1">
   <link rel="stylesheet" href="css/damage-tv-summary.css?v=20261017-damage-dark-cards-1">
+<link rel="stylesheet" href="css/tv-overdue.css?v=20261101-tv-overdue-1">
 </head>
 <body class="tv-page damage-tv-page">
   <div class="tv-wrap">
@@ -85,7 +87,9 @@
           </div>
         </div>
         <p id="tv-board-message" class="tv-message tv-board-message" role="status" aria-live="polite"></p>
+        <div id="tvr-switch-controls" class="tvr-switch-controls" style="display:none"><span id="tvr-window-status" role="status"></span><button id="tvr-switch-pause" class="tv-button" type="button" aria-pressed="false">Pause switching</button></div>
 
+        <div id="tvr-damage-view">
         <section class="damage-live-updates" aria-label="Latest saved damage entries">
           <strong class="damage-live-title"><i></i>LIVE UPDATES</strong>
           <button id="damage-updates-toggle" class="tv-button damage-updates-toggle" type="button" aria-pressed="false" disabled>Pause updates</button>
@@ -117,6 +121,13 @@
           </div>
           <p id="damage-view-help" class="damage-view-help">Select an employee to read their complete history. Totals include all recorded damage.</p>
           <div id="damage-employees" class="damage-employees tv-clear" aria-live="polite"></div>
+        </section>
+        </div>
+        <section id="tvr-overdue-view" class="tvr-overdue-view" style="display:none" aria-labelledby="tvr-title">
+          <header class="tvr-heading"><p class="tv-eyebrow">LAB &amp; GLASS / OVERDUE PHONES</p><h2 id="tvr-title">Pending over 2 days</h2><p id="tvr-total" role="status"></p></header>
+          <p id="tvr-message" class="tv-message" role="status" aria-live="polite"></p>
+          <section id="tvr-cards-view" aria-label="Employees with overdue phones"><div id="tvr-cards" class="tvr-cards"></div></section>
+          <section id="tvr-detail" class="tvr-detail" style="display:none" aria-labelledby="tvr-detail-title"><header><button id="tvr-back" class="tv-button" type="button">Back to employees</button><h2 id="tvr-detail-title" tabindex="-1"></h2><p id="tvr-detail-info"></p><p class="tvr-reading-note">Screen switching is paused while phone details are open.</p></header><div class="tvr-table-wrap"><table><thead><tr><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>BH</th><th>Supplier code</th><th>Department</th><th>Lab arrival · UAE</th><th>Time pending</th></tr></thead><tbody id="tvr-phone-rows"></tbody></table></div><div class="tvr-pager"><button id="tvr-prev" class="tv-button" type="button">Previous</button><span id="tvr-phone-range"></span><button id="tvr-next" class="tv-button" type="button">Next</button><button id="tvr-details-refresh" class="tv-button" type="button">Refresh phones</button></div></section>
         </section>
       </section>
     </main>
