@@ -21,5 +21,5 @@
 .gl-imei-stage-details > strong { overflow-wrap: anywhere; color: var(--nm-ink, #23343d); }
 .gl-imei-stage-details > strong + span { margin-top: 12px; }
 .gl-imei-stage-details [data-notice-stage] { font-size: 1.1rem; }
-.gl-imei-stage-dialog .duplicate-imei-actions { display: flex; justify-content: flex-end; padding: 0 24px 24px; }
+.gl-imei-stage-dialog .duplicate-imei-actions { display: flex; flex-wrap:wrap; gap:10px; justify-content: flex-end; padding: 0 24px 24px; }
 .gl-imei-stage-dialog button { min-width: 88px; border-radius: 12px; }

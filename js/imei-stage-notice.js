@@ -15,12 +15,15 @@
       document.body.append(dialog);
     }
     dialog.classList.add("imei-duplicate-dialog", "gl-imei-stage-dialog");
+    const closeButton=dialog.querySelector('#duplicate-imei-close');closeButton.dataset.capability='view';closeButton.dataset.capabilityPage=window.GREENLOOP_PAGE_ACCESS?.pageKey||'imei_search';
     const details = document.createElement("div");
     details.className = "gl-imei-stage-details";
     details.setAttribute("role", "status");
     details.setAttribute("aria-live", "polite");
     details.innerHTML = '<span>IMEI</span><strong data-notice-imei></strong><span>Current stage</span><strong data-notice-stage></strong>';
     dialog.querySelector(".duplicate-imei-actions").before(details);
+    const open=document.createElement("button");open.type="button";open.className="secondary-button";open.dataset.openCurrentStage="true";open.textContent="Open Current Stage";open.hidden=true;
+    dialog.querySelector(".duplicate-imei-actions").prepend(open);
     dialog.querySelector("#duplicate-imei-close").addEventListener("click", () => { revision++; if (dialog.open) dialog.close(); });
     dialog.addEventListener("cancel", () => { revision++; });
     return dialog;
@@ -66,6 +69,7 @@
     modal.querySelector(".gl-imei-stage-details").hidden = false;
     modal.querySelector("[data-notice-imei]").textContent = String(imei || "");
     modal.querySelector("[data-notice-stage]").textContent = "Checking current stage…";
+    const open=modal.querySelector('[data-open-current-stage]');open.hidden=true;open.onclick=null;
     if (!modal.open) modal.showModal();
     record ||= await result;
     if (!valid() || !modal.open) {
@@ -78,13 +82,20 @@
       modal.querySelector("[data-notice-imei]").textContent = record.primary_imei;
     }
     modal.querySelector("[data-notice-stage]").textContent = record?.found && record.current_stage
-      ? record.current_stage : "Current stage could not be checked. Please try again.";
+      ? record.current_stage.replace(/â€”|â€“|—|–/g,' - ').replace(/Frame Department/gi,'B-DEPT') : "Current stage could not be checked. Please try again.";
+    const destination=record?.found&&window.GREENLOOP_IMEI_SCAN?.target(record.current_stage);
+    const mayOpen=()=>destination&&window.GREENLOOP_CAN?.('view',destination.page);
+    if(mayOpen()){
+      open.hidden=false;open.dataset.capability='view';open.dataset.capabilityPage=destination.page;
+      open.onclick=()=>{if(!valid()||!mayOpen())return;const url=new URL(destination.url,window.location.href);url.searchParams.set('scan_imei',record.primary_imei||String(imei));window.location.assign(url.href);};
+    }
     return true;
   }
   function clear() {
     revision++;
     const details = document.querySelector(".gl-imei-stage-details");
     if (details) details.hidden = true;
+    if(dialog)dialog.querySelector('[data-open-current-stage]').hidden=true;
   }
   async function checkPrimary(imei, {isCurrent = () => true} = {}) {
     const value=String(imei || "").trim();if(!/^\d{15}$/.test(value))return true;
@@ -93,5 +104,6 @@
     if(r.matched_type === "secondary"){await show({imei:value,isCurrent,knownRecord:r});return false;}
     return true;
   }
-  window.GREENLOOP_IMEI_STAGE_NOTICE = { show, clear, checkPrimary };
+  function dismiss(){revision++;if(dialog?.open)dialog.close();}
+  window.GREENLOOP_IMEI_STAGE_NOTICE = { show, clear, checkPrimary, lookup, dismiss };
 })();
