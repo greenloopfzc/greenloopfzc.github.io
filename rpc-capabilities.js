@@ -2,3 +2,303 @@ window.GREENLOOP_RPC_CAPABILITIES = {"add_accounts_customer_v1":{"page":"account
 window.GREENLOOP_RPC_CAPABILITIES.get_b_dept_report_v1={page:"frame_department",capability:"view",read:true};
 
 Object.assign(window.GREENLOOP_RPC_CAPABILITIES,{"get_my_tv_rotation_v1":{"page":"damage_report","capability":"view","read":true},"get_user_tv_rotation_v1":{"page":"user_access","capability":"view","read":true},"save_user_access_tv_rotation_v1":{"page":"user_access","capability":"manage_access"},"get_tv_overdue_cards_v1":{"page":"damage_report","capability":"overdue_pending","read":true},"get_tv_overdue_phones_v1":{"page":"damage_report","capability":"overdue_pending","read":true}});
+
+/* Lab / Parts action requirements match the existing server guards. */
+Object.assign(window.GREENLOOP_RPC_CAPABILITIES,{
+  "add_lab_parts_v1": {
+    "page": "lab_glass",
+    "capability": "entry"
+  },
+  "assign_lab_employee_v1": {
+    "page": "lab_glass",
+    "capability": "entry"
+  },
+  "assign_pending_parts_source_v1": {
+    "page": "parts",
+    "capability": "issue"
+  },
+  "cancel_lab_part_v1": {
+    "page": "lab_glass",
+    "capability": "entry"
+  },
+  "complete_parts_flow_lab_v1": {
+    "page": "lab_glass",
+    "capability": "entry"
+  },
+  "complete_parts_only_lab_v1": {
+    "page": "lab_glass",
+    "capability": "entry"
+  },
+  "export_parts_picking_report_v1": {
+    "all": [
+      {
+        "page": "parts",
+        "capability": "view"
+      },
+      {
+        "page": "parts",
+        "capability": "technician_report"
+      },
+      {
+        "page": "parts",
+        "capability": "technician_download"
+      }
+    ],
+    "read": true
+  },
+  "export_parts_technician_report_v1": {
+    "all": [
+      {
+        "page": "parts",
+        "capability": "view"
+      },
+      {
+        "page": "parts",
+        "capability": "technician_report"
+      },
+      {
+        "page": "parts",
+        "capability": "technician_download"
+      }
+    ],
+    "read": true
+  },
+  "get_lab_employee_board_v1": {
+    "page": "lab_glass",
+    "read": true,
+    "capability": "view"
+  },
+  "get_lab_employee_rows_v1": {
+    "page": "lab_glass",
+    "read": true,
+    "capability": "view"
+  },
+  "get_lab_parts_plans_v1": {
+    "page": "lab_glass",
+    "read": true,
+    "capability": "view"
+  },
+  "get_lab_parts_plans_v2": {
+    "page": "lab_glass",
+    "read": true,
+    "capability": "view"
+  },
+  "get_lab_parts_plans_v3": {
+    "page": "lab_glass",
+    "read": true,
+    "capability": "view"
+  },
+  "get_lab_workbench_options_v1": {
+    "page": "lab_glass",
+    "read": true,
+    "capability": "view"
+  },
+  "get_lab_workbench_timing_v1": {
+    "page": "lab_glass",
+    "read": true,
+    "capability": "view"
+  },
+  "get_lab_workbench_v1": {
+    "page": "lab_glass",
+    "read": true,
+    "capability": "view"
+  },
+  "get_parts_batch_order_v1": {
+    "page": "parts",
+    "read": true,
+    "capability": "view"
+  },
+  "get_parts_batch_queue_v1": {
+    "page": "parts",
+    "read": true,
+    "capability": "view"
+  },
+  "get_parts_batch_returns_v1": {
+    "page": "parts",
+    "read": true,
+    "capability": "view"
+  },
+  "get_parts_flow_counts_v1": {
+    "any": [
+      {
+        "page": "parts",
+        "read": true,
+        "capability": "view"
+      },
+      {
+        "page": "lab_glass",
+        "read": true,
+        "capability": "view"
+      },
+      {
+        "page": "overview",
+        "read": true,
+        "capability": "view"
+      }
+    ],
+    "read": true
+  },
+  "get_parts_flow_order_v1": {
+    "page": "parts",
+    "read": true,
+    "capability": "view"
+  },
+  "get_parts_flow_queue_v1": {
+    "page": "parts",
+    "read": true,
+    "capability": "view"
+  },
+  "get_parts_only_counts_v1": {
+    "any": [
+      {
+        "page": "parts",
+        "read": true,
+        "capability": "view"
+      },
+      {
+        "page": "lab_glass",
+        "read": true,
+        "capability": "view"
+      },
+      {
+        "page": "overview",
+        "read": true,
+        "capability": "view"
+      }
+    ],
+    "read": true
+  },
+  "get_parts_only_order_v1": {
+    "page": "parts",
+    "read": true,
+    "capability": "view"
+  },
+  "get_parts_only_queue_v1": {
+    "page": "parts",
+    "read": true,
+    "capability": "view"
+  },
+  "get_parts_pending_imei_counts_v1": {
+    "page": "parts",
+    "read": true,
+    "capability": "view"
+  },
+  "get_parts_picking_report_v1": {
+    "all": [
+      {
+        "page": "parts",
+        "capability": "view"
+      },
+      {
+        "page": "parts",
+        "capability": "technician_report"
+      }
+    ],
+    "read": true
+  },
+  "get_parts_returns_v1": {
+    "page": "parts",
+    "read": true,
+    "capability": "view"
+  },
+  "get_parts_supplier_order_v1": {
+    "page": "parts",
+    "read": true,
+    "capability": "view"
+  },
+  "get_parts_supplier_queue_v1": {
+    "page": "parts",
+    "read": true,
+    "capability": "view"
+  },
+  "get_parts_supplier_returns_v1": {
+    "page": "parts",
+    "read": true,
+    "capability": "view"
+  },
+  "get_parts_technician_report_v1": {
+    "all": [
+      {
+        "page": "parts",
+        "capability": "view"
+      },
+      {
+        "page": "parts",
+        "capability": "technician_report"
+      }
+    ],
+    "read": true
+  },
+  "get_pending_parts_prices_v1": {
+    "page": "parts",
+    "capability": "view",
+    "read": true
+  },
+  "get_ranked_lab_workbench_v1": {
+    "page": "lab_glass",
+    "read": true,
+    "capability": "view"
+  },
+  "issue_parts_flow_v1": {
+    "page": "parts",
+    "capability": "issue"
+  },
+  "issue_parts_picking_v1": {
+    "page": "parts",
+    "capability": "issue"
+  },
+  "issue_parts_picking_with_source_v1": {
+    "page": "parts",
+    "capability": "issue"
+  },
+  "issue_parts_with_source_v1": {
+    "page": "parts",
+    "capability": "issue"
+  },
+  "lookup_lab_bulk_phone_v1": {
+    "page": "lab_glass",
+    "capability": "entry",
+    "read": true
+  },
+  "prepare_parts_picking_v1": {
+    "page": "parts",
+    "read": true,
+    "capability": "issue"
+  },
+  "request_parts_flow_return_v1": {
+    "page": "lab_glass",
+    "capability": "entry"
+  },
+  "review_legacy_parts_return_v1": {
+    "page": "parts",
+    "capability": "return"
+  },
+  "review_parts_flow_return_v1": {
+    "page": "parts",
+    "capability": "return"
+  },
+  "save_lab_services_v1": {
+    "page": "lab_glass",
+    "capability": "entry"
+  },
+  "save_pending_parts_prices_v1": {
+    "page": "parts",
+    "capability": "issue"
+  },
+  "set_parts_flow_service_v1": {
+    "page": "parts",
+    "capability": "edit"
+  },
+  "submit_lab_parts_plan_v1": {
+    "page": "lab_glass",
+    "capability": "entry"
+  },
+  "submit_lab_parts_plan_v2": {
+    "page": "lab_glass",
+    "capability": "entry"
+  },
+  "transfer_lab_bulk_to_final_qc_v1": {
+    "page": "lab_glass",
+    "capability": "entry"
+  }
+});
