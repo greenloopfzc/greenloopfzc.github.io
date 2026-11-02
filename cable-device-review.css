@@ -1,0 +1,17 @@
+.cable-device-review{box-sizing:border-box;width:min(780px,calc(100vw - 24px));max-height:calc(100dvh - 28px);overflow:auto;padding:24px;border:1px solid var(--border-color,#cbd8e0);border-radius:22px;background:var(--card-bg,#f4f8fb);color:var(--text-color,#233b4d);box-shadow:9px 9px 24px #172c3a45,-4px -4px 12px #ffffff55}
+.cable-device-review::backdrop{background:#132b3a85;backdrop-filter:blur(3px)}
+.cable-device-review header{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.cable-device-review header #cable-review-close{flex:0 0 auto;width:auto;min-width:70px;max-width:82px;min-height:36px;padding:8px 12px}
+.cable-device-review h2{margin:4px 0;font-size:25px}.cable-device-review .eyebrow{margin:0}
+#cable-review-receipt{font-size:13px;overflow-wrap:anywhere}
+.cable-review-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px 18px}
+.cable-review-grid .form-field{min-width:0}.cable-review-grid input,.cable-review-grid select{box-sizing:border-box;width:100%;min-width:0;height:44px;min-height:44px;padding:9px 12px;font-size:14px;line-height:1.4}
+.cable-review-unavailable{grid-column:1/-1;display:flex;align-items:center;gap:8px;font-size:13px}
+.cable-review-unavailable[hidden]{display:none}.cable-review-unavailable input{width:17px;min-height:17px;height:17px}
+#cable-review-status{font-size:13px;line-height:1.5;min-height:20px}
+#cable-review-label{width:60mm;height:40mm;margin:16px auto;background:white;color:black;box-shadow:0 2px 8px #0002;line-height:0}
+#cable-review-label svg{width:60mm;height:40mm;display:block}
+.cable-device-review footer{display:flex;justify-content:flex-end;gap:12px;margin-top:20px}
+.cable-device-review footer button{min-width:130px}
+html[data-mode="dark"] .cable-device-review{background:var(--nm-card,#273b47);color:var(--nm-ink,#e5eef4);border-color:var(--nm-line,#526975)}
+@media(max-width:520px){.cable-device-review{padding:16px}.cable-review-grid{gap:10px}.cable-device-review h2{font-size:21px}.cable-device-review footer button{min-width:0;flex:1}.cable-device-review footer{gap:10px}}

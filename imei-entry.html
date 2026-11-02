@@ -34,8 +34,11 @@
     <link rel="stylesheet" href="css/cable-reader-setup.css?v=20261023-cable-setup-1">
     <script defer src="js/cable-reader-setup.js?v=20261023-cable-setup-1"></script>
   <script defer src="js/storage-options.js?v=20261027-iphone-entry-options-1"></script>
-  <script defer src="js/imei-entry.js?v=20261029-imei-save-access-1"></script>
-    <script defer src="js/batch-workflow.js?v=20261029-imei-save-access-1"></script>
+  <link rel="stylesheet" href="css/cable-device-review.css?v=20261102-cable-label-1">
+  <script defer src="js/phone-label.js?v=20261102-cable-label-1"></script>
+  <script defer src="js/cable-device-review.js?v=20261102-cable-label-1"></script>
+  <script defer src="js/imei-entry.js?v=20261102-cable-label-1"></script>
+    <script defer src="js/batch-workflow.js?v=20261102-cable-label-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
     <link rel="stylesheet" href="css/imei-entry.css?v=20261003-imei-entry-fit-1">
     <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261003-qc-duplicate-stage-1">
@@ -68,7 +71,7 @@
                 <div id="batch-summary" class="batch-summary" hidden></div>
               </section>
               <section id="imei-detail-panel" class="form-panel" hidden>
-                <div class="form-panel-heading imei-scan-heading"><span class="section-number">02</span><div><h2>Scan IMEI and enter device details</h2><p>Connected-phone data fills the active line automatically. Saving follows the switch below.</p></div><label class="auto-save-control" for="auto-save-toggle"><input id="auto-save-toggle" type="checkbox"><span>Auto Save</span><strong id="auto-save-state">OFF</strong></label></div>
+                <div class="form-panel-heading imei-scan-heading"><span class="section-number">02</span><div><h2>Scan IMEI and enter device details</h2><p>Cable phones open a review with Save or Save & Print. Auto Save applies to manual entry lines.</p></div><label class="auto-save-control" for="auto-save-toggle"><input id="auto-save-toggle" type="checkbox"><span>Auto Save</span><strong id="auto-save-state">OFF</strong></label></div>
                 <div class="form-grid two-columns entry-device-kind">
                   <div class="form-field"><label for="device-platform">Phone type</label><select id="device-platform"><option value="ios">iPhone (iOS)</option><option value="android">Android</option></select></div>
                   <div class="form-field"><label for="device-brand">Brand <span class="required-mark">Required</span></label><input id="device-brand" value="Apple" list="device-brands" maxlength="80" autocomplete="off" readonly required><datalist id="device-brands"><option value="Samsung"><option value="Google"><option value="Xiaomi"><option value="OnePlus"><option value="Motorola"><option value="OPPO"><option value="Vivo"><option value="Honor"><option value="Sony"><option value="Nokia"><option value="Realme"></datalist></div>
