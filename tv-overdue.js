@@ -2,7 +2,7 @@
 (function(root){
  "use strict";
  root.GREENLOOP_TV_ROTATION=function(api,hooks){
-  var active=false,epoch=0,settings=null,current="none",timer=null,deadline=0,paused=false,detail=null,detailPage=0,detailTotal=0,configRequest=0,cardRequest=0,phoneRequest=0,configBusy=false,roster=[],month="",wasHidden=!!document.hidden;
+  var active=false,epoch=0,settings=null,current="none",timer=null,deadline=0,paused=false,detail=null,detailPage=0,detailTotal=0,configRequest=0,cardRequest=0,phoneRequest=0,configBusy=false,roster=[],month="",wasHidden=!!document.hidden,layoutTimer=null,fitted=false;
   function get(id){return document.getElementById(id);}
   function text(id,s){get(id).textContent=String(s===null||s===undefined?"":s);}
   function esc(s){return String(s===null||s===undefined?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
@@ -15,12 +15,28 @@
   function status(){get("tvr-switch-controls").style.display=active&&both()?"flex":"none";get("tvr-switch-pause").disabled=false;get("tvr-switch-pause").setAttribute("aria-pressed",paused?"true":"false");text("tvr-switch-pause",paused||reading()?"Resume switching":"Pause switching");text("tvr-window-status",reading()?"Switching paused for details · Resume switching to continue":paused?"Screen switching paused":(current==="damage"?"Damage Report":"Overdue Lab & Glass")+" · "+Math.max(1,Math.ceil((deadline-new Date().getTime())/1000))+" sec");}
   function plan(){clearTimer();if(active&&both()&&!paused&&!reading()&&!document.hidden&&current!=="none"){deadline=new Date().getTime()+(current==="damage"?settings.damage_seconds:settings.pending_seconds)*1000;timer=true;}status();}
   function clearPhones(){phoneRequest++;get("tvr-phone-rows").innerHTML="";text("tvr-detail-title","");text("tvr-detail-info","");text("tvr-phone-range","");detail=null;detailPage=0;detailTotal=0;get("tvr-detail").style.display="none";get("tvr-cards-view").style.display="block";}
-  function clearOverdue(){cardRequest++;roster=[];get("tvr-cards").innerHTML="";text("tvr-total","");clearPhones();message("");}
+  function clearOverdue(){if(fitted)clearFit();cardRequest++;roster=[];get("tvr-cards").innerHTML="";text("tvr-total","");clearPhones();message("");}
   function hideViews(){current="none";clearTimer();get("tvr-damage-view").style.display="none";get("tvr-overdue-view").style.display="none";document.body.setAttribute("data-tv-window","none");hooks.pauseDamage();}
   function error(e){if(!active)return;if(e&&(e.clearSession||/^(NO_SESSION|SESSION_EXPIRED|PERMISSION_DENIED)$/.test(e.code||""))){stop();hooks.expired(e);return;}message(e&&e.message||"Pending phones could not be refreshed. Select Refresh now to retry.");}
   function apply(s){var changed=sig(s)!==sig(settings);if(changed){settings=s;clearOverdue();if(hooks.clearDamage)hooks.clearDamage();paused=false;clearTimer();enter(s.show_damage?"damage":s.show_overdue?"overdue":"none");}return changed;}
   function fresh(s){if(sig(s)!==sig(settings)){refresh();return false;}return true;}
   function elapsed(n){var minutes=Math.floor(Number(n)/60),days=Math.floor(minutes/1440),hours=Math.floor(minutes%1440/60),mins=minutes%60;return(days?days+"d ":"")+(hours?hours+"h ":"")+(mins?mins+"m":"");}
+  function clearFit(){var box=get("tvr-cards");if(!box)return;box.className="tvr-cards"+(roster.length>18?" is-dense":"");box.style.maxHeight="";box.style.overflowY="";box.removeAttribute("tabindex");var nodes=box.getElementsByTagName("button");for(var i=0;i<nodes.length;i++)nodes[i].removeAttribute("style");fitted=false;}
+  function fitCards(){if(layoutTimer!==null)root.clearTimeout(layoutTimer);layoutTimer=null;if(!active||!get("tvr-cards"))return;var full=document.fullscreenElement||document.webkitFullscreenElement||document.mozFullScreenElement,mode=/(^| )damage-tv-mode( |$)/.test(document.body.className);
+   if(current!=="overdue"||detail||!roster.length||(!full&&!mode)){if(fitted)clearFit();return;}
+   var box=get("tvr-cards"),savedScroll=box.scrollTop,nodes=box.getElementsByTagName("button"),n=nodes.length;if(!n)return;
+   if(!fitted){root.scrollTo(0,0);fitted=true;}box.className="tvr-cards tvr-fit";box.style.maxHeight="";box.style.overflowY="";
+   var scroll=root.pageYOffset||document.documentElement.scrollTop||document.body.scrollTop||0,top=box.getBoundingClientRect().top+scroll,width=Math.floor(box.clientWidth-8),height=Math.floor((root.innerHeight||document.documentElement.clientHeight)-top-16),maxCols=Math.max(1,Math.min(n,Math.floor(width/132))),best=null,i,c,font,cellWidth,cellHeight,rows,maxHeight;
+   function apply(cols,size){var w=Math.floor(width/cols)-12;for(var j=0;j<n;j++){nodes[j].style.width=w+"px";nodes[j].style.fontSize=size+"px";nodes[j].style.height="auto";}var h=0;for(j=0;j<n;j++)h=Math.max(h,nodes[j].offsetHeight);return h;}
+   // Measure real text, including wrapped employee names. Never crop a name or
+   // hide employee cards to make the wall fit.
+   for(c=1;c<=maxCols;c++){rows=Math.ceil(n/c);cellWidth=Math.floor(width/c)-12;cellHeight=(height-20)/rows-12;font=Math.min(24,Math.floor(cellWidth/8.2),Math.floor(cellHeight/5.5));
+    for(;font>=12&&(!best||font>best.font);font--){maxHeight=apply(c,font);if(maxHeight<=cellHeight){best={cols:c,font:font,height:maxHeight};break;}}
+   }
+   if(best){apply(best.cols,best.font);for(i=0;i<n;i++)nodes[i].style.height=best.height+"px";}
+   else{apply(maxCols,12);box.style.maxHeight=Math.max(96,height)+"px";box.style.overflowY="auto";box.setAttribute("tabindex","0");box.scrollTop=savedScroll;}
+  }
+  function layout(){if(layoutTimer!==null)root.clearTimeout(layoutTimer);layoutTimer=root.setTimeout(fitCards,80);}
   function oldestDays(seconds){var days=Math.floor(Number(seconds)/86400);return days+" "+(days===1?"Day":"Days");}
   function cards(){if(!active||!settings||!settings.show_overdue)return;var life=epoch,request=++cardRequest,collected=[],seen={},first=null;message("Loading overdue phones…");
    function page(offset){api.loadOverdueCards(offset,100,function(e,d){if(!active||life!==epoch||request!==cardRequest)return;if(e){get("tvr-cards").innerHTML="";roster=[];error(e);if(e.serverCode==="22023")refresh();return;}if(!fresh(d.settings))return;
@@ -29,7 +45,7 @@
     if(d.has_more){page(collected.length);return;}var total=0;for(i=0;i<collected.length;i++)total+=collected[i].phone_count;if(collected.length!==d.employee_count||total!==d.phone_count){message("Complete pending-phone totals could not be verified. Refresh to retry.");return;}
     roster=collected;get("tvr-cards").className="tvr-cards"+(roster.length>18?" is-dense":"");text("tv-last-updated","Updated "+hooks.date(d.server_now)+" UAE");if(hooks.live)hooks.live();text("tvr-total",d.phone_count+" overdue phone"+(d.phone_count===1?"":"s")+" · "+d.employee_count+" employee"+(d.employee_count===1?"":"s"));var html="";
     for(i=0;i<roster.length;i++){employee=roster[i];html+='<button class="tvr-card" type="button" data-tvr-employee="'+esc(employee.employee_key)+'"><span class="tvr-card-name">'+esc(employee.employee_name)+'</span><strong class="tvr-card-count">'+employee.phone_count+'</strong><span class="tvr-card-label">phone'+(employee.phone_count===1?'':'s')+' pending</span><span class="tvr-card-oldest" title="Oldest pending phone: '+esc(elapsed(employee.oldest_seconds))+' · Sunday excluded">Oldest Pending: '+oldestDays(employee.oldest_seconds)+'</span><small>View phones →</small></button>';}
-    get("tvr-cards").innerHTML=html||'<p class="tvr-empty">No selected employees have phones pending over '+settings.overdue_days+' day'+(settings.overdue_days===1?'':'s')+'.</p>';message("");if(current==="overdue"&&!deadline&&!reading())plan();
+    get("tvr-cards").innerHTML=html||'<p class="tvr-empty">No selected employees have phones pending over '+settings.overdue_days+' day'+(settings.overdue_days===1?'':'s')+'.</p>';message("");fitCards();if(current==="overdue"&&!deadline&&!reading())plan();
    });}page(0);
   }
   function phoneButtons(busy){get("tvr-prev").disabled=busy||detailPage===0;get("tvr-next").disabled=busy||detailPage+20>=detailTotal;get("tvr-details-refresh").disabled=busy;}
@@ -43,14 +59,14 @@
   function enter(next){if(!active||!settings)return;current=next;clearTimer();hooks.pauseDamage();get("tvr-damage-view").style.display=next==="damage"?"block":"none";get("tvr-overdue-view").style.display=next==="overdue"?"block":"none";document.body.setAttribute("data-tv-window",next);
    text("tv-board-message","");get("tv-board-message").style.display="none";
    text("tv-board-title",next==="damage"?"Live Damage Report":next==="overdue"?"Overdue Lab & Glass":"TV display access");text("tvr-title","Pending over "+settings.overdue_days+" day"+(settings.overdue_days===1?"":"s")+" · Sunday excluded");
-   if(next==="damage"){clearPhones();hooks.damage();}else if(next==="overdue"){clearPhones();cards();}else{text("tv-board-message","No TV windows are enabled for this account. Ask an administrator to check User Access.");get("tv-board-message").style.display="block";}plan();
+   if(next!=="overdue"&&fitted)clearFit();if(next==="damage"){clearPhones();hooks.damage();}else if(next==="overdue"){clearPhones();cards();}else{text("tv-board-message","No TV windows are enabled for this account. Ask an administrator to check User Access.");get("tv-board-message").style.display="block";}plan();
   }
   function refresh(){if(!active||configBusy)return;configBusy=true;var life=epoch,request=++configRequest;api.loadTvRotation(function(e,s){if(life!==epoch||request!==configRequest||!active)return;configBusy=false;if(e){hideViews();clearOverdue();text("tv-board-message",e.message||"TV settings could not be verified. Refresh to retry.");get("tv-board-message").style.display="block";error(e);return;}
    var changed=apply(s);if(!changed){if(current==="none"&&(s.show_damage||s.show_overdue)){enter(s.show_damage?"damage":"overdue");return;}if(current==="damage")hooks.refreshDamage();else if(current==="overdue"){if(detail)phones();else cards();}}
   });}
   function start(){stop();month=monthKey();wasHidden=!!document.hidden;active=true;epoch++;hideViews();text("tv-board-message","Loading TV window settings…");get("tv-board-message").style.display="block";refresh();}
-  function stop(){active=false;epoch++;configRequest++;configBusy=false;settings=null;clearTimer();if(!get("tvr-damage-view"))return;clearOverdue();hideViews();get("tvr-switch-controls").style.display="none";}
-  get("tvr-cards").onclick=function(event){var node=(event||root.event).target||(event||root.event).srcElement;while(node&&node!==this&&!node.getAttribute("data-tvr-employee"))node=node.parentNode;if(!node||node===this)return;var key=node.getAttribute("data-tvr-employee"),employee=null;for(var i=0;i<roster.length;i++)if(roster[i].employee_key===key)employee=roster[i];if(!employee||!active||current!=="overdue")return;clearTimer();detail=key;detailPage=0;detailTotal=employee.phone_count;text("tvr-detail-title",employee.employee_name);get("tvr-cards-view").style.display="none";get("tvr-detail").style.display="block";status();phones();get("tvr-detail-title").focus();};
+  function stop(){if(layoutTimer!==null)root.clearTimeout(layoutTimer);layoutTimer=null;active=false;epoch++;configRequest++;configBusy=false;settings=null;clearTimer();if(!get("tvr-damage-view"))return;clearOverdue();hideViews();get("tvr-switch-controls").style.display="none";}
+  get("tvr-cards").onclick=function(event){var node=(event||root.event).target||(event||root.event).srcElement;while(node&&node!==this&&!node.getAttribute("data-tvr-employee"))node=node.parentNode;if(!node||node===this)return;var key=node.getAttribute("data-tvr-employee"),employee=null;for(var i=0;i<roster.length;i++)if(roster[i].employee_key===key)employee=roster[i];if(!employee||!active||current!=="overdue")return;clearTimer();if(fitted)clearFit();detail=key;detailPage=0;detailTotal=employee.phone_count;text("tvr-detail-title",employee.employee_name);get("tvr-cards-view").style.display="none";get("tvr-detail").style.display="block";status();phones();get("tvr-detail-title").focus();};
   get("tvr-back").onclick=function(){clearPhones();cards();plan();get("tvr-title").setAttribute("tabindex","-1");get("tvr-title").focus();};
   get("tvr-prev").onclick=function(){if(detailPage>=20){detailPage-=20;phones();}};get("tvr-next").onclick=function(){if(detailPage+20<detailTotal){detailPage+=20;phones();}};get("tvr-details-refresh").onclick=phones;
   get("tvr-switch-pause").onclick=function(){if(reading()){clearPhones();if(current==="damage"&&hooks.resumeDamage)hooks.resumeDamage();paused=false;}else paused=!paused;plan();};
@@ -60,7 +76,8 @@
    if(!both())return;if(reading()||paused||document.hidden){if(timer!==null)clearTimer();}else if(current!=="none"){if(timer===null)plan();else if(new Date().getTime()>=deadline)enter(current==="damage"?"overdue":"damage");}status();
   },250);
   document.addEventListener("visibilitychange",function(){var hidden=!!document.hidden;if(hidden===wasHidden)return;wasHidden=hidden;clearTimer();if(!hidden&&active){plan();refresh();}});root.addEventListener("pagehide",stop);
+  root.addEventListener("resize",layout);document.addEventListener("fullscreenchange",layout);document.addEventListener("webkitfullscreenchange",layout);document.addEventListener("mozfullscreenchange",layout);
   root.addEventListener("greenloop:office-locked",function(){active=false;epoch++;configRequest++;configBusy=false;settings=null;clearTimer();});
-  return{start:start,stop:stop,refresh:refresh,isDamageView:function(){return active&&current==="damage"&&settings&&settings.show_damage;}};
+  return{start:start,stop:stop,refresh:refresh,layout:layout,isDamageView:function(){return active&&current==="damage"&&settings&&settings.show_damage;}};
  };
 }(window));

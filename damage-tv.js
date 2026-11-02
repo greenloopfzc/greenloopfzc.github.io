@@ -101,6 +101,7 @@
       document.body.className = "tv-page damage-tv-page" + (tvMode ? " damage-tv-mode" : "");
       if (idleTimer !== null) window.clearTimeout(idleTimer);
       idleTimer = null;
+      if(rotation&&rotation.layout)rotation.layout();
       if (!active || !tvMode || document.hidden) return;
       idleTimer = window.setTimeout(function () {
         idleTimer = null;
