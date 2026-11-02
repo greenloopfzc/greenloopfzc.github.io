@@ -27,10 +27,10 @@
           message.textContent='The technician list could not be read. Close this panel and try again.';return;
         }
         technician.textContent='';
-        var all=document.createElement('option');all.value='';all.textContent='All Technicians';technician.appendChild(all);
+        var all=document.createElement('option');all.value='';all.textContent='All selected technicians';technician.appendChild(all);
         data.employees.forEach(function(e){var option=document.createElement('option');option.value=e.key;option.textContent=e.name+(e.archived?' (Archived)':'');technician.appendChild(option);});
         technician.value=selected;if(technician.selectedIndex<0)technician.value='';
-        employeesReady=true;download.disabled=view.disabled=!allowed('download');message.textContent='';lockChoices();if(!technician.disabled)technician.focus();
+        employeesReady=data.employees.length>0;download.disabled=view.disabled=!employeesReady||!allowed('download');message.textContent=employeesReady?'':'No employees are selected for this account. Ask your administrator to select employees in User Access.';lockChoices();if(!employeesReady)download.disabled=view.disabled=true;if(!technician.disabled)technician.focus();
       });
     }
     function script(url,name){
@@ -78,13 +78,14 @@
       api.loadDamageExport(start,end,employeeKey,function(error,data){
         if(request!==ticket||!active)return;
         if(error){if(denied(error)){close();onDenied(error);}else failed(error);return;}
+        if(data&&Array.isArray(data.employees)&&!data.employees.length){failed(new Error('No employees are selected for this account. Ask your administrator to update User Access.'));return;}
         if((data && data.selected_employee_key || '')!==employeeKey){failed(new Error('The selected technician report could not be verified. Please retry.'));return;}
         Promise.all([script('js/vendor/pdf-lib-1.17.1.min.js','PDFLib'),script('js/damage-report-pdf.js?v=20261027-damage-pdf-pages-1','GREENLOOP_DAMAGE_PDF'),
           fetch('assets/greenloop-fzc-logo.jpg').then(function(response){if(!response.ok)throw new Error('Report logo did not load. Please retry.');return response.arrayBuffer();})])
           .then(function(results){if(request!==ticket||!active)return null;return window.GREENLOOP_DAMAGE_PDF.create(data,{logo:results[2]});})
           .then(function(result){if(!result||request!==ticket||!active)return;finish();
             objectUrl=window.URL.createObjectURL(new Blob([result.bytes],{type:'application/pdf'}));link.href=objectUrl;link.download=result.filename;link.style.display='inline-block';
-            message.textContent=(result.report.selectedEmployee ? result.report.selectedEmployee.name+': ' : 'All Technicians: ')+result.pages+' A4 '+result.orientation+' '+(result.pages===1?'page':'pages')+' ready. '+result.report.count+' entries; '+result.report.quantity+' damaged parts.'+(result.detailCount?' Long fields are included in the Full details section.':'');
+            message.textContent=(result.report.selectedEmployee ? result.report.selectedEmployee.name+': ' : 'Selected Technicians: ')+result.pages+' A4 '+result.orientation+' '+(result.pages===1?'page':'pages')+' ready. '+result.report.count+' entries; '+result.report.quantity+' damaged parts.'+(result.detailCount?' Long fields are included in the Full details section.':'');
             openLink.href=objectUrl;
             if(action==='view'){renderPreview(result);preview.hidden=false;preview.scrollIntoView({block:'start',behavior:'smooth'});}else link.click();
           }).catch(failed);

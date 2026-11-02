@@ -26,7 +26,7 @@
   <link rel="stylesheet" href="css/sidebar-compact.css?v=20261009-sidebar-pdf-1">
   <script defer src="js/sidebar-compact.js?v=20261009-sidebar-pdf-1"></script>
   <link rel="stylesheet" href="css/damage-report-export.css?v=20261016-damage-individual-pdf-1">
-  <script defer src="js/damage-report-export.js?v=20261027-damage-pdf-pages-1"></script>
+  <script defer src="js/damage-report-export.js?v=20261102-damage-pdf-selection-1"></script>
   <script defer src="js/manual-damage-module.js?v=20261016-page-capabilities-1"></script>
   <link rel="stylesheet" href="css/clean-layout.css?v=20261017-clean-layout-1">
   <script defer src="js/clean-layout.js?v=20261030-supplier-progress-1"></script>
@@ -61,16 +61,16 @@
             <a id="damage-pdf-toggle" class="manual-damage-module-card" data-page-access="damage_report" href="#damage-pdf-panel" role="button" aria-expanded="false" aria-controls="damage-pdf-panel" hidden>
               <span class="manual-damage-module-icon" aria-hidden="true">▧</span>
               <h2>PDF View / Download</h2>
-              <p>Choose all technicians or one technician, select the dates, and view or download the PDF.</p>
+              <p>Choose all selected technicians or one selected technician, select the dates, and view or download the PDF.</p>
               <span class="manual-damage-module-action">View / Download PDF <span aria-hidden="true">→</span></span>
             </a>
           </nav>
         <section id="damage-pdf-panel" class="damage-pdf-panel" style="display:none" aria-labelledby="damage-pdf-title">
           <button id="damage-pdf-close" class="secondary-button damage-pdf-close" type="button">Close</button>
           <h2 id="damage-pdf-title">Damage Report</h2>
-          <p>Start on the first day of a month and choose the last damage date. Monthly allowances are calculated separately for each employee and month. Choose All Technicians for a combined report, or select one technician for an individual report.</p>
+          <p>Start on the first day of a month and choose the last damage date. Monthly allowances are calculated separately for each employee and month. Choose All selected technicians for a combined report, or select one technician for an individual report.</p>
           <form id="damage-pdf-form">
-            <div class="damage-pdf-field damage-pdf-technician-field"><label for="damage-pdf-technician">Technician</label><select id="damage-pdf-technician" disabled><option value="">All Technicians</option></select></div>
+            <div class="damage-pdf-field damage-pdf-technician-field"><label for="damage-pdf-technician">Technician</label><select id="damage-pdf-technician" disabled><option value="">All selected technicians</option></select></div>
             <div class="damage-pdf-field"><label for="damage-pdf-from">From date</label><input id="damage-pdf-from" type="date" min="2000-01-01" max="2100-12-31" required></div>
             <div class="damage-pdf-field"><label for="damage-pdf-to">To date</label><input id="damage-pdf-to" type="date" min="2000-01-01" max="2100-12-31" required></div>
             <button id="damage-pdf-view" class="secondary-button" data-search-read-only type="button">View PDF</button>

@@ -30,7 +30,7 @@
     <script defer src="js/part-notifications.js?v=20261031-b-dept-1"></script>
     <script defer src="js/office-access-admin.js?v=20261024-office-access-1"></script>
 <script defer src="js/user-password.js?v=20261030-user-password-1"></script>
-<script defer src="js/user-access.js?v=20261102-tv-month-sunday-1"></script>
+<script defer src="js/user-access.js?v=20261102-damage-pdf-selection-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
     <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
   <link rel="stylesheet" href="css/sidebar-compact.css?v=20261009-sidebar-pdf-1">
@@ -123,12 +123,12 @@
                       <label><input id="access-tv-copy" type="checkbox"> <span><strong>Copy prices</strong><small>Copy unit prices, totals and payable</small></span></label>
                     </div>
                     <section id="tv-employee-selection" class="tv-employee-selection" hidden aria-labelledby="tv-employee-title">
-                      <div class="tv-employee-heading"><div><h3 id="tv-employee-title">Employees to show on TV</h3><p class="permission-help">Both TV windows, phone details, damage updates and totals include only selected employees.</p></div><div class="tv-employee-actions"><button id="tv-employees-all" class="secondary-button" type="button">Select All</button><button id="tv-employees-none" class="secondary-button" type="button">Clear All</button></div></div>
+                      <div class="tv-employee-heading"><div><h3 id="tv-employee-title">Employees in Damage PDF / TV</h3><p id="damage-employee-account-note" class="permission-help">Damage PDFs use the generating account's employee selection. TV Display Only uses the same selection.</p></div><div class="tv-employee-actions"><button id="tv-employees-all" class="secondary-button" type="button">Select All</button><button id="tv-employees-none" class="secondary-button" type="button">Clear All</button></div></div>
                       <label class="tv-employee-all"><input id="tv-employees-future" type="checkbox"> All employees, including new employees added later</label>
                       <p id="tv-employee-count" class="permission-help" role="status" aria-live="polite"></p>
-                      <div id="tv-employee-list" class="tv-employee-list" role="group" aria-label="Employees to show on TV"></div>
+                      <div id="tv-employee-list" class="tv-employee-list" role="group" aria-label="Employees in Damage PDF / TV"></div>
                     </section>
-                    <p class="permission-help">Saved changes appear on this account's TV at its next live refresh. To set up a new TV account, create the user, then select it in Greenloop Accounts.</p>
+                    <p class="permission-help">Saved employee changes apply to this account's next Damage PDF. TV Display Only refreshes its display selection automatically.</p>
                   </fieldset>
 
                   <div id="appearance-options"></div>
