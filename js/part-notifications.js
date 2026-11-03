@@ -66,7 +66,7 @@
       minWidth: "22px", height: "22px", marginLeft: "auto", border: "2px solid white",
       borderRadius: "999px", padding: "0 6px", color: "white", background: "#dc2f25",
       boxShadow: "0 2px 7px rgba(160,25,18,.35)", fontSize: "11px", fontWeight: "800",
-      lineHeight: "18px", textAlign: "center"
+      lineHeight: "18px", textAlign: "center", flexShrink: "0", boxSizing: "border-box", whiteSpace: "nowrap"
     });
     link.appendChild(badge);
     return badge;
@@ -167,7 +167,7 @@
       const count = Math.max(0, Array.isArray(stage.key)
         ? stage.key.reduce((total, key) => total + Number(counts[key] || 0), 0)
         : Number(counts[stage.key] || 0));
-      badge.textContent = count > 99 ? "99+" : String(count);
+      badge.textContent = String(count);
       badge.hidden = count === 0;
       badge.title = `${count} ${stage.label} item(s) pending`;
     });

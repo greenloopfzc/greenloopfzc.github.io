@@ -561,7 +561,7 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     window.GREENLOOP_SUPPLIER_RECEIPT_LABEL = (code, quantity, name, fallback = "-") => {
       const safeCode = String(code || "").trim();
       const safeName = String(name || "").trim();
-      const parsedQuantity = Number.parseInt(quantity, 10);
+      const parsedQuantity = Number(quantity);
       const receiptCode = safeCode && !/-\(\d+\)$/.test(safeCode) && Number.isInteger(parsedQuantity) && parsedQuantity > 0
         ? `${safeCode}-(${parsedQuantity})`
         : safeCode;
@@ -724,7 +724,7 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
   window.GREENLOOP_SUPPLIER_RECEIPT_LABEL = (code, quantity, name, fallback = "-") => {
     const safeCode = String(code || "").trim();
     const safeName = String(name || "").trim();
-    const parsedQuantity = Number.parseInt(quantity, 10);
+    const parsedQuantity = Number(quantity);
     const receiptCode = safeCode && !/-\(\d+\)$/.test(safeCode) && Number.isInteger(parsedQuantity) && parsedQuantity > 0
       ? `${safeCode}-(${parsedQuantity})`
       : safeCode;
@@ -748,4 +748,38 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
       showAccessError(document.querySelector(".sidebar-nav"), document.querySelector(".app-main"));
       return null;
     });
+})();
+
+// Receipt quantities are independent of confidential supplier names. Key by
+// IMEI and page: a supplier can deliver more than one stock/batch.
+(() => {
+ const cache=new Map();
+ const key=(page,imei)=>`${page}:${Boolean(window.GREENLOOP_CAN_VIEW_PARTNER_NAMES)}:${imei}`;
+ window.GREENLOOP_RECEIPTS={
+  async load(page,imeis){
+   const pending=[...new Set(imeis.map(v=>String(v||'')).filter(v=>/^\d{15}$/.test(v)))].filter(v=>!cache.has(key(page,v))||Date.now()-cache.get(key(page,v)).at>60000);
+   for(let i=0;i<pending.length;i+=250){
+    const {data,error}=await window.GREENLOOP_GET_CLIENT().rpc('get_workflow_supplier_receipts_v1',{p_page:page,p_imeis:pending.slice(i,i+250)});
+    if(error)throw error;if(!Array.isArray(data))throw new Error('Supplier receipt details could not load. Refresh and try again.');
+    for(const row of data)cache.set(key(page,row.imei),{...row,at:Date.now()});
+   }
+  },
+  async batches(page,ids){
+   const pending=[...new Set(ids.map(v=>String(v||'')).filter(v=>/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)))].filter(v=>!cache.has(key(page,'batch:'+v))||Date.now()-cache.get(key(page,'batch:'+v)).at>60000);
+   for(let i=0;i<pending.length;i+=250){const {data,error}=await GREENLOOP_GET_CLIENT().rpc('get_workflow_supplier_batches_v1',{p_page:page,p_batch_ids:pending.slice(i,i+250)});if(error)throw error;if(!Array.isArray(data))throw new Error('Stock receipt details could not load.');for(const row of data)cache.set(key(page,'batch:'+row.batch_id),{...row,at:Date.now()});}
+  },
+  batchLabel(page,id,code,quantity,name,fallback='—'){return this.label(page,'batch:'+id,code,quantity,name,fallback);},
+  label(page,imei,code,quantity,name,fallback='—'){
+   const row=cache.get(key(page,imei));
+   return window.GREENLOOP_SUPPLIER_RECEIPT_LABEL(row?.supplier_code||code,row?.planned_quantity??quantity,row?.supplier_name??name,fallback);
+  },
+  async jobs(page,jobs){
+   const one=v=>Array.isArray(v)?v[0]:v;
+   await this.load(page,jobs.map(j=>one(j.device)?.imei_1));
+   for(const j of jobs){const d=one(j.device),row=cache.get(key(page,d?.imei_1));if(!row)continue;
+    j.receiving_batch={...one(j.receiving_batch),planned_quantity:row.planned_quantity};
+    j.supplier={...one(j.supplier),supplier_code:row.supplier_code,company_name:row.supplier_name};
+   }
+  }
+ };
 })();

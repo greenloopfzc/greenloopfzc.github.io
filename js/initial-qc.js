@@ -376,9 +376,11 @@
     const receivingBatch = Array.isArray(batchJob?.receiving_batch) ? batchJob.receiving_batch[0] : batchJob?.receiving_batch;
     const deviceMetadata = Array.isArray(batchJob?.device) ? batchJob.device[0] : batchJob?.device;
     if (deviceMetadata) Object.assign(device, deviceMetadata);
+    await window.GREENLOOP_RECEIPTS.load("initial_qc",[imei]);
+    if (!isCurrent()) return;
     const selectedJob = {
       ...job,
-      supplierDisplay: supplierLabel(job.supplier_code, result.supplier, receivingBatch?.planned_quantity),
+      supplierDisplay: window.GREENLOOP_RECEIPTS.label("initial_qc",imei,job.supplier_code,receivingBatch?.planned_quantity,result.supplier),
       device
     };
     rowJobs.set(row.dataset.rowId, selectedJob);
@@ -497,6 +499,7 @@
       .is("deleted_at", null)
       .order("received_at", { ascending: true }).order("id"));
     if (error) throw error;
+    await window.GREENLOOP_RECEIPTS.jobs("initial_qc",data||[]);
     pendingJobs = data || [];
     queueCount.textContent = `${pendingJobs.length} waiting`;
     queueCount.setAttribute("aria-label", `View ${pendingJobs.length} phones waiting for Initial QC`);

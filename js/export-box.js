@@ -76,7 +76,12 @@
     }, 3400);
   }
 
+  function removableDraft() {
+    return can("scan") && currentBox?.box_status === "open" && workflow?.state === "draft" && !workflow?.saved_at;
+  }
   function render() {
+    const removable=removableDraft();
+    document.querySelector('#export-delete-heading').hidden=!removable;
     if (!currentBox) {
       boxNumber.textContent = "No open export box";
       boxStatus.textContent = "View only";
@@ -104,10 +109,23 @@
     sheetTotal.textContent = `${count} phone${count === 1 ? "" : "s"}`;
 
     tableBody.innerHTML = lines.length
-      ? lines.map((line) => `<tr><td>${escapeHtml(line.serial_no)}</td><td>${escapeHtml(line.imei)}</td><td>${escapeHtml(line.model || "-")}</td><td>${escapeHtml(line.storage_gb ? `${line.storage_gb} GB` : "-")}</td><td>${escapeHtml(line.final_grade || "-")}</td><td>${escapeHtml(line.color || "-")}</td><td>${escapeHtml(line.box_number || currentBox.box_number)}</td></tr>`).join("")
-      : '<tr><td class="export-sheet-empty" colspan="7">Scan the first Ready Stock IMEI to add it to this box.</td></tr>';
+      ? lines.map((line) => `<tr><td>${escapeHtml(line.serial_no)}</td><td>${escapeHtml(line.imei)}</td><td>${escapeHtml(line.model || "-")}</td><td>${escapeHtml(line.storage_gb ? `${line.storage_gb} GB` : "-")}</td><td>${escapeHtml(line.final_grade || "-")}</td><td>${escapeHtml(line.color || "-")}</td><td>${escapeHtml(line.box_number || currentBox.box_number)}</td>${removable?`<td class="export-line-action"><button type="button" class="secondary-button" data-draft-remove="${escapeHtml(line.id)}" data-capability="scan" data-capability-page="export_boxes" ${boxBusy||scanning?'disabled':''} aria-label="Delete ${escapeHtml(line.imei)} from this box">Delete</button></td>`:''}</tr>`).join("")
+      : `<tr><td class="export-sheet-empty" colspan="${removable?8:7}">Scan the first Ready Stock IMEI to add it to this box.</td></tr>`;
   }
 
+  async function removeDraftLine(itemId) {
+    if (!removableDraft() || boxBusy || scanning) return;
+    boxBusy=true;clearTimeout(scanTimer);render();setMessage();
+    try {
+      const {error}=await getClient().rpc('remove_draft_box_imei_v1',{p_box_id:currentBox.box_id,p_revision:workflow.revision,p_item_id:itemId});
+      if(error)throw error;
+      await loadLines();
+      setMessage('Phone removed from this draft box and returned to Ready Stock. Print the updated sheet before saving.','success');
+    } catch(error) {
+      setMessage(error.message||'The phone could not be removed.');
+      try { await loadLines(); } catch (_) {}
+    } finally { boxBusy=false;render();if(!imeiInput.disabled)imeiInput.focus(); }
+  }
   async function loadLines() {
     if (!currentBox?.box_id) return;
     const { data, error } = await getClient().rpc("get_export_box_lines", { p_box_id: currentBox.box_id });
@@ -275,6 +293,7 @@
   startNextButton.addEventListener("click", () => finishAndStartNext().catch((error) => setMessage(error.message || "The next export box could not be opened.")));
   printButton.addEventListener("click", printBox);
   confirmPrintButton.addEventListener("click", confirmPrint);
+  tableBody.addEventListener('click',event=>{const button=event.target.closest('[data-draft-remove]');if(button)removeDraftLine(button.dataset.draftRemove);});
   initialize().catch((error) => {
     permissionMessage.textContent = error.message || "Export Boxes could not be loaded.";
     permissionMessage.hidden = false;

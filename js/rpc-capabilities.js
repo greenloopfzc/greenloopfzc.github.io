@@ -311,3 +311,11 @@ Object.assign(window.GREENLOOP_RPC_CAPABILITIES,{
   "get_ranked_qc_dropdowns_v1":{"page":"initial_qc","capability":"view","read":true},
   "get_qc_work_options_v1":{"dynamic":"filter_source","parameter":"p_page","initial_qc":{"page":"initial_qc","capability":"view","read":true},"lab_glass":{"page":"lab_glass","capability":"view","read":true}}
 });
+
+Object.assign(window.GREENLOOP_RPC_CAPABILITIES,{
+ remove_draft_box_imei_v1:{page:'export_boxes',capability:'scan'},
+ get_workflow_supplier_receipts_v1:{dynamic:'filter_source',parameter:'p_page',
+ ...Object.fromEntries(['initial_qc','final_qc','lab_glass','frame_department','parts','ready_stock','imei_search','reports','stock_received','imei_entry','ready_stock_journey','accounts','stock_exported','export_boxes'].map(page=>[page,{page,capability:'view',read:true}]))}
+});
+
+window.GREENLOOP_RPC_CAPABILITIES.get_workflow_supplier_batches_v1=window.GREENLOOP_RPC_CAPABILITIES.get_workflow_supplier_receipts_v1;
