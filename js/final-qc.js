@@ -24,6 +24,7 @@
   let client;
   let queueSteps = [];
   let gradeItems = [];
+  let failureReasons = [], failureTechnicians = [];
   let rowSequence = 0;
   let toastTimer;
 
@@ -97,6 +98,40 @@
     return `<option value="">Select final grade</option>${gradeItems.map((item) => `<option value="${escapeHtml(item.option_value)}" data-option-id="${escapeHtml(item.id)}"${String(item.option_value) === String(selectedValue) ? " selected" : ""}>${escapeHtml(item.option_value)}</option>`).join("")}`;
   }
 
+  function failureReasonOptions(value="") {return `<option value="">Select failure reason</option>${failureReasons.map(r=>`<option value="${escapeHtml(r.id)}"${r.id===value?' selected':''}>${escapeHtml(r.label)}</option>`).join('')}`;}
+  function failureTechnicianOptions(value="") {return `<option value="">Select technician</option>${failureTechnicians.map(t=>`<option value="${escapeHtml(t.id)}"${t.id===value?' selected':''}>${escapeHtml(t.full_name)}</option>`).join('')}`;}
+  function syncFailureFields(row) {
+    const fail=resultValue(row)==='fail'&&rowSteps.has(row.dataset.rowId), fields=row.querySelector('[data-failure-fields]');if(!fields)return;
+    fields.hidden=!fail;row.querySelector('[data-failure-placeholder]').hidden=fail;
+    const table=tableBody.closest('table'),visible=[...tableBody.rows].some(r=>rowSteps.has(r.dataset.rowId)&&resultValue(r)==='fail');
+    if(table.classList.contains('has-failed-phones')!==visible){table.classList.toggle('has-failed-phones',visible);table.querySelectorAll('.final-failure-cell,.final-failure-header').forEach(c=>c.hidden=!visible);window.requestAnimationFrame(syncHorizontalScrollWidth);}
+    row.querySelector('.final-failure-cell').hidden=!visible;
+    const completed=row.dataset.completed==='yes';
+    row.querySelectorAll('[data-failure-reason],[data-failure-technician]').forEach(c=>c.disabled=!fail||completed||!window.GREENLOOP_CAN?.('entry','final_qc'));
+    row.querySelectorAll('[data-add-failure-reason],[data-remove-failure-reason]').forEach(c=>c.disabled=!fail||completed||!window.GREENLOOP_CAN?.('manage_options','final_qc'));
+    const context=rowSteps.get(row.dataset.rowId)?.failureReturnContext;
+    row.querySelector('[data-failure-hint]').textContent=context?`Return to ${context.department==='glass'?'Glass':'Laboratory'} · Previous: ${context.technician_name||'Unassigned'}`:'Scan a phone with completed Lab / Glass work before returning it.';
+  }
+  async function loadFailureOptions(preferredRow,preferredReason) {
+    const {data,error}=await getClient().rpc('get_final_qc_failure_options_v1',{});if(error)throw error;
+    if(!Array.isArray(data?.reasons)||!Array.isArray(data?.technicians))throw new Error('Failure reasons and technicians could not be verified. Refresh Final QC.');
+    failureReasons=data.reasons;failureTechnicians=data.technicians;
+    for(const row of tableBody.rows){const reason=row.querySelector('[data-failure-reason]'),tech=row.querySelector('[data-failure-technician]');const a=row===preferredRow?preferredReason:reason.value,b=tech.value;reason.innerHTML=failureReasonOptions(a);tech.innerHTML=failureTechnicianOptions(b);syncFailureFields(row);}
+  }
+  async function addFailureReason(row) {
+    if(!window.GREENLOOP_CAN?.('manage_options','final_qc'))return;
+    const label=window.prompt('Enter a new Final QC failure reason.');if(!label?.trim())return;
+    const {data,error}=await getClient().rpc('save_final_qc_failure_reason_v1',{p_label:label.trim()});if(error)throw error;
+    await loadFailureOptions(row,data?.id);showToast('Failure reason is ready to use.');
+  }
+  async function removeFailureReason(row) {
+    if(!window.GREENLOOP_CAN?.('manage_options','final_qc'))return;
+    const select=row.querySelector('[data-failure-reason]');if(!select.value)throw new Error('Select a failure reason before removing it.');
+    const code=window.prompt(`Enter deletion code to remove ${select.selectedOptions[0].textContent} from future choices.`);if(code===null)return;
+    const {error}=await getClient().rpc('archive_final_qc_failure_reason_v1',{p_reason_id:select.value,p_deletion_code:code});if(error)throw error;
+    await loadFailureOptions();showToast('Reason removed from future choices. Saved history is preserved.');
+  }
+
   function resultValue(row) {
     const pass = row.querySelector('[data-result="pass"]')?.checked;
     const frame = row.querySelector('[data-result="frame"]')?.checked;
@@ -115,6 +150,7 @@
   }
 
   function syncFinalGradeRule(row) {
+    syncFailureFields(row);
     const isFrame = resultValue(row) === "frame";
     const gradeSelect = row.querySelector("[data-final-grade]");
     if (isFrame && gradeSelect) gradeSelect.value = "";
@@ -162,6 +198,7 @@
       <td class="final-result-cell pass"><label><input type="checkbox" data-result="pass"><span>Pass</span></label></td>
       <td class="final-result-cell frame"><label><input type="checkbox" data-result="frame"><span>B-DEPT</span></label></td>
       <td class="final-result-cell fail"><label><input type="checkbox" data-result="fail"><span>Fail</span></label></td>
+      <td class="final-failure-cell" hidden><span data-failure-placeholder>—</span><div data-failure-fields hidden><label>Failure Reason</label><div class="final-failure-reason-control"><select data-failure-reason aria-label="Failure Reason" aria-required="true" data-capability="entry" data-capability-page="final_qc">${failureReasonOptions()}</select><button type="button" data-add-failure-reason data-capability="manage_options" data-capability-page="final_qc" title="Add failure reason">+</button><button type="button" class="remove" data-remove-failure-reason data-capability="manage_options" data-capability-page="final_qc" title="Remove failure reason">−</button></div><label>Return Technician</label><select data-failure-technician aria-label="Return Technician" aria-required="true" data-capability="entry" data-capability-page="final_qc">${failureTechnicianOptions()}</select><small data-failure-hint></small></div></td>
       <td class="final-save-cell"><button type="button" class="final-row-save" data-save-row>Save</button></td>
     </tr>`;
   }
@@ -197,6 +234,7 @@
     row.querySelector("[data-final-battery]").title = "Final Battery Health";
     row.classList.remove("is-loaded", "is-error");
     rowSteps.delete(row.dataset.rowId);
+    row.querySelector("[data-failure-reason]").value="";row.querySelector("[data-failure-technician]").value="";syncFailureFields(row);
     row.querySelector("[data-battery-unavailable]").checked = false;
     syncBatteryAvailability(row);
     setRowState(row, "");
@@ -338,6 +376,7 @@
     const device = getDevice(step) || {};
     const supplier = getSupplier(job) || {};
     rowSteps.set(row.dataset.rowId, step);
+    row.querySelector("[data-failure-technician]").value=step.failureReturnContext?.technician_id||"";syncFailureFields(row);
     row.querySelector('[data-auto="model"]').textContent = device.model || "-";
     row.querySelector('[data-auto="storage"]').textContent = device.storage_gb ? `${device.storage_gb} GB` : "-";
     row.querySelector('[data-auto="color"]').textContent = device.color || "-";
@@ -371,9 +410,14 @@
     const defaults = new Map();
     for (let offset = 0; offset < nextSteps.length; offset += 500) {
       const ids = nextSteps.slice(offset, offset + 500).map(s => s.id);
-      const {data: values, error: defaultsError} = await getClient().rpc("get_final_qc_battery_defaults_v1", {p_step_ids: ids});
-      if (defaultsError) throw defaultsError;
-      if (!Array.isArray(values)) throw new Error("Final Battery Health defaults could not be verified. Refresh and try again.");
+      const [batteryResponse,contextResponse]=await Promise.all([
+        getClient().rpc('get_final_qc_battery_defaults_v1',{p_step_ids:ids}),
+        getClient().rpc('get_final_qc_return_context_v1',{p_step_ids:ids})
+      ]);
+      const {data:values,error:defaultsError}=batteryResponse,{data:contexts,error:contextError}=contextResponse;
+      if(defaultsError)throw defaultsError;if(!Array.isArray(values))throw new Error('Final Battery Health defaults could not be verified. Refresh and try again.');
+      if(contextError)throw contextError;if(!Array.isArray(contexts))throw new Error('Return technician assignments could not be verified. Refresh Final QC.');
+      for(const step of nextSteps.slice(offset,offset+500))step.failureReturnContext=contexts.find(c=>c.step_id===step.id)||null;
       for (const value of values) {
         if (!ids.includes(value.step_id) || defaults.has(value.step_id) || typeof value.diagnostic_battery_installed !== "boolean" || typeof value.battery_health_unavailable !== "boolean" || !(value.final_battery_health === null || Number.isInteger(value.final_battery_health) && value.final_battery_health >= 0 && value.final_battery_health <= 100) || value.diagnostic_battery_installed && (value.final_battery_health !== 100 || value.battery_health_unavailable)) throw new Error("Final Battery Health defaults could not be verified. Refresh and try again.");
         defaults.set(value.step_id, value);
@@ -529,6 +573,13 @@
       return { ok: false, error: errorText };
     }
 
+    const failureReason=row.querySelector('[data-failure-reason]').value;
+    const returnTechnician=row.querySelector('[data-failure-technician]').value;
+    if(result==='fail'){
+      const error=!step.failureReturnContext?'This phone has no completed Lab / Glass work to return to. Refresh the queue.':!failureReasons.some(r=>r.id===failureReason)?'Select a failure reason before returning this phone.':!failureTechnicians.some(t=>t.id===returnTechnician)?'Select an active return technician.':'';
+      if(error){setRowState(row,error,'is-error');return {ok:false,error};}
+    }
+
     const rowButton = row.querySelector("[data-save-row]");
     row.dataset.saving = "yes";
     const controls = [...row.querySelectorAll("input, select, button")].map((control) => [control, control.disabled]);
@@ -536,7 +587,9 @@
     try {
     setSubmitting(rowButton, true, "Saving...");
     setRowState(row, progressText, "is-loading");
-    const rpcResponse = result === "frame"
+    const rpcResponse = result === "fail"
+      ? await getClient().rpc('return_final_qc_with_technician_v1',{p_final_step_id:step.id,p_reason_id:failureReason,p_technician_id:returnTechnician,p_context_token:step.failureReturnContext.context_token,p_final_battery_health:finalBattery,p_battery_health_unavailable:batteryUnavailable})
+      : result === "frame"
       ? await getClient().rpc("route_final_qc_pass_to_frame_v3", {
         p_job_id: getJob(step).id,
         p_final_grade: null,
@@ -551,8 +604,8 @@
         p_final_battery_health: finalBattery,
         p_battery_health_unavailable: batteryUnavailable,
         p_notes: result === "pass" ? "Final QC passed" : "Final QC failed",
-        p_failure_department: result === "fail" ? "laboratory" : null,
-        p_failure_reason: result === "fail" ? "Final QC failed - return to Laboratory" : null,
+        p_failure_department: null,
+        p_failure_reason: null,
         p_checks: []
       });
     const { data, error } = rpcResponse;
@@ -564,7 +617,7 @@
       return { ok: false, error: error.message || "Could not save" };
     }
 
-    const response = data?.[0];
+    const response = Array.isArray(data)?data[0]:data;
     row.dataset.completed = "yes";
     row.classList.remove("is-error");
     row.classList.add("is-completed");
@@ -572,7 +625,7 @@
     rowButton.textContent = "Saved";
     setRowState(row, result === "pass"
       ? `Passed - Attempt ${response?.attempt_number || "-"}`
-      : result === "frame" ? "Sent to B-DEPT - Grade pending" : "Failed - Laboratory rework", "is-completed");
+      : result === "frame" ? "Sent to B-DEPT - Grade pending" : `Failed - ${response?.technician_name||"Lab / Glass rework"} · ${response?.failure_reason||""}`, "is-completed");
     queueSteps = queueSteps.filter((candidate) => candidate.id !== step.id);
     queueCount.textContent = `${queueSteps.length} waiting`;
     return { ok: true, result };
@@ -600,7 +653,7 @@
       ? "Final QC passed. Phone sent to Ready Stock."
       : result.result === "frame"
         ? "Phone sent to B-DEPT. A B-DEPT Pass will send it to Ready Stock."
-        : "Final QC failed. Phone returned to Laboratory.");
+        : "Final QC failed. Phone returned for Lab / Glass rework.");
     focusNextInspection(row);
   }
 
@@ -688,7 +741,7 @@
     if (!canInspect) throw new Error("Your account does not have Final QC permission.");
     await window.GREENLOOP_ACCESS_READY;
     if (window.GREENLOOP_PAGE_ACCESS?.pageKey !== "final_qc") return;
-    await Promise.all([loadFinalGrades(), loadQueue()]);
+    await Promise.all([loadFinalGrades(), loadQueue(), loadFailureOptions()]);
     createRows(10);
     app.hidden = false;
     setupHorizontalScroll();
@@ -751,6 +804,8 @@
       saveRowFromButton(row).catch((error) => setMessage(error.message || "Final QC row could not be saved."));
       return;
     }
+    if(event.target.closest('[data-add-failure-reason]')){addFailureReason(row).catch(e=>setMessage(e.message));return;}
+    if(event.target.closest('[data-remove-failure-reason]')){removeFailureReason(row).catch(e=>setMessage(e.message));return;}
     if (event.target.closest("[data-add-grade]")) {
       addFinalGrade(row).catch((error) => setMessage(error.message || "Final Grade could not be added."));
       return;
@@ -763,7 +818,7 @@
   document.querySelector("#add-ten-rows").addEventListener("click", () => createRows(10));
   document.querySelector("#clear-tray").addEventListener("click", resetTray);
   autoPickButton.addEventListener("click", autoPickAllPending);
-  document.querySelector("#refresh-queue").addEventListener("click", () => loadQueue().then(() => showToast("Final QC queue refreshed.")).catch((error) => setMessage(error.message || "Queue could not be refreshed.")));
+  document.querySelector("#refresh-queue").addEventListener("click", () => Promise.all([loadQueue(),loadFailureOptions()]).then(() => showToast("Final QC queue refreshed.")).catch((error) => setMessage(error.message || "Queue could not be refreshed.")));
   queueCount.addEventListener("click", openPendingModal);
   pendingSearch.addEventListener("input", () => renderPendingJobs(pendingSearch.value));
   pendingModal.addEventListener("click", (event) => { if (event.target.closest("[data-close-pending]")) closePendingModal(); });

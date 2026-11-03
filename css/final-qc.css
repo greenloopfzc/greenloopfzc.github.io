@@ -116,3 +116,32 @@ body.final-modal-open { overflow: hidden; }
 .final-battery-unavailable { display: flex; align-items: center; gap: 4px; margin-top: 5px; font-size: .6rem; line-height: 1.2; color: inherit; cursor: pointer; }
 .final-battery-unavailable[hidden] { display: none; }
 .final-bulk-table .final-battery-unavailable input { width: 14px; height: 14px; min-height: 14px; flex: 0 0 14px; margin: 0; padding: 0; accent-color: #087451; }
+
+.final-failure-cell {min-width:250px;max-width:300px;vertical-align:top;}
+.final-failure-cell [data-failure-fields] {display:grid;gap:6px;text-align:left;padding:8px;}
+.final-failure-cell [data-failure-fields][hidden],.final-failure-cell [data-failure-placeholder][hidden] {display:none;}
+.final-failure-cell label {font-size:.7rem;font-weight:800;color:inherit;}
+.final-failure-cell select {width:100%;min-width:0;min-height:34px;padding:6px 8px;color:inherit;background:var(--nm-well,#eaf0ed);border:1px solid var(--nm-line,#cad7d0);border-radius:10px;font:inherit;}
+.final-failure-reason-control {display:grid;grid-template-columns:minmax(145px,1fr) 30px 30px;gap:5px;}
+.final-failure-reason-control button {padding:0;min-width:0;min-height:32px;font-size:1.15rem;}
+.final-failure-cell small {white-space:normal;font-size:.65rem;color:var(--nm-muted,#52665c);line-height:1.4;}
+
+.final-table-scroll{overflow-x:auto;}
+.final-failure-cell[hidden],.final-failure-header[hidden]{display:none;}
+.final-bulk-table th:nth-child(15),.final-bulk-table td:nth-child(15){width:6%;}
+.final-bulk-table.has-failed-phones{min-width:1780px;}
+.final-bulk-table.has-failed-phones th:nth-child(1),.final-bulk-table.has-failed-phones td:nth-child(1){width:160px;}
+.final-bulk-table.has-failed-phones th:nth-child(2),.final-bulk-table.has-failed-phones td:nth-child(2){width:100px;}
+.final-bulk-table.has-failed-phones th:nth-child(3),.final-bulk-table.has-failed-phones td:nth-child(3){width:70px;}
+.final-bulk-table.has-failed-phones th:nth-child(4),.final-bulk-table.has-failed-phones td:nth-child(4){width:100px;}
+.final-bulk-table.has-failed-phones th:nth-child(5),.final-bulk-table.has-failed-phones td:nth-child(5){width:65px;}
+.final-bulk-table.has-failed-phones th:nth-child(6),.final-bulk-table.has-failed-phones td:nth-child(6){width:75px;}
+.final-bulk-table.has-failed-phones th:nth-child(7),.final-bulk-table.has-failed-phones td:nth-child(7){width:180px;}
+.final-bulk-table.has-failed-phones th:nth-child(8),.final-bulk-table.has-failed-phones td:nth-child(8){width:75px;}
+.final-bulk-table.has-failed-phones th:nth-child(9),.final-bulk-table.has-failed-phones td:nth-child(9){width:75px;}
+.final-bulk-table.has-failed-phones th:nth-child(10),.final-bulk-table.has-failed-phones td:nth-child(10){width:200px;}
+.final-bulk-table.has-failed-phones th:nth-child(11),.final-bulk-table.has-failed-phones td:nth-child(11){width:65px;}
+.final-bulk-table.has-failed-phones th:nth-child(12),.final-bulk-table.has-failed-phones td:nth-child(12){width:70px;}
+.final-bulk-table.has-failed-phones th:nth-child(13),.final-bulk-table.has-failed-phones td:nth-child(13){width:65px;}
+.final-bulk-table.has-failed-phones th:nth-child(14),.final-bulk-table.has-failed-phones td:nth-child(14){width:270px;}
+.final-bulk-table.has-failed-phones th:nth-child(15),.final-bulk-table.has-failed-phones td:nth-child(15){width:90px;}
