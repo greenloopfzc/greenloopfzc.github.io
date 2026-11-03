@@ -302,3 +302,12 @@ Object.assign(window.GREENLOOP_RPC_CAPABILITIES,{
     "capability": "entry"
   }
 });
+
+/* Initial QC managed choices use the existing server manage_options grant. */
+Object.assign(window.GREENLOOP_RPC_CAPABILITIES,{
+  "save_qc_dropdown_v1":{"page":"initial_qc","capability":"manage_options"},
+  "save_qc_work_option_v1":{"page":"initial_qc","capability":"manage_options"},
+  "get_qc_dropdowns_v1":{"page":"initial_qc","capability":"view","read":true},
+  "get_ranked_qc_dropdowns_v1":{"page":"initial_qc","capability":"view","read":true},
+  "get_qc_work_options_v1":{"dynamic":"filter_source","parameter":"p_page","initial_qc":{"page":"initial_qc","capability":"view","read":true},"lab_glass":{"page":"lab_glass","capability":"view","read":true}}
+});

@@ -219,16 +219,17 @@
     const required = row.querySelector('[data-carry-field="gcGrade"]').value.trim().toUpperCase() === "D";
     const list = row.querySelector('[data-requirement-group="part"] .qc-bulk-requirement-list');
     for (const select of list.querySelectorAll('[data-auto-housing]')) {
-      if (select.value.trim().toLowerCase() !== "housing") delete select.dataset.autoHousing;
+      if (select.value.trim().toLowerCase() !== "housing") { delete select.dataset.autoHousing; select.removeAttribute("title"); }
       else if (!required) { if (list.children.length > 1) select.remove(); else { select.value = ""; delete select.dataset.autoHousing; } }
     }
-    if (required && ![...list.querySelectorAll('select')].some(s => s.value.trim().toLowerCase() === "housing")) {
+    if (!required || ![...list.querySelectorAll("select")].some(s => s.value)) delete row.dataset.housingOverride;
+    if (required && row.dataset.housingOverride !== "yes" && ![...list.querySelectorAll('select')].some(s => s.value.trim().toLowerCase() === "housing")) {
       let housing = workItems.find(i => i.kind === "part" && i.label.trim().toLowerCase() === "housing");
       if (!housing) { housing = {label:"Housing",kind:"part",partName:"Housing",action:"Replace or use Housing"}; workItems.push(housing); }
       let select = [...list.querySelectorAll('select')].find(s => !s.value);
       if (!select) { list.insertAdjacentHTML("beforeend", requirementSelect("part")); select = list.lastElementChild; }
       select.innerHTML = requirementOptions("part", housing.label); select.value = housing.label;
-      select.dataset.autoHousing = "yes"; select.title = "Automatically required for GL Grade D";
+      select.dataset.autoHousing = "yes"; select.title = "Default for GL Grade D — choose another part if needed";
     }
     const frame = row.querySelector('[data-route-frame]');
     if (required) { frame.checked = false; frame.disabled = true; frame.dataset.autoFrameLocked = "yes"; }
@@ -241,6 +242,7 @@
       gcGrade: row.querySelector('[data-carry-field="gcGrade"]')?.value || "",
       technician: row.querySelector('[data-carry-field="technician"]')?.value || "",
       parts: manualPartValues(row),
+      housingOverride: row.dataset.housingOverride === "yes",
       services: valuesForGroup(row, "service")
     };
   }
@@ -249,6 +251,7 @@
     row.querySelector('[data-carry-field="supplierGrade"]').value = snapshot.supplierGrade;
     row.querySelector('[data-carry-field="gcGrade"]').value = snapshot.gcGrade;
     row.querySelector('[data-carry-field="technician"]').value = snapshot.technician;
+    if (snapshot.housingOverride) row.dataset.housingOverride = "yes"; else delete row.dataset.housingOverride;
     setGroupValues(row, "part", snapshot.parts);
     setGroupValues(row, "service", snapshot.services);
     applyGradeHousing(row);
@@ -288,7 +291,7 @@
     let nextRow = row.nextElementSibling;
     const key = manualKey(kind === "part" ? "parts" : "services");
     while (nextRow) {
-      if (nextRow.dataset[key] !== "yes" && nextRow.dataset.completed !== "yes") { setGroupValues(nextRow, kind, values); if (kind === "part") applyGradeHousing(nextRow); }
+      if (nextRow.dataset[key] !== "yes" && nextRow.dataset.completed !== "yes") { setGroupValues(nextRow, kind, values); if (kind === "part") { if (row.dataset.housingOverride === "yes") nextRow.dataset.housingOverride = "yes"; else delete nextRow.dataset.housingOverride; applyGradeHousing(nextRow); } }
       nextRow = nextRow.nextElementSibling;
     }
   }
@@ -833,7 +836,10 @@
     const requirement = event.target.closest("[data-requirement]");
     if (requirement) {
       const kind = requirement.dataset.requirement;
-      if (kind === "part") applyGradeHousing(row);
+      if (kind === "part") {
+        if (requirement.dataset.autoHousing === "yes" && requirement.value && requirement.value.trim().toLowerCase() !== "housing") row.dataset.housingOverride = "yes";
+        applyGradeHousing(row);
+      }
       row.dataset[manualKey(kind === "part" ? "parts" : "services")] = "yes";
       carryRequirementGroup(row, kind);
     }
