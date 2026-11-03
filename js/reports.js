@@ -33,6 +33,10 @@
   let auditView = "deleted";
   let selectedSupplier = "all";
   let selectedSupplierBatch = "all";
+  let supplierProgressAll = null, supplierProgressData = null;
+  let supplierProgressBusy = false, supplierProgressError = "", supplierProgressGeneration = 0;
+  let supplierRange = {from:"",to:""}, supplierDateDraft = {from:"",to:""}, supplierRangeOpen = false;
+  const supplierAllDates = {p_date_from:"0001-01-01",p_date_to:"9999-12-30"};
   let supplierReturnsOpen = false;
   let reportGeneration = 0;
   let correctionSearchGeneration = 0;
@@ -319,28 +323,63 @@
     reportContent.innerHTML = `<div class="report-table-wrap"><table class="report-table stock-return-report"><thead><tr><th>Receipt / received date</th><th>Supplier</th><th>Quantity received</th><th>Return Stock</th><th>Return date / reference</th><th>Reason</th><th>Model / GB</th><th>IMEIs</th><th>Returned by</th></tr></thead><tbody>${body}</tbody></table></div>`;
   }
 
+  function validSupplierProgress(data) {
+    return data && Array.isArray(data.receipts) && Array.isArray(data.rows) && Array.isArray(data.returns);
+  }
+  function supplierScope() {
+    let scope=document.getElementById('supplier-progress-controls');
+    if(!scope){scope=document.createElement('section');scope.id='supplier-progress-controls';scope.className='supplier-scope';scope.setAttribute('aria-label','Choose supplier stock');reportContent.before(scope);}
+    scope.hidden=false;
+    const catalogue=supplierProgressAll?.receipts||[];
+    const suppliers=[...new Map(catalogue.map(row=>[String(row.supplier_id),{id:String(row.supplier_id),label:partnerLabel(row.supplier_code,row.supplier_name)}])).values()].sort((a,b)=>a.label.localeCompare(b.label));
+    const receipts=catalogue.filter(row=>selectedSupplier==='all'||String(row.supplier_id)===selectedSupplier).slice().sort((a,b)=>String(a.batch_number).localeCompare(String(b.batch_number),undefined,{numeric:true}));
+    const options=(items,label)=>items.map(row=>`<option value="${escapeHtml(row.batch_id)}"${String(row.batch_id)===selectedSupplierBatch?' selected':''}>${escapeHtml(label(row))}</option>`).join('');
+    const suffix=row=>selectedSupplier==='all'?' · '+row.supplier_code:'';
+    const grant='data-capability="search" data-capability-page="reports"';
+    scope.innerHTML=`<div class="supplier-scope-heading"><div><span class="panel-kicker">Select stock</span><p>Choose a supplier, then select a stock/batch or invoice.</p></div><button type="button" class="secondary-button" data-supplier-refresh data-capability="view" data-capability-page="reports"${supplierProgressBusy?' disabled':''}>Refresh</button></div><div class="supplier-scope-fields"><div class="form-field"><label for="supplier-progress-filter">Supplier</label><select id="supplier-progress-filter" ${grant}><option value="all">All suppliers</option>${suppliers.map(row=>`<option value="${escapeHtml(row.id)}"${row.id===selectedSupplier?' selected':''}>${escapeHtml(row.label)}</option>`).join('')}</select></div><div class="form-field"><label for="supplier-progress-batch">Stock / Batch</label><select id="supplier-progress-batch" ${grant}><option value="all">All stock / batches</option>${options(receipts,row=>row.batch_number+suffix(row))}</select></div><div class="form-field"><label for="supplier-progress-invoice">Invoice</label><select id="supplier-progress-invoice" ${grant}><option value="all">All invoices</option>${options(receipts,row=>(row.invoice_number||'No invoice recorded')+' · '+row.batch_number+suffix(row))}</select></div></div>`;
+    scope.setAttribute('aria-busy',String(supplierProgressBusy));
+  }
+  function resetSupplierRange() {
+    supplierProgressGeneration++;supplierProgressBusy=false;supplierProgressError='';
+    supplierRange={from:"",to:""};supplierDateDraft={from:"",to:""};supplierRangeOpen=false;supplierReturnsOpen=false;
+    supplierProgressData=supplierProgressAll;
+  }
+  async function loadSupplierProgress({refresh=false}={}) {
+    const generation=++supplierProgressGeneration, range={...supplierRange};
+    supplierProgressBusy=true;supplierProgressError='';supplierProgressData=null;
+    if(activeReport==='supplier_progress')renderSupplierProgress();
+    try {
+      // The existing RPC requires explicit dates. These bounds include all ordinary
+      // receipt dates; the upper bound leaves room for its exclusive next-day end.
+      const allRequest=!supplierProgressAll||refresh?getClient().rpc('get_supplier_progress_v2',supplierAllDates):Promise.resolve({data:supplierProgressAll});
+      const rangeRequest=range.from?getClient().rpc('get_supplier_progress_v2',{p_date_from:range.from,p_date_to:range.to}):allRequest;
+      const [all,result]=await Promise.all([allRequest,rangeRequest]);
+      if(generation!==supplierProgressGeneration)return;
+      if(all.error||result.error)throw all.error||result.error;
+      if(!validSupplierProgress(all.data)||!validSupplierProgress(result.data))throw new Error('Supplier Progress could not be verified.');
+      supplierProgressAll=all.data;supplierProgressData=result.data;
+    } catch(error) {if(generation===supplierProgressGeneration)supplierProgressError=error.message||'Supplier Progress could not be loaded.';}
+    finally {if(generation===supplierProgressGeneration){supplierProgressBusy=false;if(activeReport==='supplier_progress')renderSupplierProgress();}}
+  }
   function renderSupplierProgress() {
     panelKicker.textContent = "Supplier progress";
     panelTitle.textContent = "Supplier stock progress";
-    panelDescription.textContent = `Receipts from ${dateLabel(reportData.date_from)} to ${dateLabel(reportData.date_to)}. Returned phones are separate from the active workflow. Unentered stock is only the remaining receipt balance.`;
-    const data = reportData.supplier_progress_v2;
-    if (!data || !Array.isArray(data.receipts) || !Array.isArray(data.rows) || !Array.isArray(data.returns)) {
-      rowCount.textContent = "Unavailable";
-      reportContent.innerHTML = '<p class="report-empty">Supplier Progress could not be loaded. Apply the date range to retry. Do not treat unavailable counts as zero.</p>';
+    panelDescription.textContent = "Select supplier stock first. Date Range optionally filters receipts by their received date in UAE time. Returned phones remain separate from active workflow.";
+    supplierScope();
+    const data = supplierProgressData;
+    if (!validSupplierProgress(data)) {
+      const bar=window.GREENLOOP_FILTERS.find?.('report-supplier-progress')?.bar;if(bar)bar.hidden=true;
+      rowCount.textContent = supplierProgressBusy?"Loading…":"Unavailable";
+      reportContent.innerHTML = `<p class="report-empty" role="status">${supplierProgressBusy?'Loading supplier stock…':escapeHtml(supplierProgressError||'Supplier Progress could not be loaded.')+' Use Refresh to retry. Do not treat unavailable counts as zero.'}</p>${supplierRange.from?'<div class="supplier-range-section"><button type="button" class="secondary-button" data-supplier-all-dates data-capability="search" data-capability-page="reports">All dates</button></div>':''}`;
       return;
     }
-    const suppliers = [...new Map(data.receipts.map(row => [String(row.supplier_id), {id:String(row.supplier_id),label:partnerLabel(row.supplier_code,row.supplier_name)}])).values()].sort((a,b)=>a.label.localeCompare(b.label));
-    if (selectedSupplier !== "all" && !suppliers.some(s=>s.id===selectedSupplier)) { selectedSupplier="all"; selectedSupplierBatch="all"; }
-    const receipts = data.receipts.filter(row=>selectedSupplier==="all" || String(row.supplier_id)===selectedSupplier);
-    if (selectedSupplierBatch !== "all" && !receipts.some(row=>String(row.batch_id)===selectedSupplierBatch)) selectedSupplierBatch="all";
+    const receipts=data.receipts.filter(row=>selectedSupplier==='all'||String(row.supplier_id)===selectedSupplier);
     const selected = data.rows.filter(row=>(selectedSupplier==="all" || String(row.supplier_id)===selectedSupplier) && (selectedSupplierBatch==="all" || String(row.batch_id)===selectedSupplierBatch));
     const rows=window.GREENLOOP_FILTERS.use('report-supplier-progress',selected,{before:reportContent,fields:[['model','Model']],onChange:()=>renderSupplierProgress(),searchFields:['supplier_code','supplier_name','model','invoice_number','batch_number','storage_gb']});
     const sum = key => supplierTotal(rows,key);
     const received=sum('received_quantity'),ready=sum('ready_quantity'),exported=sum('exported_quantity'),returned=sum('returned_quantity');
     const pending=sum('initial_qc_pending')+sum('lab_glass_pending')+sum('parts_pending')+sum('final_qc_pending')+sum('other_quantity');
     const percent=received?Math.round((ready+exported)/received*100):0;
-    const supplierOptions=suppliers.map(row=>`<option value="${escapeHtml(row.id)}"${row.id===selectedSupplier?' selected':''}>${escapeHtml(row.label)}</option>`).join('');
-    const batchOptions=receipts.map(row=>`<option value="${escapeHtml(row.batch_id)}"${String(row.batch_id)===selectedSupplierBatch?' selected':''}>${escapeHtml(row.batch_number)}${row.invoice_number?' · '+escapeHtml(row.invoice_number):''}${selectedSupplier==='all'?' · '+escapeHtml(row.supplier_code):''}</option>`).join('');
     const matchKey = row => `${row.batch_id}|${String(row.group_model ?? row.model).trim().toLowerCase()}|${row.group_storage_gb ?? row.storage_gb ?? ''}`;
     const visibleModels=new Set(rows.filter(row=>!row.receipt_balance).map(matchKey));
     const balanceBatches=new Set(rows.filter(row=>row.receipt_balance).map(row=>String(row.batch_id)));
@@ -353,12 +392,12 @@
     const details=supplierReturnsOpen?`<section class="supplier-return-detail" aria-label="Returned phone details"><h3>Returned phones · ${returned}</h3><div class="report-table-wrap"><table class="report-table"><thead><tr><th>Supplier</th><th>Stock / Invoice</th><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>Returned</th><th>Reference / Reason</th></tr></thead><tbody>${returns.map(row=>`<tr><td>${escapeHtml(partnerLabel(row.supplier_code,row.supplier_name))}</td><td>${escapeHtml(row.batch_number)}<small>${escapeHtml(row.invoice_number||'')}</small></td><td>${escapeHtml(row.imei||'Not entered')}</td><td>${escapeHtml(row.model)}</td><td>${escapeHtml(storage(row))}</td><td>${escapeHtml(row.color||'—')}</td><td>${row.returned_at?escapeHtml(formatCell(row.returned_at,'date')):'Not recorded'}</td><td>${escapeHtml(row.return_number||row.slip_reference||'—')}<small>${escapeHtml(row.reason||'')}${row.notes?' · '+escapeHtml(row.notes):''}</small>${row.status_only?'<small>Recorded workflow status; return metadata unavailable.</small>':''}</td></tr>`).join('')||'<tr><td colspan="8" class="report-empty">No completed returns match these filters.</td></tr>'}</tbody></table></div></section>`:'';
     const selectedReceipts=receipts.filter(row=>selectedSupplierBatch==='all'||String(row.batch_id)===selectedSupplierBatch);
     const over=selectedReceipts.reduce((n,row)=>n+Number(row.over_entered||0),0);
-    window.GREENLOOP_FILTERS.find?.('report-supplier-progress')?.panel?.querySelectorAll('[data-clean-supplier-filter]').forEach(label=>label.remove());
-    reportContent.innerHTML=`<div class="supplier-report-tools"><label>Supplier<select id="supplier-progress-filter"><option value="all">All suppliers</option>${supplierOptions}</select></label><label>Stock / Batch<select id="supplier-progress-batch"><option value="all">All stock / batches</option>${batchOptions}</select></label><div class="supplier-progress-track"><span style="width:${Math.min(percent,100)}%"></span></div><strong>${percent}% Ready / Exported</strong></div>
+    const rangeLabel=supplierRange.from?`${dateLabel(supplierRange.from)} – ${dateLabel(supplierRange.to)}`:'All receipt dates';
+    reportContent.innerHTML=`<div class="supplier-report-tools supplier-progress-status"><div class="supplier-progress-track"><span style="width:${Math.min(percent,100)}%"></span></div><strong>${percent}% Ready / Exported</strong></div>
       <div class="supplier-report-summary">
         <article><span>Stock quantity</span><strong>${sum('stock_quantity')}</strong></article><article><span>IMEIs entered</span><strong>${received}</strong></article><article><span>IMEI entry pending</span><strong>${sum('imei_entry_pending')}</strong></article><article><span>Workflow pending</span><strong>${pending}</strong></article><article class="ready"><span>Ready Stock</span><strong>${ready}</strong></article><article class="exported"><span>Exported</span><strong>${exported}</strong></article>
         <button type="button" class="supplier-return-summary" data-supplier-returns aria-expanded="${supplierReturnsOpen}"><span>Returned phones</span><strong>${returned}</strong><small>${supplierReturnsOpen?'Hide details':'View details'}</small></button><article><span>Return pending</span><strong>${sum('return_pending')}</strong></article>
-      </div>${over?`<p class="supplier-return-note" role="status">${over} units exceed the receipt quantity. Review this receipt's entries and returns.</p>`:''}${details}
+      </div><section class="supplier-range-section"><div class="supplier-range-toolbar"><button type="button" class="secondary-button" data-supplier-date-toggle data-capability="search" data-capability-page="reports" aria-controls="supplier-progress-date-form" aria-expanded="${supplierRangeOpen}">Date Range${supplierRange.from?' · Active':''}</button><span>${escapeHtml(rangeLabel)}</span></div><form id="supplier-progress-date-form" class="supplier-date-form" novalidate${supplierRangeOpen?'':' hidden'}><div class="form-field"><label for="supplier-progress-from">From</label><input type="date" id="supplier-progress-from" value="${escapeHtml(supplierDateDraft.from)}" data-capability="search" data-capability-page="reports"></div><div class="form-field"><label for="supplier-progress-to">To</label><input type="date" id="supplier-progress-to" value="${escapeHtml(supplierDateDraft.to)}" data-capability="search" data-capability-page="reports"></div><button type="submit" class="primary-button" data-capability="search" data-capability-page="reports">Apply date range</button><button type="button" class="secondary-button" data-supplier-all-dates data-capability="search" data-capability-page="reports">All dates</button><small>Uses the stock received date · UAE</small></form></section>${over?`<p class="supplier-return-note" role="status">${over} units exceed the receipt quantity. Review this receipt's entries and returns.</p>`:''}${details}
       <div class="report-table-wrap"><table class="report-table supplier-progress-table"><thead><tr><th>Supplier</th><th>Model</th><th>GB</th><th>Stock / Batch</th><th>Channel</th><th>Stock quantity</th><th>IMEIs entered</th><th>IMEI entry pending</th><th>Initial QC</th><th>Lab &amp; Glass</th><th>Parts</th><th>Final QC</th><th>Ready Stock</th><th>Exported</th><th>Returned</th><th>Return pending</th><th>Other</th></tr></thead><tbody>${body}</tbody>${rows.length?totals:''}</table></div>`;
   }
 
@@ -909,7 +948,8 @@
       tab.setAttribute("aria-pressed", String(selected));
     });
     const liveDetails = activeReport === "complete_device_details";
-    filterForm.hidden = activeReport === "stock_parts_cost" || liveDetails || activeReport === "restricted_data" || activeReport === "data_correction" || activeReport === "manual_damage" || activeReport === "production_correction";
+    const supplierControls=document.getElementById("supplier-progress-controls");if(supplierControls)supplierControls.hidden=activeReport!=="supplier_progress";
+    filterForm.hidden = activeReport === "supplier_progress" || activeReport === "stock_parts_cost" || liveDetails || activeReport === "restricted_data" || activeReport === "data_correction" || activeReport === "manual_damage" || activeReport === "production_correction";
     window.GREENLOOP_PRODUCTION_CORRECTION?.unmount();
     if(activeReport === "stock_parts_cost") {
       window.GREENLOOP_DAMAGE_MANAGEMENT?.unmount();window.GREENLOOP_COMPLETE_DEVICE_DETAILS?.unmount();
@@ -959,6 +999,7 @@
 
   async function loadReports(event) {
     event?.preventDefault();
+    if(activeReport === "supplier_progress"){await loadSupplierProgress({refresh:true});return;}
     if(activeReport === "stock_parts_cost"){await window.GREENLOOP_STOCK_PARTS_COST?.refresh();return;}
     if (activeReport === "manual_damage") {
       await window.GREENLOOP_DAMAGE_MANAGEMENT?.refresh();
@@ -973,10 +1014,9 @@
     submit.textContent = "Loading...";
     try {
       const dates = { p_date_from: from, p_date_to: to };
-      const [base, boxes, suppliers, deletions, changes, parts, stockReturns, receiptTotals] = await Promise.all([
+      const [base, boxes, deletions, changes, parts, stockReturns, receiptTotals] = await Promise.all([
         getClient().rpc("get_greenloop_reports", dates),
         getClient().rpc("get_export_box_report", dates),
-        getClient().rpc("get_supplier_progress_v2", dates),
         getClient().rpc("get_deletion_history", dates),
         canManageCorrections ? getClient().rpc("get_data_change_history", dates) : Promise.resolve({ data: [] }),
         getClient().rpc("get_open_parts_pending_count"),
@@ -994,7 +1034,7 @@
       if (next.stock_returns === null) warnings.push("Stock Return could not be loaded");
       next.stock_return_receipt_totals = !receiptTotals.error && Array.isArray(receiptTotals.data) ? receiptTotals.data : null;
       if (next.stock_return_receipt_totals === null) warnings.push("Return-adjusted receipt balances could not be loaded; model pending counts may include returned units");
-      for (const [key, label, response] of [["export_boxes", "Export boxes", boxes], ["supplier_progress_v2", "Supplier progress", suppliers], ["deleted_history", "Deleted history", deletions], ["data_changes", "Data changes", changes]]) {
+      for (const [key, label, response] of [["export_boxes", "Export boxes", boxes], ["deleted_history", "Deleted history", deletions], ["data_changes", "Data changes", changes]]) {
         next[key] = response.error ? [] : response.data || [];
         if (response.error) warnings.push(label + " could not be loaded");
       }
@@ -1005,7 +1045,7 @@
       await addDeviceIdentityToReports(next);
       if (generation !== reportGeneration) return;
       reportData = next;
-      selectedExportBox = ""; exportBoxImeiFilter = ""; selectedSupplier = "all"; selectedSupplierBatch = "all"; supplierReturnsOpen = false;
+      selectedExportBox = ""; exportBoxImeiFilter = ""; supplierReturnsOpen = false;
       renderActiveReport();
       if (warnings.length) setMessage(warnings.join(". ") + ". Do not treat an unavailable report as zero records.");
     } catch (error) {
@@ -1073,7 +1113,8 @@
     activeReport = tab.dataset.report;
     if (activeReport === "manual_damage") invalidatePendingReportRead();
     renderActiveReport();
-    if (activeReport !== "manual_damage" && activeReport !== "production_correction" && activeReport !== "stock_parts_cost" && !hasReportSummary(reportData)) loadReports();
+    if(activeReport==="supplier_progress"){if(!supplierProgressData&&!supplierProgressBusy)void loadSupplierProgress();}
+    else if (activeReport !== "manual_damage" && activeReport !== "production_correction" && activeReport !== "stock_parts_cost" && !hasReportSummary(reportData)) loadReports();
   });
   reportContent.addEventListener("click", (event) => {
     const savedDataButton = event.target.closest('[data-audit-details-index]');
@@ -1169,11 +1210,28 @@
       filter.setSelectionRange(filter.value.length, filter.value.length);
     }
   });
-  // Filters are adopted into the shared panel; keep delegated listeners.
   app.addEventListener("change", event => {
-    if(event.target.id === "supplier-progress-filter") { selectedSupplier=event.target.value||"all";selectedSupplierBatch="all";supplierReturnsOpen=false;renderSupplierProgress(); }
-    if(event.target.id === "supplier-progress-batch") { selectedSupplierBatch=event.target.value||"all";supplierReturnsOpen=false;renderSupplierProgress(); }
+    if(!window.GREENLOOP_CAN?.('search','reports'))return;
+    if(event.target.id==='supplier-progress-filter'){selectedSupplier=event.target.value||'all';selectedSupplierBatch='all';resetSupplierRange();setMessage();const filters=window.GREENLOOP_FILTERS.find?.('report-supplier-progress');if(filters)void filters.clear();else renderSupplierProgress();}
+    if(['supplier-progress-batch','supplier-progress-invoice'].includes(event.target.id)){selectedSupplierBatch=event.target.value||'all';resetSupplierRange();setMessage();const filters=window.GREENLOOP_FILTERS.find?.('report-supplier-progress');if(filters)void filters.clear();else renderSupplierProgress();}
   });
-  app.addEventListener("click", event => { if(event.target.closest('[data-supplier-returns]')) { supplierReturnsOpen=!supplierReturnsOpen;renderSupplierProgress(); } });
+  app.addEventListener('input',event=>{
+    if(event.target.id==='supplier-progress-from')supplierDateDraft.from=event.target.value;
+    if(event.target.id==='supplier-progress-to')supplierDateDraft.to=event.target.value;
+  });
+  app.addEventListener('submit',event=>{
+    if(event.target.id!=='supplier-progress-date-form')return;event.preventDefault();
+    if(!window.GREENLOOP_CAN?.('search','reports'))return;
+    const {from,to}=supplierDateDraft;
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(from)||!/^\d{4}-\d{2}-\d{2}$/.test(to)||from>to){setMessage('Select a valid From date and To date.');return;}
+    setMessage();supplierRange={from,to};supplierRangeOpen=false;supplierReturnsOpen=false;void loadSupplierProgress();
+  });
+  app.addEventListener("click", event => {
+    if(event.target.closest('[data-supplier-returns]')){supplierReturnsOpen=!supplierReturnsOpen;renderSupplierProgress();return;}
+    if(event.target.closest('[data-supplier-refresh]')&&window.GREENLOOP_CAN?.('view','reports')){void loadSupplierProgress({refresh:true});return;}
+    if(!window.GREENLOOP_CAN?.('search','reports'))return;
+    if(event.target.closest('[data-supplier-date-toggle]')){supplierRangeOpen=!supplierRangeOpen;renderSupplierProgress();}
+    if(event.target.closest('[data-supplier-all-dates]')){resetSupplierRange();setMessage();renderSupplierProgress();}
+  });
   initialize().catch((error) => { permissionMessage.textContent = error.message || "Reports could not be loaded."; permissionMessage.hidden = false; });
 })();
