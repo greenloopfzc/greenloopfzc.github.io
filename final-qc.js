@@ -28,6 +28,10 @@
   let rowSequence = 0;
   let toastTimer;
 
+  const failurePanelResize = window.ResizeObserver ? new ResizeObserver(entries=>{
+    for(const {target} of entries){if(target.hidden||!target.isConnected)continue;const row=target.closest('tr');const space=Math.ceil(target.getBoundingClientRect().height)+16+'px';if(row.style.getPropertyValue('--failure-panel-space')!==space)row.style.setProperty('--failure-panel-space',space);}
+  }) : null;
+
   const editable = () => window.GREENLOOP_PAGE_ACCESS?.pageKey === "final_qc" && window.GREENLOOP_PAGE_ACCESS.canEdit === true;
 
   function getClient() {
@@ -102,15 +106,13 @@
   function failureTechnicianOptions(value="") {return `<option value="">Select technician</option>${failureTechnicians.map(t=>`<option value="${escapeHtml(t.id)}"${t.id===value?' selected':''}>${escapeHtml(t.full_name)}</option>`).join('')}`;}
   function syncFailureFields(row) {
     const fail=resultValue(row)==='fail'&&rowSteps.has(row.dataset.rowId), fields=row.querySelector('[data-failure-fields]');if(!fields)return;
-    fields.hidden=!fail;row.querySelector('[data-failure-placeholder]').hidden=fail;
-    const table=tableBody.closest('table'),visible=[...tableBody.rows].some(r=>rowSteps.has(r.dataset.rowId)&&resultValue(r)==='fail');
-    if(table.classList.contains('has-failed-phones')!==visible){table.classList.toggle('has-failed-phones',visible);table.querySelectorAll('.final-failure-cell,.final-failure-header').forEach(c=>c.hidden=!visible);window.requestAnimationFrame(syncHorizontalScrollWidth);}
-    row.querySelector('.final-failure-cell').hidden=!visible;
+    fields.hidden=!fail;row.classList.toggle('is-qc-failed',fail);
+    window.requestAnimationFrame(syncHorizontalScrollWidth);
     const completed=row.dataset.completed==='yes';
     row.querySelectorAll('[data-failure-reason],[data-failure-technician]').forEach(c=>c.disabled=!fail||completed||!window.GREENLOOP_CAN?.('entry','final_qc'));
     row.querySelectorAll('[data-add-failure-reason],[data-remove-failure-reason]').forEach(c=>c.disabled=!fail||completed||!window.GREENLOOP_CAN?.('manage_options','final_qc'));
     const context=rowSteps.get(row.dataset.rowId)?.failureReturnContext;
-    row.querySelector('[data-failure-hint]').textContent=context?`Return to ${context.department==='glass'?'Glass':'Laboratory'} · Previous: ${context.technician_name||'Unassigned'}`:'Scan a phone with completed Lab / Glass work before returning it.';
+    row.querySelector('[data-failure-hint]').textContent=context?`IMEI ${getDevice(rowSteps.get(row.dataset.rowId))?.imei_1||''} · Return to ${context.department==='glass'?'Glass':'Laboratory'} · Previous: ${context.technician_name||'Unassigned'}`:'Scan a phone with completed Lab / Glass work before returning it.';
   }
   async function loadFailureOptions(preferredRow,preferredReason) {
     const {data,error}=await getClient().rpc('get_final_qc_failure_options_v1',{});if(error)throw error;
@@ -198,8 +200,7 @@
       <td class="final-result-cell pass"><label><input type="checkbox" data-result="pass"><span>Pass</span></label></td>
       <td class="final-result-cell frame"><label><input type="checkbox" data-result="frame"><span>B-DEPT</span></label></td>
       <td class="final-result-cell fail"><label><input type="checkbox" data-result="fail"><span>Fail</span></label></td>
-      <td class="final-failure-cell" hidden><span data-failure-placeholder>—</span><div data-failure-fields hidden><label>Failure Reason</label><div class="final-failure-reason-control"><select data-failure-reason aria-label="Failure Reason" aria-required="true" data-capability="entry" data-capability-page="final_qc">${failureReasonOptions()}</select><button type="button" data-add-failure-reason data-capability="manage_options" data-capability-page="final_qc" title="Add failure reason">+</button><button type="button" class="remove" data-remove-failure-reason data-capability="manage_options" data-capability-page="final_qc" title="Remove failure reason">−</button></div><label>Return Technician</label><select data-failure-technician aria-label="Return Technician" aria-required="true" data-capability="entry" data-capability-page="final_qc">${failureTechnicianOptions()}</select><small data-failure-hint></small></div></td>
-      <td class="final-save-cell"><button type="button" class="final-row-save" data-save-row>Save</button></td>
+      <td class="final-save-cell"><button type="button" class="final-row-save" data-save-row>Save</button><div class="final-failure-panel" data-failure-fields hidden role="group" aria-label="Phone failure and return technician"><div class="final-failure-field"><label>Failure Reason</label><div class="final-failure-reason-control"><select data-failure-reason aria-label="Failure Reason" aria-required="true" data-capability="entry" data-capability-page="final_qc">${failureReasonOptions()}</select><button type="button" data-add-failure-reason data-capability="manage_options" data-capability-page="final_qc" title="Add failure reason">+</button><button type="button" class="remove" data-remove-failure-reason data-capability="manage_options" data-capability-page="final_qc" title="Remove failure reason">−</button></div></div><div class="final-failure-field"><label>Return Technician</label><select data-failure-technician aria-label="Return Technician" aria-required="true" data-capability="entry" data-capability-page="final_qc">${failureTechnicianOptions()}</select></div><small data-failure-hint></small></div></td>
     </tr>`;
   }
 
@@ -209,6 +210,7 @@
     const inheritedResult = templateRow ? resultValue(templateRow) : "";
     tableBody.insertAdjacentHTML("beforeend", Array.from({ length: quantity }, rowMarkup).join(""));
     [...tableBody.rows].slice(-quantity).forEach((row) => {
+      failurePanelResize?.observe(row.querySelector("[data-failure-fields]"));
       row.querySelector("[data-final-grade]").value = inheritedGrade;
       setResultSelection(row, inheritedResult);
     });
@@ -450,6 +452,7 @@
       const trayHasData = rowSteps.size > 0 || [...tableBody.querySelectorAll(".final-row-imei")].some((input) => input.value.trim());
       if (trayHasData && !window.confirm(`Replace the current tray and load all ${pending.length} pending Final QC IMEIs? Unsaved tray entries will be cleared.`)) return;
 
+      failurePanelResize?.disconnect();
       tableBody.innerHTML = "";
       rowSteps.clear();
       rowSequence = 0;
@@ -697,6 +700,7 @@
     if (tableBody.querySelector('tr[data-saving="yes"]')) { setMessage("Wait for the current save to finish before clearing the tray."); return; }
     const unfinished = [...tableBody.rows].some((row) => rowSteps.has(row.dataset.rowId) && row.dataset.completed !== "yes");
     if (unfinished && !window.confirm("Clear the unfinished Final QC tray? No database records will be deleted.")) return;
+    failurePanelResize?.disconnect();
     tableBody.innerHTML = "";
     rowSteps.clear();
     rowSequence = 0;
