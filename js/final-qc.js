@@ -207,7 +207,8 @@
   function createRows(quantity) {
     const templateRow = tableBody.firstElementChild;
     const inheritedGrade = templateRow?.querySelector("[data-final-grade]")?.value || "";
-    const inheritedResult = templateRow ? resultValue(templateRow) : "";
+    const templateResult = templateRow ? resultValue(templateRow) : "";
+    const inheritedResult = ["pass", "frame"].includes(templateResult) ? templateResult : "";
     tableBody.insertAdjacentHTML("beforeend", Array.from({ length: quantity }, rowMarkup).join(""));
     [...tableBody.rows].slice(-quantity).forEach((row) => {
       failurePanelResize?.observe(row.querySelector("[data-failure-fields]"));
@@ -281,9 +282,10 @@
   }
 
   function carryResult(row) {
-    // Pass/Fail corrections on a middle row must not modify following rows.
+    // Pass/B-DEPT defaults flow from line 1; Fail always belongs to one phone.
     if (row !== tableBody.firstElementChild) return;
     const value = resultValue(row);
+    if (value === "fail") return;
     let next = row.nextElementSibling;
     while (next) {
       if (next.dataset.manualResult !== "yes" && next.dataset.completed !== "yes") {
@@ -796,7 +798,7 @@
     if (event.target.matches("[data-result]")) {
       applyResultRules(row, event.target);
       row.dataset.manualResult = "yes";
-      carryResult(row);
+      if (event.target.dataset.result !== "fail") carryResult(row);
     }
   });
 
