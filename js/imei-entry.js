@@ -328,18 +328,6 @@
     if (connected) applyConnectedDevice(connected);
   }
 
-  function offerCableReview(force = false) {
-    if (!entryReady || !canEnter() || !cableMirror || !boundConnection || window.GREENLOOP_BULK_CABLE_OWNER?.()) return;
-    const connection=boundConnection,batchId=batchSelect.value,phone=imei.value.trim();
-    const read=()=>({imei:imei.value.trim(),platform:platform.value,brand:brand.value.trim(),model:model.value,storageGb:storage.value,color:color.value,batteryHealth:battery.value,batteryUnavailable:batteryUnavailable.checked,serialNumber:serialNumber.value.trim(),phoneRegion:phoneRegion.value.trim(),estimated:battery.dataset.estimated==='yes'});
-    const adapter={key:`${batchId}:${connection}:${window.GREENLOOP_CABLE_CONNECTION_ID||0}`,receipt:batchSummary.querySelector('strong')?.textContent||'Selected supplier receipt',selects:{model,storageGb:storage,color},read,
-      isLatest:()=>{const live=window.GREENLOOP_GET_CONNECTED_DEVICE?.();return !live?.connectionId||live.connectionId===connection;},
-      isCurrent:()=>entryReady&&batchSelect.value===batchId&&boundConnection===connection&&cableMirror&&imei.value.trim()===phone&&!savedImeis.has(phone),
-      write:(d,edited)=>{for(const[key,field]of Object.entries({brand,model,storageGb:storage,color,batteryHealth:battery,serialNumber,phoneRegion})){if(edited.has(key)){if(field.tagName==='SELECT')ensureSelectValue(field,d[key]);else field.value=d[key];field.dataset.cableEdited='yes';}}if(edited.has('batteryUnavailable')){batteryUnavailable.checked=d.batteryUnavailable;battery.dataset.cableEdited='yes';}if(edited.has('estimated'))battery.dataset.estimated='';syncDeviceKind();},
-      save:guard=>saveImei(null,false,guard)};
-    window.GREENLOOP_CABLE_REVIEW?.offer(adapter,force);
-  }
-
   function applyConnectedDevice(device = {}) {
     const connectedImei = String(device.imei || "").replace(/\D/g, "");
     const connection = device.connectionId || (/^\d{15}$/.test(connectedImei) ? `ios:${connectedImei}` : "");
@@ -389,7 +377,6 @@
     if (connectedImei) checkDuplicateImei(connectedImei).catch((error) => setMessage(error.message));
     if (serialNumber.dataset.cableEdited !== "yes") setOptionalInput(serialNumber, device.serialNumber);
     if (phoneRegion.dataset.cableEdited !== "yes") setOptionalInput(phoneRegion, device.phoneRegion);
-    checkDuplicateImei(imei.value).then(duplicate=>{if(!duplicate)offerCableReview();}).catch(()=>{});
     const missing = [
       [/^\d{15}$/.test(imei.value.trim()), "IMEI"],
       [Boolean(brand.value.trim()), "Brand"],
@@ -417,7 +404,7 @@
   batchSelect.addEventListener("change", () => { autoSaveEpoch += 1; window.clearTimeout(autoSaveTimer); });
   function canAutoSave() {
     return Boolean(
-      entryReady && canEnter() && !cableMirror && battery.dataset.estimated !== "yes" && !savedImeis.has(imei.value.trim()) &&
+      entryReady && canEnter() && battery.dataset.estimated !== "yes" && !savedImeis.has(imei.value.trim()) &&
       !(cableMirror && window.GREENLOOP_BULK_CABLE_OWNER?.()) &&
       batches.some((item) => item.batch_id === batchSelect.value) &&
       /^\d{15}$/.test(imei.value.trim()) && imei.checkValidity() &&
@@ -433,13 +420,12 @@
     autoSaveTimer = window.setTimeout(() => { if (epoch === autoSaveEpoch) saveImei(null, true); }, 650);
   }
 
-  async function saveImei(event, automatic = false, reviewGuard = null) {
+  async function saveImei(event, automatic = false) {
     event?.preventDefault();
     window.clearTimeout(autoSaveTimer);
     if (saving) return;
     if (!entryReady || !canEnter()) { setMessage("Entry permission is required to save an IMEI."); return; }
     if (automatic && (!autoSaveEnabled() || !canAutoSave())) return;
-    if(cableMirror&&!reviewGuard){if(!automatic)offerCableReview(true);return;}
     const epoch = autoSaveEpoch;
     setMessage();
     const batch = batches.find((item) => item.batch_id === batchSelect.value);
@@ -463,13 +449,11 @@
     saving = true;
     savingImeis.add(scannedImei);
     setBusy(submit, true, automatic ? "Saving automatically..." : "Saving IMEI...");
-    let saveResult=null;
     try {
     if (await checkDuplicateImei(scannedImei, { force: !automatic })) return;
-    if (!canEnter() || (reviewGuard&&!reviewGuard()) || batchSelect.value !== batch.batch_id || (automatic && (!autoSaveEnabled() || epoch !== autoSaveEpoch))) { setMessage("Not saved — Auto Save stopped or receipt/access changed."); return; }
+    if (!canEnter() || batchSelect.value !== batch.batch_id || (automatic && (!autoSaveEnabled() || epoch !== autoSaveEpoch))) { setMessage("Not saved — Auto Save stopped or receipt/access changed."); return; }
     const { data, error } = await api().rpc("receive_stock_batch_imei_with_identity_v1", receiptDetails);
     if (error) { setMessage(window.GREENLOOP_SHOW_IMEI_SAVE_ERROR(error, scannedImei)); return; }
-    saveResult={saved:true,entry:{imei:scannedImei,model:receiptDetails.p_model,storageGb,color:receiptDetails.p_color,brand:receiptDetails.p_brand,platform:receiptDetails.p_platform,serialNumber:cableDetails.serial,phoneRegion:cableDetails.region}};
     savedImeis.add(scannedImei);
     window.dispatchEvent(new CustomEvent("greenloop:imei-entry-saved", { detail: { imei: scannedImei } }));
     const result = data?.[0];
@@ -495,7 +479,6 @@
       syncDeviceKind();
       if (!detailPanel.hidden && !duplicateDialog?.open) imei.focus();
     }
-    return saveResult;
   }
 
   async function initialize() {
