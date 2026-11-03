@@ -1,0 +1,32 @@
+#lab-total-pending[role="button"]{cursor:pointer}
+#lab-total-pending[role="button"]:focus-visible{outline:3px solid var(--nm-green,#087456);outline-offset:4px}
+#lab-pending-overview{width:min(1480px,96vw);max-width:96vw;max-height:92dvh;padding:0;border:1px solid var(--nm-line,#cdd7df);border-radius:20px;background:var(--nm-bg,#f5f8fb);color:var(--nm-ink,#25333b);box-shadow:0 20px 70px #102b3855;overflow:auto}
+#lab-pending-overview::backdrop{background:#16334088;backdrop-filter:blur(3px)}
+#lab-pending-overview .lpo-head{display:flex;justify-content:space-between;gap:20px;align-items:center;padding:22px 24px;border-bottom:1px solid var(--nm-line,#cdd7df)}
+#lab-pending-overview .lpo-head p{font-size:11px;font-weight:800;letter-spacing:.14em;margin:0 0 6px;color:var(--nm-muted,#52636d)}
+#lab-pending-overview h2{margin:0;font-size:25px}
+#lab-pending-overview .lpo-head>div:last-child{display:flex;gap:10px}
+#lab-pending-overview button{min-height:42px;padding:8px 18px;border-radius:10px}
+#lab-pending-overview .lpo-filters{display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:16px;padding:20px 24px 0;align-items:end}
+#lab-pending-overview label{display:grid;gap:7px;font-size:13px;font-weight:700;min-width:0}
+#lab-pending-overview input,#lab-pending-overview select{width:100%;min-width:0;min-height:44px;font:inherit;box-sizing:border-box;border:1px solid var(--nm-line,#cdd7df);border-radius:10px;padding:10px 12px;background:var(--nm-surface,#e6edf2);color:inherit;box-shadow:inset 2px 2px 5px #617b8a22}
+#lab-pending-overview button{background:var(--nm-raised,#f5f8fb);color:inherit;border:1px solid var(--nm-line,#cdd7df);box-shadow:2px 3px 5px #617b8a33;font-weight:700;font-size:12px;cursor:pointer}
+#lab-pending-overview [data-lpo-complete]{background:#087456;color:#fff;white-space:nowrap;padding:8px 10px}
+#lab-pending-overview button:disabled{cursor:default;opacity:.5}
+#lab-pending-overview .lpo-message{padding:0 24px;font-size:13px;color:var(--nm-muted,#52636d)}
+#lab-pending-overview .lpo-scroll{overflow:auto;max-height:56dvh;border-block:1px solid var(--nm-line,#cdd7df)}
+#lab-pending-overview table{width:100%;border-collapse:collapse;min-width:1320px;font-size:12px}
+#lab-pending-overview th{position:sticky;top:0;background:var(--nm-surface,#e4ecf2);font-size:12px;z-index:1;text-align:left}
+#lab-pending-overview th,#lab-pending-overview td{padding:12px 8px;border-bottom:1px solid var(--nm-line,#cdd7df);vertical-align:top;white-space:normal;overflow-wrap:anywhere}
+#lab-pending-overview bdi{white-space:nowrap;font-weight:750;color:var(--nm-green,#087456)}
+#lab-pending-overview small{display:block;margin-top:5px;font-size:11px;color:var(--nm-muted,#52636d)}
+#lab-pending-overview .lpo-list>span{display:block;margin-bottom:8px}
+#lab-pending-overview .lpo-list>span:last-child{margin-bottom:0}
+#lab-pending-overview .lpo-empty{text-align:center;padding:40px}
+#lab-pending-overview footer{padding:17px 24px;font-size:14px;font-weight:750}
+html[data-mode="dark"] #lab-pending-overview{background:#27333e;color:#e8f0f4;border-color:#526373}
+html[data-mode="dark"] #lab-pending-overview th{background:#344552}
+html[data-mode="dark"] #lab-pending-overview input,html[data-mode="dark"] #lab-pending-overview select,html[data-mode="dark"] #lab-pending-overview button:not([data-lpo-complete]){background:#344552;color:#e8f0f4}
+html[data-mode="dark"] #lab-pending-overview small,html[data-mode="dark"] #lab-pending-overview .lpo-message,html[data-mode="dark"] #lab-pending-overview .lpo-head p{color:#bccbd5}
+html[data-mode="dark"] #lab-pending-overview bdi{color:#8ce4c6}
+@media(max-width:700px){#lab-pending-overview .lpo-head{align-items:flex-start;padding:16px;flex-direction:column}#lab-pending-overview .lpo-filters{grid-template-columns:1fr;padding:16px 16px 0}#lab-pending-overview .lpo-message{padding:0 16px}#lab-pending-overview h2{font-size:22px}#lab-pending-overview .lpo-scroll{max-height:42dvh}}

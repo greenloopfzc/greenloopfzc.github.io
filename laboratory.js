@@ -421,6 +421,10 @@
       }
     }
   }
+  window.GREENLOOP_LAB_PENDING_CONTEXT = Object.freeze({
+    hasDrafts: () => [...lineDrafts.values()].some(d => d.partsDirty || d.servicesDirty) || !!technicianWorkRows.querySelector('tr[data-dirty="true"], tr[data-editing="true"], tr[data-busy="yes"]'),
+    onTransferred: () => refreshAll()
+  });
   async function refreshAll() {
     if (isFrameMode) { await loadFrameRows(); return; }
     const previous=activeTechnicianId;
