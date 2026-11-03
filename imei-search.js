@@ -363,7 +363,7 @@ function buildStageSections(sortedRows) {
   function renderBasicTable(device,rows) {
     const names=Boolean(window.GREENLOOP_CAN_VIEW_PARTNER_NAMES);
     const receipt=[...rows].reverse().find(row=>row.stage==="stock_received") || {};
-    const supplierCode=scalar(device.supplier_code) || field(receipt,"Supplier code","Supplier");
+    const supplierCode=GREENLOOP_RECEIPTS.label("imei_search",device.imei_1,scalar(device.supplier_code)||field(receipt,"Supplier code","Supplier"),null,null);
     const supplierName=names ? scalar(device.supplier_name) || field(receipt,"Supplier name") : "";
     const values=[
       ["Model",[device.brand,device.model].map(scalar).filter(Boolean).join(" · ")],["Color",device.color],
@@ -418,6 +418,8 @@ function buildStageSections(sortedRows) {
       const raw=response.data;
       const history=Array.isArray(raw)?raw[0]?.search_imei_journey_v1 || raw[0]:raw;
       if(!history?.found){setMessage("This device is no longer available. Search again.");return;}
+      await GREENLOOP_RECEIPTS.load("imei_search",[history.device?.imei_1]);
+      if(version!==searchVersion)return;
       renderHistory(history);
       window.history.replaceState(null,"",`?q=${encodeURIComponent(identifier)}`);
     } catch(error) {if(version===searchVersion)setMessage(error.message || "Device history could not be loaded.");}
@@ -449,7 +451,7 @@ function buildStageSections(sortedRows) {
       if(!append){
         query.value=receipt.invoice_number || receipt.batch_number || query.value;
         const values=[["Invoice",receipt.invoice_number],["Stock/Batch No",receipt.batch_number],["Stock received",moment(receipt.received_at)],
-          ["Received by",receipt.received_by],["Supplier code",receipt.supplier_code],
+          ["Received by",receipt.received_by],["Supplier code",GREENLOOP_SUPPLIER_RECEIPT_LABEL(receipt.supplier_code,receipt.planned_quantity,null)],
           ...(window.GREENLOOP_CAN_VIEW_PARTNER_NAMES?[["Supplier",receipt.supplier_name]]:[]),
           ["Quantity received",receipt.planned_quantity],["Phones entered",receipt.entered_quantity],["Phones returned",receipt.returned_quantity],["Stock channel",receipt.stock_channel]];
         receiptResult.innerHTML='<h2>Stock received details</h2><dl>'+values.map(([name,value])=>'<div><dt>'+escapeHtml(name)+'</dt><dd>'+safe(value)+'</dd></div>').join('')+'</dl><h3>Phones in this receipt</h3><div class="history-receipt-devices"></div><button type="button" class="secondary-button" data-search-read-only data-receipt-more hidden>Show more phones</button>';

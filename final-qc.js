@@ -411,6 +411,7 @@
       .order("created_at", { ascending: true }).order("id"));
     if (error) throw error;
     const nextSteps = data || [];
+    await window.GREENLOOP_RECEIPTS.jobs("final_qc",nextSteps.map(s=>Array.isArray(s.work_order)?s.work_order[0]?.job:s.work_order?.job).filter(Boolean));
     const defaults = new Map();
     for (let offset = 0; offset < nextSteps.length; offset += 500) {
       const ids = nextSteps.slice(offset, offset + 500).map(s => s.id);
