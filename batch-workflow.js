@@ -117,16 +117,15 @@
       window.clearTimeout(row._autoSaveTimer);
       if (!autoSaveEnabled() || row.dataset.busy === "yes" || row.dataset.saved === "yes" || !canEnter()) return;
       const estimated = row.querySelector(".batch-row-battery").dataset.estimated === "yes";
-      if (!rowComplete(row) || estimated) {
+      if (!rowComplete(row)) {
         const missing = [];
         if (!/^\d{15}$/.test(row.querySelector(".batch-row-imei").value.trim())) missing.push("15-digit IMEI");
         for (const [key, title] of [["brand","Brand"],["model","Model"],["storage","GB"],["color","Color"]]) if (!row.querySelector(".batch-row-" + key).value.trim()) missing.push(title);
         if (!missing.length && !rowComplete(row)) missing.push("valid Battery Health");
-        if (estimated) missing.push("review Battery Health");
         setRowStatus(row, "Auto Save: " + (missing.length ? missing.join(", ") : "check IMEI"));
         return;
       }
-      setRowStatus(row, "Ready for Auto Save");
+      setRowStatus(row, estimated ? "Ready for Auto Save — Estimated BH" : "Ready for Auto Save");
       row._autoSaveDue = performance.now() + 650;
       const epoch = autoSaveEpoch;
       row._autoSaveTimer = window.setTimeout(() => {
@@ -325,7 +324,7 @@
     async function saveRow(row, automatic = false, epoch = autoSaveEpoch) {
       if (!row || row.dataset.busy === "yes" || row.dataset.saved === "yes") return;
       if (!canEnter()) { setRowStatus(row, "Entry permission is required", "is-error"); return; }
-      if (automatic && (epoch !== autoSaveEpoch || !autoSaveEnabled() || !rowComplete(row) || row.querySelector(".batch-row-battery").dataset.estimated === "yes")) return;
+      if (automatic && (epoch !== autoSaveEpoch || !autoSaveEnabled() || !rowComplete(row))) return;
       if (!currentBatch || String(currentBatch.batch_id) !== batchSelect.value || !panel.contains(row)) {
         setRowStatus(row, "Wait for the selected supplier batch to load", "is-error"); return;
       }
@@ -337,6 +336,7 @@
       const platform = row.querySelector(".batch-row-platform").value;
       const brand = row.querySelector(".batch-row-brand").value.trim();
       const unavailable = platform === "android" && row.querySelector(".batch-row-battery-unavailable").checked;
+      const estimatedBattery = !unavailable && row.querySelector(".batch-row-battery").dataset.estimated === "yes";
       const button = row.querySelector(".batch-save-button");
       if (!/^\d{15}$/.test(imei)) { setRowStatus(row, "IMEI must be 15 digits", "is-error"); row.querySelector(".batch-row-imei").focus(); return; }
       if (!row.querySelector(".batch-row-imei").checkValidity()) { setRowStatus(row, "Phone IMEI differs from the entered IMEI — review this line", "is-error"); return; }
@@ -382,7 +382,7 @@
       row.classList.add("batch-saved-row");
       row.querySelectorAll("input, select").forEach((control) => { control.disabled = true; });
       button.textContent = "Saved";
-      setRowStatus(row, "Sent to Initial QC", "is-saved");
+      setRowStatus(row, estimatedBattery ? `Sent to Initial QC — BH ${battery}% (Estimated)` : "Sent to Initial QC", "is-saved");
 
       const nextRow = row.nextElementSibling;
       const nextControl = nextRow?.querySelector(".batch-row-imei:not(:disabled)") || panel.querySelector("tr:not(.batch-saved-row) .batch-row-battery:not(:disabled)");
@@ -425,7 +425,7 @@
         if (row.querySelector(".batch-row-imei")?.value === event.detail.imei) {
           row.dataset.saved = "yes";
           row.querySelectorAll("input, select, button").forEach((control) => { control.disabled = true; });
-          setRowStatus(row, "Sent to Initial QC", "is-saved");
+          setRowStatus(row, event.detail.batteryHealthEstimated ? `Sent to Initial QC — BH ${event.detail.batteryHealth}% (Estimated)` : "Sent to Initial QC", "is-saved");
         }
       });
     });
@@ -504,11 +504,11 @@
         const complete = rowComplete(row);
         const estimated = device.batteryHealthSource === "capacity-estimate";
         if (row.querySelector(".batch-row-battery").dataset.cableEdited !== "yes") {
-          row.querySelector(".batch-row-battery").title = estimated ? "Estimated from battery capacity. Verify before saving." : "Read from connected phone";
+          row.querySelector(".batch-row-battery").title = estimated ? "Estimated from battery capacity; Auto Save includes this reading." : "Read from connected phone";
           row.querySelector(".batch-row-battery").dataset.estimated = estimated ? "yes" : "";
         }
-        setRowStatus(row, !complete ? "Phone loaded — waiting for missing fields" : estimated ? "Phone loaded — verify estimated BH and save" : "Phone loaded — review and save", "is-saving");
-        if (autoSaveEnabled() && complete && !estimated) scheduleRowSave(row);
+        setRowStatus(row, !complete ? "Phone loaded — waiting for missing fields" : estimated ? "Phone loaded — Estimated BH" : "Phone loaded — review and save", "is-saving");
+        if (autoSaveEnabled() && complete) scheduleRowSave(row);
         else row.querySelector(".batch-save-button")?.focus();
       }).catch(() => {
         setRowStatus(row, "IMEI check failed - see popup", "is-error");

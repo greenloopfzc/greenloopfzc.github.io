@@ -370,7 +370,7 @@
       battery.value = Number(device.batteryHealth);
     }
     if (battery.dataset.cableEdited !== "yes") {
-      battery.title = device.batteryHealthSource === "capacity-estimate" ? "Estimated from phone battery capacity. Verify before saving." : "Read from connected phone";
+      battery.title = device.batteryHealthSource === "capacity-estimate" ? "Estimated from phone battery capacity; Auto Save includes this reading." : "Read from connected phone";
       battery.dataset.estimated = device.batteryHealthSource === "capacity-estimate" ? "yes" : "";
     }
     // Duplicate detection should also run when an optional color/BH read is late.
@@ -391,7 +391,7 @@
       return;
     }
     const extraDetails = [serialNumber?.value ? "serial number" : "", phoneRegion?.value ? "phone region" : ""].filter(Boolean);
-    if (readerStatus) readerStatus.textContent = (extraDetails.length ? `Connected phone loaded with ${extraDetails.join(" and ")}` : "Connected phone loaded") + (battery.dataset.estimated === "yes" ? " - BH is estimated; verify before saving" : "");
+    if (readerStatus) readerStatus.textContent = (extraDetails.length ? `Connected phone loaded with ${extraDetails.join(" and ")}` : "Connected phone loaded") + (battery.dataset.estimated === "yes" ? " - BH is estimated" : "");
     setMessage("Connected phone data loaded. Review it, then save.", "success");
     checkDuplicateImei(imei.value).then((duplicate) => {
       if (!duplicate && autoSaveEnabled() && !window.GREENLOOP_BULK_CABLE_OWNER?.()) scheduleAutoSave();
@@ -404,7 +404,7 @@
   batchSelect.addEventListener("change", () => { autoSaveEpoch += 1; window.clearTimeout(autoSaveTimer); });
   function canAutoSave() {
     return Boolean(
-      entryReady && canEnter() && battery.dataset.estimated !== "yes" && !savedImeis.has(imei.value.trim()) &&
+      entryReady && canEnter() && !savedImeis.has(imei.value.trim()) &&
       !(cableMirror && window.GREENLOOP_BULK_CABLE_OWNER?.()) &&
       batches.some((item) => item.batch_id === batchSelect.value) &&
       /^\d{15}$/.test(imei.value.trim()) && imei.checkValidity() &&
@@ -437,6 +437,8 @@
     if (savedImeis.has(scannedImei)) { checkDuplicateImei(scannedImei, { force: true }).catch(() => {}); return; }
     if (!hasBatteryHealth()) { setMessage("Enter battery health 0–100, or select Not available for an Android phone."); return; }
     const unavailable = platform.value === "android" && batteryUnavailable.checked;
+    const estimatedBattery = !unavailable && battery.dataset.estimated === "yes";
+    const enteredBatteryHealth = unavailable ? null : Number(battery.value);
     const storageGb=storageValues.parse(storage.value);if(storageGb===null){setMessage('Select valid storage before saving.');return;}
     const receiptDetails = { p_batch_id: batch.batch_id, p_imei_1: scannedImei, p_model: model.value, p_storage_gb: storageGb, p_color: color.value, p_battery_health: unavailable ? null : Number(battery.value), p_brand: brand.value.trim(), p_platform: platform.value, p_battery_health_unavailable: unavailable };
     const cableDetails = { serial: serialNumber?.value.trim() || null, region: phoneRegion?.value.trim() || null };
@@ -455,10 +457,10 @@
     const { data, error } = await api().rpc("receive_stock_batch_imei_with_identity_v1", receiptDetails);
     if (error) { setMessage(window.GREENLOOP_SHOW_IMEI_SAVE_ERROR(error, scannedImei)); return; }
     savedImeis.add(scannedImei);
-    window.dispatchEvent(new CustomEvent("greenloop:imei-entry-saved", { detail: { imei: scannedImei } }));
+    window.dispatchEvent(new CustomEvent("greenloop:imei-entry-saved", { detail: { imei: scannedImei, batteryHealthEstimated: estimatedBattery, batteryHealth: enteredBatteryHealth } }));
     const result = data?.[0];
 
-    setMessage(`IMEI saved. ${result?.entered_quantity || 0} of ${result?.planned_quantity || batch.planned_quantity} devices entered and sent to Initial QC.`, "success");
+    setMessage(`IMEI saved. ${result?.entered_quantity || 0} of ${result?.planned_quantity || batch.planned_quantity} devices entered and sent to Initial QC.${estimatedBattery ? ` BH ${enteredBatteryHealth}% (Estimated).` : ""}`, "success");
 
     sessionStorage.setItem("greenloop-next-initial-qc-imei", scannedImei);
     imei.value = "";
