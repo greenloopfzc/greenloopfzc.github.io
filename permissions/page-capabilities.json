@@ -1,5 +1,5 @@
 {
-  "version": "20261101-tv-overdue-1",
+  "version": "20261104-accounts-imei-data-1",
   "pages": [
     {
       "key": "overview",
@@ -612,6 +612,16 @@
           "key": "print",
           "label": "Print",
           "write": true
+        },
+        {
+          "key": "imei_data",
+          "label": "View IMEI DATA",
+          "write": false
+        },
+        {
+          "key": "imei_download",
+          "label": "IMEI DATA: PDF View / Download and Excel",
+          "write": false
         }
       ]
     },
