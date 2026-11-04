@@ -33,6 +33,7 @@
       for(const s of wrap(scope(r),W-2*M,8)){text(s,M,y,8,false,muted);y-=11;}y-=7;
       const stats=[['Total records',r.summary.total_records],['In company',r.summary.in_company],['Ready Stock',r.summary.ready],['In process',r.summary.in_process],['Exported',r.summary.exported],['Returned',r.summary.returned]],w=(W-2*M)/6;
       stats.forEach(([label,n],i)=>{rect(M+i*w,y,w,40,i===5?'#fff1ee':'#eff6f3');text(label,M+i*w+6,y-6,7,false,muted);text(n,M+i*w+6,y-19,13,true,i===5?red:green);});y-=52;
+      if(r.receipt_summary){const a=r.receipt_summary,extra=[['Received stock',a.received],['Returned',a.returned],['Replacement received',a.replacement_received],['Stock balance',a.balance]],sw=(W-2*M)/4;extra.forEach(([label,n],i)=>{rect(M+i*sw,y,sw,38,'#eff6f3');text(label,M+i*sw+6,y-6,7,false,muted);text(n===null?'Not recorded':n,M+i*sw+6,y-18,13,true,green);});y-=50;}
       cells(['IMEI','Model','GB','Color','Supplier','Stock / Batch No.','Date Received'].map((s,i)=>wrap(s,cols[i]-10,size,true)),{header:true});tableTop=y;
     }
     function row(values,r){const lines=values.map((v,i)=>wrap(v,cols[i]-10));const n=Math.max(...lines.map(v=>v.length));let at=0;if(n*line+12<=tableTop-54&&n*line+12>y-54)start();while(at<n){let fit=Math.floor((y-54-12)/line);if(fit<1){start();fit=Math.floor((y-54-12)/line);}const take=Math.min(fit,n-at),part=lines.map(v=>v.slice(at,at+take));if(at>0){part[0]=wrap((r.imei||'Not recorded')+' (cont.)',cols[0]-10).slice(0,take);}cells(part,{returned:r.returned,pending:r.return_pending&&!r.returned});at+=take;if(at<n)start();}}
