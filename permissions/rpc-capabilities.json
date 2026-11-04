@@ -1802,5 +1802,14 @@
       }
     ],
     "read": true
+  },
+  "get_b_dept_lab_options_v1": {
+    "page": "frame_department",
+    "capability": "view",
+    "read": true
+  },
+  "record_b_dept_result_v2": {
+    "page": "frame_department",
+    "capability": "entry"
   }
 }

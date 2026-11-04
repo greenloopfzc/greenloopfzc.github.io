@@ -332,3 +332,6 @@ Object.assign(window.GREENLOOP_RPC_CAPABILITIES,{
 
 /* Initial QC grade and work analysis: server and browser grants match. */
 Object.assign(window.GREENLOOP_RPC_CAPABILITIES,{"get_stock_grade_analysis_v1":{"all":[{"page":"reports","capability":"view"},{"page":"reports","capability":"stock_grade_analysis"}],"read":true},"export_stock_grade_analysis_v1":{"all":[{"page":"reports","capability":"view"},{"page":"reports","capability":"stock_grade_analysis"},{"page":"reports","capability":"stock_grade_download"}],"read":true}});
+
+/* B-DEPT Pass destinations retain the existing page/action grants. */
+Object.assign(window.GREENLOOP_RPC_CAPABILITIES,{"get_b_dept_lab_options_v1":{"page":"frame_department","capability":"view","read":true},"record_b_dept_result_v2":{"page":"frame_department","capability":"entry"}});
