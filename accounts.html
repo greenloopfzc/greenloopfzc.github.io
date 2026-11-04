@@ -20,8 +20,8 @@
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="js/imei-scan.js?v=20261102-imei-scan-location-1"></script>
 <script defer src="js/imei-stage-notice.js?v=20261102-imei-scan-location-1"></script>
-  <script defer src="js/permission-catalog.js?v=20261101-tv-overdue-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261103-workflow-polish-1"></script>
+  <script defer src="js/permission-catalog.js?v=20261104-accounts-imei-data-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261104-accounts-imei-data-1"></script>
 <script defer src="js/page-capabilities.js?v=20261030-supplier-progress-1"></script>
 <link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
 <script defer src="js/office-access.js?v=20261024-office-access-1"></script>
@@ -30,7 +30,10 @@
   <link rel="stylesheet" href="css/record-search.css?v=20261017-find-record-popup-1">
   <script defer src="js/record-search.js?v=20261027-performance-1"></script>
     <script defer src="js/part-notifications.js?v=20261103-workflow-polish-1"></script>
-    <script defer src="js/accounts-stock.js?v=20261027-stock-batches-1"></script>
+    <link rel="stylesheet" href="css/accounts-imei-data.css?v=20261104-accounts-imei-data-1">
+    <script defer src="js/accounts-imei-exports.js?v=20261104-accounts-imei-data-1"></script>
+    <script defer src="js/accounts-imei-data.js?v=20261104-accounts-imei-data-1"></script>
+    <script defer src="js/accounts-stock.js?v=20261104-accounts-imei-data-1"></script>
     <script defer src="js/box-workflow.js?v=20261024-box-recheck-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
     <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261102-imei-scan-location-1">
@@ -60,6 +63,7 @@
               <button type="button" class="accounts-section-card is-active" data-accounts-view="verify" data-search-read-only aria-pressed="true"><span class="accounts-card-icon" aria-hidden="true">✓</span><strong>Verify Box</strong><small>Review saved boxes and select a customer.</small></button>
               <button type="button" class="accounts-section-card" data-accounts-view="supplier" data-search-read-only aria-pressed="false"><span class="accounts-card-icon" aria-hidden="true">▦</span><strong>Supplier Stock</strong><small>All suppliers in one stock table.</small></button>
               <button type="button" class="accounts-section-card" data-accounts-view="customer" data-search-read-only aria-pressed="false"><span class="accounts-card-icon" aria-hidden="true">↗</span><strong>Customer Stock</strong><small>All customers and their exported phones.</small></button>
+              <button type="button" class="accounts-section-card" data-accounts-view="imei" data-capability="imei_data" data-capability-page="accounts" data-search-read-only aria-pressed="false" hidden><span class="accounts-card-icon" aria-hidden="true">▤</span><strong>IMEI DATA</strong><small>Stock phone lists, returns and PDF / Excel downloads.</small></button>
             </nav>
             <section id="accounts-verify-panel" aria-label="Verify Box">
             <form id="box-queue-filter" class="box-queue-filter"><label>From date<input name="from" type="date"></label><label>To date<input name="to" type="date"></label><button class="primary-button" type="submit" data-search-read-only>Show boxes</button><button id="clear-box-dates" class="secondary-button" type="button" data-search-read-only>All dates</button></form>
@@ -67,6 +71,7 @@
             <section class="box-queue-card"><div id="box-queue-list"></div><div class="box-queue-pagination"><button id="box-queue-prev" class="secondary-button" type="button" data-search-read-only>Previous</button><span id="box-queue-count"></span><button id="box-queue-next" class="secondary-button" type="button" data-search-read-only>Next</button></div></section>
             <section id="box-queue-detail" class="box-queue-card" hidden></section>
             </section>
+            <section id="accounts-imei-panel" hidden aria-label="IMEI DATA"></section>
             <section id="accounts-stock-panel" hidden aria-labelledby="accounts-stock-title">
               <div class="accounts-stock-heading"><h2 id="accounts-stock-title">Supplier Stock</h2><span id="accounts-stock-updated" class="live-chip" role="status"></span></div>
               <form id="accounts-stock-filter" class="box-queue-filter">
