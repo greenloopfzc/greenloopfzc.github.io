@@ -146,7 +146,7 @@
     if (!config.supabaseUrl || !config.supabaseAnonKey || !window.supabase) { showToast("Board connection is not configured."); return; }
     const { data, error } = await getClient().auth.getSession();
     if (error || !data.session) { window.location.replace("index.html"); return; }
-    await window.GREENLOOP_ACCESS_READY;
+    await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();
     if (!window.GREENLOOP_PAGE_ACCESS) return;
     boardReady = true;
     board.hidden = false;

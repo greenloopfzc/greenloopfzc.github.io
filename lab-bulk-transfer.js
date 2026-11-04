@@ -27,7 +27,6 @@
     clearTimeout(timer);if(!canEdit()||working||pending)return;
     if(dirty()){message('Save or discard the changed Lab lines before preparing a bulk transfer.',true);return;}
     const scan=String(value??'').trim();if(!/^[0-9]{15}$/.test(scan)){message('Enter or scan one complete 15-digit IMEI.',true);focus();return;}
-    if(rows.length+queue.length>=500){message('Transfer the current list before adding more phones (500 per handover).',true);return;}
     el('scan').value='';focus();
     if(queue.includes(scan)||rows.some(row=>row.imei===scan)){message('This phone is already in the transfer list.',true);return;}
     queue.push(scan);drain();
@@ -59,8 +58,8 @@
     if(working||processing||queue.length||!canEdit()||!rows.length)return;
     if(dirty()){message('Save or discard the changed Lab lines before transfer.',true);return;}
     if(!pending&&(needsRecheck||rows.some(row=>!row.ready)))return;
-    pending ||= {p_request_id:crypto.randomUUID(),p_items:rows.map(row=>({imei:row.imei,step_id:row.step_id,selection_token:row.selection_token}))};
-    working=true;const revision=epoch;render();message('Transferring all phones to Final QC…');
+    pending ||= {p_request_id:crypto.randomUUID(),p_items:rows.slice(0,500).map(row=>({imei:row.imei,step_id:row.step_id,selection_token:row.selection_token}))};
+    working=true;let continueTransfer=false;const revision=epoch;render();message('Transferring all phones to Final QC…');
     try{
       const r=await client().rpc('transfer_lab_bulk_to_final_qc_v1',pending);if(!alive(revision))return;
       if(r.error){
@@ -74,12 +73,13 @@
       if(!result||result.transfer_id!==pending.p_request_id||result.status!=='final_qc_pending'||result.transferred_count!==expected.length||!Array.isArray(result.imeis)||JSON.stringify([...result.imeis].sort())!==JSON.stringify(expected)){
         message('The transfer result could not be confirmed. Retry this same transfer to check its saved result.',true);return;
       }
-      const count=result.transferred_count;rows=[];pending=null;needsRecheck=false;
-      message(`${count} phone${count===1?'':'s'} transferred to Final QC.`);
+      const count=result.transferred_count,done=new Set(expected);rows=rows.filter(row=>!done.has(row.imei));pending=null;needsRecheck=false;continueTransfer=rows.length>0;
+      message(`${count} phone${count===1?'':'s'} transferred to Final QC.${rows.length?' '+rows.length+' remaining phones will transfer next.':''}`);
       document.dispatchEvent(new CustomEvent('greenloop:notifications-changed'));
       try{await context?.onTransferred?.(result);}catch{if(alive(revision))message(`${count} phones transferred to Final QC. Refresh the workbench to update its cards.`);}
     }catch(error){if(alive(revision))message((error.message||'Connection interrupted.')+' Retry this same transfer to confirm its result. Keep this page open.',true);}
     finally{if(alive(revision)){working=false;render();if(!pending)focus();}}
+    if(continueTransfer&&alive(revision))await transfer();
   }
   function mount(host,options={}){
     unmount();if(!host||window.location.hash.toLowerCase()==='#frame'||window.GREENLOOP_PAGE_ACCESS?.pageKey!=='lab_glass')return;

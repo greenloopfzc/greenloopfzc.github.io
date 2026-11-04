@@ -96,5 +96,5 @@
   apply:async value=>{for(const key of ['model','gb','grade','quantity'])f.elements[key].value=value[key];message();await readSelection();}
  });
  const poll=setInterval(()=>{if(!document.hidden&&can('view'))refresh();},60000);window.addEventListener('focus',()=>{if(can('view'))refresh();});document.addEventListener('visibilitychange',()=>{if(!document.hidden&&can('view'))refresh();});window.addEventListener('pagehide',()=>{clearInterval(poll);clearTimeout(cutoffTimer);});
- (async()=>{await window.GREENLOOP_ACCESS_READY;if(can('view'))await refresh();})();
+ (async()=>{await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();if(can('view'))await refresh();})();
 })();

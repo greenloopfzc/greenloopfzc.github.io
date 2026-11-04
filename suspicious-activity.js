@@ -83,5 +83,5 @@
     const url=URL.createObjectURL(new Blob(['\ufeff'+lines.map(row=>row.map(csvCell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='Greenloop-Suspicious-Activity.csv';a.dataset.capability='download';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
   }catch(e){message(e.message);}finally{b.disabled=false;}});
   window.addEventListener('greenloop:suspicious-summary',e=>{if(e.detail!==summary){showSummary(e.detail);if(!$('sa-detail').open&&!$('sa-rules').open)load();}});
-  (async()=>{await window.GREENLOOP_ACCESS_READY;if(!can('view'))return;locks();await Promise.all([load(),refreshSummary()]);})();
+  (async()=>{await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();if(!can('view'))return;locks();await Promise.all([load(),refreshSummary()]);})();
 })();

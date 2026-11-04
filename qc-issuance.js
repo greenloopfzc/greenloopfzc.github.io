@@ -101,6 +101,6 @@
   function stop(){stopped=true;records.clear();prepared.clear();body.innerHTML='';app.hidden=true;message('Access ended. Reload after signing in.');}
   window.addEventListener('greenloop:office-locked',stop);window.addEventListener('pagehide',stop);client.auth.onAuthStateChange?.(e=>{if(e==='SIGNED_OUT')stop();});
   window.addEventListener('greenloop:permissions-changed',()=>{if(!window.GREENLOOP_CAN?.('view','initial_qc'))stop();else syncAll();});
-  async function init(){await window.GREENLOOP_ACCESS_READY;if(!window.GREENLOOP_CAN?.('view','initial_qc'))throw Error('Initial QC page access is required.');await refresh();createRows(10);app.hidden=false;paste=window.GREENLOOP_QC_EXCEL_PASTE.attach({app,tableBody:body,selector:'.qc-issuance-imei',page:'initial_qc',client,createRows,clearRow,loadRow,prepare,onUnlock:()=>setTimeout(syncAll,0)});window.GREENLOOP_QC_HANDOVER?.refresh();syncAll();}
+  async function init(){await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();if(!window.GREENLOOP_CAN?.('view','initial_qc'))throw Error('Initial QC page access is required.');await refresh();createRows(10);app.hidden=false;paste=window.GREENLOOP_QC_EXCEL_PASTE.attach({app,tableBody:body,selector:'.qc-issuance-imei',page:'initial_qc',client,createRows,clearRow,loadRow,prepare,onUnlock:()=>setTimeout(syncAll,0)});window.GREENLOOP_QC_HANDOVER?.refresh();syncAll();}
   void init().catch(e=>{$('#permission-message').textContent=e.message||'Issuance could not load.';$('#permission-message').hidden=false;});
 })();

@@ -12,7 +12,7 @@
   let context, dialog, modalGeneration = 0, modalBusy = false, reportRoot, reportGeneration = 0;
   const retries = new Map();
   async function rpc(name, args = {}) {
-    await window.GREENLOOP_ACCESS_READY;
+    await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();
     const { data, error } = await window.GREENLOOP_GET_CLIENT().rpc(name, args);
     if (error) throw Object.assign(new Error(error.code === "PGRST202" ? "Install the Supplier Returns database update first." : error.message || "The request could not be completed."), { code: error.code });
     return data;
@@ -146,7 +146,8 @@
         simpleContext = null; simpleRows = [];
         root.querySelector("[data-sr-simple-form]").innerHTML = "";
         root.querySelector("[data-sr-simple-table]").innerHTML = "";
-        root.querySelector("[data-sr-total]").textContent = "";
+        window.GREENLOOP_STOCK?.mount(root,rows);
+    root.querySelector("[data-sr-total]").textContent = "";
         const legacy = root.querySelector("[data-sr-legacy]");
         legacy.hidden = true; legacy.innerHTML = "";
         simpleMessage((lastSaved ? lastSaved + " " : "") + e.message, true);
@@ -157,6 +158,7 @@
   function renderSimpleReport() {
     const root = reportRoot, value = root.querySelector("[data-sr-report-search]").value.trim().toLowerCase();
     const rows = window.GREENLOOP_FILTERS.use('stock-return-filters', value ? window.GREENLOOP_RECORD_SEARCH.localLookup(returnSearchItems(),value).items : simpleRows, {before:root.querySelector('[data-sr-simple-table]'),fields:[['supplier_code','Supplier code'],['model','Model'],['reason','Reason']],onChange:()=>renderSimpleReport(),search:false,highlightQuery:()=>root.querySelector('[data-sr-report-search]').value,dateKey:'returned_at',dateLabel:'Returned'});
+    window.GREENLOOP_STOCK?.mount(root,rows);
     root.querySelector("[data-sr-total]").textContent = rows.length + " returns · " + rows.reduce((n,r) => n + Number(r.returned_quantity || 0),0) + " phones";
     root.querySelector("[data-sr-simple-table]").innerHTML = rows.length ? '<table class="sr-table sr-simple-table"><thead><tr><th>Stock received</th><th>Supplier / code</th><th>Received qty</th><th>Return Stock</th><th>Returned</th><th>Reason</th><th>Model / GB</th><th>IMEIs</th><th>Recorded by</th></tr></thead><tbody>' +
       rows.map(r => '<tr><td>' + escape(showDate(r.received_at)) + '<small>' + escape(r.invoice_number || r.batch_number || "—") + '</small></td><td>' + escape(supplier(r)) + '</td><td>' + escape(r.received_quantity ?? "—") + '</td><td><strong>' + escape(r.returned_quantity) + '</strong></td><td>' + escape(date(r.returned_at)) + '<small>' + escape(r.return_reference || "—") + '</small>' + (r.archived ? '<small>Archived history</small>' : "") + '</td><td>' + escape(r.reason || "—") + (r.notes ? '<small>' + escape(r.notes) + '</small>' : "") + '</td><td>' + escape([r.model, r.storage_gb ? r.storage_gb + " GB" : ""].filter(Boolean).join(" · ") || "—") + '</td><td>' + ((r.imeis || []).length ? '<details><summary>' + escape(r.imeis.length) + ' IMEI(s)</summary>' + (r.imeis || []).map(v => '<small>' + escape(v) + '</small>').join("") + '</details>' : "—") + '</td><td>' + escape(r.returned_by_name || "—") + '</td></tr>').join("") + '</tbody></table>' : '<p class="sr-empty">No stock returns to show.</p>';

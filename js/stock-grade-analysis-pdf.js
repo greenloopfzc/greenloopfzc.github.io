@@ -23,6 +23,7 @@
    for(const value of scope)for(const line of wrap(value,IW,8)){text(line,M,y,8,false,muted);y-=11;}
    y-=8;const stats=[['Received stock',r.totals.stock_quantity],['Entered IMEIs',r.totals.qty],['Not entered',r.totals.unentered],['QC / grade pending',r.totals.pending]],w=IW/4;
    for(let i=0;i<stats.length;i++){rect(M+i*w,y,w,40,'#eff6f3');centered(stats[i][0],M+i*w,y-6,w,7.5,false,muted);centered(F.num(stats[i][1]),M+i*w,y-19,w,14,true,green);}y-=56;
+   if(r.receipt_summary){const stock=r.receipt_summary,extra=[['Received',stock.received],['Returned',stock.returned],['Replacement received',stock.replacement_received],['Stock balance',stock.balance]];for(let i=0;i<extra.length;i++){rect(M+i*w,y,w,38,'#eff6f3');centered(extra[i][0],M+i*w,y-6,w,7.5,false,muted);centered(extra[i][1]===null?'Not recorded':F.num(extra[i][1]),M+i*w,y-18,w,14,true,green);}y-=52;}
   }
   function cellRow(lines,widths,{header=false,total=false,offset=0,take=null}={}){const n=take??Math.max(...lines.map(v=>v.length)),h=n*12+14;let x=M;for(let i=0;i<lines.length;i++){rect(x,y,widths[i],h,header?green:total?'#e7f2ec':'#ffffff');lines[i].slice(offset,offset+n).forEach((line,j)=>centered(line,x,y-7-j*12,widths[i],header?8:9,header||total||i===0,header?'#ffffff':ink));x+=widths[i];}y-=h;}
   function section(label,cols,rows,total){

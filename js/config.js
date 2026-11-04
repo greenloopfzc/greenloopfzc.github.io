@@ -90,11 +90,16 @@ window.GREENLOOP_CONFIG = Object.freeze({
       // fluent .select().eq().single() API and ordinary read-only queries.
       if (typeof sharedClient.from === 'function') {
         const from=sharedClient.from.bind(sharedClient);
+        const stockReadQuery=query=>new Proxy(query,{get(target,key){
+          if(key==='then')return(resolve,reject)=>(async()=>{if(window.GREENLOOP_PAGE_ACCESS)await window.GREENLOOP_STOCK?.ready();const result=await target;if(result?.data)window.GREENLOOP_STOCK?.enrich(result.data);return result;})().then(resolve,reject);
+          const value=target[key];return typeof value==='function'?(...args)=>{const next=value.apply(target,args);return next&&typeof next.then==='function'?stockReadQuery(next):next;}:value;
+        }});
+
         sharedClient.from=(...fromArgs)=>{
           const builder=from(...fromArgs);
           return new Proxy(builder,{get(target,property){
             if(!['insert','update','upsert','delete'].includes(property)) {
-              const member=target[property];return typeof member==='function'?member.bind(target):member;
+              const member=target[property];return typeof member==='function'?(...args)=>{const next=member.apply(target,args);return next&&typeof next.then==='function'?stockReadQuery(next):next;}:member;
             }
             return (...writeArgs)=>{
               const calls=[];let result;
@@ -135,7 +140,7 @@ window.GREENLOOP_CONFIG = Object.freeze({
       sharedClient.rpc = async (name, ...args) => {
         // Versioned RPC requirements distinguish independent page actions.
         // The bootstrap readers must finish before accessReady can resolve.
-        const bootstrap = new Set(['get_my_page_access_v2','get_my_page_access','get_my_page_capabilities_v1','get_my_damage_tv_settings_v1','get_my_partner_name_access','has_role']);
+        const bootstrap = new Set(['get_my_page_access_v2','get_my_page_access','get_my_page_capabilities_v1','get_my_damage_tv_settings_v1','get_my_partner_name_access','has_role','get_stock_receipt_catalog_v1']);
         if (!bootstrap.has(name)) {
           const requirement = window.GREENLOOP_RPC_CAPABILITY?.(name,args[0] || {});
           if (requirement) {
@@ -143,7 +148,10 @@ window.GREENLOOP_CONFIG = Object.freeze({
             if (!window.GREENLOOP_RPC_ALLOWED?.(name,args[0] || {})) return {data:null,error:{code:'42501',message:requirement.capability==='__unmapped_write__'?'The permission mapping for this action is missing. Refresh the page and report this message if it continues.':'This action is not allowed for your account.'}};
           }
         }
+        const stockRead=!bootstrap.has(name)&&!name.startsWith('get_my_')&&/^(get_|list_|export_)/.test(name)&&!/_version$/.test(name);
+        if(stockRead){await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();}
         const response = await rpc(name, ...args);
+        if(stockRead&&response?.data)window.GREENLOOP_STOCK?.enrich(response.data,{name,args:args[0]||{}});
         if (response?.error?.code === '23505') {
           let detail;try { detail=JSON.parse(response.error.details || '{}'); } catch (_) {}
           if(detail?.reason === 'secondary_imei' && /^\d{15}$/.test(detail.primary_imei || '')) {
@@ -554,6 +562,7 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     window.GREENLOOP_CAN_VIEW_PARTNER_NAMES = !partnerNameError
       && (partnerNameValue === true || String(partnerNameValue ?? "").trim().toLowerCase() === "true");
     window.GREENLOOP_PARTNER_LABEL = (code, name, fallback = "-") => {
+    if(window.GREENLOOP_STOCK&&/^SUP[-_]/i.test(String(code||"")))return window.GREENLOOP_STOCK.label(code,null,name,fallback);
       const safeCode = String(code || "").trim();
       const safeName = String(name || "").trim();
       if (window.GREENLOOP_CAN_VIEW_PARTNER_NAMES && safeName) return [safeCode, safeName].filter(Boolean).join(" - ");
@@ -717,12 +726,14 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
   window.GREENLOOP_CAN_VIEW_PARTNER_NAMES = false;
   window.GREENLOOP_CAN_VIEW_STOCK_RETURN = false;
   window.GREENLOOP_PARTNER_LABEL = (code, name, fallback = "-") => {
+    if(window.GREENLOOP_STOCK&&/^SUP[-_]/i.test(String(code||"")))return window.GREENLOOP_STOCK.label(code,null,name,fallback);
     const safeCode = String(code || "").trim();
     const safeName = String(name || "").trim();
     if (window.GREENLOOP_CAN_VIEW_PARTNER_NAMES && safeName) return [safeCode, safeName].filter(Boolean).join(" - ");
     return safeCode || fallback;
   };
   window.GREENLOOP_SUPPLIER_RECEIPT_LABEL = (code, quantity, name, fallback = "-") => {
+    if(window.GREENLOOP_STOCK)return window.GREENLOOP_STOCK.label(code,quantity,name,fallback);
     const safeCode = String(code || "").trim();
     const safeName = String(name || "").trim();
     const parsedQuantity = Number(quantity);

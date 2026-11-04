@@ -6,13 +6,13 @@
   const gb=n=>n==null?'Not recorded':Number(n)>=1024&&Number(n)%1024===0?Number(n)/1024+' TB':n+' GB';
   const receivedDate=v=>v?new Date(v).toLocaleDateString('en-GB',{timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric'}):'Not recorded';
   const names=r=>r.names_allowed===true&&root.GREENLOOP_CAN_VIEW_PARTNER_NAMES===true;
-  const supplier=(row,r)=>{const code=row.supplier_code||'Not recorded',quantity=Number(row.received_quantity);return code+(Number.isInteger(quantity)&&quantity>0?'-('+quantity+')':'')+(names(r)&&row.supplier_name?' '+row.supplier_name:'');};
+  const supplier=(row,r)=>root.GREENLOOP_STOCK?root.GREENLOOP_STOCK.label(row.supplier_code,row.received_quantity,names(r)?row.supplier_name:null,'Not recorded'):String(row.supplier_code||'Not recorded').replace(/-\(\d+\)$/,'')+'-('+row.received_quantity+')'+(names(r)&&row.supplier_name?' '+row.supplier_name:'');
   const file=(r,ext)=>'Greenloop-Stock-Replacement-'+(r.selection?.batch_number||'Selected-Stock').replace(/[^A-Za-z0-9_-]+/g,'-').slice(0,65)+'-'+new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Dubai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(r.generated_at))+'.'+ext;
   function verify(r){if(!r||!Array.isArray(r.rows)||!r.summary||new Set(r.rows.map(x=>x.group_id)).size!==r.rows.length||!Number.isFinite(Date.parse(r.generated_at)))throw Error('The complete selected replacement report is required.');}
   const batches=r=>(r.receipts||[]).map(p=>[p.batch_number,p.invoice_number,p.quantity+' received',...(p.phones||[]).map(x=>[x.imei,x.model,x.gb+' GB',x.color].filter(Boolean).join(' / '))].filter(Boolean).join('\n')).join('\n\n')||'Awaiting replacement';
   function library(name,path){if(root[name])return Promise.resolve(root[name]);if(!loads.has(name))loads.set(name,new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=path;s.onload=()=>{if(root[name])resolve(root[name]);else{loads.delete(name);s.remove();reject(Error('Export library unavailable. Retry.'));}};s.onerror=()=>{loads.delete(name);s.remove();reject(Error('Export library could not load. Check the connection and retry.'));};document.head.append(s);}));return loads.get(name);}
   function scope(r){const f=r.filters||{};return [r.selection_label||'Supplier stock replacements',f.from_date?'From '+f.from_date:'',f.to_date?'To '+f.to_date:'',f.query?'Search: '+f.query:''].filter(Boolean).join(' | ');}
-  function summary(r){return `Returns: ${r.rows.length} | Returned phones: ${r.summary.returned} | Replacement received: ${r.summary.received} | Pending: ${r.summary.pending}`;}
+  function summary(r){return (r.receipt_summary&&root.GREENLOOP_STOCK?root.GREENLOOP_STOCK.summaryText(r.receipt_summary)+" | ":"")+`Returns: ${r.rows.length} | Returned phones: ${r.summary.returned} | Replacement received: ${r.summary.received} | Pending: ${r.summary.pending}`;}
 
 
   async function pdf(r) {
@@ -31,7 +31,7 @@
       text('Stock Replacement',M,H-94,20,true);text(r.rows.length+' returns',W-M-width(r.rows.length+' returns',10,true),H-102,10,true,green);
       text('Generated '+date(r.generated_at)+' | UAE (UTC+4)',M,H-123,8,false,muted);y=H-145;
       for(const s of wrap(scope(r),W-2*M,8)){text(s,M,y,8,false,muted);y-=11;}y-=7;
-      const stats=[['Returned phones',r.summary.returned],['Replacement received',r.summary.received],['Replacement pending',r.summary.pending]],w=(W-2*M)/3;
+      const stats=r.receipt_summary?[['Received stock',r.receipt_summary.received],['Returned',r.receipt_summary.returned],['Replacement received',r.receipt_summary.replacement_received],['Stock balance',r.receipt_summary.balance]]:[['Returned phones',r.summary.returned],['Replacement received',r.summary.received],['Replacement pending',r.summary.pending]],w=(W-2*M)/stats.length;
       stats.forEach(([label,n],i)=>{rect(M+i*w,y,w,40,'#eff6f3');text(label,M+i*w+6,y-6,8,false,muted);text(n,M+i*w+6,y-19,13,true,green);});y-=52;
       cells(['Supplier','Original stock','Return','Returned','Received','Pending','Replacement stock / IMEIs'].map((s,i)=>wrap(s,cols[i]-10,size,true)),{header:true});tableTop=y;
     }

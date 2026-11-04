@@ -493,7 +493,7 @@
     );
     if (error) throw error;
     if (!allowed) throw new Error("Your account does not have IMEI Entry permission.");
-    await window.GREENLOOP_ACCESS_READY;
+    await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();
     if (!window.GREENLOOP_PAGE_ACCESS) throw new Error("Your account does not have IMEI Entry permission.");
     const [masterResult, batchResult] = await Promise.allSettled([
       loadAllMaster(),

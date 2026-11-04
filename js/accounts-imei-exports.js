@@ -6,14 +6,14 @@
   const gb=n=>n==null?'Not recorded':Number(n)>=1024&&Number(n)%1024===0?Number(n)/1024+' TB':n+' GB';
   const receivedDate=v=>v?new Date(v).toLocaleDateString('en-GB',{timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric'}):'Not recorded';
   const names=r=>r.names_allowed===true&&root.GREENLOOP_CAN_VIEW_PARTNER_NAMES===true;
-  const supplier=(row,r)=>{const code=row.supplier_code||'Not recorded',quantity=Number(row.receipt_quantity);return code+(Number.isInteger(quantity)&&quantity>0?'-('+quantity+')':'')+(names(r)&&row.supplier_name?' '+row.supplier_name:'');};
+  const supplier=(row,r)=>root.GREENLOOP_STOCK?.labelRow(row)||root.GREENLOOP_SUPPLIER_RECEIPT_LABEL(row.supplier_code,row.receipt_quantity,names(r)?row.supplier_name:null,'Not recorded');
   const file=(r,ext)=>'Greenloop-IMEI-DATA-'+(r.selection?.batch_number||'Selected-Stock').replace(/[^A-Za-z0-9_-]+/g,'-').slice(0,65)+'-'+new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Dubai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(r.generated_at))+'.'+ext;
   function verify(r) {
     if(!r||!Array.isArray(r.rows)||!Number.isSafeInteger(r.total)||r.rows.length!==r.total||r.summary?.total_records!==r.total||new Set(r.rows.map(x=>x.record_key)).size!==r.total||!Number.isFinite(Date.parse(r.generated_at))||r.rows.filter(x=>x.returned).length!==r.summary.returned)throw Error('The complete selected stock is required. No partial file was created.');
   }
   function library(name,path){if(root[name])return Promise.resolve(root[name]);if(!loads.has(name))loads.set(name,new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=path;s.onload=()=>{if(root[name])resolve(root[name]);else{loads.delete(name);s.remove();reject(Error('Export library unavailable. Retry.'));}};s.onerror=()=>{loads.delete(name);s.remove();reject(Error('Export library could not load. Check the connection and retry.'));};document.head.append(s);}));return loads.get(name);}
   function scope(r){return r.selection_label||[r.selection?.supplier_code,r.selection?.batch_number,r.selection?.invoice_number].filter(Boolean).join(' | ')||'All selected stock records';}
-  function summary(r){const s=r.summary;return `Total: ${s.total_records} | In company: ${s.in_company} | Ready: ${s.ready} | In process: ${s.in_process} | Exported: ${s.exported} | Returned: ${s.returned}`;}
+  function summary(r){const s=r.summary;return (r.receipt_summary?window.GREENLOOP_STOCK.summaryText(r.receipt_summary)+" | ":"")+`Total: ${s.total_records} | In company: ${s.in_company} | Ready: ${s.ready} | In process: ${s.in_process} | Exported: ${s.exported} | Returned: ${s.returned}`;}
 
   async function pdf(r) {
     verify(r);

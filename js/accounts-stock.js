@@ -76,7 +76,7 @@
       const data = await rpc('get_stock_batch_report_v1',{...stockFilters.sortArgs(),p_source:'accounts_'+view,p_filters:stockFilters.query(),p_offset:offset,p_limit:50});
       stockFilters.result(data);
       total = data.total;
-      $('#accounts-stock-list').innerHTML = table(data);
+      $('#accounts-stock-list').innerHTML = table(data);window.GREENLOOP_STOCK?.mount($('#accounts-stock-list'),window.GREENLOOP_STOCK.scoped(stockFilters.query(),data.rows));
       const metrics = view === 'supplier' ? [['Received','received'],['In company','in_company'],['Ready','ready'],['In process','in_process'],['Exported','exported'],['Returned','returned']] : [['Exported phones','exported']];
       $('#accounts-stock-totals').innerHTML = metrics.map(([label,key])=>`<div><span>${esc(label)}</span><strong>${value(data.totals[key] || 0)}</strong></div>`).join('');
       $('#accounts-stock-count').textContent = total ? `${offset+1}–${Math.min(offset+50,total)} of ${total} rows` : '0 rows';

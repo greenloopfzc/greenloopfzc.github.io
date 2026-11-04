@@ -27,6 +27,7 @@
   $('[data-scp-table]').innerHTML=html;
   $('[data-scp-footer]').innerHTML=`<strong>${device?'Phone total':stock?'Stock total':'Filtered total'}</strong><span class="scp-values">${values(totals)}</span><span>${num(pending)} unpriced net parts</span>`;
   controls();
+  window.GREENLOOP_STOCK?.mount(root,stock?[data.selected_stock]:data.stocks);
  }
  function controls(){if(!root)return;root.querySelectorAll('button,input,select').forEach(el=>{const cap=el.dataset.capability||'stock_parts_cost';el.disabled=loading||!allowed()||!can(cap);});}
  function fail(text){if(!root)return;$('[data-scp-message]').textContent=text;$('[data-scp-message]').hidden=!text;}

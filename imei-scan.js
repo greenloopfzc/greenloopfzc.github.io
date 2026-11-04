@@ -99,7 +99,7 @@
       const avg=s.digits.length>1?(now-s.start)/(s.digits.length-1):0;
       const deliberateSelection=s.originalStart!==s.originalEnd&&!(s.originalStart===0&&s.originalEnd===s.original.length);
       s.deliberateSelection=deliberateSelection;
-      const replaceable=!s.original||/^[0-9]{15,}$/.test(s.original)||s.originalStart===0&&s.originalEnd===s.original.length;
+      const replaceable=!s.original||(/^[0-9]{15,}$/.test(s.original)||Boolean(window.GREENLOOP_BULK_IMEI?.list(s.original)))||s.originalStart===0&&s.originalEnd===s.original.length;
       if(replaceable&&!deliberateSelection&&s.digits.length>=3&&avg<=35)s.claimed=true;
       if(s.claimed&&s.digits.length<=15){
         event.preventDefault();if(document.querySelector('.gl-imei-stage-dialog[open]')){clearOldNotice();input.focus();}
@@ -140,7 +140,7 @@
   window.addEventListener('pagehide',()=>{locationRevision++;});
   async function prefill(){
     const imei=new URLSearchParams(location.search).get('scan_imei');if(!valid(imei))return;
-    await window.GREENLOOP_ACCESS_READY;
+    await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();
     if(!usable())return;
     const apply=()=>{
       const visible=el=>!!el?.getClientRects().length;

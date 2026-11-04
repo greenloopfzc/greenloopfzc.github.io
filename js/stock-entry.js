@@ -165,7 +165,7 @@
     const { data: allowed, error } = await api().rpc("has_role", { required_roles: ["super_admin", "owner", "manager", "receiving", "rma"] });
     if (error) throw error;
     if (!allowed) throw new Error("Your account does not have Stock Received permission.");
-    if (window.GREENLOOP_ACCESS_READY) await window.GREENLOOP_ACCESS_READY;
+    if (window.GREENLOOP_ACCESS_READY) await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();
     await Promise.all([loadChannels(), loadSuppliers()]);
   }
 

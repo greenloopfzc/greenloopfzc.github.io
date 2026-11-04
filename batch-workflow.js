@@ -418,6 +418,25 @@
     }).observe(batchSelect, { childList: true });
     if (batchSelect.value) window.setTimeout(loadSelectedBatch, 250);
 
+    window.GREENLOOP_BULK_IMEI?.register({selector:'.batch-row-imei,#imei-1',capability:'entry',load:async(imeis,options)=>{
+      if(!currentBatch)throw Error('Choose a stock batch before pasting IMEIs.');
+      if(panel.querySelector('tr[data-saving="yes"]'))throw Error('Wait for the current save to finish.');
+      const occupied=new Set([...panel.querySelectorAll('.batch-row-imei')].map(e=>e.value).filter(Boolean)),accepted=imeis.filter(v=>!occupied.has(v)),issues=imeis.filter(v=>occupied.has(v)).map(v=>v+' — already in this tray');
+      let blanks=[...panel.querySelectorAll('tbody tr')].filter(row=>!row.querySelector('.batch-row-imei').value&&row.dataset.saved!=='yes');
+      if(blanks.length<accepted.length){
+        const old=[...panel.querySelectorAll('tbody tr')].map(row=>({dataset:{...row.dataset},className:row.className,fields:[...row.querySelectorAll('input,select,button')].map(e=>({value:e.value,checked:e.checked,disabled:e.disabled,dataset:{...e.dataset},text:e.tagName==='BUTTON'?e.textContent:null})),status:row.querySelector('.batch-row-status').textContent,statusClass:row.querySelector('.batch-row-status').className}));
+        for(let i=blanks.length;i<accepted.length;i++)slots.push({model:'',storage:'',color:''});renderRows();
+        old.forEach((v,i)=>{const row=panel.querySelectorAll('tbody tr')[i];Object.assign(row.dataset,v.dataset);row.className=v.className;[...row.querySelectorAll('input,select,button')].forEach((e,j)=>{const f=v.fields[j];if(!f)return;if(e.tagName==='SELECT'&&f.value&&![...e.options].some(o=>o.value===f.value))e.add(new Option(f.value,f.value));e.value=f.value;e.checked=f.checked;e.disabled=f.disabled;Object.assign(e.dataset,f.dataset);if(f.text!==null)e.textContent=f.text;});row.querySelector('.batch-row-status').textContent=v.status;row.querySelector('.batch-row-status').className=v.statusClass;});
+        blanks=[...panel.querySelectorAll('tbody tr')].filter(row=>!row.querySelector('.batch-row-imei').value&&row.dataset.saved!=='yes');
+      }
+      const targets=[];accepted.forEach((imei,i)=>{const row=blanks[i];row.hidden=false;row.querySelector('.batch-row-imei').value=imei;setRowStatus(row,'Checking IMEI…');targets.push(row);});
+      let next=0,loaded=0;async function worker(){while(next<targets.length&&options.isCurrent()){const row=targets[next++],imei=row.querySelector('.batch-row-imei').value;try{const{data,error}=await api().rpc('get_imei_duplicate_stage_v1',{p_imei:imei});if(error)throw error;if(data?.found){const text=data.matched_type==='secondary'?'IMEI 2; use '+data.primary_imei:'Already exists at '+data.current_stage;setRowStatus(row,text,'is-error');issues.push(imei+' — '+text);}else{setRowStatus(row,'Pasted — complete details and save');loaded++;scheduleRowSave(row);}}catch(e){setRowStatus(row,e.message||'IMEI check failed','is-error');issues.push(imei+' — '+e.message);}}}
+      await Promise.all(Array.from({length:Math.min(4,targets.length)},worker));
+      for(const row of panel.querySelectorAll('tbody tr'))row.hidden=!row.querySelector('.batch-row-imei').value&&!row.querySelector('.batch-row-battery').value;
+      panel.querySelector('.batch-entry-count').textContent=[...panel.querySelectorAll('tbody tr')].filter(r=>!r.hidden).length+' lines';
+      if(!panel.querySelector('[data-show-all-entry-lines]')){const b=document.createElement('button');b.type='button';b.className='secondary-button';b.dataset.showAllEntryLines='';b.dataset.capability='entry';b.textContent='Show all entry lines';b.addEventListener('click',()=>{for(const row of panel.querySelectorAll('tbody tr'))row.hidden=false;panel.querySelector('.batch-entry-count').textContent=slots.length+' lines';b.remove();});panel.querySelector('.batch-entry-heading').append(b);}
+      panel.hidden=false;return{loaded,issues};
+    }});
     window.addEventListener("greenloop:entry-ready", loadSelectedBatch);
     window.addEventListener("greenloop:device", (event) => applyCableDevice(event.detail));
     window.addEventListener("greenloop:imei-entry-saved", (event) => {

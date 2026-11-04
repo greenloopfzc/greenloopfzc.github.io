@@ -265,6 +265,7 @@
       ? rows.map((row) => `<tr>${report.columns.map(([, key, type]) => `<td>${formatReportValue(row, key, type)}</td>`).join("")}</tr>`).join("")
       : `<tr><td class="report-empty" colspan="${report.columns.length}">No records were found for this report.</td></tr>`;
     reportContent.innerHTML = `<div class="report-table-wrap"><table class="report-table"><thead><tr>${headers}</tr></thead><tbody>${body}</tbody></table></div>`;
+    window.GREENLOOP_STOCK?.mount(reportContent,rows || []);
   }
 
   function supplierTotal(rows, key) {
@@ -299,6 +300,7 @@
       <td>${escapeHtml(row.returned_by_name || "Recorded user")}</td>
     </tr>`).join("") : '<tr><td class="report-empty" colspan="9">No stock returns were recorded in this return-date range.</td></tr>';
     reportContent.innerHTML = `<div class="report-table-wrap"><table class="report-table stock-return-report"><thead><tr><th>Receipt / received date</th><th>Supplier</th><th>Quantity received</th><th>Return Stock</th><th>Return date / reference</th><th>Reason</th><th>Model / GB</th><th>IMEIs</th><th>Returned by</th></tr></thead><tbody>${body}</tbody></table></div>`;
+    window.GREENLOOP_STOCK?.mount(reportContent,rows || []);
   }
 
   function validSupplierProgress(data) {
@@ -378,6 +380,7 @@
         <button type="button" class="supplier-return-summary" data-supplier-returns aria-expanded="${supplierReturnsOpen}"><span>Returned phones</span><strong>${returned}</strong><small>${supplierReturnsOpen?'Hide details':'View details'}</small></button><article><span>Return pending</span><strong>${sum('return_pending')}</strong></article>
       </div><section class="supplier-range-section"><div class="supplier-range-toolbar"><button type="button" class="secondary-button" data-supplier-date-toggle data-capability="search" data-capability-page="reports" aria-controls="supplier-progress-date-form" aria-expanded="${supplierRangeOpen}">Date Range${supplierRange.from?' · Active':''}</button><span>${escapeHtml(rangeLabel)}</span></div><form id="supplier-progress-date-form" class="supplier-date-form" novalidate${supplierRangeOpen?'':' hidden'}><div class="form-field"><label for="supplier-progress-from">From</label><input type="date" id="supplier-progress-from" value="${escapeHtml(supplierDateDraft.from)}" data-capability="search" data-capability-page="reports"></div><div class="form-field"><label for="supplier-progress-to">To</label><input type="date" id="supplier-progress-to" value="${escapeHtml(supplierDateDraft.to)}" data-capability="search" data-capability-page="reports"></div><button type="submit" class="primary-button" data-capability="search" data-capability-page="reports">Apply date range</button><button type="button" class="secondary-button" data-supplier-all-dates data-capability="search" data-capability-page="reports">All dates</button><small>Uses the stock received date · UAE</small></form></section>${over?`<p class="supplier-return-note" role="status">${over} units exceed the receipt quantity. Review this receipt's entries and returns.</p>`:''}${details}
       <div class="report-table-wrap"><table class="report-table supplier-progress-table"><thead><tr><th>Supplier</th><th>Model</th><th>GB</th><th>Stock / Batch</th><th>Channel</th><th>Stock quantity</th><th>IMEIs entered</th><th>IMEI entry pending</th><th>Initial QC</th><th>Lab &amp; Glass</th><th>Parts</th><th>Final QC</th><th>Ready Stock</th><th>Exported</th><th>Returned</th><th>Return pending</th><th>Other</th></tr></thead><tbody>${body}</tbody>${rows.length?totals:''}</table></div>`;
+    window.GREENLOOP_STOCK?.mount(reportContent,rows || []);
   }
 
   function getExportBoxGroups() {
@@ -1024,7 +1027,7 @@
     if (error) throw error;
     if (!canView) { permissionMessage.textContent = "Your account does not have Reports permission."; permissionMessage.hidden = false; return; }
     // Wait for the shared page permission check before any local USB requests.
-    await window.GREENLOOP_ACCESS_READY;
+    await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();
     if (window.GREENLOOP_PAGE_ACCESS?.pageKey !== "reports") return;
     const { data: correctionPermission } = await getClient().rpc("has_role", { required_roles: ["super_admin", "owner", "manager"] });
     canManageCorrections = Boolean(correctionPermission);

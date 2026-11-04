@@ -1,7 +1,7 @@
 (() => {
   'use strict';
   async function initialize(){
-    await window.GREENLOOP_ACCESS_READY;
+    await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();
     if(window.GREENLOOP_PAGE_ACCESS?.pageKey!=='lab_glass')return;
     const host=document.getElementById('lab-bulk-host');if(!host||!host.isConnected)return;
     host.hidden=false;window.GREENLOOP_LAB_BULK.mount(host,{standalone:true});

@@ -481,7 +481,7 @@
       message("permission-message", "The database connection is not configured.");
       return;
     }
-    await window.GREENLOOP_ACCESS_READY;
+    await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();
     const access = window.GREENLOOP_PAGE_ACCESS;
     if (!access || access.pageKey !== "tv_manual_entry") return;
     canEdit = access.canEdit === true;

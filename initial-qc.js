@@ -782,11 +782,11 @@
       window.location.replace("index.html");
       return;
     }
-    await window.GREENLOOP_ACCESS_READY;
+    await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();
     const { data: canInspect, error } = await getClient().rpc("has_role", { required_roles: ["super_admin", "owner", "manager", "initial_qc"] });
     if (error) throw error;
     if (!canInspect) throw new Error("Your account does not have Initial QC permission.");
-    await window.GREENLOOP_ACCESS_READY;
+    await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();
     document.querySelector("#qc-manage-options").hidden=!canManageWorkOptions();
     await Promise.all([loadPendingCount(), loadPartOptions()]);
     createRows(10);

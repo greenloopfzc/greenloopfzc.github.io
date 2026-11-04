@@ -224,7 +224,7 @@
       return;
     }
 
-    await window.GREENLOOP_ACCESS_READY;
+    await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();
     if (window.GREENLOOP_PAGE_ACCESS?.pageKey !== "export_boxes") return;
     app.hidden = false;
     await loadQueue();

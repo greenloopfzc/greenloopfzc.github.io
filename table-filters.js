@@ -117,7 +117,7 @@
         const values = [...new Set((facets[key] || []).map(text).filter(Boolean))];
         if (draft && !values.includes(draft)) values.push(draft);
         select.replaceChildren(new Option('All', ''));
-        values.sort((a,b)=>a.localeCompare(b, undefined, {numeric:true})).forEach(v=>select.add(new Option(['department','failure_department','location','current_stage','status'].includes(key) && window.GREENLOOP_DEPT_NAME ? window.GREENLOOP_DEPT_NAME(v.replaceAll('_', ' ')) : v.replaceAll('_', ' '), v)));
+        values.sort((a,b)=>a.localeCompare(b, undefined, {numeric:true})).forEach(v=>select.add(new Option(key==='supplier_code'&&window.GREENLOOP_STOCK?window.GREENLOOP_STOCK.label(v,null,null):['department','failure_department','location','current_stage','status'].includes(key) && window.GREENLOOP_DEPT_NAME ? window.GREENLOOP_DEPT_NAME(v.replaceAll('_', ' ')) : v.replaceAll('_', ' '), v)));
         select.value = draft;
       });
     }
@@ -125,7 +125,7 @@
       const r = get(row);
       if (applied._search) {
         const values = (latestOptions.searchFields || fields.map(f=>f[0])).map(key=>fieldValue(r,key));
-        if (!normalized(values.join(' ')).includes(normalized(applied._search))) return false;
+        if (!(window.GREENLOOP_BULK_IMEI?window.GREENLOOP_BULK_IMEI.matches(normalized(values.join(' ')),normalized(applied._search)):normalized(values.join(' ')).includes(normalized(applied._search)))) return false;
       }
       const d = day(fieldValue(r, latestOptions.dateKey));
       if (applied._from && (!d || d < applied._from)) return false;
@@ -236,7 +236,7 @@
     const filter = get(id, {...options,onChange:()=>{filter.offset=0;return filter.load();}});
     if (filter.load) return filter;
     filter.offset = 0;
-    let total = 0, version = 0;
+    let total = 0, version = 0, bulkLoaded=false;
     const previous = node('button','secondary-button','Previous'), next = node('button','secondary-button','Next');
     const pagination = node('nav','table-filter-pagination'); pagination.setAttribute('aria-label', 'Record pages');
     [previous,next].forEach(b=>{b.type='button';b.dataset.searchReadOnly='';pagination.append(b);});
@@ -248,19 +248,21 @@
     }
     mountPager();
     const size = options.pageSize || 50;
-    function pager(busy) { previous.disabled=busy||filter.offset===0;next.disabled=busy||filter.offset+size>=total; }
+    function pager(busy) {pagination.hidden=bulkLoaded; previous.disabled=busy||filter.offset===0;next.disabled=busy||filter.offset+size>=total; }
     previous.onclick=()=>{filter.offset=Math.max(0,filter.offset-size);filter.load().catch(()=>{});};
     next.onclick=()=>{filter.offset+=size;filter.load().catch(()=>{});};
     filter.load = async () => {
       const token=++version;filter.setBusy(true);pager(true);
       try {
         const client=options.client ? options.client() : window.GREENLOOP_GET_CLIENT();
-        const {data,error}=await client.rpc('get_sorted_filter_records_v1',{p_source:options.source,p_filters:filter.query(),p_offset:filter.offset,p_limit:size,...filter.sortArgs()});
+        let {data,error}=await client.rpc('get_sorted_filter_records_v1',{p_source:options.source,p_filters:filter.query(),p_offset:filter.offset,p_limit:size,...filter.sortArgs()});
         if(token!==version)return;
         if(error)throw error;
+        bulkLoaded=Boolean(window.GREENLOOP_BULK_IMEI?.list(filter.query()._search));
+        if(bulkLoaded){const all=[...(data.rows||[])];let start=filter.offset+all.length;while(start<Number(data.total)){const r=await client.rpc('get_sorted_filter_records_v1',{p_source:options.source,p_filters:filter.query(),p_offset:start,p_limit:size,...filter.sortArgs()});if(token!==version)return;if(r.error)throw r.error;if(!r.data?.rows?.length)throw Error('The pasted list changed while loading. Retry the list.');all.push(...r.data.rows);start+=r.data.rows.length;}data={...data,rows:all};filter.offset=0;}
         total=Number(data.total);
         if(filter.offset && filter.offset>=total){filter.offset=Math.max(0,Math.floor(Math.max(0,total-1)/size)*size);return filter.load();}
-        filter.result(data);count.textContent=total?`${filter.offset+1}–${Math.min(filter.offset+size,total)} of ${total}`:'0 records';
+        filter.result(data);count.textContent=bulkLoaded?`${total} matching pasted phone records`:total?`${filter.offset+1}–${Math.min(filter.offset+size,total)} of ${total}`:'0 records';
         options.onResult(data);mountPager();return data;
       } catch(e) {
         if(token===version){total=0;count.textContent='Unavailable';filter.fail(e.message||'Could not load records.');options.onError?.(e);}

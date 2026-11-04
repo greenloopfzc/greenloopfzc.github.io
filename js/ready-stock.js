@@ -35,7 +35,6 @@
   const bulkProgress = document.querySelector("#ready-rework-progress");
   const bulkNote = document.querySelector("#ready-rework-result-note");
   const bulkStop = document.querySelector("#ready-rework-stop");
-  const maxBulkPhones = 500;
   let reworkMode = "single";
   let bulkDraft = { rows: [], phones: [], tooLarge: false };
   let bulkBatch = null;
@@ -263,7 +262,6 @@
   }
 
   function parseBulkImeis(text) {
-    if (text.length > 50000) return { rows: [], phones: [], tooLarge: true };
     const seen = new Set();
     const phones = [];
     const rows = text.trim().split(/[\s,;]+/).filter(Boolean).map((value) => {
@@ -275,7 +273,7 @@
       phones.push(row);
       return row;
     });
-    return { rows, phones, tooLarge: phones.length > maxBulkPhones || rows.length > 1500 };
+    return { rows, phones, tooLarge: false };
   }
 
   const bulkStateLabels = { pending: "Pending", sending: "Sending", sent: "Sent", failed: "Failed", unknown: "Not confirmed", "not-sent": "Not sent", invalid: "Invalid", duplicate: "Duplicate" };
@@ -294,7 +292,7 @@
     const duplicates = bulkDraft.rows.filter((row) => row.state === "duplicate").length;
     const invalid = bulkDraft.rows.filter((row) => row.state === "invalid").length;
     const unconfirmed = bulkDraft.rows.filter((row) => row.state === "unknown").length;
-    bulkCount.textContent = bulkDraft.tooLarge ? `Use batches of up to ${maxBulkPhones} phones; reduce the pasted list.` : `${bulkDraft.phones.length} phones · ${duplicates} duplicates · ${invalid} invalid${unconfirmed ? ` · ${unconfirmed} awaiting status check` : ""}`;
+    bulkCount.textContent = bulkDraft.tooLarge ? `Check the pasted IMEI list.` : `${bulkDraft.phones.length} phones · ${duplicates} duplicates · ${invalid} invalid${unconfirmed ? ` · ${unconfirmed} awaiting status check` : ""}`;
     if (showList) {
       bulkBatch = null;
       bulkNote.hidden = true;
@@ -402,7 +400,7 @@
     const isBulk = reworkMode === "bulk";
     if (isBulk) {
       updateBulkDraft();
-      if (bulkDraft.tooLarge || !bulkDraft.phones.length) { showToast("Enter a valid batch of up to 500 unique IMEIs."); bulkInput.focus(); return; }
+      if (bulkDraft.tooLarge || !bulkDraft.phones.length) { showToast("Enter valid unique 15-digit IMEIs."); bulkInput.focus(); return; }
     } else if (!/^\d{15}$/.test(imei)) { showToast("Enter a 15-digit Ready Stock IMEI."); reworkImei.focus(); return; }
     if (!isBulk && unconfirmedImeis.has(imei)) { showToast("Check this phone in the Check before retrying list first."); return; }
     const departmentName = department === "frame" ? "B-DEPT" : "Laboratory";

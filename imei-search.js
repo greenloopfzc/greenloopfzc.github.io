@@ -459,13 +459,28 @@ function buildStageSections(sortedRows) {
       }
       receiptItems.push(...(Array.isArray(data.items)?data.items:[]));receiptOffset=data.next_offset ?? receiptItems.length;
       receiptButtons();receiptResult.querySelector('[data-receipt-more]').hidden=!data.has_more;
+      window.GREENLOOP_STOCK?.mount(receiptResult,[receipt]);
       receiptResult.hidden=false;
       window.history.replaceState(null,"",`?receipt=${encodeURIComponent(receiptId)}`);
     } catch(error){if(version===searchVersion)setMessage(error.message || "Stock receipt could not be loaded.");}
     finally{if(version===searchVersion)setSubmitting(false);}
   }
+  let bulkSearchResult;
+  async function bulkSearch(imeis,{isCurrent=()=>true}={}){
+    const records=await window.GREENLOOP_RECORD_SEARCH.lookup(imeis.join(' '));if(!isCurrent())return {loaded:0};
+    searchWidget?.close();result.hidden=true;receiptResult.hidden=true;bulkSearchResult?.remove();
+    bulkSearchResult=document.createElement('section');bulkSearchResult.className='stock-bulk-results';bulkSearchResult.setAttribute('aria-label','Pasted phone results');
+    const heading=document.createElement('h2');heading.textContent=imeis.length+' pasted IMEIs';bulkSearchResult.append(heading);
+    const table=document.createElement('table');table.innerHTML='<thead><tr><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>Supplier</th><th>Current stage</th><th>Details</th></tr></thead>';const body=document.createElement('tbody');table.append(body);bulkSearchResult.append(table);
+    let loaded=0;for(const imei of imeis){const record=records.items.find(r=>[r.imei_1,r.imei_2,r.identifier].includes(imei)),tr=document.createElement('tr');
+      const fields=record?[imei,record.model||'Not recorded',record.storage_gb?window.GREENLOOP_STORAGE?.label(record.storage_gb)||record.storage_gb+' GB':'Not recorded',record.color||'Not recorded',window.GREENLOOP_STOCK?.labelRow(record)||record.supplier_code||'Not recorded',record.imei_2===imei?'IMEI 2 of '+record.imei_1:record.current_status||'Not recorded']:[imei,'Not found','','','',''];
+      fields.forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.append(td);});const td=document.createElement('td');if(record){loaded++;const b=document.createElement('button');b.type='button';b.className='secondary-button';b.textContent='Open journey';b.onclick=()=>openDevice(record);td.append(b);}tr.append(td);body.append(tr);
+    }
+    form.after(bulkSearchResult);query.removeAttribute('maxlength');query.value=imeis.join(' ');return {loaded};
+  }
+  window.GREENLOOP_BULK_IMEI?.register({selector:'#imei-query',capability:'search',load:bulkSearch});
   async function search(event) {
-    event?.preventDefault();if(!allowed)return;
+    event?.preventDefault();if(!allowed)return;const pasted=window.GREENLOOP_BULK_IMEI?.list(query.value);if(pasted){await bulkSearch(pasted);return;}
     if(!query.value.trim()){setMessage("Enter an IMEI, invoice, device number, serial number, or model.");return;}
     if(/^\d{15}$/.test(query.value.trim())&&window.GREENLOOP_CAN_SEARCH!==false){await openDevice({identifier:query.value.trim()});return;}
     await searchWidget.search({selectExact:true});
@@ -475,7 +490,7 @@ function buildStageSections(sortedRows) {
     const { data: sessionData, error } = await getClient().auth.getSession();
     if (error) throw error;
     if (!sessionData?.session) { window.location.replace("index.html"); return; }
-    await window.GREENLOOP_ACCESS_READY;
+    await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();
     if (!window.GREENLOOP_PAGE_ACCESS || window.GREENLOOP_PAGE_ACCESS.pageKey !== "imei_search") { permissionMessage.textContent = "Your account does not have IMEI Search permission."; permissionMessage.hidden = false; return; }
     allowed = true; app.hidden = false;
     searchWidget=window.GREENLOOP_RECORD_SEARCH.attach(query,{onExactIdentifier:value=>openDevice({identifier:value}),onSelect:item=>item.kind==="receipt"?openReceipt(item):openDevice(item)});
@@ -483,7 +498,7 @@ function buildStageSections(sortedRows) {
     if(requestedReceipt){await openReceipt({id:requestedReceipt});return;}
     if (requestedQuery.trim()) { query.value = requestedQuery.trim(); await search(); }
   }
-  query.addEventListener("input", () => { ++searchVersion; setSubmitting(false); result.hidden = true; receiptResult.hidden=true; setMessage(); });
+  query.addEventListener("input", () => { ++searchVersion;bulkSearchResult?.remove(); setSubmitting(false); result.hidden = true; receiptResult.hidden=true; setMessage(); });
   form.addEventListener("submit", search);
   document.querySelector("#open-menu").addEventListener("click", () => setMenu(true));
   document.querySelector("#close-menu").addEventListener("click", () => setMenu(false));

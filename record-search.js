@@ -10,6 +10,8 @@
       ...(Array.isArray(item.search_values)?item.search_values:[])];
   }
   function localLookup(items, query) {
+    const ids=window.GREENLOOP_BULK_IMEI?.list(query);
+    if(ids)return {items:items.filter(item=>ids.some(id=>fields(item).some(v=>String(v??'').includes(id)))),has_more:false,exact_match:false};
     const term = clean(query).toLocaleLowerCase();
     if (!term) return {items:[],has_more:false,exact_match:false};
     const ranked = items.map((item,index) => {
@@ -20,7 +22,7 @@
     return {items:ranked.filter(row=>!exact || row.rank===0).map(row=>row.item),has_more:false,exact_match:exact};
   }
   async function rpc(name,args) {
-    await window.GREENLOOP_ACCESS_READY;
+    await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();
     if (window.GREENLOOP_CAN_SEARCH === false && name !== "get_search_receipt_returns_v1") throw new Error("Your account does not have IMEI Search permission.");
     let timeout;
     try {
@@ -36,7 +38,13 @@
       return (Array.isArray(raw) ? raw[0]?.[name] || raw[0] : raw) || {};
     } finally { clearTimeout(timeout); }
   }
-  const lookup = (query,offset=0) => rpc("search_greenloop_records_v1",{p_query:clean(query),p_offset:offset,p_limit:12});
+  async function lookup(query,offset=0) {
+    const ids=window.GREENLOOP_BULK_IMEI?.list(query);if(!ids)return rpc("search_greenloop_records_v1",{p_query:clean(query),p_offset:offset,p_limit:12});
+    const results=new Array(ids.length);let next=0;async function worker(){while(next<ids.length){const i=next++;const d=await rpc("search_greenloop_records_v1",{p_query:ids[i],p_offset:0,p_limit:12});results[i]=d.items||[];}}
+    await Promise.all(Array.from({length:Math.min(4,ids.length)},worker));
+    const items=results.flat().filter((item,i,all)=>all.findIndex(v=>v.kind===item.kind&&String(v.id||v.identifier)===String(item.id||item.identifier))===i);
+    return {items,has_more:false,exact_match:false,next_offset:items.length};
+  }
   function openRecord(item) {
     const target=item.kind==="receipt" ? `receipt=${encodeURIComponent(item.id)}` : `q=${encodeURIComponent(item.identifier || item.device_number || item.imei_1)}`;
     window.location.assign(`imei-search.html?${target}`);

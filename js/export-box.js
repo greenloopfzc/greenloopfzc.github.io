@@ -217,17 +217,19 @@
       await loadLines();
       setMessage(`${imei} added to ${result.box_number}. Ready Stock was updated.`, "success");
       showToast(`Phone ${result.serial_no} added to the export box.`);
+      return {ok:true};
     } catch (error) {
       setMessage(error.message || "This IMEI could not be added to the export box.");
       imeiInput.select();
       const duplicate = /this imei has already been placed in an export box/i.test(error.message || "");
       const wrongStage = /this imei is not currently available in ready stock/i.test(error.message || "");
-      if (["22023", "23505", "P0001"].includes(error.code) && (duplicate || wrongStage)) {
+      if (!window.GREENLOOP_BULK_IMEI?.busy && ["22023", "23505", "P0001"].includes(error.code) && (duplicate || wrongStage)) {
         window.GREENLOOP_IMEI_STAGE_NOTICE?.show({
           imei, title: duplicate ? "Duplicate phone" : "Phone unavailable here", message: error.message, onlyIfFound: !duplicate,
           isCurrent: () => imeiInput.isConnected && imeiInput.value.trim() === imei
         });
       }
+      return {ok:false,error:error.message};
     } finally {
       scanning = false;
       render();
@@ -272,7 +274,7 @@
       permissionMessage.hidden = false;
       return;
     }
-    await window.GREENLOOP_ACCESS_READY;
+    await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();
     if (window.GREENLOOP_PAGE_ACCESS?.pageKey !== "export_boxes") return;
     canEdit = window.GREENLOOP_PAGE_ACCESS.canEdit === true;
     app.hidden = false;
@@ -282,6 +284,7 @@
   document.querySelector("#open-menu").addEventListener("click", () => setMenu(true));
   document.querySelector("#close-menu").addEventListener("click", () => setMenu(false));
   backdrop.addEventListener("click", () => setMenu(false));
+  window.GREENLOOP_BULK_IMEI?.register({selector:'#export-imei',capability:'scan',load:async(imeis,options)=>{let loaded=0;const issues=[];for(const imei of imeis){if(!options.isCurrent())break;imeiInput.value=imei;const result=await scanImei();if(result?.ok)loaded++;else issues.push(imei+' — '+(result?.error||'not added; check box capacity and current stage'));}return{loaded,issues};}});
   imeiInput.addEventListener("input", () => {
     imeiInput.value = imeiInput.value.replace(/\D/g, "").slice(0, 15);
     clearTimeout(scanTimer);

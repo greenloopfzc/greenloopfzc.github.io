@@ -3,9 +3,9 @@
  const title='Stock Grade & Work Analysis',cap=c=>window.GREENLOOP_CAN?.(c,'reports')===true,allowed=()=>cap('view')&&cap('stock_grade_analysis');
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),num=v=>Number(v||0).toLocaleString('en-GB'),pct=(v,q)=>q?(100*v/q).toFixed(1)+'%':'0.0%';
  const keys=['qty','a','b','d','glass','polish','other','pending','returned'];
- const columns=r=>[['model','Model'],['qty','Qty'],['a','A'],['b','B'],['d','D'],['glass','Glass'],['polish','Polish'],...(r.totals.other?[['other','Other grades']]:[]),...(r.totals.pending?[['pending','QC / grade pending']]:[])];
+ const columns=r=>[['model','Model'],['qty','Qty'],['a','A'],['b','B'],['d','D'],['glass','Glass'],['polish','Polish'],...(r.totals.other?[['other','Other grades']]:[]),...(r.totals.pending?[['pending','QC / grade pending']]:[]),...(r.totals.returned?[['returned','Returned']]:[])];
  const names=r=>r.names_allowed===true&&window.GREENLOOP_CAN_VIEW_PARTNER_NAMES===true;
- const supplier=(s,r)=>[s.supplier_code||'Not recorded',names(r)?s.supplier_name:''].filter(Boolean).join(' ');
+ const supplier=(s,r)=>window.GREENLOOP_STOCK?.labelRow(s)||window.GREENLOOP_SUPPLIER_RECEIPT_LABEL(s.supplier_code,s.stock_quantity,names(r)?s.supplier_name:null,'Not recorded');
  function validate(r){
   const counts=x=>x&&keys.every(k=>Number.isSafeInteger(x[k])&&x[k]>=0)&&x.a+x.b+x.d+x.other+x.pending===x.qty&&x.glass<=x.qty&&x.polish<=x.qty&&x.returned<=x.qty;
   if(!r||typeof r.selected!=='boolean'||!r.catalogue||!Array.isArray(r.catalogue.suppliers)||!Array.isArray(r.catalogue.batches)||!Array.isArray(r.stocks)||!Array.isArray(r.rows)||!Array.isArray(r.other_grades)||!counts(r.totals)||!Number.isSafeInteger(r.totals.stock_quantity)||!Number.isSafeInteger(r.totals.unentered)||!r.rows.every(x=>typeof x.model==='string'&&counts(x))||new Set(r.rows.map(x=>x.model)).size!==r.rows.length||!keys.every(k=>r.rows.reduce((s,x)=>s+x[k],0)===r.totals[k])||!Number.isFinite(Date.parse(r.generated_at))||typeof r.snapshot!=='string')throw Error('The complete stock analysis could not be verified. Refresh to retry.');
@@ -25,10 +25,12 @@
   inv.innerHTML='<option value="">All selected supplier invoices</option>'+[...new Set(available.map(b=>b.invoice_number).filter(Boolean))].sort().map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');inv.value=filters.invoice_number||'';
  }
  function table(r,percentage=false){const cols=columns(r),rows=ordered(r.rows);return `<div class="sga-table-wrap"><table><thead><tr>${cols.map(([k,l])=>`<th scope="col" aria-sort="${sort===k?(dir===1?'ascending':'descending'):'none'}"><button type="button" class="sga-sort" data-sga-sort="${k}" data-capability="sort" data-capability-page="reports">${esc(l)} <span aria-hidden="true">${sort===k?(dir===1?'↑':'↓'):'↕'}</span></button></th>`).join('')}</tr></thead><tbody>${rows.length?rows.map(x=>`<tr>${cols.map(([k])=>`<${k==='model'?'th scope="row"':'td'}>${k==='model'?esc(x.model):percentage&&k!=='qty'?pct(x[k],x.qty):num(x[k])}</${k==='model'?'th':'td'}>`).join('')}</tr>`).join(''):`<tr><td colspan="${cols.length}" class="sga-empty">No IMEIs have been entered for this selection.</td></tr>`}</tbody><tfoot><tr>${cols.map(([k])=>`<${k==='model'?'th scope="row"':'td'}>${k==='model'?'TOTAL':percentage&&k!=='qty'?pct(r.totals[k],r.totals.qty):num(r.totals[k])}</${k==='model'?'th':'td'}>`).join('')}</tr></tfoot></table></div>`;}
+ const rSummary=r=>r.receipt_summary;
  function draw(){
   if(!root||!data)return;selectOptions();$('#sga-output').hidden=!data.selected;$('#sga-intro').hidden=data.selected;
   if(data.selected){const codes=[...new Set(data.stocks.map(s=>supplier(s,data)))],batches=[...new Set(data.stocks.map(s=>s.batch_number))],invoices=[...new Set(data.stocks.map(s=>s.invoice_number).filter(Boolean))];
    $('#sga-scope').innerHTML=`<div><span>Supplier</span><strong>${esc(codes.length===1?codes[0]:codes.length+' suppliers')}</strong></div><div><span>Stock / Batch</span><strong>${esc(batches.length===1?batches[0]:batches.length+' batches')}</strong><small>${esc(invoices.length===1?invoices[0]:invoices.length+' invoices')}</small></div><div><span>Received stock</span><strong>${num(data.totals.stock_quantity)} <small>pcs</small></strong></div>`;
+   $('#sga-scope').insertAdjacentHTML('beforeend',window.GREENLOOP_STOCK?.summaryHtml(rSummary(data))||'');
    $('#sga-stats').textContent=`Entered IMEIs: ${num(data.totals.qty)} · Not entered: ${num(data.totals.unentered)} · QC / grade pending: ${num(data.totals.pending)}`;
    $('#sga-counts').innerHTML=table(data);$('#sga-percent').innerHTML=table(data,true);
    $('#sga-other').textContent=data.other_grades.length?'Other grades: '+data.other_grades.map(g=>g.grade+' — '+num(g.qty)).join(' · '):'';$('#sga-other').hidden=!data.other_grades.length;

@@ -327,7 +327,7 @@
     } else {
       updateDashboardGreeting();
     }
-    await window.GREENLOOP_ACCESS_READY;
+    await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();
     await loadLiveDashboard();
   }
 

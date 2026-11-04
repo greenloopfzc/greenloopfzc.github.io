@@ -25,7 +25,7 @@
 
 // PDF reading requires Damage Report access, independently of entry access.
 (async () => {
-  await window.GREENLOOP_ACCESS_READY;
+  await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();
   const toggle = document.getElementById("damage-pdf-toggle");
   if (window.GREENLOOP_PAGE_ACCESS?.pageKey !== "manual_damage_report" || !toggle || toggle.hidden) return;
   if (!window.GREENLOOP_CAN?.("download", "damage_report")) { toggle.hidden = true; return; }

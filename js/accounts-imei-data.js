@@ -98,6 +98,7 @@
   function valid(data,complete = false) {
     return data && Array.isArray(data.rows) && data.summary && data.facets && Number.isSafeInteger(data.total) && data.total >= 0 && /^[a-f0-9]{32}$/.test(data.snapshot) && Number.isFinite(Date.parse(data.generated_at)) && data.summary.total_records === data.total && (!complete || data.rows.length === data.total) && new Set(data.rows.map(r=>r.record_key)).size === data.rows.length && data.rows.every(r=>typeof r.record_key === 'string' && typeof r.returned === 'boolean' && typeof r.return_pending === 'boolean');
   }
+  function selectedStockReceipts(){const f=filters();return(window.GREENLOOP_STOCK?.rows||[]).filter(r=>(!f.batch_id||r.batch_id===f.batch_id)&&(!f.supplier_id||r.supplier_id===f.supplier_id)&&(!f.invoice_number||r.invoice_number===f.invoice_number));}
   function draw() {
     if (!report) return;
     const fields = [['Total records','total_records'],['In company','in_company'],['Ready Stock','ready'],['In process','in_process'],['Exported','exported'],['Returned','returned']];
@@ -112,6 +113,7 @@
     $('#aid-count').textContent = report.total ? `${num(offset+1)}–${num(Math.min(offset+50,report.total))} of ${num(report.total)} records · ${num(report.summary.imeis)} recorded IMEIs` : '0 records';
     $('#aid-updated').textContent = 'Updated '+when(report.generated_at)+' · UAE';
     controls();
+    window.GREENLOOP_STOCK?.mount(root,selectedStockReceipts());
   }
   async function load() {
     if (!visible || stopped || !allowed() || exporting) return;

@@ -512,7 +512,7 @@
   }
 
   async function initialize() {
-    await window.GREENLOOP_ACCESS_READY;
+    await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();
     if (window.GREENLOOP_PAGE_ACCESS?.pageKey !== "user_access") return;
     if (!catalog?.pages?.length || typeof window.GREENLOOP_CAN !== "function") throw new Error("The permission controls could not load. Refresh and try again.");
     if (!config.supabaseUrl || !config.supabaseAnonKey || !window.supabase) {

@@ -769,7 +769,7 @@
     const { data: canInspect, error } = await getClient().rpc("has_role", { required_roles: ["super_admin", "owner", "manager", "final_qc"] });
     if (error) throw error;
     if (!canInspect) throw new Error("Your account does not have Final QC permission.");
-    await window.GREENLOOP_ACCESS_READY;
+    await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();
     if (window.GREENLOOP_PAGE_ACCESS?.pageKey !== "final_qc") return;
     await Promise.all([loadFinalGrades(), loadQueue(), loadFailureOptions()]);
     createRows(10);
