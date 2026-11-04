@@ -18,7 +18,11 @@
   const backdrop = document.querySelector("#menu-backdrop");
   let client;
   let reportData = {};
-  let activeReport = "overview";
+  let activeReport = "";
+  let loadedReport = "";
+  const reportSections = window.GREENLOOP_PERMISSION_CATALOG?.reportSections || {};
+  const allowedReport = key => Boolean(reportSections[key] && window.GREENLOOP_CAN?.(reportSections[key].view,"reports"));
+  const selfLoadedReports = new Set(["supplier_progress","stock_grade_analysis","stock_parts_cost","manual_damage","production_correction","complete_device_details","data_correction","restricted_data"]);
   let selectedExportBox = "";
   let exportBoxImeiFilter = "";
   let correctionRecord = null;
@@ -182,33 +186,6 @@
 
   function getClient() { if (!client) client = window.GREENLOOP_GET_CLIENT(); return client; }
   function escapeHtml(value) { return String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]); }
-  async function addDeviceIdentityToReports(targetData = reportData) {
-    const imeis = [...new Set(Object.values(targetData)
-      .flatMap((section) => Array.isArray(section) ? section : [])
-      .map((row) => String(row?.imei || "").trim())
-      .filter(Boolean))];
-    if (!imeis.length) return;
-    const identityByImei = new Map();
-    for (let start = 0; start < imeis.length; start += 200) {
-      const { data, error } = await getClient().from("devices")
-        .select("imei_1, imei_2, device_number, brand, serial_number, specification_region")
-        .in("imei_1", imeis.slice(start, start + 200));
-      if (error) return;
-      (data || []).forEach((device) => identityByImei.set(String(device.imei_1 || ""), device));
-    }
-    Object.values(targetData).forEach((section) => {
-      if (!Array.isArray(section)) return;
-      section.forEach((row) => {
-        const identity = identityByImei.get(String(row?.imei || ""));
-        if (!identity) return;
-        row.serial_number = identity.serial_number || row.serial_number || "";
-        row.specification_region = identity.specification_region || row.specification_region || "";
-        row.device_number = identity.device_number || row.device_number || "";
-        row.imei_2 = identity.imei_2 || row.imei_2 || "";
-        row.brand = identity.brand || row.brand || "";
-      });
-    });
-  }
   function setMenu(isOpen) { sidebar.classList.toggle("is-open", isOpen); backdrop.hidden = !isOpen; document.body.classList.toggle("menu-open", isOpen); }
   function setMessage(text = "", type = "error") { message.textContent = text; message.classList.toggle("is-visible", Boolean(text)); message.classList.toggle("is-success", type === "success"); }
   function localDate(value) { const date = new Date(value); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
@@ -940,6 +917,16 @@
   }
 
   function renderActiveReport() {
+    if(!allowedReport(activeReport))activeReport='';
+    window.GREENLOOP_ACTIVE_REPORT=activeReport;
+    filterForm.querySelectorAll('input,button').forEach(control=>{const allowed=Boolean(activeReport&&window.GREENLOOP_CAN?.('search','reports'));control.disabled=!allowed;if(allowed){control.removeAttribute('aria-disabled');control.removeAttribute('data-view-only-locked');if(control.title==='Access not granted')control.removeAttribute('title');}});
+    if(!activeReport){
+      for(const name of ['GREENLOOP_STOCK_GRADE_ANALYSIS','GREENLOOP_STOCK_PARTS_COST','GREENLOOP_RESTRICTED_SCOPES','GREENLOOP_FULL_IMEI_CORRECTION','GREENLOOP_PRODUCTION_CORRECTION','GREENLOOP_DAMAGE_MANAGEMENT','GREENLOOP_COMPLETE_DEVICE_DETAILS'])window[name]?.unmount();
+      filterForm.hidden=true;document.querySelectorAll('.table-filters').forEach(el=>el.hidden=true);document.getElementById('supplier-progress-controls')?.setAttribute('hidden','');
+      panelKicker.textContent='Reports';panelTitle.textContent='Reports';panelDescription.textContent='';rowCount.textContent='';
+      reportContent.innerHTML='<p class="report-empty">No reports assigned.</p>';return;
+    }
+
     if(activeReport!=="stock_grade_analysis")window.GREENLOOP_STOCK_GRADE_ANALYSIS?.unmount();
     if(activeReport!=="stock_parts_cost")window.GREENLOOP_STOCK_PARTS_COST?.unmount();
     if(activeReport!=="restricted_data")window.GREENLOOP_RESTRICTED_SCOPES?.unmount();
@@ -1007,66 +994,26 @@
 
   async function loadReports(event) {
     event?.preventDefault();
-    if(activeReport === "supplier_progress"){await loadSupplierProgress({refresh:true});return;}
-    if(activeReport === "stock_grade_analysis"){await window.GREENLOOP_STOCK_GRADE_ANALYSIS?.refresh();return;}
-    if(activeReport === "stock_parts_cost"){await window.GREENLOOP_STOCK_PARTS_COST?.refresh();return;}
-    if (activeReport === "manual_damage") {
-      await window.GREENLOOP_DAMAGE_MANAGEMENT?.refresh();
-      return;
-    }
-    setMessage();
-    const from = dateFrom.value, to = dateTo.value;
-    if (!from || !to || from > to) { setMessage("Select a valid From date and To date."); return; }
-    const generation = ++reportGeneration;
-    const submit = document.querySelector("#apply-report-filter");
-    submit.disabled = true;
-    submit.textContent = "Loading...";
-    try {
-      const dates = { p_date_from: from, p_date_to: to };
-      const [base, boxes, deletions, changes, parts, stockReturns, receiptTotals] = await Promise.all([
-        getClient().rpc("get_greenloop_reports", dates),
-        getClient().rpc("get_export_box_report", dates),
-        getClient().rpc("get_deletion_history", dates),
-        canManageCorrections ? getClient().rpc("get_data_change_history", dates) : Promise.resolve({ data: [] }),
-        getClient().rpc("get_open_parts_pending_count"),
-        getClient().rpc("list_active_stock_returns", { p_from: from, p_to: to }),
-        getClient().rpc("get_simple_stock_return_receipt_totals", { p_batch_ids: null })
-      ]);
-      if (generation !== reportGeneration) return;
-      if (base.error) throw base.error;
-      const next = Array.isArray(base.data) ? base.data[0] : base.data;
-      if (!hasReportSummary(next)) throw new Error("Reports are unavailable because the response did not contain valid operational totals. Apply the date range to retry.");
-      next.date_from = from;
-      next.date_to = to;
-      const warnings = [];
-      next.stock_returns = !stockReturns.error && Array.isArray(stockReturns.data) ? stockReturns.data : null;
-      if (next.stock_returns === null) warnings.push("Stock Return could not be loaded");
-      next.stock_return_receipt_totals = !receiptTotals.error && Array.isArray(receiptTotals.data) ? receiptTotals.data : null;
-      if (next.stock_return_receipt_totals === null) warnings.push("Return-adjusted receipt balances could not be loaded; model pending counts may include returned units");
-      for (const [key, label, response] of [["export_boxes", "Export boxes", boxes], ["deleted_history", "Deleted history", deletions], ["data_changes", "Data changes", changes]]) {
-        next[key] = response.error ? [] : response.data || [];
-        if (response.error) warnings.push(label + " could not be loaded");
-      }
-      if (!parts.error && ["number", "string"].includes(typeof parts.data) && String(parts.data).trim() !== "" && Number.isFinite(Number(parts.data)) && Number(parts.data) >= 0) {
-        next.summary = next.summary || {};
-        next.summary.parts_pending = Number(parts.data);
-      } else if (parts.error) warnings.push("Live parts count could not be refreshed");
-      await addDeviceIdentityToReports(next);
-      if (generation !== reportGeneration) return;
-      reportData = next;
-      selectedExportBox = ""; exportBoxImeiFilter = ""; supplierReturnsOpen = false;
+    if(!allowedReport(activeReport))return;
+    if(activeReport==='supplier_progress'){await loadSupplierProgress({refresh:true});return;}
+    if(activeReport==='stock_grade_analysis'){await window.GREENLOOP_STOCK_GRADE_ANALYSIS?.refresh();return;}
+    if(activeReport==='stock_parts_cost'){await window.GREENLOOP_STOCK_PARTS_COST?.refresh();return;}
+    if(activeReport==='manual_damage'){await window.GREENLOOP_DAMAGE_MANAGEMENT?.refresh();return;}
+    if(selfLoadedReports.has(activeReport))return;
+    setMessage();const selected=activeReport,search=window.GREENLOOP_CAN?.('search','reports'),from=dateFrom.value,to=dateTo.value;
+    if(search&&(!from||!to||from>to)){setMessage('Select a valid From date and To date.');return;}
+    const generation=++reportGeneration,submit=document.querySelector('#apply-report-filter');submit.disabled=true;submit.textContent='Loading...';
+    try{
+      const response=await getClient().rpc('get_authorized_report_v1',{p_report:selected,p_date_from:search?from:null,p_date_to:search?to:null});
+      if(generation!==reportGeneration||selected!==activeReport||!allowedReport(selected))return;
+      if(response.error)throw response.error;
+      const next=response.data;if(!next||typeof next!=='object'||Array.isArray(next))throw Error('The report response could not be verified.');
+      if(selected==='overview'&&!hasReportSummary(next))throw Error('Operational totals are unavailable. Refresh to retry.');
+      reportData=next;loadedReport=selected;selectedExportBox='';exportBoxImeiFilter='';supplierReturnsOpen=false;
+      if(next.date_from)dateFrom.value=next.date_from;if(next.date_to)dateTo.value=next.date_to;
       renderActiveReport();
-      if (warnings.length) setMessage(warnings.join(". ") + ". Do not treat an unavailable report as zero records.");
-    } catch (error) {
-      if (generation === reportGeneration) {
-        if (!hasReportSummary(reportData)) {
-          if (activeReport === "overview") renderOverview();
-        }
-        setMessage(error.message || "Reports could not be loaded.");
-      }
-    } finally {
-      if (generation === reportGeneration) { submit.disabled = false; submit.textContent = "Apply date range"; }
-    }
+    }catch(error){if(generation===reportGeneration)setMessage(error.message||'This report could not be loaded.');}
+    finally{if(generation===reportGeneration){submit.disabled=!window.GREENLOOP_CAN?.('search','reports');submit.textContent='Apply date range';}}
   }
 
   async function initialize() {
@@ -1083,22 +1030,25 @@
     canManageCorrections = Boolean(correctionPermission);
     const { data: resetPermission } = await getClient().rpc("has_role", { required_roles: ["super_admin", "owner"] });
     canResetData = Boolean(resetPermission);
-    document.querySelectorAll('[data-report="data_correction"], [data-report="restricted_data"]').forEach((tab) => { tab.hidden = !(canManageCorrections || tab.dataset.report === 'data_correction' && window.GREENLOOP_CAN?.('workflow_correction','reports')); });
-    document.querySelector('[data-report="production_correction"]').hidden = !['production_view','production_edit','production_delete','production_restore','production_delete_all'].some(cap=>window.GREENLOOP_CAN?.(cap,'reports'));
-    document.querySelector('[data-report="stock_parts_cost"]').hidden = !window.GREENLOOP_CAN?.('stock_parts_cost','reports');
-    document.querySelector('[data-report="stock_grade_analysis"]').hidden = !window.GREENLOOP_CAN?.("stock_grade_analysis","reports");
-    const reportQuery = new URLSearchParams(window.location.search).get("report");
-    const requestedReport = reportQuery === "supplier_returns" ? "stock_returns" : reportQuery;
-    if (requestedReport && (requestedReport !== "stock_grade_analysis" || window.GREENLOOP_CAN?.("stock_grade_analysis","reports")) && (requestedReport !== "stock_parts_cost" || window.GREENLOOP_CAN?.("stock_parts_cost","reports")) && reports[requestedReport] && (!["data_correction", "restricted_data"].includes(requestedReport) || canManageCorrections || requestedReport === 'data_correction' && window.GREENLOOP_CAN?.('workflow_correction','reports')) && (requestedReport !== 'production_correction' || ['production_view','production_edit','production_delete','production_restore','production_delete_all'].some(cap=>window.GREENLOOP_CAN?.(cap,'reports')))) activeReport = requestedReport;
+    document.querySelectorAll('.report-tab[data-report]').forEach(tab=>{tab.hidden=!allowedReport(tab.dataset.report);});
+    const query=new URLSearchParams(window.location.search).get('report'),requested=query==='supplier_returns'?'stock_returns':query;
+    const first=[...document.querySelectorAll('.report-tab[data-report]')].find(tab=>!tab.hidden)?.dataset.report||'';
+    activeReport=requested?(allowedReport(requested)?requested:''):first;
+    if(requested&&!allowedReport(requested))setMessage('You do not have permission to view this report.');
     const now = new Date();
     dateFrom.value = localDate(new Date(now.getFullYear(), now.getMonth(), 1));
     dateTo.value = localDate(now);
     app.hidden = false;
     renderActiveReport();
-    if (activeReport !== "manual_damage" && activeReport !== "production_correction" && activeReport !== "stock_parts_cost" && activeReport !== "stock_grade_analysis") await loadReports();
+    if(activeReport&&!selfLoadedReports.has(activeReport))await loadReports();
     if (externalRefreshPending) queueExternalReportRefresh();
   }
 
+  window.addEventListener('greenloop:permissions-changed',()=>{
+    document.querySelectorAll('.report-tab[data-report]').forEach(tab=>tab.hidden=!allowedReport(tab.dataset.report));
+    if(!allowedReport(activeReport)){invalidatePendingReportRead();reportData={};loadedReport='';activeReport='';renderActiveReport();}
+  });
+  window.addEventListener('greenloop:signed-out',()=>{invalidatePendingReportRead();reportData={};activeReport='';renderActiveReport();});
   window.addEventListener("storage", event => {
     if (event.key === "greenloop-operational-data-change" && event.newValue) {
       invalidateStockReturnData();
@@ -1115,17 +1065,18 @@
     const tab = event.target.closest(".report-tab[data-report]");
     if (window.GREENLOOP_FULL_IMEI_CORRECTION?.isSaving()) return;
     if (!tab || tab.hidden || deletionBusy || reportMutationPending || window.GREENLOOP_DAMAGE_MANAGEMENT?.isBusy() || (tab.dataset.report !== "overview" && !reports[tab.dataset.report])) return;
-    if (["data_correction", "restricted_data"].includes(tab.dataset.report) && !canManageCorrections && !(tab.dataset.report === 'data_correction' && window.GREENLOOP_CAN?.('workflow_correction','reports'))) return;
+    if(!allowedReport(tab.dataset.report))return;
     if(tab.dataset.report === "stock_parts_cost" && !window.GREENLOOP_CAN?.("stock_parts_cost","reports"))return;
     if(tab.dataset.report === "stock_grade_analysis" && !window.GREENLOOP_CAN?.("stock_grade_analysis","reports"))return;
     resetDeletionPreview();
     correctionSearchGeneration += 1;
     setMessage();
+    invalidatePendingReportRead();reportData={};loadedReport="";
     activeReport = tab.dataset.report;
     if (activeReport === "manual_damage") invalidatePendingReportRead();
     renderActiveReport();
     if(activeReport==="supplier_progress"){if(!supplierProgressData&&!supplierProgressBusy)void loadSupplierProgress();}
-    else if (activeReport !== "manual_damage" && activeReport !== "production_correction" && activeReport !== "stock_parts_cost" && activeReport !== "stock_grade_analysis" && !hasReportSummary(reportData)) loadReports();
+    else if(activeReport&&!selfLoadedReports.has(activeReport)&&loadedReport!==activeReport)loadReports();
   });
   reportContent.addEventListener("click", (event) => {
     const savedDataButton = event.target.closest('[data-audit-details-index]');
@@ -1134,6 +1085,7 @@
       if (deletionBusy || reportMutationPending) return;
       resetDeletionPreview();
       const showRecentDeletion = Boolean(event.target.closest('[data-open-deleted-history]'));
+      if(!allowedReport(showRecentDeletion?"deleted_history":"data_correction"))return;
       activeReport = showRecentDeletion ? "deleted_history" : "data_correction";
       if (showRecentDeletion) {
         auditView = "deleted";
@@ -1154,14 +1106,14 @@
       return;
     }
     if(event.target.closest("[data-back-box]")){
-      const returnBox=correctionBoxNumber;activeReport="export_boxes";selectedExportBox=returnBox;correctionBoxNumber="";exportBoxImeiFilter="";renderActiveReport();loadReports().then(()=>{if(activeReport==="export_boxes"){selectedExportBox=returnBox;renderActiveReport();}});return;
+      if(!allowedReport("export_boxes"))return;const returnBox=correctionBoxNumber;activeReport="export_boxes";selectedExportBox=returnBox;correctionBoxNumber="";exportBoxImeiFilter="";renderActiveReport();loadReports().then(()=>{if(activeReport==="export_boxes"){selectedExportBox=returnBox;renderActiveReport();}});return;
     }
     const correctionButton=event.target.closest("[data-box-correct-imei],[data-box-correction]");
     if(correctionButton) {
       if(!window.GREENLOOP_CAN?.("box_correction","reports")){setMessage("Box Correction permission is required.");return;}
       correctionBoxNumber=selectedExportBox;
       const identifier=correctionButton.dataset.boxCorrectImei || exportBoxImeiFilter;
-      activeReport="data_correction";correctionRecord=null;renderActiveReport();
+      if(!allowedReport("data_correction"))return;activeReport="data_correction";correctionRecord=null;renderActiveReport();
       if(identifier)searchCorrectionRecord(identifier).catch(error=>setMessage(error.message));
       else setMessage("Box Correction: search an IMEI from the selected box. Corrections require reprinting and Accounts verification.","success");
       return;

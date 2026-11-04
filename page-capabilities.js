@@ -13,7 +13,17 @@
     }
     return [page];
   }
-  window.GREENLOOP_CAN = (capability, page = current()) => pageKeys(page,capability).some(key => Array.isArray(grants()[key]) && grants()[key].includes(capability));
+  window.GREENLOOP_CAN = (capability, page = current()) => pageKeys(page,capability).some(key => {
+    const selected=grants()[key];if(!Array.isArray(selected))return false;
+    if(key==='reports'){
+      if(!selected.includes('view'))return false;
+      const section=window.GREENLOOP_PERMISSION_CATALOG?.reportSections?.[window.GREENLOOP_ACTIVE_REPORT];
+      if(['search','sort'].includes(capability)&&current()==='reports'&&section){capability=section[capability]||'__no_report_action__';}
+      const dep=window.GREENLOOP_PERMISSION_CATALOG?.reportDependencies?.[capability];
+      if(dep&&!(typeof dep==='string'?selected.includes(dep):(dep.any||[]).some(x=>selected.includes(x))))return false;
+    }
+    return selected.includes(capability);
+  });
   window.GREENLOOP_HAS_WRITE = (page = current()) => {
     const keys = page === 'manual_damage_report' ? ['tv_manual_entry'] : page === 'supplier_returns' ? ['supplier_returns','supplier_return_approval','supplier_return_handover'] : [page];
     return keys.some(key => (catalog()[key]?.capabilities || []).some(cap => cap.write && window.GREENLOOP_CAN(cap.key,key)));
@@ -40,7 +50,8 @@
     if (typeof rule === 'function') rule=rule(args,current());
     if (rule?.dynamic) {
       const value=args[rule.parameter];
-      if (rule.dynamic==='operational_removal') rule=value==='all'?rule.all:rule.otherwise;
+      if (rule.dynamic==='report_section') rule=rule.actions[value] || {page:'reports',capability:'__unknown_report__'};
+      else if (rule.dynamic==='operational_removal') rule=value==='all'?rule.all:rule.otherwise;
       else if (rule.dynamic==='damage_removal') rule=value==null?rule.null:rule.otherwise;
       else if (rule.dynamic==='supplier_return') rule=rule.actions[value] || {page:current(),capability:'__unknown_action__'};
       else if (rule.dynamic==='restricted_scope') rule=rule.actions[value] || {page:'reports',capability:'__unknown_scope__'};
@@ -107,7 +118,7 @@
     if (control.matches('[data-print-box],[data-sr-print],#print-box-sheet,#confirm-box-print,[data-confirm-print]') || /^Print(?:ing)?\b/i.test(label)) return rule('print');
     if (control.matches('a[download]') || /^Download\b/i.test(label)) return rule('download');
     if (control.matches(readSelectors)) return null;
-    if (control.matches('[data-delete-export-box]')) return rule('delete','reports');
+    if (control.matches('[data-delete-export-box]')) return rule('delete_export_boxes','reports');
     if (control.matches('#start-packing')) return rule('scan','export_boxes');
     if (control.matches('#packing-job-select')) return {any:[rule('scan','export_boxes'),rule('save','export_boxes')]};
     if (control.matches('#stock-out-job-select') || control.closest('#packing-form,#stock-out-form')) return rule('save','export_boxes');

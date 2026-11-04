@@ -130,7 +130,7 @@ Deno.serve(async (request) => {
 
   // Read-only installation receipt; no credentials or account data returned.
   if (request.method === "GET") {
-    return jsonResponse({ version: PASSWORD_VERSION, password_min_length:6, password_max_length:20, vault_ready:!!vaultBytes(), vault_key_status:!Deno.env.get("GREENLOOP_PASSWORD_VAULT_KEY")?"missing":vaultBytes()?"ready":"invalid", actions:["create_user","change_password","password_change_status","password_info","reveal_password"] });
+    return jsonResponse({ version: PASSWORD_VERSION, password_min_length:6, password_max_length:20, report_permissions_version:"20261104-report-permissions-1", max_report_permissions:128, vault_ready:!!vaultBytes(), vault_key_status:!Deno.env.get("GREENLOOP_PASSWORD_VAULT_KEY")?"missing":vaultBytes()?"ready":"invalid", actions:["create_user","change_password","password_change_status","password_info","reveal_password"] });
   }
 
   if (request.method !== "POST") {
@@ -202,7 +202,7 @@ Deno.serve(async (request) => {
   }
   const entries = Object.entries(capabilities as Record<string, unknown>);
   if (!entries.length || entries.length > 100 || entries.some(([key, value]) =>
-      !/^[a-z][a-z_]{0,60}$/.test(key) || !Array.isArray(value) || value.length > (key === "daily_production" ? 512 : 30)
+      !/^[a-z][a-z_]{0,60}$/.test(key) || !Array.isArray(value) || value.length > (key === "daily_production" ? 512 : key === "reports" ? 128 : 30)
       || value.some(capability => typeof capability !== "string" || !/^[a-z][a-z_]{0,60}$/.test(capability))
       || value.length > 0 && !value.includes("view"))) {
     return jsonResponse({ error: "Select View before selecting a page's other permissions." }, 400);

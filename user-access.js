@@ -135,6 +135,14 @@
     return `<label class="permission-capability"><input type="checkbox" data-access-capability="${escapeHtml(item.key)}" aria-label="${escapeHtml(page.label)}: ${escapeHtml(item.label)}${qualifier ? ` (${escapeHtml(qualifier)})` : ""}"${checked ? " checked" : ""}${disabled ? " disabled" : ""}><span>${escapeHtml(item.label)}${qualifier ? `<span class="permission-capability-role">${escapeHtml(qualifier)}</span>` : ""}</span></label>`;
   }
 
+  function reportPermissionGroups(page,values,visible,locked){
+    const registry=catalog.reportSections||{},items=new Map(page.capabilities.map(x=>[x.key,x]));
+    return `<p class="report-permission-help">Reports opens the page only. Select View for each report below. Its actions work only while that report is selected.</p><div class="report-permission-groups">${Object.entries(registry).map(([key,section])=>{
+      const enabled=visible&&values.includes(section.view),view=items.get(section.view);
+      return `<section class="report-permission-group${enabled?' is-selected':''}" data-report-permission="${escapeHtml(key)}" data-report-view="${escapeHtml(section.view)}">${capabilityCheckbox(page,{...view,label:section.label},values,visible,locked,true)}<div class="report-permission-actions">${section.actions.map(cap=>capabilityCheckbox(page,items.get(cap),values,visible,locked||!enabled,true)).join('')}</div></section>`;
+    }).join('')}</div>`;
+  }
+
   function pageCheckboxes(selected = {}, partnerAccess = "none", isNew = false) {
     const permitted = can(isNew ? "create_users" : "manage_access");
     const pages = isNew && !currentUserIsSuperAdmin ? pageGuideData.filter(page => page.key !== "user_access") : pageGuideData;
@@ -146,7 +154,7 @@
       const actions = page.capabilities.filter(item => item.key !== "view");
       return `<article class="role-option${visible ? " is-selected" : ""}" data-page-permission="${escapeHtml(page.key)}">
         <div class="permission-page-heading"><label class="permission-check"><input type="checkbox" data-page-view value="${escapeHtml(page.key)}" aria-label="${escapeHtml(page.label)}: View"${visible ? " checked" : ""}${locked ? " disabled" : ""}><strong>${escapeHtml(page.label)}</strong><span class="permission-view-label">View</span></label><small>${escapeHtml(page.description)}</small><span class="permission-selection-count">${visible ? values.length - 1 : 0} additional actions selected</span></div>
-        <div class="permission-capabilities" role="group" aria-label="${escapeHtml(page.label)} permissions">${actions.map(item => capabilityCheckbox(page, item, values, visible, locked, payableEnabled)).join("")}</div>
+        <div class="permission-capabilities" role="group" aria-label="${escapeHtml(page.label)} permissions">${page.key === "reports" ? reportPermissionGroups(page,values,visible,locked) : actions.map(item => capabilityCheckbox(page, item, values, visible, locked, payableEnabled)).join("")}</div>
       </article>`;
     }).join("") + `<article class="role-option${partnerAccess !== "none" ? " is-selected" : ""}" data-partner-name-option><div class="permission-page-heading"><label class="permission-check"><input type="checkbox" data-partner-names${partnerAccess !== "none" ? " checked" : ""}${permitted ? "" : " disabled"}><strong>Supplier &amp; Customer Names</strong></label><small>Show confidential names. Supplier and customer codes remain visible on allowed pages.</small></div></article>`;
   }
@@ -192,6 +200,13 @@
     if (checkbox === view && !view.checked) card.querySelectorAll("[data-access-capability]").forEach(field => { field.checked = false; });
     card.classList.toggle("is-selected", view.checked);
     card.querySelectorAll("[data-access-capability]").forEach(field => { field.disabled = !view.checked || card.dataset.pagePermission === "user_access" && !currentUserIsSuperAdmin; });
+    if(card.dataset.pagePermission==='reports'){
+      card.querySelectorAll('[data-report-permission]').forEach(group=>{
+        const check=group.querySelector(`[data-access-capability="${group.dataset.reportView}"]`),on=view.checked&&check.checked;
+        group.classList.toggle('is-selected',on);
+        group.querySelectorAll('.report-permission-actions [data-access-capability]').forEach(field=>{if(checkbox===check&&!on)field.checked=false;field.disabled=!on;});
+      });
+    }
     if (card.dataset.pagePermission === "damage_report") {
       const payable = card.querySelector('[data-access-capability="payable"]');
       const priced = card.querySelector('[data-access-capability="original_prices"]').checked || card.querySelector('[data-access-capability="copy_prices"]').checked;
@@ -317,7 +332,14 @@
         const download = card.querySelector('[data-access-capability="technician_download"]');
         if (download) download.disabled = pageLocked || !view.checked || !card.querySelector('[data-access-capability="technician_report"]').checked;
       }
-      if (card.dataset.pagePermission === "damage_report") {
+      if(card.dataset.pagePermission==='reports'){
+      card.querySelectorAll('[data-report-permission]').forEach(group=>{
+        const check=group.querySelector(`[data-access-capability="${group.dataset.reportView}"]`),on=view.checked&&check.checked;
+        group.classList.toggle('is-selected',on);
+        group.querySelectorAll('.report-permission-actions [data-access-capability]').forEach(field=>{if(checkbox===check&&!on)field.checked=false;field.disabled=!on;});
+      });
+    }
+    if (card.dataset.pagePermission === "damage_report") {
         const payable = card.querySelector('[data-access-capability="payable"]');
         const priced = card.querySelector('[data-access-capability="original_prices"]').checked || card.querySelector('[data-access-capability="copy_prices"]').checked;
         if (!priced) payable.checked = false;

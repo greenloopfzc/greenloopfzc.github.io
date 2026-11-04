@@ -264,7 +264,7 @@
       return day.toISOString().slice(0, 10);
     });
     const [reportsResult, readyResult, partsResult, workflowResult] = await Promise.all([
-      getClient().rpc("get_greenloop_reports", { p_date_from: days[0], p_date_to: days[6] }),
+      getClient().rpc("get_dashboard_report_v1", { p_date_from: days[0], p_date_to: days[6] }),
       getClient().rpc("get_ready_stock_summary"),
       getClient().rpc("get_open_parts_pending_count"),
       getClient().rpc("get_overview_workflow_counts")

@@ -1,0 +1,249 @@
+{
+  "version": "20261104-report-permissions-1",
+  "sections": {
+    "overview": {
+      "label": "Overview",
+      "view": "report_overview",
+      "actions": [
+        "report_overview_search"
+      ],
+      "search": "report_overview_search"
+    },
+    "complete_device_details": {
+      "label": "Complete Device Details",
+      "view": "report_device_details",
+      "actions": []
+    },
+    "stock_received": {
+      "label": "Stock Received",
+      "view": "report_stock_received",
+      "actions": [
+        "report_stock_received_search",
+        "report_stock_received_sort"
+      ],
+      "search": "report_stock_received_search",
+      "sort": "report_stock_received_sort"
+    },
+    "supplier_progress": {
+      "label": "Supplier Progress",
+      "view": "report_supplier_progress",
+      "actions": [
+        "report_supplier_progress_search",
+        "report_supplier_progress_sort"
+      ],
+      "search": "report_supplier_progress_search",
+      "sort": "report_supplier_progress_sort"
+    },
+    "work_in_progress": {
+      "label": "Work in Progress",
+      "view": "report_work_in_progress",
+      "actions": [
+        "report_work_in_progress_search",
+        "report_work_in_progress_sort"
+      ],
+      "search": "report_work_in_progress_search",
+      "sort": "report_work_in_progress_sort"
+    },
+    "parts_requests": {
+      "label": "Parts Required",
+      "view": "report_parts_required",
+      "actions": [
+        "report_parts_required_search",
+        "report_parts_required_sort"
+      ],
+      "search": "report_parts_required_search",
+      "sort": "report_parts_required_sort"
+    },
+    "parts_inventory": {
+      "label": "Parts Inventory",
+      "view": "report_parts_inventory",
+      "actions": [
+        "report_parts_inventory_search",
+        "report_parts_inventory_sort"
+      ],
+      "search": "report_parts_inventory_search",
+      "sort": "report_parts_inventory_sort"
+    },
+    "technicians": {
+      "label": "Technicians",
+      "view": "report_technicians",
+      "actions": [
+        "report_technicians_search",
+        "report_technicians_sort"
+      ],
+      "search": "report_technicians_search",
+      "sort": "report_technicians_sort"
+    },
+    "final_qc": {
+      "label": "Final QC",
+      "view": "report_final_qc",
+      "actions": [
+        "report_final_qc_search",
+        "report_final_qc_sort"
+      ],
+      "search": "report_final_qc_search",
+      "sort": "report_final_qc_sort"
+    },
+    "costs": {
+      "label": "Device Cost",
+      "view": "report_device_cost",
+      "actions": [
+        "report_device_cost_search",
+        "report_device_cost_sort"
+      ],
+      "search": "report_device_cost_search",
+      "sort": "report_device_cost_sort"
+    },
+    "stock_grade_analysis": {
+      "label": "Stock Grade & Work Analysis",
+      "view": "stock_grade_analysis",
+      "actions": [
+        "stock_grade_analysis_search",
+        "stock_grade_analysis_sort",
+        "stock_grade_download"
+      ],
+      "search": "stock_grade_analysis_search",
+      "sort": "stock_grade_analysis_sort"
+    },
+    "stock_parts_cost": {
+      "label": "Stock Parts Cost",
+      "view": "stock_parts_cost",
+      "actions": [
+        "stock_parts_cost_search",
+        "stock_parts_cost_sort"
+      ],
+      "search": "stock_parts_cost_search",
+      "sort": "stock_parts_cost_sort"
+    },
+    "export_boxes": {
+      "label": "Export Boxes",
+      "view": "report_export_boxes",
+      "actions": [
+        "report_export_boxes_search",
+        "report_export_boxes_sort",
+        "box_correction",
+        "delete_export_boxes"
+      ],
+      "search": "report_export_boxes_search",
+      "sort": "report_export_boxes_sort"
+    },
+    "stock_returns": {
+      "label": "Stock Return",
+      "view": "report_stock_return",
+      "actions": [
+        "report_stock_return_search",
+        "report_stock_return_sort"
+      ],
+      "search": "report_stock_return_search",
+      "sort": "report_stock_return_sort"
+    },
+    "restricted_data": {
+      "label": "Restricted Data",
+      "view": "report_restricted_data",
+      "actions": [
+        "delete",
+        "reset",
+        "delete_supplier",
+        "delete_invoice",
+        "delete_batch",
+        "delete_imei_list"
+      ]
+    },
+    "data_correction": {
+      "label": "IMEI Data Correction",
+      "view": "report_imei_correction",
+      "actions": [
+        "report_imei_correction_search",
+        "correction",
+        "workflow_correction"
+      ],
+      "search": "report_imei_correction_search"
+    },
+    "manual_damage": {
+      "label": "Live Damage Report",
+      "view": "report_damage",
+      "actions": [
+        "report_damage_search",
+        "report_damage_sort",
+        "damage_correction",
+        "damage_delete",
+        "damage_reset"
+      ],
+      "search": "report_damage_search",
+      "sort": "report_damage_sort"
+    },
+    "production_correction": {
+      "label": "Available Stock Correction",
+      "view": "production_view",
+      "actions": [
+        "production_view_search",
+        "production_edit",
+        "production_delete",
+        "production_restore",
+        "production_delete_all"
+      ],
+      "search": "production_view_search"
+    },
+    "deleted_history": {
+      "label": "Deleted History",
+      "view": "report_deleted_history",
+      "actions": [
+        "report_deleted_history_search",
+        "report_deleted_history_sort"
+      ],
+      "search": "report_deleted_history_search",
+      "sort": "report_deleted_history_sort"
+    }
+  },
+  "dependencies": {
+    "report_overview_search": "report_overview",
+    "report_stock_received_search": "report_stock_received",
+    "report_stock_received_sort": "report_stock_received",
+    "report_supplier_progress_search": "report_supplier_progress",
+    "report_supplier_progress_sort": "report_supplier_progress",
+    "report_work_in_progress_search": "report_work_in_progress",
+    "report_work_in_progress_sort": "report_work_in_progress",
+    "report_parts_required_search": "report_parts_required",
+    "report_parts_required_sort": "report_parts_required",
+    "report_parts_inventory_search": "report_parts_inventory",
+    "report_parts_inventory_sort": "report_parts_inventory",
+    "report_technicians_search": "report_technicians",
+    "report_technicians_sort": "report_technicians",
+    "report_final_qc_search": "report_final_qc",
+    "report_final_qc_sort": "report_final_qc",
+    "report_device_cost_search": "report_device_cost",
+    "report_device_cost_sort": "report_device_cost",
+    "stock_grade_analysis_search": "stock_grade_analysis",
+    "stock_grade_analysis_sort": "stock_grade_analysis",
+    "stock_grade_download": "stock_grade_analysis",
+    "stock_parts_cost_search": "stock_parts_cost",
+    "stock_parts_cost_sort": "stock_parts_cost",
+    "report_export_boxes_search": "report_export_boxes",
+    "report_export_boxes_sort": "report_export_boxes",
+    "box_correction": "report_export_boxes",
+    "delete": "report_restricted_data",
+    "report_stock_return_search": "report_stock_return",
+    "report_stock_return_sort": "report_stock_return",
+    "reset": "report_restricted_data",
+    "delete_supplier": "report_restricted_data",
+    "delete_invoice": "report_restricted_data",
+    "delete_batch": "report_restricted_data",
+    "delete_imei_list": "report_restricted_data",
+    "report_imei_correction_search": "report_imei_correction",
+    "correction": "report_imei_correction",
+    "workflow_correction": "report_imei_correction",
+    "report_damage_search": "report_damage",
+    "report_damage_sort": "report_damage",
+    "damage_correction": "report_damage",
+    "damage_delete": "report_damage",
+    "damage_reset": "report_damage",
+    "production_view_search": "production_view",
+    "production_edit": "production_view",
+    "production_delete": "production_view",
+    "production_restore": "production_view",
+    "production_delete_all": "production_view",
+    "report_deleted_history_search": "report_deleted_history",
+    "report_deleted_history_sort": "report_deleted_history",
+    "delete_export_boxes": "report_export_boxes"
+  }
+}

@@ -112,3 +112,12 @@
 .tv-employee-choice small { display: block; color: var(--nm-muted,#526a76); font-weight: 400; font-size: .68rem; margin-top: 4px; }
 .tv-employee-selection input[type=checkbox] { width: 19px; height: 19px; min-height: 19px; flex: 0 0 19px; margin: 0; accent-color: #087b5b; }
 @media(max-width:620px) { .tv-employee-list { grid-template-columns: minmax(0,1fr); } }
+
+.report-permission-help{width:100%;margin:0 0 14px;color:var(--nm-muted,#526a76);font-size:.8rem;line-height:1.6}
+.report-permission-groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:14px;width:100%}
+.report-permission-group{padding:14px;border:1px solid var(--nm-border,#bdcfcc);border-radius:14px;background:var(--nm-card,#f7fafb);box-shadow:var(--nm-shadow-sm,2px 2px 5px #c1cfd6,-2px -2px 5px #fff)}
+.report-permission-group.is-selected{border-color:var(--nm-accent,#087b5b)}
+.report-permission-group>.permission-capability{font-weight:750;display:flex;width:100%;box-sizing:border-box}
+.report-permission-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+.report-permission-actions .permission-capability{font-size:.72rem}
+.report-tab[hidden]{display:none!important}
