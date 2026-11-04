@@ -6,10 +6,11 @@
   const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const num = n => Number(n || 0).toLocaleString('en-GB');
   const when = v => v ? new Date(v).toLocaleString('en-GB', {timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true}) : 'Not recorded';
+  const receivedDate = v => v ? new Date(v).toLocaleDateString('en-GB',{timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric'}) : 'Not recorded';
   const storage = n => n == null ? '—' : Number(n) >= 1024 && Number(n) % 1024 === 0 ? Number(n)/1024+' TB' : n+' GB';
   const can = c => window.GREENLOOP_CAN?.(c,'accounts') === true;
   const allowed = () => can('view') && can('imei_data');
-  const columns = [['imei','IMEI'],['model','Phone'],['supplier_code','Supplier / receipt'],['final_grade','Grades'],[null,'BH'],['stage','Current stage'],['technician','Technician'],['returned_at','Return details']];
+  const columns = [['imei','IMEI'],['model','Model'],['storage_gb','GB'],['color','Color'],['supplier_code','Supplier'],['received_at','Date Received']];
   let client, catalogue = null, report = null, visible = false, stopped = false, loading = false, exporting = false;
   let offset = 0, sortKey = 'imei', direction = 'asc', generation = 0, searchTimer, pdfUrl = '', pdfFilename = '';
 
@@ -19,7 +20,7 @@
       <label>Stock / Batch<select id="aid-batch" data-capability="search" data-capability-page="accounts"><option value="">All stock / batches</option></select></label>
       <label>Invoice<select id="aid-invoice" data-capability="search" data-capability-page="accounts"><option value="">All invoices</option></select></label>
     </div>
-    <div class="aid-toolbar"><input id="aid-search" type="search" placeholder="Search IMEI, model, technician or return details" aria-label="Search IMEI DATA" maxlength="160" data-capability="search" data-capability-page="accounts">
+    <div class="aid-toolbar"><input id="aid-search" type="search" placeholder="Search IMEI, model, color, supplier or receipt" aria-label="Search IMEI DATA" maxlength="160" data-capability="search" data-capability-page="accounts">
       <button id="aid-filter-toggle" class="secondary-button" type="button" aria-expanded="false" aria-controls="aid-filters" data-capability="search" data-capability-page="accounts">Filters</button>
       <button id="aid-clear" class="secondary-button" type="button" data-capability="search" data-capability-page="accounts">Clear filters</button>
       <button id="aid-refresh" class="secondary-button" type="button" data-capability="imei_data" data-capability-page="accounts">Refresh</button>
@@ -32,7 +33,7 @@
     </div>
     <p id="aid-message" role="status" hidden></p><p id="aid-scope" class="aid-scope"></p>
     <div id="aid-summary" class="aid-summary"></div>
-    <div class="aid-table-wrap"><table class="aid-table"><thead><tr><th scope="col">S.No</th>${columns.map(([key,label])=>`<th scope="col"${key?' data-aid-heading="'+key+'"':''}>${key?`<button class="aid-sort" type="button" data-aid-sort="${key}" data-capability="sort" data-capability-page="accounts">${label} <span aria-hidden="true">↕</span></button>`:label}</th>`).join('')}</tr></thead><tbody id="aid-rows"></tbody></table></div>
+    <div class="aid-table-wrap"><table class="aid-table"><thead><tr>${columns.map(([key,label])=>`<th scope="col"${key?' data-aid-heading="'+key+'"':''}>${key?`<button class="aid-sort" type="button" data-aid-sort="${key}" data-capability="sort" data-capability-page="accounts">${label} <span aria-hidden="true">↕</span></button>`:label}</th>`).join('')}</tr></thead><tbody id="aid-rows"></tbody></table></div>
     <div class="aid-footer"><span id="aid-count">Choose IMEI DATA to load records.</span><div><button id="aid-prev" type="button" class="secondary-button" data-capability="imei_data" data-capability-page="accounts">Previous</button><button id="aid-next" type="button" class="secondary-button" data-capability="imei_data" data-capability-page="accounts">Next</button></div></div>
     <p class="aid-note">Returned phones remain attached to their original stock and appear in red. Pending returns use a separate status. A return without a recorded IMEI is shown explicitly.</p>
     <dialog id="aid-pdf-dialog" aria-labelledby="aid-pdf-title"><div class="aid-pdf-header"><h2 id="aid-pdf-title">IMEI DATA - PDF preview</h2><div><button id="aid-pdf-download" type="button" class="primary-button" data-capability="imei_download" data-capability-page="accounts">Download PDF</button><button id="aid-pdf-close" type="button" class="secondary-button" data-capability="imei_data" data-capability-page="accounts">Close</button></div></div><iframe id="aid-pdf-frame" title="IMEI DATA PDF preview"></iframe><a id="aid-pdf-open" target="_blank" rel="noopener" data-capability="imei_download" data-capability-page="accounts">Open PDF in a new tab</a></dialog>`;
@@ -102,8 +103,7 @@
     const fields = [['Total records','total_records'],['In company','in_company'],['Ready Stock','ready'],['In process','in_process'],['Exported','exported'],['Returned','returned']];
     $('#aid-summary').innerHTML = fields.map(([label,key])=>`<div${key==='returned'?' class="aid-return-total"':''}><span>${label}</span><strong>${num(report.summary[key])}</strong></div>`).join('');
     $('#aid-scope').textContent = [$('#aid-supplier').selectedOptions[0]?.textContent,$('#aid-batch').value ? $('#aid-batch').selectedOptions[0]?.textContent : 'All stock / batches',$('#aid-invoice').value ? 'Invoice '+$('#aid-invoice').value : '',report.filters.from_date ? 'From '+report.filters.from_date : '',report.filters.to_date ? 'To '+report.filters.to_date : '',report.summary.missing_imei ? num(report.summary.missing_imei)+' return records have no recorded IMEI' : ''].filter(Boolean).join(' · ');
-    const bh = (v,unavailable) => v == null ? unavailable ? 'Not available' : '—' : v+'%';
-    $('#aid-rows').innerHTML = report.rows.length ? report.rows.map((r,i)=>`<tr class="${r.returned?'aid-returned':r.return_pending?'aid-return-pending':''}" data-record-key="${esc(r.record_key)}"><td>${offset+i+1}</td><td class="aid-imei"><strong>${esc(r.imei || 'Not recorded')}</strong>${!r.imei?'<small>Unentered stock return</small>':''}</td><td><strong>${esc(r.model || 'Not recorded')}</strong><small>${esc(storage(r.storage_gb))} · ${esc(r.color || 'Not recorded')}</small></td><td><strong>${esc(supplierLabel(r))}</strong><small>${esc(r.batch_number || 'No stock/batch recorded')}</small><small>${esc(r.invoice_number || 'Invoice not recorded')}</small><small>Received ${esc(when(r.received_at))}</small></td><td><span>Supplier: ${esc(r.supplier_grade || '—')}</span><span>Initial GL: ${esc(r.initial_grade || '—')}</span><span>Final: ${esc(r.final_grade || '—')}</span></td><td><span>Initial: ${esc(bh(r.initial_bh,r.initial_bh_unavailable))}</span><span>Final: ${esc(bh(r.final_bh,r.final_bh_unavailable))}</span></td><td><span class="aid-status">${esc(r.stage)}</span><small>${esc(r.current_location || '')}</small></td><td>${esc(r.technician || '—')}</td><td>${r.returned || r.return_pending ? `<strong>${r.returned?'Returned':'Return pending'}</strong><small>${esc(r.return_number || 'Reference not recorded')}</small><small>${r.returned ? esc(when(r.returned_at)) : 'Awaiting handover'}</small><small>${esc(r.return_reason || 'Reason not recorded')}</small>${r.return_reference?`<small>${esc(r.return_reference)}</small>`:''}${r.return_notes?`<small>${esc(r.return_notes)}</small>`:''}` : '—'}</td></tr>`).join('') : '<tr><td colspan="9" class="aid-empty">No IMEI or return records match this selection.</td></tr>';
+    $('#aid-rows').innerHTML = report.rows.length ? report.rows.map(r=>`<tr class="${r.returned?'aid-returned':r.return_pending?'aid-return-pending':''}" data-record-key="${esc(r.record_key)}"><td class="aid-imei"><strong>${esc(r.imei || 'Not recorded')}</strong>${!r.imei?'<small>Unentered stock return</small>':''}${r.returned?'<small class="aid-return-label">Returned to supplier</small>':r.return_pending?'<small class="aid-return-label">Return pending</small>':''}</td><td>${esc(r.model || 'Not recorded')}</td><td>${esc(storage(r.storage_gb))}</td><td>${esc(r.color || 'Not recorded')}</td><td>${esc(supplierLabel(r))}</td><td>${esc(receivedDate(r.received_at))}</td></tr>`).join('') : '<tr><td colspan="6" class="aid-empty">No IMEI or return records match this selection.</td></tr>';
     for (const input of root.querySelectorAll('select[data-aid-filter]')) {
       const key = input.dataset.aidFilter, values = [...(report.facets[key] || [])].sort((a,b)=>key==='storage_gb'?Number(a)-Number(b):String(a).localeCompare(String(b),'en',{numeric:true}));
       fillSelect(input,values.map(v=>({value:v,label:key==='storage_gb'?storage(v):v})),'All');
@@ -116,7 +116,7 @@
   async function load() {
     if (!visible || stopped || !allowed() || exporting) return;
     const ticket = ++generation, sig = signature(); loading = true; report = null; controls(); message('Loading IMEI DATA…');
-    $('#aid-rows').innerHTML='<tr><td colspan="9" class="aid-empty">Loading records…</td></tr>';$('#aid-summary').replaceChildren();$('#aid-count').textContent='Loading…';
+    $('#aid-rows').innerHTML='<tr><td colspan="6" class="aid-empty">Loading records…</td></tr>';$('#aid-summary').replaceChildren();$('#aid-count').textContent='Loading…';
     try {
       const data = await rpc('get_accounts_imei_data_v1',{p_filters:filters(),p_offset:offset,p_limit:50,p_sort_key:sortKey,p_sort_direction:direction});
       if (ticket !== generation || sig !== signature() || !visible || stopped || !allowed()) return;
