@@ -232,7 +232,7 @@ document.addEventListener("click", (event) => {
     '<p class="nav-label">Operations</p>',
     item("Stock Received", "stock-entry.html", "+", page === "stock-entry.html" || page === "receiving.html"),
     item("IMEI Entry", "imei-entry.html", "⌕", page === "imei-entry.html"),
-    item("Initial QC", "initial-qc.html", "✓", page === "initial-qc.html"),
+    item("Initial QC", "initial-qc.html", "✓", (page === "initial-qc.html" || page === "qc-issuance.html")),
     item("Return/Replacement", "stock-return.html", "↩", page === "stock-return.html"),
     item("Lab & Glass", "laboratory.html", "⌁", (page === "laboratory.html" || page === "glass.html" || page === "lab-bulk-transfer.html") && window.location.hash !== "#frame"),
     item("Parts", "parts.html", "▦", page === "parts.html"),
@@ -288,7 +288,7 @@ document.addEventListener("click", (event) => {
 (() => {
   const topbar = document.querySelector(".topbar");
   if (!topbar) return;
-  const operationalPages = new Set(["stock-entry.html", "imei-entry.html", "initial-qc.html", "parts.html", "inventory.html", "laboratory.html", "final-qc.html", "ready-stock.html", "export-box.html", "stock-out.html"]);
+  const operationalPages = new Set(["stock-entry.html", "imei-entry.html", "initial-qc.html", "qc-issuance.html", "parts.html", "inventory.html", "laboratory.html", "final-qc.html", "ready-stock.html", "export-box.html", "stock-out.html"]);
   const file = (location.pathname.split("/").pop() || "").toLowerCase();
   topbar.querySelectorAll(".search-box").forEach(search => {
     const dashboardInput = search.querySelector("#dashboard-search");
@@ -401,6 +401,7 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     "imei-entry.html": "imei_entry",
     "imei-search.html": "imei_search",
     "initial-qc.html": "initial_qc",
+    "qc-issuance.html": "initial_qc",
     "stock-return.html": "supplier_returns",
     "laboratory.html": "lab_glass",
     "lab-bulk-transfer.html": "lab_glass",
@@ -613,7 +614,7 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
   function installQuickImeiScanner() {
     const file = (window.location.pathname.split("/").pop() || "").toLowerCase();
     const operationalPages = new Set([
-      "stock-entry.html", "imei-entry.html", "initial-qc.html", "parts.html", "inventory.html",
+      "stock-entry.html", "imei-entry.html", "initial-qc.html", "qc-issuance.html", "parts.html", "inventory.html",
       "laboratory.html", "final-qc.html", "ready-stock.html", "export-box.html", "stock-out.html"
     ]);
     if (!operationalPages.has(file) || document.querySelector("#greenloop-quick-imei-scanner")) return;

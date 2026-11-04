@@ -1,0 +1,23 @@
+.issuance-defaults{display:flex;align-items:end;flex-wrap:wrap;gap:1rem;margin:1rem 0;padding:1rem 1.25rem;border-radius:18px;background:var(--surface,#f5f8fa);border:1px solid var(--border,#cbd6df);box-shadow:3px 4px 8px #8a9da657,-3px -3px 8px #ffffff85}
+.issuance-defaults label{display:grid;gap:.4rem;font-size:.83rem;font-weight:700;min-width:210px}
+.issuance-defaults select,.issuance-table select,.issuance-table input{width:100%;min-height:42px;border:1px solid var(--border,#c9d6e1);border-radius:12px;background:var(--input-bg,#e6edf1);color:inherit;padding:.65rem .75rem;box-shadow:inset 2px 2px 5px #718b9c33}
+.issuance-defaults>span{align-self:center;margin-left:auto;font-size:.83rem}
+.issuance-table-wrap{overflow:auto;border:1px solid var(--border,#c7d5df);border-radius:20px;background:var(--surface,#f6f8fa);box-shadow:4px 5px 9px #71869450,-3px -3px 8px #ffffff80}
+.issuance-table{width:100%;min-width:1120px;border-collapse:collapse;color:inherit}
+.issuance-table th{font-size:.72rem;text-align:left;letter-spacing:.04em;text-transform:uppercase;background:var(--surface-alt,#e5edf2);padding:1rem}
+.issuance-table td{padding:1rem;vertical-align:top;border-top:1px solid var(--border,#c7d5df);font-size:.86rem}
+.issuance-table td:first-child{min-width:220px;width:20%}.issuance-table td:nth-child(2){min-width:170px}.issuance-table td:nth-child(4){min-width:180px}.issuance-table td:nth-child(5){min-width:220px}.issuance-table td:last-child{min-width:150px}
+.issuance-table small,.issuance-table strong,.issuance-table [data-inspection]>span,.issuance-table [data-work]>span{display:block;margin:.35rem 0}
+.issuance-table label{display:grid;gap:.3rem;font-size:.75rem;font-weight:700;margin-bottom:.7rem}
+.issuance-table [data-row-state]{max-width:265px;line-height:1.5;color:var(--accent,#087653)}
+.issuance-table .is-error [data-row-state]{color:var(--danger,#b6322b)}
+.issuance-table button{width:100%;margin-bottom:.65rem;white-space:normal}.issuance-table .is-completed{background:color-mix(in srgb,var(--accent,#087653) 9%,transparent)}
+.issuance-work-label{font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:var(--text-muted,#637b8f)}
+#issuance-message{padding:.8rem 1rem;border-radius:12px;border:1px solid currentColor;line-height:1.6}#issuance-message.is-success{color:var(--accent,#087653)}
+@media(max-width:650px){.issuance-defaults label{min-width:0;width:100%}.issuance-defaults>span{margin-left:0}.qc-bulk-toolbar-actions>*{flex:1}.issuance-table-wrap{max-width:100%}}
+
+html[data-mode="dark"] .issuance-defaults,html[data-mode="dark"] .issuance-table-wrap{background:var(--nm-card);border-color:var(--nm-line);box-shadow:4px 5px 10px #101a244d,-3px -3px 8px #ffffff0d}
+html[data-mode="dark"] .issuance-table th,html[data-mode="dark"] .issuance-table td{border-color:var(--nm-line)}
+html[data-mode="dark"] .issuance-table [data-row-state]{color:var(--nm-green)}
+html[data-mode="dark"] .issuance-table .is-error [data-row-state]{color:var(--nm-red)}
+html[data-mode="dark"] .issuance-work-label{color:var(--nm-muted)}

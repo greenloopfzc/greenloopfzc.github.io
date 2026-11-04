@@ -28,6 +28,7 @@
   function usable(){const page=window.GREENLOOP_PAGE_ACCESS?.pageKey;return !!page&&(window.GREENLOOP_CAN?.('search',page)||window.GREENLOOP_CAN?.('entry',page)||window.GREENLOOP_CAN?.('scan',page)||window.GREENLOOP_CAN?.('search','imei_search'));}
   function stageKey(stage){
     const s=String(stage||'').toLowerCase();
+    if(/issuance/.test(s))return 'initial_qc_issuance';
     if(/initial\s*qc|qc\s*1/.test(s))return 'initial_qc';
     if(/final\s*qc|qc\s*2/.test(s))return 'final_qc';
     if(/frame|b[ -]?dept|b department/.test(s))return 'frame_department';
@@ -41,6 +42,7 @@
   }
   function target(stage){
     const page=stageKey(stage),urls={initial_qc:'initial-qc.html',final_qc:'final-qc.html',frame_department:'laboratory.html#frame',lab_glass:'laboratory.html',ready_stock:'ready-stock.html',parts:'parts.html',supplier_returns:'stock-return.html',stock_exported:'stock-exported.html',stock_received:'stock-entry.html'};
+    if(page==='initial_qc_issuance')return {page:'initial_qc',url:'qc-issuance.html'};
     return urls[page]?{page,url:urls[page]}:null;
   }
   function expected(input){
@@ -48,6 +50,7 @@
     const f=file();
     if(f==='laboratory.html')return location.hash==='#frame'?['frame_department']:['lab_glass'];
     if(['glass.html','lab-bulk-transfer.html'].includes(f))return ['lab_glass'];
+    if(f==='qc-issuance.html')return ['initial_qc_issuance'];
     if(f==='initial-qc.html')return ['initial_qc'];
     if(f==='final-qc.html')return ['final_qc'];
     if(f==='ready-stock.html')return ['ready_stock'];
@@ -60,7 +63,7 @@
     return null; // Reports and global IMEI Search intentionally cover every stage.
   }
   function nativeLocationCheck(input){
-    return input.matches('.qc-bulk-imei,.final-row-imei,#technician-imei-scan,.batch-row-imei,#imei-1,#export-imei');
+    return input.matches('.qc-issuance-imei,.qc-bulk-imei,.final-row-imei,#technician-imei-scan,.batch-row-imei,#imei-1,#export-imei');
   }
   async function checkLocation(input){
     const accepted=expected(input),imei=input.value.trim();

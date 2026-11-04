@@ -194,8 +194,7 @@
       <td><select data-carry-field="gcGrade">${gradeOptions(false)}</select></td>
       <td>${requirementGroup("part")}</td>
       <td>${requirementGroup("service")}</td>
-      <td><div class="qc-bulk-technician"><select data-carry-field="technician">${technicianOptions()}</select><button type="button" data-add-technician title="Add technician">+</button><button type="button" class="remove" data-remove-technician title="Remove technician">−</button></div></td>
-      <td class="qc-row-save-cell"><label class="qc-frame-route" title="No-work phone: send directly to B-DEPT"><input type="checkbox" data-route-frame><span>B-DEPT</span></label><button type="button" class="qc-row-save" data-save-row>Save</button></td>
+      <td class="qc-row-save-cell"><button type="button" class="qc-row-save" data-save-row>Save</button></td>
     </tr>`;
   }
 
@@ -240,6 +239,7 @@
       select.dataset.autoHousing = "yes"; select.title = "Default for GL Grade D — choose another part if needed";
     }
     const frame = row.querySelector('[data-route-frame]');
+    if (!frame) return;
     if (required) { frame.checked = false; frame.disabled = true; frame.dataset.autoFrameLocked = "yes"; }
     else if (frame.dataset.autoFrameLocked === "yes") { delete frame.dataset.autoFrameLocked; frame.disabled = window.GREENLOOP_CAN?.('entry','initial_qc') !== true; }
   }
@@ -258,7 +258,7 @@
   function applySnapshot(row, snapshot) {
     row.querySelector('[data-carry-field="supplierGrade"]').value = snapshot.supplierGrade;
     row.querySelector('[data-carry-field="gcGrade"]').value = snapshot.gcGrade;
-    row.querySelector('[data-carry-field="technician"]').value = snapshot.technician;
+
     if (snapshot.housingOverride) row.dataset.housingOverride = "yes"; else delete row.dataset.housingOverride;
     setGroupValues(row, "part", snapshot.parts);
     setGroupValues(row, "service", snapshot.services);
@@ -305,6 +305,7 @@
   }
 
   function clearAutoData(row) {
+    delete row.dataset.saveRequest;
     row.dataset.loadVersion = String(Number(row.dataset.loadVersion || 0) + 1);
     row.dataset.loading = "";
     ["serial", "region", "model", "storage", "color", "battery", "supplier"].forEach((key) => {
@@ -370,7 +371,7 @@
     setRowState(row, "Loading...", "is-loading");
     try {
     if (!options.primaryChecked && !await window.GREENLOOP_IMEI_STAGE_NOTICE.checkPrimary(imei,{isCurrent})) {if(isCurrent())setRowState(row,"Duplicate phone — use IMEI 1","is-error");return;}
-    const { data, error } = await getClient().rpc("get_initial_qc_job_by_identifier", { p_identifier: imei });
+    const { data, error } = await getClient().rpc("get_initial_qc_work_item_v1", { p_identifier: imei });
     if (!isCurrent()) return;
     if (error) {
       row.classList.add("is-error");
@@ -380,7 +381,7 @@
     const result = Array.isArray(data) ? data[0] : data;
     if (!result?.found) {
       row.classList.add("is-error");
-      setRowState(row, "Not waiting in Initial QC", "is-error");
+      setRowState(row, result?.message || "Not waiting for inspection", "is-error");
       if (!options.bulk) void window.GREENLOOP_IMEI_STAGE_NOTICE?.show({ imei, title: "Phone unavailable here", message: "This phone is not waiting in Initial QC (QC 1).", onlyIfFound: true, isCurrent });
       if (!options.bulk) input.focus();
       return;
@@ -513,16 +514,11 @@
   }
 
   async function loadPendingCount() {
-    const { data, error } = await window.GREENLOOP_FILTERS.all(()=>getClient()
-      .from("jobs")
-      .select("job_number, received_at, supplier:greenloop_suppliers(supplier_code, company_name), receiving_batch:receiving_batches(planned_quantity, invoice_number, batch_number), device:devices!inner(imei_1, imei_2, device_number, serial_number, brand, model, storage_gb, color)")
-      .eq("current_status", "initial_qc_pending")
-      .is("deleted_at", null)
-      .order("received_at", { ascending: true }).order("id"));
+    const { data, error } = await getClient().rpc("get_initial_qc_work_tray_v1");
     if (error) throw error;
-    await window.GREENLOOP_RECEIPTS.jobs("initial_qc",data||[]);
-    pendingJobs = data || [];
-    queueCount.textContent = `${pendingJobs.length} waiting`;
+    pendingJobs = data?.pending || [];
+    queueCount.textContent = `${pendingJobs.length} QC pending`;
+    document.querySelector("#qc-issuance-count").textContent = String(data?.awaiting_issuance || 0);
     queueCount.setAttribute("aria-label", `View ${pendingJobs.length} phones waiting for Initial QC`);
     if (!pendingModal.hidden) renderPendingJobs(pendingSearch.value);
   }
@@ -597,7 +593,7 @@
     const partsSelected = uniqueValues(valuesForGroup(row, "part"));
     const servicesSelected = uniqueValues(valuesForGroup(row, "service"));
     const selectedLabels = [...partsSelected, ...servicesSelected];
-    const technicianId = row.querySelector('[data-carry-field="technician"]').value || null;
+
 
     const findings = selectedLabels.map((label) => {
       const item = workItems.find((entry) => entry.label === label);
@@ -612,9 +608,6 @@
       findings,
       parts,
       services: servicesSelected,
-      technicianId,
-      technicianName: technicianId ? (technicians.find(t=>String(t.id)===String(technicianId))?.full_name || technicians.find(t=>String(t.id)===String(technicianId))?.email || row.querySelector('[data-carry-field="technician"]').selectedOptions[0]?.textContent || "Technician") : "Unassigned",
-      routeToFrame: Boolean(row.querySelector("[data-route-frame]")?.checked),
       supplierGrade: row.querySelector('[data-carry-field="supplierGrade"]').value || null,
       gcGrade: row.querySelector('[data-carry-field="gcGrade"]').value || null,
       notes: `Initial QC 1: ${summary}.`
@@ -653,16 +646,6 @@
       return { ok: false, error: error.message };
     }
 
-    // Any one of Part, Service, or Technician means Laboratory work is required.
-    // Only a completely blank repair selection may go directly to Final QC.
-    const hasWork = submission.findings.length > 0
-      || submission.parts.length > 0
-      || Boolean(submission.technicianId);
-    if (submission.routeToFrame && hasWork) {
-      const errorText = "B-DEPT direct route needs Parts, Service, and Technician to be blank.";
-      setRowState(row, errorText, "is-error");
-      return { ok: false, error: errorText };
-    }
     const rowButton = row.querySelector("[data-save-row]");
     row.dataset.saving = "yes";
     window.GREENLOOP_QC_HANDOVER?.setBusy(row.dataset.rowId,true);
@@ -671,16 +654,14 @@
     try {
     setSubmitting(rowButton, true, "Saving...");
     setRowState(row, progressText, "is-loading");
-    const rpcName = submission.routeToFrame
-      ? "complete_initial_qc_direct_to_frame_v2"
-      : (hasWork ? "complete_initial_qc_lab_first" : "complete_scanned_initial_qc_with_roster_and_grades");
+    row.dataset.saveRequest ||= crypto.randomUUID();
     const payload = {
-      p_job_id: selectedJob.id, p_overall_condition: "", p_cosmetic_condition: "", p_notes: submission.notes,
+      p_job_id: selectedJob.id, p_notes: submission.notes,
       p_findings: submission.findings, p_part_requests: submission.parts,
-      p_assigned_technician_roster_id: submission.technicianId, p_supplier_grade: submission.supplierGrade,
-      p_gc_grade: submission.gcGrade
+      p_supplier_grade: submission.supplierGrade, p_gc_grade: submission.gcGrade,
+      p_request_id: row.dataset.saveRequest
     };
-    const { error } = await getClient().rpc(rpcName, payload);
+    const { error } = await getClient().rpc("save_initial_qc_inspection_v1", payload);
     row.dataset.saving = "";
 
     if (error) {
@@ -690,21 +671,13 @@
       return { ok: false, error: error.message || "Could not save" };
     }
 
-    const storage=Number(selectedJob.device?.storage_gb);
-    window.GREENLOOP_QC_HANDOVER?.record({
-      jobId:selectedJob.id,imei:selectedJob.device.imei_1,model:selectedJob.device.model,
-      storage:storage ? (storage>=1024&&storage%1024===0 ? `${storage/1024} TB` : `${storage} GB`) : "-",color:selectedJob.device.color,
-      technicianId:submission.technicianId,technician:submission.technicianName,
-      parts:submission.parts.map(part=>({name:part.part_name,quantity:part.quantity})),services:submission.services
-    });
     row.dataset.completed = "yes";
     row.classList.remove("is-error");
     row.classList.add("is-completed");
     row.querySelectorAll("input, select, button").forEach((control) => { control.disabled = true; });
     rowButton.textContent = "Saved";
-    const route = submission.routeToFrame ? "frame" : (hasWork ? "laboratory" : "final_qc");
-    setRowState(row, route === "frame" ? "Completed - B-DEPT" : (submission.parts.length ? "Completed - Lab & Parts" : hasWork ? "Completed - Laboratory" : "Completed - Final QC"), "is-completed");
-    return { ok: true, hasWork, route, partsQueued:hasWork&&submission.parts.length>0 };
+    setRowState(row, "QC saved — Awaiting Issuance", "is-completed");
+    return { ok: true, route: "issuance" };
     } catch (error) {
       setRowState(row, error.message || "Could not save", "is-error");
       return { ok: false, error: error.message || "Could not save" };
@@ -726,7 +699,7 @@
       return;
     }
     await loadPendingCount();
-    showToast(result.route === "frame" ? "Initial QC saved. Phone sent directly to B-DEPT." : (result.partsQueued ? "Initial QC saved. Phone sent to Laboratory and required parts sent to Parts." : result.hasWork ? "Initial QC saved. Phone sent to Laboratory." : "Initial QC saved. Phone sent directly to Final QC."));
+    showToast("Inspection saved. Open Lab & Glass Issuance to assign and transfer this phone.");
     focusNextInspectionRow(row);
   }
 
@@ -746,9 +719,6 @@
     window.GREENLOOP_QC_HANDOVER?.setBusy("bulk",true);
     try {
     let completed = 0;
-    let directFinalQc = 0;
-    let sentToLab = 0;
-    let sentToFrame = 0;
     const errors = [];
 
     for (let index = 0; index < rows.length; index += 1) {
@@ -759,14 +729,11 @@
         continue;
       }
       completed += 1;
-      if (result.route === "frame") sentToFrame += 1;
-      else if (result.hasWork) sentToLab += 1;
-      else directFinalQc += 1;
     }
 
     setSubmitting(button, false);
     await loadPendingCount();
-    if (completed) showToast(`${completed} Initial QC completed: ${sentToLab} to Laboratory, ${sentToFrame} direct to B-DEPT, ${directFinalQc} direct to Final QC.`);
+    if (completed) showToast(`${completed} inspections saved — Awaiting Issuance.`);
     if (errors.length) {
       setMessage(`${completed} completed. ${errors.length} row(s) need correction. ${errors[0]}`);
     } else {
@@ -815,16 +782,16 @@
       window.location.replace("index.html");
       return;
     }
+    await window.GREENLOOP_ACCESS_READY;
     const { data: canInspect, error } = await getClient().rpc("has_role", { required_roles: ["super_admin", "owner", "manager", "initial_qc"] });
     if (error) throw error;
     if (!canInspect) throw new Error("Your account does not have Initial QC permission.");
     await window.GREENLOOP_ACCESS_READY;
     document.querySelector("#qc-manage-options").hidden=!canManageWorkOptions();
-    await Promise.all([loadTechnicians(), loadPendingCount(), loadPartOptions()]);
+    await Promise.all([loadPendingCount(), loadPartOptions()]);
     createRows(10);
     app.hidden = false;
     window.GREENLOOP_QC_HANDOVER?.refresh();
-    window.GREENLOOP_EMPLOYEES?.watch(data=>{if(document.activeElement?.matches('[data-carry-field="technician"]'))return;const next=data.map(e=>({id:e.id,full_name:e.full_name,email:null}));if(JSON.stringify(technicians.map(e=>[e.id,e.full_name]))===JSON.stringify(next.map(e=>[e.id,e.full_name])))return;technicians=next;refreshTechnicianSelects();});
     setupHorizontalScroll();
     tableBody.querySelector(".qc-bulk-imei")?.focus();
   }

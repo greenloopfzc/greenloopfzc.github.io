@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en" data-global-imei-search="off">
+  <head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="css/table-filters.css?v=20261024-sort-box-cleanup-1">
+  <link rel="stylesheet" href="css/search-highlights.css?v=20261013-search-tv-1">
+  <script defer src="js/search-highlights.js?v=20261013-search-tv-1"></script>
+  <script defer src="js/table-sorting.js?v=20261017-clean-layout-1"></script>
+  <script defer src="js/table-filters.js?v=20261031-b-dept-1"></script>
+  <script src="js/appearance.js?v=20261017-settings-appearance-1"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0d5c43">
+    <meta name="description" content="Scan-first Initial QC for Greenloop devices.">
+    <title>Lab &amp; Glass Issuance | Greenloop</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css?v=20261016-strict-view-only-1">
+    <link rel="stylesheet" href="css/initial-qc.css?v=20261104-qc-issuance-1">
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="js/imei-scan.js?v=20261104-qc-issuance-1"></script>
+<script defer src="js/imei-stage-notice.js?v=20261102-imei-scan-location-1"></script>
+  <script defer src="js/permission-catalog.js?v=20261104-report-permissions-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261104-qc-issuance-1"></script>
+<script defer src="js/page-capabilities.js?v=20261104-report-permissions-1"></script>
+<link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
+<script defer src="js/office-access.js?v=20261024-office-access-1"></script>
+<script defer src="js/config.js?v=20261104-qc-issuance-1"></script>
+  <script defer src="js/login-activity.js?v=20261013-search-tv-1"></script>
+  <link rel="stylesheet" href="css/record-search.css?v=20261017-find-record-popup-1">
+  <script defer src="js/record-search.js?v=20261027-performance-1"></script>
+    <script defer src="js/part-notifications.js?v=20261103-workflow-polish-1"></script>
+  <script defer src="js/employee-updates.js?v=20261027-performance-1"></script>
+  <link rel="stylesheet" href="css/qc-excel-paste.css?v=20261104-qc-excel-paste-1">
+  <script defer src="js/qc-excel-paste.js?v=20261104-qc-excel-paste-1"></script>
+  <script defer src="js/qc-issuance.js?v=20261104-qc-issuance-1"></script>
+      <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
+    <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261102-imei-scan-location-1">
+  <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
+  <link rel="stylesheet" href="css/sidebar-compact.css?v=20261009-sidebar-pdf-1">
+  <script defer src="js/sidebar-compact.js?v=20261009-sidebar-pdf-1"></script>
+  <link rel="stylesheet" href="css/clean-layout.css?v=20261017-clean-layout-1">
+  <script defer src="js/clean-layout.js?v=20261030-supplier-progress-1"></script>
+  <script defer src="js/suspicious-badge.js?v=20261103-workflow-polish-1"></script>
+<link rel="stylesheet" href="css/qc-issuance.css?v=20261104-qc-issuance-1">
+<link rel="stylesheet" href="css/qc-handover.css?v=20261030-qc-handover-1">
+<script defer src="js/qc-handover-pdf.js?v=20261030-qc-pdf-design-1"></script>
+<script defer src="js/qc-handover.js?v=20261030-qc-pdf-design-1"></script>
+</head>
+  <body class="app-page">
+    <div class="app-shell">
+      <aside id="sidebar" class="sidebar" aria-label="Main navigation">
+        <div class="sidebar-top"><a class="app-brand" href="dashboard.html" aria-label="Greenloop dashboard"><span class="gl-wordmark"><img src="assets/greenloop-fzc-logo.jpg" alt="Greenloop FZC" width="1280" height="427"></span></a><button id="close-menu" hidden aria-hidden="true" tabindex="-1" class="icon-button close-menu" type="button" aria-label="Close menu">&times;</button></div>
+        <nav class="sidebar-nav">
+          <p class="nav-label">Workspace</p>
+          <a class="nav-item" href="dashboard.html"><span class="nav-icon" aria-hidden="true">⌘</span>Dashboard</a>
+          <a class="nav-item" href="receiving.html"><span class="nav-icon" aria-hidden="true">+</span>Stock Received</a>
+          <a class="nav-item" href="imei-search.html"><span class="nav-icon" aria-hidden="true">⌕</span>IMEI Search</a>
+          <p class="nav-label">Operations</p>
+          <a class="nav-item active" href="initial-qc.html"><span class="nav-icon" aria-hidden="true">✓</span>Initial QC</a>
+          <a class="nav-item" href="laboratory.html"><span class="nav-icon" aria-hidden="true">⌁</span>Laboratory &amp; Glass</a>
+          <a class="nav-item" href="final-qc.html"><span class="nav-icon" aria-hidden="true">◎</span>Final QC</a>
+          <a class="nav-item" href="production.html"><span class="nav-icon" aria-hidden="true">↗</span>Production</a>
+          <a class="nav-item" href="stock-out.html"><span class="nav-icon" aria-hidden="true">↝</span>Stock Out</a>
+          <p class="nav-label">Control</p>
+          <button class="nav-item module-link" type="button" data-module="RMA"><span class="nav-icon" aria-hidden="true">↶</span>RMA</button>
+          <button class="nav-item module-link" type="button" data-module="Retail Shop"><span class="nav-icon" aria-hidden="true">⌂</span>Retail Shop</button>
+          <button class="nav-item module-link" type="button" data-module="Reports"><span class="nav-icon" aria-hidden="true">▤</span>Reports</button>
+        </nav>
+        <div class="sidebar-user"><span class="user-avatar">SA</span><span><strong>System Admin</strong><small>Super Admin</small></span></div>
+      </aside>
+      <div id="menu-backdrop" class="menu-backdrop" hidden></div>
+      <main class="app-main">
+        <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Dashboard</a><span aria-hidden="true">/</span><a href="initial-qc.html">Initial QC</a><span>/</span><strong>Lab &amp; Glass Issuance</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
+        <div class="page-content qc-content">
+          <section class="page-heading"><div><p class="eyebrow">Initial QC / Handover</p><h1>Lab &amp; Glass Issuance</h1><p class="heading-subtitle">Assign and transfer phones with saved Initial QC inspections.</p></div><a class="secondary-button" href="initial-qc.html">← Initial QC</a></section>
+          <p id="permission-message" class="access-message" role="alert" hidden></p>
+          <section id="issuance-app" hidden>
+            <section class="qc-bulk-toolbar"><div><p class="panel-kicker">Saved inspections</p><h2>Scan phones to prepare the handover</h2><p>Saved grades, parts and services are shown below.</p></div><div class="qc-bulk-toolbar-actions"><span class="queue-count"><strong id="issuance-count">0</strong> awaiting</span><button id="issuance-load-all" type="button" class="secondary-button" data-capability="view">Load all awaiting</button><button id="issuance-refresh" type="button" class="secondary-button" data-capability="view">Refresh</button><button id="issuance-add" type="button" class="secondary-button" data-capability="entry">+ Add 10 lines</button><button id="issuance-clear" type="button" class="secondary-button" data-capability="entry">Clear tray</button></div></section>
+            <p class="qc-excel-paste-help">Paste an IMEI column from Excel into an empty IMEI line to load the whole list.</p>
+            <p id="issuance-message" class="form-message" role="status" aria-live="polite" hidden></p>
+            <section class="issuance-defaults"><label>Technician for loaded phones<select id="issuance-technician" data-capability="entry"><option value="">Choose technician</option></select></label><label>Destination<select id="issuance-destination" data-capability="entry"><option value="lab_glass">Lab &amp; Glass</option><option value="b_dept">B-DEPT</option></select></label><button id="issuance-apply" type="button" class="secondary-button" data-capability="entry">Apply to loaded phones</button><span id="issuance-lines">10 lines</span></section>
+            <div class="issuance-table-wrap"><table class="issuance-table"><thead><tr><th>IMEI / Phone</th><th>Supplier / Stock</th><th>Saved inspection</th><th>Parts / Services</th><th>Technician / Destination</th><th>Transfer</th></tr></thead><tbody id="issuance-body"></tbody></table></div>
+            <div class="qc-bulk-actions"><span>Review each line, then transfer. The Lab clock starts when the phone is transferred.</span><button id="issuance-transfer-all" type="button" class="primary-button" data-capability="entry">Transfer all loaded phones →</button></div>
+            <section id="qc-handover" class="qc-handover" hidden>
+              <div><h3>Technician Handover Sheet</h3><div class="qc-handover-summary"><strong id="qc-handover-count">0 saved phones</strong><p id="qc-handover-technician">Transfer phones, then generate the sheet.</p></div><p>Includes successful transfers since this page was opened or refreshed.</p></div>
+              <div class="qc-handover-actions"><button type="button" class="secondary-button" data-qc-handover="print" data-capability="entry" data-capability-page="initial_qc" disabled>Print</button><button type="button" class="secondary-button" data-qc-handover="view" data-capability="entry" data-capability-page="initial_qc" disabled>PDF View</button><button type="button" class="primary-button" data-qc-handover="download" data-capability="entry" data-capability-page="initial_qc" disabled>Download PDF</button></div>
+              <p id="qc-handover-message" class="qc-handover-message" role="status" aria-live="polite" hidden></p>
+            </section>
+          </section>
+        </div>
+      </main>
+    </div>
+    <dialog id="qc-handover-warning" class="qc-handover-dialog" aria-labelledby="qc-handover-warning-title"><h2 id="qc-handover-warning-title">Check technician assignments</h2><p id="qc-handover-warning-text"></p><div class="qc-handover-warning-actions"><button id="qc-handover-warning-close" type="button" class="primary-button" data-capability="entry" data-capability-page="initial_qc">OK</button></div></dialog>
+    <dialog id="qc-handover-preview" class="qc-handover-dialog qc-handover-preview" aria-labelledby="qc-handover-preview-title"><header><h2 id="qc-handover-preview-title">Initial QC Handover - PDF View</h2><button id="qc-handover-close" type="button" class="secondary-button" data-capability="entry" data-capability-page="initial_qc">Close</button></header><iframe id="qc-handover-frame" title="Technician handover PDF"></iframe><footer><a id="qc-handover-open" class="secondary-button" target="_blank" rel="noopener" data-capability="entry" data-capability-page="initial_qc">Open PDF</a><a id="qc-handover-file" class="primary-button" download data-capability="entry" data-capability-page="initial_qc">Download PDF</a></footer></dialog>
+    <div id="toast" class="toast" hidden role="status"></div>
+  </body>
+</html>

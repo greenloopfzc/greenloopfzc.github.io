@@ -1,5 +1,5 @@
 {
-  "version": "20261104-report-permissions-1",
+  "version": "20261104-qc-inspection-issuance-1",
   "rpcs": {
     "add_accounts_customer_v1": {
       "page": "accounts",
@@ -1200,6 +1200,37 @@
       "capability": "entry"
     },
     "get_b_dept_version": {
+      "read": true
+    },
+    "get_initial_qc_work_tray_v1": {
+      "page": "initial_qc",
+      "capability": "view",
+      "read": true
+    },
+    "get_initial_qc_work_item_v1": {
+      "page": "initial_qc",
+      "capability": "view",
+      "read": true
+    },
+    "get_qc_issuance_options_v1": {
+      "page": "initial_qc",
+      "capability": "view",
+      "read": true
+    },
+    "get_qc_issuance_rows_v1": {
+      "page": "initial_qc",
+      "capability": "view",
+      "read": true
+    },
+    "save_initial_qc_inspection_v1": {
+      "page": "initial_qc",
+      "capability": "entry"
+    },
+    "issue_initial_qc_inspection_v1": {
+      "page": "initial_qc",
+      "capability": "entry"
+    },
+    "get_qc_issuance_version": {
       "read": true
     }
   },
