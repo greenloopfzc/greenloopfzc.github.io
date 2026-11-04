@@ -334,7 +334,7 @@
     document.addEventListener("keydown",event => { if (event.key === "Escape" && !dialog?.open) setMenu(false); });
     Promise.resolve(window.GREENLOOP_ACCESS_READY).then(() => {
       if (window.GREENLOOP_PAGE_ACCESS?.pageKey !== "supplier_returns") return;
-      root.hidden = false; mount(root);
+      if (!document.querySelector("#return-replacement-home")) { root.hidden = false; mount(root); }
     });
   }
 })();

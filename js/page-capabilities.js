@@ -139,6 +139,8 @@
     if (control.matches('#manual-lab-parts-toggle')) return rule('edit','parts');
     if (control.closest('#ready-stock-rework-form') || /^ready-stock-rework|^bulk-rework|^rework-|^ready-rework/.test(id)) return rule('rework','ready_stock');
     if (control.matches('#save-journey-cable-details,#save-cable-details,#connect-device,#disconnect-device') && page==='ready_stock_journey') return rule('edit','ready_stock_journey');
+    if (control.matches('[data-rsr-home],[data-rsr-view]')) return null;
+    if (control.matches('[data-rp-intake]')) return rule('view','imei_entry');
     if (control.matches('[data-sr-action]')) {const action=control.dataset.srAction;return /approve|reject/.test(action)?rule('approve','supplier_return_approval'):/handover/.test(action)?rule('handover','supplier_return_handover'):/settle|credit|refund|replacement/.test(action)?rule('settle','supplier_return_handover'):rule('entry','supplier_returns');}
     if (control.closest('[data-sr-create],.sr-request-form')) return rule('entry','supplier_returns');
     if (!control.matches(fieldSelector) && !/^View all$/i.test(label) && /^(view(?:\s|$)|show (?:more|details|history|records)|open (?:box|report|damage report|details|history)|refresh(?:\s|$)|reload(?:\s|$)|previous(?:\s|$)|next(?:\s|$)|back(?:\s|$)|close(?:\s|$)|cancel$|dismiss(?:\s|$)|logout$|sign out$)/i.test(label)) return null;

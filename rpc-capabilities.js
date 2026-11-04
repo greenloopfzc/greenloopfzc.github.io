@@ -321,3 +321,5 @@ Object.assign(window.GREENLOOP_RPC_CAPABILITIES,{
 window.GREENLOOP_RPC_CAPABILITIES.get_workflow_supplier_batches_v1=window.GREENLOOP_RPC_CAPABILITIES.get_workflow_supplier_receipts_v1;
 
 Object.assign(window.GREENLOOP_RPC_CAPABILITIES,{get_accounts_imei_catalogue_v1:{all:[{page:"accounts",capability:"view"},{page:"accounts",capability:"imei_data"}],read:true},get_accounts_imei_data_v1:{all:[{page:"accounts",capability:"view"},{page:"accounts",capability:"imei_data"}],read:true},export_accounts_imei_data_v1:{all:[{page:"accounts",capability:"view"},{page:"accounts",capability:"imei_data"},{page:"accounts",capability:"imei_download"}],read:true}});
+
+Object.assign(window.GREENLOOP_RPC_CAPABILITIES,{get_stock_replacement_data_v1:{page:'supplier_returns',capability:'replacement_view',read:true},receive_stock_replacement_v1:{page:'supplier_returns',capability:'replacement_entry'}});

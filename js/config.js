@@ -233,7 +233,7 @@ document.addEventListener("click", (event) => {
     item("Stock Received", "stock-entry.html", "+", page === "stock-entry.html" || page === "receiving.html"),
     item("IMEI Entry", "imei-entry.html", "⌕", page === "imei-entry.html"),
     item("Initial QC", "initial-qc.html", "✓", page === "initial-qc.html"),
-    item("Stock Return", "stock-return.html", "↩", page === "stock-return.html"),
+    item("Return/Replacement", "stock-return.html", "↩", page === "stock-return.html"),
     item("Lab & Glass", "laboratory.html", "⌁", (page === "laboratory.html" || page === "glass.html" || page === "lab-bulk-transfer.html") && window.location.hash !== "#frame"),
     item("Parts", "parts.html", "▦", page === "parts.html"),
     item("Final QC", "final-qc.html", "◉", page === "final-qc.html"),

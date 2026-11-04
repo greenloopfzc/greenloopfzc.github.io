@@ -1,5 +1,5 @@
 {
-  "version": "20261104-accounts-imei-data-1",
+  "version": "20261104-stock-replacement-1",
   "pages": [
     {
       "key": "overview",
@@ -793,8 +793,8 @@
     },
     {
       "key": "supplier_returns",
-      "label": "Supplier Returns",
-      "description": "Request returns and cancel holds.",
+      "label": "Return/Replacement",
+      "description": "Return supplier stock and receive linked replacement phones.",
       "capabilities": [
         {
           "key": "view",
@@ -815,6 +815,21 @@
           "key": "entry",
           "label": "New entry / workflow actions",
           "write": true
+        },
+        {
+          "key": "replacement_view",
+          "label": "View Stock Replacement",
+          "write": false
+        },
+        {
+          "key": "replacement_entry",
+          "label": "Receive Stock Replacement",
+          "write": true
+        },
+        {
+          "key": "replacement_download",
+          "label": "Replacement PDF / Excel",
+          "write": false
         }
       ]
     },
