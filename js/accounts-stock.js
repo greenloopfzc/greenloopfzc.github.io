@@ -68,7 +68,7 @@
   $('#accounts-stock-filter').hidden=true;
   stockFilters.bar.querySelector('.table-filter-actions').append($('#accounts-stock-refresh'));
   async function loadStock() {
-    if (view === 'verify' || context.isBusy()) return;
+    if (view === 'verify' || view === 'imei' || context.isBusy()) return;
     context.lock(true); stockFilters.setBusy(true);
     const msg = $('#accounts-stock-message');
     msg.textContent = ''; msg.classList.remove('is-visible');
@@ -91,12 +91,13 @@
     } finally { context.lock(false); stockFilters.setBusy(false); pagination(); }
   }
   function showView(next) {
-    if (context.isBusy() || !['verify','supplier','customer'].includes(next)) return;
+    if (context.isBusy() || window.GREENLOOP_ACCOUNTS_IMEI?.isBusy() || !['verify','supplier','customer','imei'].includes(next)) return;
     view = next;
     document.querySelectorAll('[data-accounts-view]').forEach(b=>{const active=b.dataset.accountsView===view;b.classList.toggle('is-active',active);b.setAttribute('aria-pressed',String(active));});
     $('#accounts-verify-panel').hidden = view !== 'verify';
-    $('#accounts-stock-panel').hidden = view === 'verify';
-    if (view === 'verify') return;
+    $('#accounts-stock-panel').hidden = view === 'verify' || view === 'imei';
+    document.dispatchEvent(new CustomEvent('greenloop:accounts-section',{detail:{view}}));
+    if (view === 'verify' || view === 'imei') return;
     offset = 0; query = {from:null,to:null,search:null}; $('#accounts-stock-filter').reset();
     const supplier = view === 'supplier';
     stockFilters.setSortFields((supplier ? supplierColumns : customerColumns).map(([label,key])=>[key,label,key.endsWith('_at')?'date':undefined]));
@@ -112,6 +113,7 @@
   }
   async function init(settings) {
     context = settings;
+    await window.GREENLOOP_ACCOUNTS_IMEI.init(settings);
     if (context.canEdit) {
       namesAllowed = await rpc('get_my_partner_name_access') === true;
       await reloadCustomers();
