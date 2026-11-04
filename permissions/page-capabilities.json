@@ -788,6 +788,16 @@
           "key": "stock_parts_cost",
           "label": "View Stock Parts Cost (confidential)",
           "write": false
+        },
+        {
+          "key": "stock_grade_analysis",
+          "label": "View Stock Grade & Work Analysis",
+          "write": false
+        },
+        {
+          "key": "stock_grade_download",
+          "label": "Stock Grade Analysis: PDF View / Download",
+          "write": false
         }
       ]
     },

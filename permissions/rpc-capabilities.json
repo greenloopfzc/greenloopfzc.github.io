@@ -1772,5 +1772,35 @@
   },
   "get_admin_password_change_version": {
     "read": true
+  },
+  "get_stock_grade_analysis_v1": {
+    "all": [
+      {
+        "page": "reports",
+        "capability": "view"
+      },
+      {
+        "page": "reports",
+        "capability": "stock_grade_analysis"
+      }
+    ],
+    "read": true
+  },
+  "export_stock_grade_analysis_v1": {
+    "all": [
+      {
+        "page": "reports",
+        "capability": "view"
+      },
+      {
+        "page": "reports",
+        "capability": "stock_grade_analysis"
+      },
+      {
+        "page": "reports",
+        "capability": "stock_grade_download"
+      }
+    ],
+    "read": true
   }
 }

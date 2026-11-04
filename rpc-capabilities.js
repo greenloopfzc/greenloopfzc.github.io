@@ -329,3 +329,6 @@ Object.assign(window.GREENLOOP_RPC_CAPABILITIES,{
   get_full_imei_workflow_v1:{page:'reports',capability:'workflow_correction',read:true},
   save_full_imei_workflow_v1:{page:'reports',capability:'workflow_correction'}
 });
+
+/* Initial QC grade and work analysis: server and browser grants match. */
+Object.assign(window.GREENLOOP_RPC_CAPABILITIES,{"get_stock_grade_analysis_v1":{"all":[{"page":"reports","capability":"view"},{"page":"reports","capability":"stock_grade_analysis"}],"read":true},"export_stock_grade_analysis_v1":{"all":[{"page":"reports","capability":"view"},{"page":"reports","capability":"stock_grade_analysis"},{"page":"reports","capability":"stock_grade_download"}],"read":true}});
