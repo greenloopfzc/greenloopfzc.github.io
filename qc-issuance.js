@@ -4,6 +4,7 @@
   const $=s=>document.querySelector(s),app=$('#issuance-app'),body=$('#issuance-body');
   const client=window.GREENLOOP_GET_CLIENT(),records=new Map(),timers=new WeakMap(),prepared=new Map();
   let technicians=[],sequence=0,busy=false,stopped=false,paste;
+  const selectionTemplate={technician:'',destination:'lab_glass'};
   const can=()=>!stopped&&window.GREENLOOP_CAN?.('entry','initial_qc')===true;
   const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const storage=n=>!n?'—':n>=1024&&n%1024===0?`${n/1024} TB`:`${n} GB`;
@@ -19,20 +20,33 @@
     row.querySelector('[data-transfer]').disabled=busy||paste?.busy||!can()||!r;
     row.querySelector('[data-reload]').disabled=busy||paste?.busy||!can()||!row.querySelector('.qc-issuance-imei').value;
   }
-  function syncAll(){for(const row of body.rows)sync(row);$('#issuance-technician').disabled=busy||!can()||$('#issuance-destination').value==='b_dept';window.GREENLOOP_LOCK_VIEW_ONLY_CONTROLS?.(app);}
-  function createRows(n){for(let i=0;i<n;i++)body.insertAdjacentHTML('beforeend',`<tr data-row-id="issue-${++sequence}"><td><input class="qc-issuance-imei" placeholder="Scan 15-digit IMEI" maxlength="15" inputmode="numeric" autocomplete="off" data-capability="entry"><strong data-phone></strong><small data-device></small><small data-row-state role="status" hidden></small></td><td data-stock>—</td><td data-inspection>—</td><td data-work>—</td><td><label>Technician<select data-technician data-capability="entry">${options($('#issuance-technician').value)}</select></label><label>Destination<select data-destination data-capability="entry"><option value="lab_glass">Lab &amp; Glass</option><option value="b_dept">B-DEPT</option></select></label></td><td><button type="button" class="primary-button" data-transfer data-capability="entry" disabled>Transfer →</button><button type="button" class="secondary-button" data-reload data-capability="entry">Reload details</button></td></tr>`);
-    for(const row of [...body.rows].slice(-n))row.querySelector('[data-destination]').value=$('#issuance-destination').value;
+  function syncAll(){for(const row of body.rows)sync(row);window.GREENLOOP_LOCK_VIEW_ONLY_CONTROLS?.(app);}
+  function carrySelection(row,field){
+    const selector=field==='technician'?'[data-technician]':'[data-destination]',flag=field==='technician'?'manualTechnician':'manualDestination';
+    if(row!==body.firstElementChild){row.dataset[flag]='yes';return;}
+    const value=row.querySelector(selector).value;selectionTemplate[field]=value;
+    for(const other of [...body.rows].slice(1)){
+      if(other.dataset.completed==='yes'||other.dataset[flag]==='yes')continue;
+      other.querySelector(selector).value=value;delete other.dataset.issueRequest;sync(other);
+    }
+  }
+  function createRows(n){for(let i=0;i<n;i++)body.insertAdjacentHTML('beforeend',`<tr data-row-id="issue-${++sequence}"><td class="issuance-imei-cell"><input class="qc-issuance-imei" placeholder="Scan IMEI" maxlength="15" inputmode="numeric" autocomplete="off" data-capability="entry" aria-label="Scan IMEI"><small data-row-state role="status" hidden></small></td><td data-phone>—</td><td data-storage>—</td><td data-color>—</td><td data-battery>—</td><td data-stock>—</td><td data-supplier-grade>—</td><td data-gl-grade>—</td><td data-parts>—</td><td data-services>—</td><td><select data-technician data-capability="entry" aria-label="Assign technician">${options(selectionTemplate.technician)}</select></td><td><select data-destination data-capability="entry" aria-label="Destination"><option value="lab_glass">Lab &amp; Glass</option><option value="b_dept">B-DEPT</option></select></td><td><div class="issuance-row-actions"><button type="button" class="primary-button" data-transfer data-capability="entry" disabled>Transfer</button><button type="button" class="secondary-button issuance-reload" data-reload data-capability="entry" aria-label="Reload details" title="Reload saved details">↻</button></div></td></tr>`);
+    for(const row of [...body.rows].slice(-n))row.querySelector('[data-destination]').value=selectionTemplate.destination;
     $('#issuance-lines').textContent=`${body.rows.length} lines`;if(!paste?.busy)syncAll();
   }
-  function clearRow(row){records.delete(row);row.dataset.ticket=String(Number(row.dataset.ticket||0)+1);delete row.dataset.issueRequest;row.dataset.loading='';for(const s of ['[data-stock]','[data-inspection]','[data-work]'])row.querySelector(s).textContent='—';row.querySelector('[data-phone]').textContent='';row.querySelector('[data-device]').textContent='';state(row);sync(row);}
+  function clearRow(row){records.delete(row);row.dataset.ticket=String(Number(row.dataset.ticket||0)+1);delete row.dataset.issueRequest;row.dataset.loading='';for(const selector of ['[data-phone]','[data-storage]','[data-color]','[data-battery]','[data-stock]','[data-supplier-grade]','[data-gl-grade]','[data-parts]','[data-services]']){const cell=row.querySelector(selector);cell.textContent='—';cell.removeAttribute('title');cell.removeAttribute('aria-label');}state(row);sync(row);}
   async function rpc(name,args={}){const{data,error}=await client.rpc(name,args);if(error)throw error;return data;}
   function populate(row,r){
     records.set(row,r);delete row.dataset.issueRequest;
-    row.querySelector('[data-phone]').textContent=r.model||'—';row.querySelector('[data-device]').textContent=`${storage(r.storage_gb)} · ${r.color||'—'} · BH ${r.battery_health==null?'Not available':r.battery_health+'%'}`;
+    const cell=(selector,value,title=value)=>{const e=row.querySelector(selector);e.textContent=value;e.title=title;};
+    cell('[data-phone]',r.model||'—');cell('[data-storage]',storage(r.storage_gb));cell('[data-color]',r.color||'—');cell('[data-battery]',r.battery_health==null?'N/A':r.battery_health+'%');
     const supplier=window.GREENLOOP_SUPPLIER_RECEIPT_LABEL?.(r.supplier_code,r.stock_quantity,r.supplier_name,'—')||r.supplier_code||'—';
-    row.querySelector('[data-stock]').innerHTML=`<strong>${esc(supplier)}</strong><small>${esc(r.batch_number||'—')}</small><small>${esc(r.invoice_number||'—')}</small>`;
-    row.querySelector('[data-inspection]').innerHTML=`<span>Supplier grade <b>${esc(r.supplier_grade||'—')}</b></span><span>GL grade <b>${esc(r.gl_grade||'—')}</b></span><small>${esc(date(r.saved_at))}</small>`;
-    row.querySelector('[data-work]').innerHTML=`<span class="issuance-work-label">Parts</span><span>${r.parts.length?r.parts.map(p=>`${esc(p.name)} × ${esc(p.quantity)}`).join('<br>'):'None'}</span><span class="issuance-work-label">Services</span><span>${r.services.length?r.services.map(esc).join('<br>'):'None'}</span>`;
+    const receipt=`${supplier}\nStock / Batch: ${r.batch_number||'—'}\nInvoice: ${r.invoice_number||'—'}`;
+    cell('[data-stock]',supplier,receipt);row.querySelector('[data-stock]').setAttribute('aria-label',receipt);
+    const saved=`Inspection saved: ${date(r.saved_at)}${r.saved_by?' · '+r.saved_by:''}`;
+    cell('[data-supplier-grade]',r.supplier_grade||'—',saved);cell('[data-gl-grade]',r.gl_grade||'—',saved);
+    cell('[data-parts]',r.parts.length?r.parts.map(p=>`${p.name} × ${p.quantity}`).join('; '):'None');
+    cell('[data-services]',r.services.length?r.services.join('; '):'None');
     row.dataset.inspectionRevision=r.revision;state(row,'Awaiting Issuance');sync(row);
   }
   async function prepare(imeis){prepared.clear();for(let i=0;i<imeis.length;i+=500){const chunk=imeis.slice(i,i+500);const data=await rpc('get_qc_issuance_rows_v1',{p_imeis:chunk,p_limit:500});for(const r of data.rows)prepared.set(r.imei,r);}}
@@ -53,7 +67,8 @@
   }
   async function refresh(){
     const data=await rpc('get_qc_issuance_options_v1');technicians=data.technicians||[];$('#issuance-count').textContent=String(data.awaiting_issuance||0);
-    for(const select of app.querySelectorAll('#issuance-technician,[data-technician]')){const v=select.value;select.innerHTML=options(v);}
+    for(const select of app.querySelectorAll('[data-technician]')){const v=select.value;select.innerHTML=options(v);}
+    if(body.firstElementChild)selectionTemplate.technician=body.firstElementChild.querySelector('[data-technician]').value;
     // A successful inspection save in another tab becomes available on Refresh.
     prepared.clear();syncAll();
   }
@@ -66,7 +81,7 @@
     row.dataset.issueRequest ||= crypto.randomUUID();row.dataset.saving='yes';state(row,'Transferring…');
     try{
       const result=await rpc('issue_initial_qc_inspection_v1',{p_job_id:r.job_id,p_revision:r.revision,p_destination:dest,p_technician_roster_id:technician||null,p_request_id:row.dataset.issueRequest});
-      row.dataset.completed='yes';row.classList.add('is-completed');row.querySelector('[data-transfer]').textContent='Transferred';state(row,`Transferred to ${dest==='b_dept'?'B-DEPT':result.technician_name+' · Lab & Glass'}`);
+      row.dataset.completed='yes';row.classList.add('is-completed');row.querySelector('[data-transfer]').textContent='Done';state(row,`Transferred to ${dest==='b_dept'?'B-DEPT':result.technician_name+' · Lab & Glass'}`);
       if(dest==='lab_glass')window.GREENLOOP_QC_HANDOVER?.record({jobId:r.job_id,imei:r.imei,model:r.model,storage:storage(r.storage_gb),color:r.color,technicianId:technician,technician:result.technician_name,parts:r.parts,services:r.services});
       window.dispatchEvent(new CustomEvent('greenloop:workflow-committed',{detail:{source:'qc-issuance',imeis:[r.imei]}}));return{ok:true};
     }catch(e){state(row,e.message||'Transfer failed. Your choices are preserved.',true);return{ok:false,error:e.message};}
@@ -77,13 +92,11 @@
   function reset(){if(busy||paste?.busy)return;if([...body.rows].some(r=>records.has(r)&&r.dataset.completed!=='yes')&&!window.confirm('Clear this unfinished handover tray? Saved inspections stay in the queue.'))return;body.innerHTML='';records.clear();prepared.clear();paste?.clear();createRows(10);message();}
   body.addEventListener('input',event=>{const input=event.target.closest('.qc-issuance-imei');if(!input)return;const row=input.closest('tr');clearTimeout(timers.get(row));input.value=input.value.replace(/\D/g,'').slice(0,15);clearRow(row);if(input.value.length===15){timers.set(row,setTimeout(()=>loadRow(row).catch(e=>message(e.message)),120));const next=[...body.querySelectorAll('.qc-issuance-imei')].find(e=>e!==input&&!e.disabled&&!e.value);if(document.activeElement===input)next?.focus();}});
   body.addEventListener('keydown',event=>{if(event.key!=='Enter'||!event.target.matches('.qc-issuance-imei'))return;event.preventDefault();const row=event.target.closest('tr');clearTimeout(timers.get(row));void loadRow(row).catch(e=>message(e.message));});
-  body.addEventListener('change',e=>{const row=e.target.closest('tr');if(!row)return;if(e.target.matches('[data-destination],[data-technician]')){delete row.dataset.issueRequest;sync(row);}});
+  body.addEventListener('change',e=>{const row=e.target.closest('tr');if(!row||!can()||busy||paste?.busy||row.dataset.completed==='yes')return;if(e.target.matches('[data-destination],[data-technician]')){delete row.dataset.issueRequest;carrySelection(row,e.target.matches('[data-technician]')?'technician':'destination');sync(row);}});
   body.addEventListener('click',e=>{const row=e.target.closest('tr');if(!row)return;if(e.target.closest('[data-transfer]'))void transferMany([row]);if(e.target.closest('[data-reload]')){clearRow(row);void loadRow(row).catch(e=>message(e.message));}});
   $('#issuance-transfer-all').addEventListener('click',()=>{const rows=[...body.rows].filter(r=>records.has(r)&&r.dataset.completed!=='yes');if(!rows.length){message('Scan or paste at least one saved inspection first.');return;}void transferMany(rows);});
   $('#issuance-load-all').addEventListener('click',()=>void loadAll());$('#issuance-clear').addEventListener('click',reset);$('#issuance-add').addEventListener('click',()=>createRows(10));
   $('#issuance-refresh').addEventListener('click',()=>{if(busy||paste?.busy)return;void refresh().catch(e=>message(e.message));});
-  $('#issuance-destination').addEventListener('change',syncAll);
-  $('#issuance-apply').addEventListener('click',()=>{if(!can()||busy||paste?.busy)return;for(const row of body.rows){if(row.dataset.completed==='yes')continue;row.querySelector('[data-technician]').value=$('#issuance-technician').value;row.querySelector('[data-destination]').value=$('#issuance-destination').value;delete row.dataset.issueRequest;sync(row);}});
   window.addEventListener('greenloop:imei-scan',event=>{if(!can()||busy||paste?.busy)return;const imei=String(event.detail?.imei||'');if(!/^\d{15}$/.test(imei))return;const existing=[...body.rows].find(r=>r.querySelector('.qc-issuance-imei').value===imei);if(existing){event.preventDefault();existing.scrollIntoView({block:'center'});state(existing,'This IMEI is already in the tray.');return;}let blank=[...body.querySelectorAll('.qc-issuance-imei')].find(e=>!e.disabled&&!e.value);if(!blank){createRows(1);blank=body.lastElementChild.querySelector('.qc-issuance-imei');}event.preventDefault();blank.value=imei;void loadRow(blank.closest('tr')).catch(e=>message(e.message));});
   function stop(){stopped=true;records.clear();prepared.clear();body.innerHTML='';app.hidden=true;message('Access ended. Reload after signing in.');}
   window.addEventListener('greenloop:office-locked',stop);window.addEventListener('pagehide',stop);client.auth.onAuthStateChange?.(e=>{if(e==='SIGNED_OUT')stop();});

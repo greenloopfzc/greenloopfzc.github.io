@@ -1,23 +1,23 @@
-.issuance-defaults{display:flex;align-items:end;flex-wrap:wrap;gap:1rem;margin:1rem 0;padding:1rem 1.25rem;border-radius:18px;background:var(--surface,#f5f8fa);border:1px solid var(--border,#cbd6df);box-shadow:3px 4px 8px #8a9da657,-3px -3px 8px #ffffff85}
-.issuance-defaults label{display:grid;gap:.4rem;font-size:.83rem;font-weight:700;min-width:210px}
-.issuance-defaults select,.issuance-table select,.issuance-table input{width:100%;min-height:42px;border:1px solid var(--border,#c9d6e1);border-radius:12px;background:var(--input-bg,#e6edf1);color:inherit;padding:.65rem .75rem;box-shadow:inset 2px 2px 5px #718b9c33}
-.issuance-defaults>span{align-self:center;margin-left:auto;font-size:.83rem}
-.issuance-table-wrap{overflow:auto;border:1px solid var(--border,#c7d5df);border-radius:20px;background:var(--surface,#f6f8fa);box-shadow:4px 5px 9px #71869450,-3px -3px 8px #ffffff80}
-.issuance-table{width:100%;min-width:1120px;border-collapse:collapse;color:inherit}
-.issuance-table th{font-size:.72rem;text-align:left;letter-spacing:.04em;text-transform:uppercase;background:var(--surface-alt,#e5edf2);padding:1rem}
-.issuance-table td{padding:1rem;vertical-align:top;border-top:1px solid var(--border,#c7d5df);font-size:.86rem}
-.issuance-table td:first-child{min-width:220px;width:20%}.issuance-table td:nth-child(2){min-width:170px}.issuance-table td:nth-child(4){min-width:180px}.issuance-table td:nth-child(5){min-width:220px}.issuance-table td:last-child{min-width:150px}
-.issuance-table small,.issuance-table strong,.issuance-table [data-inspection]>span,.issuance-table [data-work]>span{display:block;margin:.35rem 0}
-.issuance-table label{display:grid;gap:.3rem;font-size:.75rem;font-weight:700;margin-bottom:.7rem}
-.issuance-table [data-row-state]{max-width:265px;line-height:1.5;color:var(--accent,#087653)}
-.issuance-table .is-error [data-row-state]{color:var(--danger,#b6322b)}
-.issuance-table button{width:100%;margin-bottom:.65rem;white-space:normal}.issuance-table .is-completed{background:color-mix(in srgb,var(--accent,#087653) 9%,transparent)}
-.issuance-work-label{font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:var(--text-muted,#637b8f)}
-#issuance-message{padding:.8rem 1rem;border-radius:12px;border:1px solid currentColor;line-height:1.6}#issuance-message.is-success{color:var(--accent,#087653)}
-@media(max-width:650px){.issuance-defaults label{min-width:0;width:100%}.issuance-defaults>span{margin-left:0}.qc-bulk-toolbar-actions>*{flex:1}.issuance-table-wrap{max-width:100%}}
-
-html[data-mode="dark"] .issuance-defaults,html[data-mode="dark"] .issuance-table-wrap{background:var(--nm-card);border-color:var(--nm-line);box-shadow:4px 5px 10px #101a244d,-3px -3px 8px #ffffff0d}
-html[data-mode="dark"] .issuance-table th,html[data-mode="dark"] .issuance-table td{border-color:var(--nm-line)}
-html[data-mode="dark"] .issuance-table [data-row-state]{color:var(--nm-green)}
-html[data-mode="dark"] .issuance-table .is-error [data-row-state]{color:var(--nm-red)}
-html[data-mode="dark"] .issuance-work-label{color:var(--nm-muted)}
+/* One compact phone line, matching the Initial QC tray. */
+.issuance-table-wrap{max-width:100%;overflow:auto;border:1px solid var(--nm-line,#c7d5df);border-radius:20px;background:var(--nm-card,#f6f8fa);box-shadow:var(--nm-shadow,4px 5px 9px #71869450,-3px -3px 8px #ffffff80)}
+.issuance-table{width:100%;min-width:1240px;table-layout:fixed;border-collapse:separate;border-spacing:0;color:var(--nm-ink,#203b2e);font-size:.67rem;line-height:1.2}
+.issuance-table th,.issuance-table td{min-width:0;border-right:1px solid var(--nm-line,#cbd6df);border-bottom:1px solid var(--nm-line,#cbd6df);text-align:center;vertical-align:middle}
+.issuance-table th:last-child,.issuance-table td:last-child{border-right:0}.issuance-table tbody tr:last-child td{border-bottom:0}
+.issuance-table th{padding:7px 5px;font-size:.6rem;line-height:1.15;letter-spacing:.025em;font-weight:800;text-transform:uppercase;background:var(--nm-well,#e5edf2);color:var(--nm-muted,#536878);overflow-wrap:anywhere}
+.issuance-table td{padding:4px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.issuance-table input,.issuance-table select{box-sizing:border-box;width:100%;min-width:0;min-height:32px;height:32px;margin:0;border:1px solid var(--nm-line,#c9d6e1);border-radius:10px;background:var(--nm-well,#e6edf1);color:inherit;padding:0 5px;font:inherit;box-shadow:var(--nm-inset,inset 2px 2px 5px #718b9c33)}
+.issuance-table .qc-issuance-imei{font-weight:750;text-align:center;letter-spacing:.01em}
+.issuance-table input:focus-visible,.issuance-table select:focus-visible,.issuance-table button:focus-visible{outline:2px solid var(--nm-accent,#087653);outline-offset:1px}
+.issuance-row-actions{display:flex;align-items:center;gap:4px;min-width:0}
+.issuance-table .issuance-row-actions button{display:inline-flex;align-items:center;justify-content:center;min-width:0;min-height:32px;height:32px;margin:0;padding:0 5px;border-radius:10px;font:inherit;font-weight:800;line-height:1;white-space:nowrap;box-shadow:var(--nm-shadow-sm,2px 3px 5px #71869460,-2px -2px 5px #ffffffb0)}
+.issuance-table [data-transfer]{flex:1;width:auto}.issuance-table .issuance-reload{flex:0 0 25px;width:25px;font-size:1rem}
+.issuance-table [data-row-state]{display:block;margin:3px 0 0;color:var(--nm-muted,#637b8f);font-size:.55rem;line-height:1.2;white-space:normal;overflow-wrap:anywhere}
+.issuance-table [data-row-state][hidden]{display:none}
+.issuance-table .is-error [data-row-state]{color:var(--nm-red,#b6322b)}
+.issuance-table .is-completed td{background:var(--nm-green-bg,#e0f0e7)}
+.issuance-table .is-completed [data-row-state]{color:var(--nm-green,#087653)}
+.issuance-table [data-stock]{color:var(--nm-accent,#087653)}
+.issuance-table [data-parts],.issuance-table [data-services]{font-weight:500}
+.issuance-carry-help{margin-top:0}
+#issuance-message{padding:.8rem 1rem;border-radius:12px;border:1px solid currentColor;line-height:1.6}#issuance-message.is-success{color:var(--nm-green,#087653)}
+@media(max-width:650px){.qc-bulk-toolbar-actions>*{flex:1}.issuance-table-wrap{max-width:100%}}

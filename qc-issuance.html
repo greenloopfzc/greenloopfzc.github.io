@@ -33,7 +33,7 @@
   <script defer src="js/employee-updates.js?v=20261027-performance-1"></script>
   <link rel="stylesheet" href="css/qc-excel-paste.css?v=20261104-qc-excel-paste-1">
   <script defer src="js/qc-excel-paste.js?v=20261104-qc-excel-paste-1"></script>
-  <script defer src="js/qc-issuance.js?v=20261104-qc-issuance-1"></script>
+  <script defer src="js/qc-issuance.js?v=20261104-qc-issuance-compact-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
     <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261102-imei-scan-location-1">
   <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
@@ -42,7 +42,7 @@
   <link rel="stylesheet" href="css/clean-layout.css?v=20261017-clean-layout-1">
   <script defer src="js/clean-layout.js?v=20261030-supplier-progress-1"></script>
   <script defer src="js/suspicious-badge.js?v=20261103-workflow-polish-1"></script>
-<link rel="stylesheet" href="css/qc-issuance.css?v=20261104-qc-issuance-1">
+<link rel="stylesheet" href="css/qc-issuance.css?v=20261104-qc-issuance-compact-1">
 <link rel="stylesheet" href="css/qc-handover.css?v=20261030-qc-handover-1">
 <script defer src="js/qc-handover-pdf.js?v=20261030-qc-pdf-design-1"></script>
 <script defer src="js/qc-handover.js?v=20261030-qc-pdf-design-1"></script>
@@ -76,11 +76,11 @@
           <section class="page-heading"><div><p class="eyebrow">Initial QC / Handover</p><h1>Lab &amp; Glass Issuance</h1><p class="heading-subtitle">Assign and transfer phones with saved Initial QC inspections.</p></div><a class="secondary-button" href="initial-qc.html">← Initial QC</a></section>
           <p id="permission-message" class="access-message" role="alert" hidden></p>
           <section id="issuance-app" hidden>
-            <section class="qc-bulk-toolbar"><div><p class="panel-kicker">Saved inspections</p><h2>Scan phones to prepare the handover</h2><p>Saved grades, parts and services are shown below.</p></div><div class="qc-bulk-toolbar-actions"><span class="queue-count"><strong id="issuance-count">0</strong> awaiting</span><button id="issuance-load-all" type="button" class="secondary-button" data-capability="view">Load all awaiting</button><button id="issuance-refresh" type="button" class="secondary-button" data-capability="view">Refresh</button><button id="issuance-add" type="button" class="secondary-button" data-capability="entry">+ Add 10 lines</button><button id="issuance-clear" type="button" class="secondary-button" data-capability="entry">Clear tray</button></div></section>
+            <section class="qc-bulk-toolbar"><div><p class="panel-kicker">Saved inspections</p><h2>Scan phones to prepare the handover</h2><p>Saved grades, parts and services are shown below.</p></div><div class="qc-bulk-toolbar-actions"><span class="queue-count"><strong id="issuance-count">0</strong> awaiting</span><button id="issuance-load-all" type="button" class="secondary-button" data-capability="view">Load all awaiting</button><button id="issuance-refresh" type="button" class="secondary-button" data-capability="view">Refresh</button><span id="issuance-lines" class="queue-count tray-count">10 lines</span><button id="issuance-add" type="button" class="secondary-button" data-capability="entry">+ Add 10 lines</button><button id="issuance-clear" type="button" class="secondary-button" data-capability="entry">Clear tray</button></div></section>
             <p class="qc-excel-paste-help">Paste an IMEI column from Excel into an empty IMEI line to load the whole list.</p>
             <p id="issuance-message" class="form-message" role="status" aria-live="polite" hidden></p>
-            <section class="issuance-defaults"><label>Technician for loaded phones<select id="issuance-technician" data-capability="entry"><option value="">Choose technician</option></select></label><label>Destination<select id="issuance-destination" data-capability="entry"><option value="lab_glass">Lab &amp; Glass</option><option value="b_dept">B-DEPT</option></select></label><button id="issuance-apply" type="button" class="secondary-button" data-capability="entry">Apply to loaded phones</button><span id="issuance-lines">10 lines</span></section>
-            <div class="issuance-table-wrap"><table class="issuance-table"><thead><tr><th>IMEI / Phone</th><th>Supplier / Stock</th><th>Saved inspection</th><th>Parts / Services</th><th>Technician / Destination</th><th>Transfer</th></tr></thead><tbody id="issuance-body"></tbody></table></div>
+            <p class="qc-excel-paste-help issuance-carry-help">First-line technician and destination selections carry down automatically. Change any other line individually when needed.</p>
+            <div class="issuance-table-wrap"><table class="issuance-table"><colgroup><col style="width:12%"><col style="width:6%"><col style="width:4%"><col style="width:5.5%"><col style="width:3.5%"><col style="width:11%"><col style="width:6%"><col style="width:4%"><col style="width:9.5%"><col style="width:9.5%"><col style="width:12%"><col style="width:8%"><col style="width:9%"></colgroup><thead><tr><th scope="col">IMEI</th><th scope="col">Model</th><th scope="col">GB</th><th scope="col">Color</th><th scope="col">BH</th><th scope="col">Supplier code</th><th scope="col">Supplier grade</th><th scope="col">GL grade</th><th scope="col">Parts needed</th><th scope="col">Service needed</th><th scope="col">Assign technician</th><th scope="col">Destination</th><th scope="col">Transfer</th></tr></thead><tbody id="issuance-body"></tbody></table></div>
             <div class="qc-bulk-actions"><span>Review each line, then transfer. The Lab clock starts when the phone is transferred.</span><button id="issuance-transfer-all" type="button" class="primary-button" data-capability="entry">Transfer all loaded phones →</button></div>
             <section id="qc-handover" class="qc-handover" hidden>
               <div><h3>Technician Handover Sheet</h3><div class="qc-handover-summary"><strong id="qc-handover-count">0 saved phones</strong><p id="qc-handover-technician">Transfer phones, then generate the sheet.</p></div><p>Includes successful transfers since this page was opened or refreshed.</p></div>
