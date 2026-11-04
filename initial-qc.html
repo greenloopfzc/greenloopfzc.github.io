@@ -34,7 +34,9 @@
   <link rel="stylesheet" href="css/qc-handover.css?v=20261030-qc-handover-1">
   <script defer src="js/qc-handover-pdf.js?v=20261030-qc-pdf-design-1"></script>
   <script defer src="js/qc-handover.js?v=20261030-qc-pdf-design-1"></script>
-  <script defer src="js/initial-qc.js?v=20261103-workflow-polish-1"></script>
+  <link rel="stylesheet" href="css/qc-excel-paste.css?v=20261104-qc-excel-paste-1">
+  <script defer src="js/qc-excel-paste.js?v=20261104-qc-excel-paste-1"></script>
+  <script defer src="js/initial-qc.js?v=20261104-qc-excel-paste-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
     <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261102-imei-scan-location-1">
   <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
@@ -77,6 +79,7 @@
               <div><p class="panel-kicker">Initial QC work tray</p><h2>Scan IMEIs first, then inspect every row</h2><p>Only scanned IMEIs are processed. Pending IMEIs are never loaded automatically.</p></div>
               <div class="qc-bulk-toolbar-actions"><button id="qc-manage-options" class="secondary-button" type="button" data-capability="manage_options" data-capability-page="initial_qc" hidden>Manage Dropdowns</button><button id="queue-count" class="queue-count queue-count-button" type="button">0 waiting</button><button id="auto-pick-pending" class="secondary-button auto-pick-button" type="button">Auto pick all</button><span id="tray-count" class="queue-count tray-count">10 lines</span><button id="show-imei-columns" class="secondary-button" type="button">&larr; IMEI</button><button id="show-technician-columns" class="secondary-button" type="button">Technician &rarr;</button><button id="add-ten-rows" class="secondary-button" type="button">+ Add 10 lines</button><button id="clear-tray" class="secondary-button" type="button">Clear tray</button></div>
             </section>
+            <p class="qc-excel-paste-help">Paste an IMEI column from Excel into an empty IMEI line to load the whole list.</p>
             <p id="qc-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
             <form id="qc-form" class="qc-bulk-form" novalidate>
               <section class="qc-bulk-panel">

@@ -30,7 +30,9 @@
   <link rel="stylesheet" href="css/record-search.css?v=20261017-find-record-popup-1">
   <script defer src="js/record-search.js?v=20261027-performance-1"></script>
     <script defer src="js/part-notifications.js?v=20261103-workflow-polish-1"></script>
-  <script defer src="js/final-qc.js?v=20261103-workflow-polish-1"></script>
+  <link rel="stylesheet" href="css/qc-excel-paste.css?v=20261104-qc-excel-paste-1">
+  <script defer src="js/qc-excel-paste.js?v=20261104-qc-excel-paste-1"></script>
+  <script defer src="js/final-qc.js?v=20261104-qc-excel-paste-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
     <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261102-imei-scan-location-1">
   <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
@@ -70,6 +72,7 @@
               <div><p class="panel-kicker">Final QC work tray</p><h2>Scan IMEIs, then tick the correct result</h2><p>Direct Pass requires Final Grade. B-DEPT sends the phone without a grade; B-DEPT decides its Final Grade. Fail returns to Laboratory.</p></div>
               <div class="final-bulk-toolbar-actions"><button id="queue-count" class="final-queue-count" type="button">0 waiting</button><button id="auto-pick-pending" class="secondary-button auto-pick-button" type="button">Auto pick all</button><span id="tray-count" class="final-tray-count">10 lines</span><button id="add-ten-rows" class="secondary-button" type="button">+ Add 10 lines</button><button id="clear-tray" class="secondary-button" type="button">Clear tray</button><button id="refresh-queue" class="secondary-button" type="button">Refresh</button></div>
             </section>
+            <p class="qc-excel-paste-help">Paste an IMEI column from Excel into an empty IMEI line to load the whole list.</p>
             <p id="final-qc-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
             <form id="final-qc-form" class="final-bulk-form" novalidate>
               <section class="final-bulk-panel">

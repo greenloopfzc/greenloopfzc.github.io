@@ -46,6 +46,7 @@
   let technicians = [];
   let rowSequence = 0;
   let toastTimer;
+  let excelPaste;
 
   function getClient() {
     return (client ||= window.GREENLOOP_GET_CLIENT());
@@ -329,7 +330,27 @@
     firstInspection?.querySelector('[data-carry-field="supplierGrade"]')?.focus();
   }
 
-  async function loadScannedRow(row) {
+  async function loadPastedRow(row, options) {
+    const input = row.querySelector(".qc-bulk-imei"), imei = input.value.trim();
+    const current = () => options.isCurrent() && row.isConnected && input.value.trim() === imei;
+    const record = await window.GREENLOOP_IMEI_STAGE_NOTICE.lookup(imei);
+    if (!current()) return {loaded:false,message:"Loading stopped."};
+    let problem = "";
+    if (!record || record.found && !["primary","secondary"].includes(record.matched_type)) problem = "Phone identity could not be verified. Press Enter on this row to retry.";
+    else if (!record.found) problem = "IMEI not found in the software. Check its full 15 digits.";
+    else if (record.matched_type === "secondary") problem = `This is IMEI 2 of IMEI 1 ${record.primary_imei || "not recorded"}. Use IMEI 1 for this phone.`;
+    else {
+      const stage = window.GREENLOOP_IMEI_SCAN?.stageKey(record.current_stage);
+      if (stage && stage !== "initial_qc") problem = `Current stage: ${record.current_stage}. This phone is not waiting in Initial QC.`;
+    }
+    if (problem) { row.classList.add("is-error"); setRowState(row,problem,"is-error"); return {loaded:false,message:problem,record}; }
+    await loadScannedRow(row,{...options,primaryChecked:true});
+    if (!current()) return {loaded:false,message:"Loading stopped."};
+    if (rowJobs.has(row.dataset.rowId) && row.classList.contains("is-loaded")) return {loaded:true};
+    return {loaded:false,message:row.querySelector("[data-row-state]").textContent || "Could not load this phone. Press Enter on this row to retry.",record};
+  }
+
+  async function loadScannedRow(row, options = {}) {
     const input = row.querySelector(".qc-bulk-imei");
     const imei = input.value.trim();
     if (!/^\d{15}$/.test(imei) || row.dataset.loading === "yes" || row.dataset.completed === "yes") return;
@@ -338,17 +359,17 @@
     if (duplicate) {
       row.classList.add("is-error");
       setRowState(row, "Duplicate IMEI in this tray", "is-error");
-      void window.GREENLOOP_IMEI_STAGE_NOTICE?.show({ imei, message: "This IMEI is already in this QC tray.", isCurrent: () => row.isConnected && input.value.trim() === imei });
-      input.focus();
+      if (!options.bulk) void window.GREENLOOP_IMEI_STAGE_NOTICE?.show({ imei, message: "This IMEI is already in this QC tray.", isCurrent: () => row.isConnected && input.value.trim() === imei });
+      if (!options.bulk) input.focus();
       return;
     }
 
     const loadVersion = row.dataset.loadVersion = String(Number(row.dataset.loadVersion || 0) + 1);
-    const isCurrent = () => tableBody.contains(row) && row.dataset.loadVersion === loadVersion && input.value.trim() === imei;
+    const isCurrent = () => tableBody.contains(row) && row.dataset.loadVersion === loadVersion && input.value.trim() === imei && (!options.isCurrent || options.isCurrent());
     row.dataset.loading = "yes";
     setRowState(row, "Loading...", "is-loading");
     try {
-    if (!await window.GREENLOOP_IMEI_STAGE_NOTICE.checkPrimary(imei,{isCurrent})) {if(isCurrent())setRowState(row,"Duplicate phone — use IMEI 1","is-error");return;}
+    if (!options.primaryChecked && !await window.GREENLOOP_IMEI_STAGE_NOTICE.checkPrimary(imei,{isCurrent})) {if(isCurrent())setRowState(row,"Duplicate phone — use IMEI 1","is-error");return;}
     const { data, error } = await getClient().rpc("get_initial_qc_job_by_identifier", { p_identifier: imei });
     if (!isCurrent()) return;
     if (error) {
@@ -360,8 +381,8 @@
     if (!result?.found) {
       row.classList.add("is-error");
       setRowState(row, "Not waiting in Initial QC", "is-error");
-      void window.GREENLOOP_IMEI_STAGE_NOTICE?.show({ imei, title: "Phone unavailable here", message: "This phone is not waiting in Initial QC (QC 1).", onlyIfFound: true, isCurrent });
-      input.focus();
+      if (!options.bulk) void window.GREENLOOP_IMEI_STAGE_NOTICE?.show({ imei, title: "Phone unavailable here", message: "This phone is not waiting in Initial QC (QC 1).", onlyIfFound: true, isCurrent });
+      if (!options.bulk) input.focus();
       return;
     }
 
@@ -376,7 +397,7 @@
     const receivingBatch = Array.isArray(batchJob?.receiving_batch) ? batchJob.receiving_batch[0] : batchJob?.receiving_batch;
     const deviceMetadata = Array.isArray(batchJob?.device) ? batchJob.device[0] : batchJob?.device;
     if (deviceMetadata) Object.assign(device, deviceMetadata);
-    await window.GREENLOOP_RECEIPTS.load("initial_qc",[imei]);
+    if (!options.bulk) await window.GREENLOOP_RECEIPTS.load("initial_qc",[imei]);
     if (!isCurrent()) return;
     const selectedJob = {
       ...job,
@@ -755,6 +776,8 @@
   }
 
   function resetTray() {
+    if (excelPaste?.busy) return;
+    excelPaste?.clear();
     if (tableBody.querySelector('tr[data-saving="yes"]')) { setMessage("Wait for the current save to finish before clearing the tray."); return; }
     const hasUnfinished = [...tableBody.rows].some((row) => rowJobs.has(row.dataset.rowId) && row.dataset.completed !== "yes");
     if (hasUnfinished && !window.confirm("Clear the unfinished Initial QC tray? No database records will be deleted.")) return;
@@ -902,6 +925,10 @@
   document.querySelector("#open-menu").addEventListener("click", () => setMenu(true));
   document.querySelector("#close-menu").addEventListener("click", () => setMenu(false));
   backdrop.addEventListener("click", () => setMenu(false));
+  excelPaste = window.GREENLOOP_QC_EXCEL_PASTE.attach({
+    app,tableBody,page:"initial_qc",selector:".qc-bulk-imei",client:getClient(),
+    createRows,clearRow:clearAutoData,loadRow:loadPastedRow,prepare:async imeis => window.GREENLOOP_RECEIPTS.load("initial_qc",imeis),onUnlock:() => [...tableBody.rows].forEach(applyGradeHousing)
+  });
   initialize().catch((error) => {
     permissionMessage.textContent = error.message || "Initial QC could not be loaded.";
     permissionMessage.hidden = false;
