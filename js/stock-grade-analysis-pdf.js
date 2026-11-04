@@ -19,7 +19,7 @@
   function start(){
    ops=[];pages.push(ops);if(logo)ops.push({kind:'logo',x:M,top:H-24,w:166,h:55.38});else text('GREENLOOP FZC',M,H-31,23,true,green);
    text(F.title,M,H-96,19,true);const date=new Date(r.generated_at).toLocaleString('en-GB',{timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true});text('Generated '+date+' | UAE (UTC+4)',M,H-122,8,false,muted);y=H-141;
-   const scope=longScope?['Supplier: '+unique(r.stocks.map(s=>s.supplier_code)).join(', '),'Selected stock details are listed after the analysis.']:fullScope;
+   const scope=longScope?['Supplier: '+unique(r.stocks.map(s=>String(s.supplier_code||'Not recorded').replace(/-\(\d+\)$/,'')+(s.stock_quantity==null?'':'-('+s.stock_quantity+')'))).join(', '),'Selected stock details are listed after the analysis.']:fullScope;
    for(const value of scope)for(const line of wrap(value,IW,8)){text(line,M,y,8,false,muted);y-=11;}
    y-=8;const stats=[['Received stock',r.totals.stock_quantity],['Entered IMEIs',r.totals.qty],['Not entered',r.totals.unentered],['QC / grade pending',r.totals.pending]],w=IW/4;
    for(let i=0;i<stats.length;i++){rect(M+i*w,y,w,40,'#eff6f3');centered(stats[i][0],M+i*w,y-6,w,7.5,false,muted);centered(F.num(stats[i][1]),M+i*w,y-19,w,14,true,green);}y-=56;
