@@ -226,7 +226,7 @@ function buildStageSections(sortedRows) {
     return "";
   }
   function place(value) {
-    const names = { LAB:"Lab & Glass", LABORATORY:"Laboratory", LAB_GLASS:"Lab & Glass", GLASS:"Glass", "FINAL-QC":"Final QC", FINAL_QC:"Final QC", "INITIAL-QC":"Initial QC", INITIAL_QC:"Initial QC", FRAME:"B-DEPT", PRODUCTION:"Ready Stock", "PRODUCTION DEPARTMENT":"Ready Stock", READY:"Ready Stock", "READY-STOCK":"Ready Stock", READY_STOCK:"Ready Stock", PARTS:"Parts", OUTBOUND:"Export" };
+    const names = { LAB:"Lab & Glass", LABORATORY:"Lab & Glass", LAB_GLASS:"Lab & Glass", GLASS:"Lab & Glass", "FINAL-QC":"Final QC", FINAL_QC:"Final QC", "INITIAL-QC":"Initial QC", INITIAL_QC:"Initial QC", FRAME:"B-DEPT", PRODUCTION:"Ready Stock", "PRODUCTION DEPARTMENT":"Ready Stock", READY:"Ready Stock", "READY-STOCK":"Ready Stock", READY_STOCK:"Ready Stock", PARTS:"Parts", OUTBOUND:"Export" };
     return names[scalar(value).toUpperCase()] || scalar(value);
   }
   const safe = value => escapeHtml(scalar(value) || missing);
@@ -348,9 +348,10 @@ function buildStageSections(sortedRows) {
   function currentStage(device) {
     // Match the workflow status names used by Stock Journey. Do not infer the
     // current stage from an older job's last history event.
+    if (scalar(device.current_status).toLowerCase() === "returned_to_supplier") return "Returned to Supplier";
     if (scalar(device.current_stage)) return scalar(device.current_stage);
     const status=scalar(device.current_status).toLowerCase();
-    const names={received:"IMEI Entry — saved",initial_qc_pending:"Initial QC",initial_qc_completed:"Initial QC — completed",no_work_required:"Initial QC — no work required",parts_pending:"Parts",laboratory_pending:"Laboratory",laboratory_in_progress:"Laboratory",glass_pending:"Glass",glass_in_progress:"Glass",frame_pending:"B-DEPT",frame_in_progress:"B-DEPT",final_qc_pending:"Final QC",qc_failed:"Final QC — failed",qc_passed:"Ready Stock",production_pending:"Ready Stock",production_completed:"Ready Stock",ready_for_packing:"Ready Stock",ready_for_shipment:"Ready Stock",shipped:"Export / Shipped",supplier_return_requested:"Stock Return — requested",return_pending:"Stock Return — pending",returned_to_supplier:"Returned to supplier"};
+    const names={received:"IMEI Entry — saved",initial_qc_pending:"Initial QC",initial_qc_completed:"Initial QC — completed",no_work_required:"Initial QC — no work required",parts_pending:"Parts",laboratory_pending:"Lab & Glass",laboratory_in_progress:"Lab & Glass",glass_pending:"Lab & Glass",glass_in_progress:"Lab & Glass",frame_pending:"B-DEPT",frame_in_progress:"B-DEPT",final_qc_pending:"Final QC",qc_failed:"Final QC — failed",qc_passed:"Ready Stock",production_pending:"Ready Stock",production_completed:"Ready Stock",ready_for_packing:"Ready Stock",ready_for_shipment:"Ready Stock",shipped:"Export / Shipped",supplier_return_requested:"Stock Return — requested",return_pending:"Stock Return — pending",returned_to_supplier:"Returned to supplier"};
     return names[status] || scalar(device.current_status);
   }
   function renderActivity(row) {
@@ -374,7 +375,7 @@ function buildStageSections(sortedRows) {
       ["Stock/Batch No",field(receipt,"Receipt","Batch")],["Invoice No",field(receipt,"Invoice")],["Stock received",receipt.occurred_at ? moment(receipt.occurred_at) : ""],
       ["Device number",device.device_number]
     ];
-    values.push(["Current location",place(device.current_location)]);
+    values.push(["Current location",scalar(device.current_status).toLowerCase()==="returned_to_supplier" ? "Returned to Supplier" : place(device.current_location)]);
     if(scalar(device.region))values.push(["Phone region",device.region]);
     const cells=values.map(([name,value],index)=>`<th scope="row">${escapeHtml(name)}</th><td${index===values.length-1 && values.length%2 ? ' colspan="3"' : ""}>${safe(value)}</td>`);
     header.innerHTML=`<div class="history-basic-heading"><h2 id="history-device-name">Device details</h2>${badge(currentStage(device))}</div><table class="history-basic-table"><caption class="history-sr-only">Basic phone and supplier details</caption><tbody>${cells.reduce((html,cell,index)=>html+(index%2===0 ? "<tr>" : "")+cell+(index%2===1 || index===cells.length-1 ? "</tr>" : ""),"")}</tbody></table>`;

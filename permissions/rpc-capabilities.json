@@ -3518,5 +3518,8 @@
   },
   "get_journey_status_version": {
     "read": true
+  },
+  "get_return_location_version": {
+    "read": true
   }
 }
