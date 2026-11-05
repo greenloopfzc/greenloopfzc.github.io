@@ -47,6 +47,7 @@
   let rowSequence = 0;
   let toastTimer;
   let excelPaste;
+  let stockScope;
 
   function getClient() {
     return (client ||= window.GREENLOOP_GET_CLIENT());
@@ -194,7 +195,7 @@
       <td><select data-carry-field="gcGrade">${gradeOptions(false)}</select></td>
       <td>${requirementGroup("part")}</td>
       <td>${requirementGroup("service")}</td>
-      <td class="qc-row-save-cell"><button type="button" class="qc-row-save" data-save-row>Save</button></td>
+      <td class="qc-row-save-cell"><div class="qc-save-route"><label class="qc-direct-choice"><input type="checkbox" data-direct-ready data-capability="entry" data-capability-page="initial_qc"><span>Direct Ready Stock</span></label><button type="button" class="qc-row-save" data-save-row>Save</button></div></td>
     </tr>`;
   }
 
@@ -246,6 +247,7 @@
 
   function rowSnapshot(row) {
     return {
+      directReady: row.querySelector("[data-direct-ready]")?.checked === true,
       supplierGrade: row.querySelector('[data-carry-field="supplierGrade"]')?.value || "",
       gcGrade: row.querySelector('[data-carry-field="gcGrade"]')?.value || "",
       technician: row.querySelector('[data-carry-field="technician"]')?.value || "",
@@ -256,6 +258,7 @@
   }
 
   function applySnapshot(row, snapshot) {
+    row.querySelector("[data-direct-ready]").checked = snapshot.directReady === true;
     row.querySelector('[data-carry-field="supplierGrade"]').value = snapshot.supplierGrade;
     row.querySelector('[data-carry-field="gcGrade"]').value = snapshot.gcGrade;
 
@@ -520,15 +523,16 @@
     queueCount.textContent = `${pendingJobs.length} QC pending`;
     queueCount.setAttribute("aria-label", `View ${pendingJobs.length} phones waiting for Initial QC`);
     if (!pendingModal.hidden) renderPendingJobs(pendingSearch.value);
+    stockScope?.refreshCount();
   }
 
-  async function autoPickAllPending() {
+  async function autoPickAllPending(selectedImeis = null) {
     if (autoPickButton.disabled || tableBody.querySelector('tr[data-saving="yes"]')) return;
     setMessage();
     setSubmitting(autoPickButton, true, "Loading...");
     try {
       await loadPendingCount();
-      const imeis = pendingJobs
+      const imeis = Array.isArray(selectedImeis) ? selectedImeis : pendingJobs
         .map(pendingJobData)
         .map((job) => String(job.imei || "").trim())
         .filter((imei) => /^\d{15}$/.test(imei));
@@ -639,6 +643,9 @@
     let submission;
     try {
       submission = buildRowSubmission(row);
+      submission.directReady = row.querySelector('[data-direct-ready]').checked;
+      if (submission.directReady && (submission.parts.length || submission.findings.length)) throw Error('Direct Ready Stock needs no selected parts or services. Change the dropdowns or untick Direct Ready Stock.');
+      if (submission.directReady && (!submission.gcGrade || submission.gcGrade.toUpperCase()==='D')) throw Error('Choose a non-D GL Grade before Direct Ready Stock.');
     } catch (error) {
       row.classList.add("is-error");
       setRowState(row, error.message, "is-error");
@@ -660,7 +667,7 @@
       p_supplier_grade: submission.supplierGrade, p_gc_grade: submission.gcGrade,
       p_request_id: row.dataset.saveRequest
     };
-    const { error } = await getClient().rpc("save_initial_qc_inspection_v1", payload);
+    const { data: saved, error } = await getClient().rpc(submission.directReady ? "save_initial_qc_direct_ready_v1" : "save_initial_qc_inspection_v1", payload);
     row.dataset.saving = "";
 
     if (error) {
@@ -670,13 +677,15 @@
       return { ok: false, error: error.message || "Could not save" };
     }
 
+    if (saved?.saved !== true || (!submission.directReady && saved.state !== 'awaiting_issuance') || (submission.directReady && saved.state !== 'ready_stock')) throw Error('Save result needs checking. Reload this phone before another save.');
     row.dataset.completed = "yes";
     row.classList.remove("is-error");
     row.classList.add("is-completed");
     row.querySelectorAll("input, select, button").forEach((control) => { control.disabled = true; });
     rowButton.textContent = "Saved";
-    setRowState(row, "QC saved — Awaiting Issuance", "is-completed");
-    return { ok: true, route: "issuance" };
+    setRowState(row, submission.directReady ? "Sent directly to Ready Stock" : "QC saved - Awaiting Issuance", "is-completed");
+    window.dispatchEvent(new CustomEvent('greenloop:workflow-committed',{detail:{source:'initial-qc',imeis:[selectedJob.device.imei_1]}}));
+    return { ok: true, route: submission.directReady ? "ready_stock" : "issuance" };
     } catch (error) {
       setRowState(row, error.message || "Could not save", "is-error");
       return { ok: false, error: error.message || "Could not save" };
@@ -698,7 +707,7 @@
       return;
     }
     await loadPendingCount();
-    showToast("Inspection saved. Open Lab & Glass Issuance to assign and transfer this phone.");
+    showToast(result.route === "ready_stock" ? "Phone sent directly to Ready Stock." : "Inspection saved. Open Lab & Glass Issuance to assign and transfer this phone.");
     focusNextInspectionRow(row);
   }
 
@@ -717,7 +726,7 @@
     setSubmitting(button, true, "Saving Initial QC...");
     window.GREENLOOP_QC_HANDOVER?.setBusy("bulk",true);
     try {
-    let completed = 0;
+    let completed = 0, directCount = 0;
     const errors = [];
 
     for (let index = 0; index < rows.length; index += 1) {
@@ -727,12 +736,12 @@
         errors.push(`Line ${[...tableBody.rows].indexOf(row) + 1}: ${result.error}`);
         continue;
       }
-      completed += 1;
+      completed += 1; if(result.route === "ready_stock")directCount += 1;
     }
 
     setSubmitting(button, false);
     await loadPendingCount();
-    if (completed) showToast(`${completed} inspections saved — Awaiting Issuance.`);
+    if (completed) showToast(`${directCount} directly to Ready Stock; ${completed-directCount} saved for Issuance.`);
     if (errors.length) {
       setMessage(`${completed} completed. ${errors.length} row(s) need correction. ${errors[0]}`);
     } else {
@@ -791,6 +800,7 @@
     createRows(10);
     app.hidden = false;
     window.GREENLOOP_QC_HANDOVER?.refresh();
+    stockScope = window.GREENLOOP_QC_STOCK_SCOPE?.attach({host:app.querySelector('.qc-bulk-toolbar'),stage:'inspection',client:getClient(),load:imeis=>autoPickAllPending(imeis),blocked:()=>excelPaste?.busy||Boolean(tableBody.querySelector('tr[data-saving="yes"]'))});
     setupHorizontalScroll();
     tableBody.querySelector(".qc-bulk-imei")?.focus();
   }
@@ -824,6 +834,11 @@
   tableBody.addEventListener("change", (event) => {
     const row = event.target.closest("tr");
     if (!row || row.dataset.completed === "yes") return;
+    if(event.target.matches('[data-direct-ready]')) {
+      row.dataset.manualDirectReady='yes';
+      if(row===tableBody.firstElementChild)for(const other of [...tableBody.rows].slice(1))if(other.dataset.completed!=='yes' && other.dataset.manualDirectReady!=='yes')other.querySelector('[data-direct-ready]').checked=event.target.checked;
+      return;
+    }
     const simpleSelect = event.target.closest("[data-carry-field]");
     if (simpleSelect) {
       const field = simpleSelect.dataset.carryField;
@@ -882,7 +897,7 @@
 
   document.querySelector("#add-ten-rows").addEventListener("click", () => createRows(10));
   document.querySelector("#clear-tray").addEventListener("click", resetTray);
-  autoPickButton.addEventListener("click", autoPickAllPending);
+  autoPickButton.addEventListener("click", () => stockScope?.hasSelection() ? stockScope.load() : autoPickAllPending());
   queueCount.addEventListener("click", openPendingModal);
   pendingSearch.addEventListener("input", () => renderPendingJobs(pendingSearch.value));
   pendingModal.addEventListener("click", (event) => { if (event.target.closest("[data-close-pending]")) closePendingModal(); });

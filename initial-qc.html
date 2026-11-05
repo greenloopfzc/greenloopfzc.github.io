@@ -21,7 +21,7 @@
   <script defer src="js/imei-scan.js?v=20261105-issuance-sidebar-1"></script>
 <script defer src="js/imei-stage-notice.js?v=20261102-imei-scan-location-1"></script>
   <script defer src="js/permission-catalog.js?v=20261104-report-permissions-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261105-qc-issuance-edit-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261105-qc-direct-ready-1"></script>
 <script defer src="js/page-capabilities.js?v=20261104-report-permissions-1"></script>
 <link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
 <script defer src="js/office-access.js?v=20261024-office-access-1"></script>
@@ -37,7 +37,8 @@
   <script defer src="js/employee-updates.js?v=20261105-stock-consistency-1"></script>
   <link rel="stylesheet" href="css/qc-excel-paste.css?v=20261104-qc-excel-paste-1">
   <script defer src="js/qc-excel-paste.js?v=20261105-complete-stock-lists-1"></script>
-  <script defer src="js/initial-qc.js?v=20261105-issuance-sidebar-1"></script>
+  <script defer src="js/qc-stock-scope.js?v=20261105-qc-direct-ready-1"></script>
+  <script defer src="js/initial-qc.js?v=20261105-qc-direct-ready-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
     <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261102-imei-scan-location-1">
   <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
@@ -46,6 +47,7 @@
   <link rel="stylesheet" href="css/clean-layout.css?v=20261017-clean-layout-1">
   <script defer src="js/clean-layout.js?v=20261030-supplier-progress-1"></script>
   <script defer src="js/suspicious-badge.js?v=20261105-stock-consistency-1"></script>
+  <link rel="stylesheet" href="css/qc-stock-scope.css?v=20261105-qc-direct-ready-1">
 </head>
   <body class="app-page">
     <div class="app-shell">
@@ -73,7 +75,7 @@
       <main class="app-main">
         <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Dashboard</a><span aria-hidden="true">/</span><strong>Initial QC</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
         <div class="page-content qc-content">
-          <section class="page-heading qc-heading"><div><p class="eyebrow dashboard-eyebrow">Initial QC</p><h1>Scan, inspect and save</h1><p class="heading-subtitle">Save grades, parts and services first. Assign and transfer saved phones from Lab &amp; Glass Issuance.</p></div><a class="quiet-link" href="imei-entry.html">&larr; IMEI Entry</a></section>
+          <section class="page-heading qc-heading"><div><p class="eyebrow dashboard-eyebrow">Initial QC</p><h1>Scan, inspect and save</h1><p class="heading-subtitle">Save grades, parts and services for Issuance, or release a no-work phone directly to Ready Stock.</p></div><a class="quiet-link" href="imei-entry.html">&larr; IMEI Entry</a></section>
           <div id="permission-message" class="access-message" hidden></div>
           <section id="qc-app" class="qc-app" hidden>
             <section class="qc-bulk-toolbar">
@@ -87,12 +89,12 @@
                 <div id="qc-top-scroll" class="qc-top-scroll" aria-label="Horizontal table scroll"><div id="qc-top-scroll-track"></div></div>
                 <div id="qc-bulk-scroll" class="qc-bulk-scroll">
                   <table class="qc-bulk-table">
-                    <thead><tr><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>BH</th><th>Supplier code</th><th>Supplier grade</th><th>GL grade</th><th>Parts needed</th><th>Service needed</th><th>Save inspection</th></tr></thead>
+                    <thead><tr><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>BH</th><th>Supplier code</th><th>Supplier grade</th><th>GL grade</th><th>Parts needed</th><th>Service needed</th><th>Route / Save inspection</th></tr></thead>
                     <tbody id="qc-bulk-body"></tbody>
                   </table>
                 </div>
               </section>
-              <div class="qc-bulk-actions"><span>Saved inspections appear in Lab &amp; Glass Issuance.</span><button id="complete-qc" class="primary-button receive-submit" type="submit">Save scanned Initial QC &rarr;</button></div>
+              <div class="qc-bulk-actions"><span>Save for Lab &amp; Glass Issuance, or tick Direct Ready Stock for a no-work phone.</span><button id="complete-qc" class="primary-button receive-submit" type="submit">Save scanned Initial QC &rarr;</button></div>
             </form>
 
           </section>

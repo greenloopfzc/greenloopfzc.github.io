@@ -132,7 +132,7 @@
 
   function readyRangeFilters() {
     return appliedReadyRange.from && appliedReadyRange.to
-      ? [{label:"Final QC pass", value:`${shortDate(appliedReadyRange.from)} – ${shortDate(appliedReadyRange.to)}`, clear:clearReadyRange}]
+      ? [{label:"Ready Stock date", value:`${shortDate(appliedReadyRange.from)} – ${shortDate(appliedReadyRange.to)}`, clear:clearReadyRange}]
       : [];
   }
 
@@ -200,7 +200,7 @@
 
   function render(data) {
     quantityScopes=[];
-    const flatRows = window.GREENLOOP_FILTERS.use('ready-stock-filters', Array.isArray(data?.rows) ? data.rows : [], {before:tableBody.closest('.ready-stock-table-wrap'),nativeControls:'#ready-stock-date-controls',externalFilters:readyRangeFilters,sortAfterGroup:true,sortFields:[['model','Model'],['latest','Latest Final QC pass','date'],['total','Total Qty','number']],fields:[['model','Model'],['final_grade','Grade']],onChange:()=>render(data),searchFields:['model','final_grade']});
+    const flatRows = window.GREENLOOP_FILTERS.use('ready-stock-filters', Array.isArray(data?.rows) ? data.rows : [], {before:tableBody.closest('.ready-stock-table-wrap'),nativeControls:'#ready-stock-date-controls',externalFilters:readyRangeFilters,sortAfterGroup:true,sortFields:[['model','Model'],['latest','Latest Ready Stock date','date'],['total','Total Qty','number']],fields:[['model','Model'],['final_grade','Grade']],onChange:()=>render(data),searchFields:['model','final_grade']});
     const filteredTotal = flatRows.reduce((sum,row)=>sum+Number(row.quantity||0),0);
     const grades = buildGradeList(data, flatRows);
     const rows = window.GREENLOOP_FILTERS.get('ready-stock-filters').sortRows(pivotRows(flatRows, grades));
@@ -218,7 +218,7 @@
     rangeLabel.textContent = appliedReadyRange.from && appliedReadyRange.to
       ? `Final QC pass: ${shortDate(appliedReadyRange.from)} – ${shortDate(appliedReadyRange.to)}`
       : "All current Ready Stock";
-    tableHead.innerHTML = `<tr><th>Model</th>${grades.map((grade) => `<th>${escapeHtml(grade.label)}</th>`).join("")}<th>Latest Final QC pass</th><th>Total Qty</th></tr>`;
+    tableHead.innerHTML = `<tr><th>Model</th>${grades.map((grade) => `<th>${escapeHtml(grade.label)}</th>`).join("")}<th>Latest Ready Stock date</th><th>Total Qty</th></tr>`;
     tableBody.innerHTML = rows.length
       ? rows.map((row) => `<tr><td>${escapeHtml(row.model)}</td>${grades.map((grade) => `<td>${quantityButton(row.grades.get(grade.key)||0,row.model+' · Grade '+grade.label,flatRows.filter(r=>stockGroup(r).m===row.model&&stockGroup(r).g===grade.key))}</td>`).join("")}<td>${escapeHtml(formatDateTime(row.latest))}</td><td>${quantityButton(row.total||0,row.model+' · All shown grades',flatRows.filter(r=>stockGroup(r).m===row.model))}</td></tr>`).join("")
       : `<tr><td class="ready-stock-empty" colspan="${grades.length + 3}">No Ready Stock matches these filters.</td></tr>`;

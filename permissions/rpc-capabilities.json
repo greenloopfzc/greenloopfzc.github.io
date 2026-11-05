@@ -3521,5 +3521,17 @@
   },
   "get_return_location_version": {
     "read": true
+  },
+  "save_initial_qc_direct_ready_v1": {
+    "page": "initial_qc",
+    "capability": "entry"
+  },
+  "get_qc_stock_selection_v1": {
+    "page": "initial_qc",
+    "capability": "view",
+    "read": true
+  },
+  "get_qc_direct_ready_version": {
+    "read": true
   }
 }
