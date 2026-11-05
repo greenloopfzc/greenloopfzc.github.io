@@ -1,4 +1,4 @@
-window.GREENLOOP_DEPT_NAME = value => String(value ?? "").replace(/\bframe(?:[ -]+department)?\b/gi, "B-DEPT");
+window.GREENLOOP_DEPT_NAME = value => String(value ?? "").replace(/^\s*production(?:[ _-]+(?:pending|completed|department))?\s*$/i, "Ready Stock").replace(/\bframe(?:[ -]+department)?\b/gi, "B-DEPT");
 // GreenLoop audit release: 20260918-audit-2
 window.GREENLOOP_CONFIG = Object.freeze({
   supabaseUrl: "https://prypklagfznpdlleldll.supabase.co",

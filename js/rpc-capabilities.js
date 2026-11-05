@@ -8,4 +8,4 @@
 
 (function(root){Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,{"get_qc_stage_notification_counts_v1":{"page":"initial_qc","capability":"view","read":true},"get_qc_notification_counts_version":{"read":true}});})(typeof window!=="undefined"?window:globalThis);
 
-(function(root){Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,{"update_qc_issuance_requirements_v1":{"page":"initial_qc","capability":"entry"},"get_qc_issuance_edit_version":{"read":true}});})(typeof window!=="undefined"?window:globalThis);
+(function(root){Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,{"update_qc_issuance_requirements_v1":{"page":"initial_qc","capability":"entry"},"get_journey_status_version":{"read":true},"get_qc_issuance_edit_version":{"read":true}});})(typeof window!=="undefined"?window:globalThis);

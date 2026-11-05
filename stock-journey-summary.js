@@ -5,10 +5,11 @@
   const field=(row,...names)=>text((row.details||[]).find(d=>names.some(n=>norm(n)===norm(d.label)))?.value);
   const stamp=r=>{const t=Date.parse(r.occurred_at);return Number.isFinite(t)?t:null;};
   const prefix=r=>text(r.id).split(':')[0];
-  const titles={stock_received:'Stock Received',imei_entry:'IMEI Entry',initial_qc:'Initial QC',laboratory:'Laboratory',glass:'Glass',final_qc:'Final QC',frame:'B-DEPT',ready_stock:'Ready Stock',export:'Export',stock_return:'Stock Return',rework:'Rework',other:'Recorded activity'};
-  function place(v){const n=norm(v);if(/^(laboratory|lab)$/.test(n))return 'laboratory';if(n==='glass')return 'glass';if(n.includes('initial qc'))return 'initial_qc';if(n.includes('final qc'))return 'final_qc';if(n.includes('frame')||n.includes('b-dept'))return 'frame';if(n.includes('ready stock'))return 'ready_stock';if(/export|outbound/.test(n))return 'export';return '';}
+  const titles={stock_received:'Stock Received',imei_entry:'IMEI Entry',initial_qc:'Initial QC',laboratory:'Laboratory',glass:'Glass',final_qc:'Final QC',frame:'B-DEPT',ready_stock:'Ready Stock',export:'Verified Export',box_entry:'Box Entry',accounts_pending:'Accounts Pending',box_recheck:'Box Re-check',box_history:'Box Scan History (not exported)',export_history:'Verified Export History',stock_return:'Stock Return',rework:'Rework',other:'Recorded activity'};
+  function place(v){const n=norm(v);if(/^(laboratory|lab)$/.test(n))return 'laboratory';if(n==='glass')return 'glass';if(n.includes('initial qc'))return 'initial_qc';if(n.includes('final qc'))return 'final_qc';if(n.includes('frame')||n.includes('b-dept'))return 'frame';if(n==='production'||n==='production department'||n.includes('ready stock'))return 'ready_stock';if(/export|outbound/.test(n))return 'export';return '';}
   function kind(r){
     const id=prefix(r),s=norm(r.stage),t=norm(r.title);
+    if(['box entry','accounts pending','box recheck','box history','export history'].includes(s))return s.replace(/ /g,'_');
     if(id==='assignment'||s==='assignment'||id.startsWith('timer-')||s==='technician'||/technician planned|assigned to technician/.test(t))return 'support';
     // Work-start rows and their cycle fields may be mutable snapshots. They
     // support a visit but cannot move a rework visit ahead of its QC failure.
@@ -21,7 +22,8 @@
     if(s==='ready stock'||/passed.*ready stock/.test(t))return 'ready_stock';
     if(id==='frame'||s==='frame'||/^(?:frame|b-dept)/.test(t))return 'frame';
     if(id==='supplier-return'||s==='stock return')return 'stock_return';
-    if(/^(export-box|dispatch)$/.test(id)||s==='export')return 'export';
+    if(id==='export-box')return 'box_history';
+    if(id==='dispatch'||s==='export')return 'export';
     if(s==='rework')return 'rework';
     if(/part|service/.test(id)||r.parts?.length||/part|service|line saved/.test(t))return 'support';
     if(/laboratory|glass/.test(s+' '+id+' '+t))return /glass/.test(s+' '+id+' '+t)?'glass':'laboratory';
@@ -92,7 +94,7 @@
       }
       if(['final_qc','frame'].includes(g.key)&&results.includes('fail'))add('Failure reason',unique(g.rows.filter(r=>norm(r.status)==='fail').map(r=>field(r,'Failure reason','Reason','Notes'))).join('; '));
       if(['final_qc','frame','ready_stock'].includes(g.key)){add('Grade',vals('Final grade').join(', '));add('Battery',vals('Final battery health').join(', '));}
-      if(g.key==='export')add('Box / dispatch',vals('Box number','Dispatch number','Shipment reference').join(', '));
+      if(['export','export_history','box_entry','accounts_pending','box_recheck','box_history'].includes(g.key)){add('Box / dispatch',vals('Box number','Dispatch number','Shipment reference').join(', '));add('Record',vals('Stage meaning').join('; '));}
       if(g.key==='stock_return'||g.key==='rework')add('Reason',vals('Reason').join('; '));
       return '<li class="journey-summary-step"><span class="journey-step-number">'+(index+1)+'</span><div><h3>'+esc(title)+'</h3><p class="journey-step-meta">'+esc(when)+(actors.length?' · '+esc(actors.join(', ')):'')+'</p>'+(facts.length?'<p class="journey-step-facts">'+facts.join(' · ')+'</p>':'')+'</div></li>';
     }).join('');

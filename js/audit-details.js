@@ -17,7 +17,7 @@
     lab_part_return_requests: "Part return requests", part_return_audit: "Part return history",
     part_return_stock_corrections: "Part return stock corrections", part_stock_movements: "Parts stock movements",
     lab_service_reviews: "Laboratory service reviews", device_events: "Phone activity",
-    device_location_history: "Phone location history", production_records: "Production records",
+    device_location_history: "Phone location history", production_records: "Ready Stock records",
     packing_records: "Packing records", stock_out_records: "Stock out records",
     data_change_history: "Saved data corrections", records: "Related saved records",
     supplier_returns_to_archive: "Supplier return history preserved",

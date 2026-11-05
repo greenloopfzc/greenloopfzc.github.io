@@ -3515,5 +3515,8 @@
   "receive_stock_replacement_v1": {
     "page": "supplier_returns",
     "capability": "replacement_entry"
+  },
+  "get_journey_status_version": {
+    "read": true
   }
 }

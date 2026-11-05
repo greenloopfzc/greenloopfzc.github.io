@@ -165,7 +165,7 @@
     const device = data.device || {};
     document.querySelector('#journey-detail-title').textContent = device.imei_1 || device.device_number || 'Device history';
     const row = loadedRows.find(item => item.device_id === selectedDevice);
-    const current = window.GREENLOOP_DEPT_NAME(row?.current_stage || displayValue(device.current_status).replace(/_/g, ' '));
+    const current = window.GREENLOOP_DEPT_NAME(device.current_stage || row?.current_stage || displayValue(device.current_status).replace(/_/g, ' '));
     document.querySelector('#journey-detail-stage').textContent = [device.model, device.storage_gb ? `${device.storage_gb} GB` : '', device.color, `Current stage: ${current}`].filter(Boolean).join(' · ');
     const records = Array.isArray(data.rows) ? data.rows : [];
     const fullActivity = records.length ? '<ol class="stock-journey-steps">' + records.map(item => {
