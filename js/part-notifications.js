@@ -144,14 +144,24 @@
       connect(client);
       await window.GREENLOOP_ACCESS_READY;
       const canReadIssuance=window.GREENLOOP_CAN?.('view','initial_qc')===true;
-      const [{data,error},partsResult,issuanceResult]=await Promise.all([withDeadline(client.rpc('get_workflow_notification_counts')),withDeadline(client.rpc('get_parts_flow_counts_v1')).catch(()=>null),canReadIssuance?withDeadline(client.rpc('get_qc_issuance_options_v1')).catch(()=>null):null]);
+      const [{data,error},partsResult,qcResult]=await Promise.all([withDeadline(client.rpc('get_workflow_notification_counts')),withDeadline(client.rpc('get_parts_flow_counts_v1')).catch(()=>null),canReadIssuance?withDeadline(client.rpc('get_qc_stage_notification_counts_v1')).catch(()=>null):null]);
       if (requestEpoch !== epoch || stopped || document.hidden) return;
       if (error) throw error;
       failures = 0;
       const updated={...(Array.isArray(data)?data[0]:data)};
       if(partsResult&&!partsResult.error)updated.parts=partsResult.data;
-      if(!canReadIssuance)updated.qc_issuance=0;
-      else if(issuanceResult&&!issuanceResult.error&&Number.isSafeInteger(Number(issuanceResult.data?.awaiting_issuance))&&Number(issuanceResult.data.awaiting_issuance)>=0)updated.qc_issuance=Number(issuanceResult.data.awaiting_issuance);
+      // The legacy workflow count includes saved inspections. Never display it
+      // as the inspection-only badge, including during a partial read failure.
+      delete updated.initial_qc;
+      delete updated.qc_issuance;
+      if(!canReadIssuance){updated.initial_qc=0;updated.qc_issuance=0;}
+      else if(qcResult&&!qcResult.error){
+        const qc=Array.isArray(qcResult.data)?qcResult.data[0]:qcResult.data;
+        const valid=key=>typeof qc?.[key]==='number'&&Number.isSafeInteger(qc[key])&&qc[key]>=0;
+        if(valid('initial_qc')&&valid('qc_issuance')){
+          updated.initial_qc=qc.initial_qc;updated.qc_issuance=qc.qc_issuance;
+        }
+      }
       if(requestEpoch!==epoch||stopped||document.hidden)return;
       renderCounts(updated);
       const countsKey=JSON.stringify(updated);if(countsKey!==lastCountsKey||notifyAfterRead){lastCountsKey=countsKey;document.dispatchEvent(new Event("greenloop:workflow-notifications-refreshed"));}
@@ -169,7 +179,7 @@
     const counts = Array.isArray(data) ? (data[0] || {}) : (data || {});
     stages.forEach((stage) => {
       const badge = createBadge(stage);
-      if (!badge || stage.key === "qc_issuance" && counts.qc_issuance === undefined) return;
+      if (!badge || ["initial_qc","qc_issuance"].includes(stage.key) && counts[stage.key] === undefined) return;
       const count = Math.max(0, Array.isArray(stage.key)
         ? stage.key.reduce((total, key) => total + Number(counts[key] || 0), 0)
         : Number(counts[stage.key] || 0));
