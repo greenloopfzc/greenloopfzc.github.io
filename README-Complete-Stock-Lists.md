@@ -4,9 +4,9 @@ Supplier identity choices show only the supplier code and permitted company name
 Receipt labels use the specific original receipt quantity; a new 300-phone
 receipt generates SUP-01-(300), preserving previous deliveries independently.
 
-Permitted paginated report readers automatically collect all matching pages.
-Applied filters/sorting and server permissions remain in force. No Next or
-Previous action is needed. Existing scanner trays keep all valid pasted lines;
+Permitted paginated report readers show 50 records per page with Previous/Next.
+Filters, sorting and server permissions remain in force. Full downloads stay
+complete. Existing scanner trays keep all valid pasted lines;
 repeated IMEIs remain visible as blocked lines rather than disappearing.
 Phones at another stage stay there and show the current stage. Nothing saves
 or completes QC merely because an IMEI list was pasted.

@@ -150,7 +150,7 @@ window.GREENLOOP_CONFIG = Object.freeze({
         }
         const stockRead=!bootstrap.has(name)&&!name.startsWith('get_my_')&&/^(get_|list_|export_)/.test(name)&&!/_version$/.test(name);
         if(stockRead){await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();}
-        const response = window.GREENLOOP_COMPLETE_LISTS ? await window.GREENLOOP_COMPLETE_LISTS.read(rpc,name,args[0]||{},args.slice(1)) : await rpc(name, ...args);
+        const response = await rpc(name, ...args);
         if(stockRead&&response?.data)window.GREENLOOP_STOCK?.enrich(response.data,{name,args:args[0]||{}});
         if (response?.error?.code === '23505') {
           let detail;try { detail=JSON.parse(response.error.details || '{}'); } catch (_) {}

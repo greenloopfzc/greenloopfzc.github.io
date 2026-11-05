@@ -14,8 +14,9 @@
   const config = window.GREENLOOP_CONFIG || {};
   let client;
   let toastTimer;
-  let rows = [];
+  let priorityRows = [];
   let liveHeadlinesSignature = "";
+  let priorityOffset=0,priorityKey="",priorityPager;
 
   document.querySelector("#dashboard-date").textContent = new Intl.DateTimeFormat("en-US", {
     weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "Asia/Dubai"
@@ -188,14 +189,29 @@
   }
 
   function renderPriority(rowsToRender) {
+    priorityRows=rowsToRender;
+    const query=searchInput.value.trim().toLowerCase();
     const body = document.querySelector(".priority-table tbody");
     const matching=window.GREENLOOP_FILTERS.use('dashboard-queue-filters',rowsToRender,{
       before:body.closest('table'),search:false,fields:[['status','Stage'],['model','Model']],onChange:()=>renderPriority(rowsToRender)
-    });
+    }).filter(row=>[row.job_number,row.imei,row.model,row.status].join(' ').toLowerCase().includes(query));
     const searchField = searchInput.closest('.dashboard-local-search');
     const filterToolbar = document.querySelector('#dashboard-queue-filters .table-filter-toolbar');
     if (searchField && filterToolbar && searchField.parentElement !== filterToolbar) filterToolbar.prepend(searchField);
-    body.innerHTML = matching.length ? matching.map((row) => {
+    const key=JSON.stringify(matching.map(row=>row.id||row.job_id||row.imei||row.job_number));
+    if(key!==priorityKey){priorityOffset=0;priorityKey=key;}
+    if(priorityOffset>=matching.length)priorityOffset=Math.max(0,Math.floor(Math.max(0,matching.length-1)/50)*50);
+    if(!priorityPager){
+      priorityPager=document.createElement('nav');priorityPager.id='dashboard-queue-pages';priorityPager.className='table-filter-pagination';priorityPager.setAttribute('aria-label','Work queue pages');
+      priorityPager.innerHTML='<button type="button" class="secondary-button" data-priority-prev data-capability="view" data-capability-page="overview" data-search-read-only>Previous</button><button type="button" class="secondary-button" data-priority-next data-capability="view" data-capability-page="overview" data-search-read-only>Next</button><span role="status" data-priority-count></span>';
+      body.closest('table').after(priorityPager);
+    }
+    const previous=priorityPager.querySelector('[data-priority-prev]'),next=priorityPager.querySelector('[data-priority-next]');
+    previous.disabled=priorityOffset===0;next.disabled=priorityOffset+50>=matching.length;
+    previous.onclick=()=>{if(priorityOffset>=50){priorityOffset-=50;renderPriority(rowsToRender);}};
+    next.onclick=()=>{if(priorityOffset+50<matching.length){priorityOffset+=50;renderPriority(rowsToRender);}};
+    priorityPager.querySelector('[data-priority-count]').textContent=matching.length?`${priorityOffset+1}–${Math.min(priorityOffset+50,matching.length)} of ${matching.length}`:'0 records';
+    body.innerHTML = matching.length ? matching.slice(priorityOffset,priorityOffset+50).map((row) => {
       const age = Number(row.days_open) || 0;
       const status = titleCase(row.status);
       const style = row.status?.includes("in_progress") ? "info" : "warning";
@@ -204,9 +220,9 @@
         <td>${escapeHtml(status)}</td><td>${age} day${age === 1 ? "" : "s"}</td><td><span class="status-chip ${style}">${escapeHtml(status)}</span></td>
       </tr>`;
     }).join("") : '<tr><td colspan="4">No active devices need attention.</td></tr>';
-    rows = [...body.querySelectorAll("tr[data-search]")];
-    filterRows();
-    document.querySelector("#dashboard-queue-filters .table-filter-status").textContent=`${matching.length} matching records · First 20 shown`;
+    searchEmpty.hidden=matching.length!==0||!query;
+    window.GREENLOOP_HIGHLIGHTS?.show(body,query);
+    document.querySelector("#dashboard-queue-filters .table-filter-status").textContent=`${matching.length} matching records`;
   }
 
   function isReadyStockStatus(status) {
@@ -243,15 +259,7 @@
   }
 
   function filterRows() {
-    const query = searchInput.value.trim().toLowerCase();
-    let visibleRows = 0;
-    rows.forEach((row) => {
-      const matches = row.dataset.search.toLowerCase().includes(query);
-      row.hidden = !matches;
-      if (matches) visibleRows += 1;
-    });
-    searchEmpty.hidden = visibleRows !== 0 || !query;
-    window.GREENLOOP_HIGHLIGHTS?.show(document.querySelector('.priority-table tbody'), query);
+    renderPriority(priorityRows);
   }
 
   async function loadLiveDashboard() {
@@ -297,7 +305,7 @@
     document.querySelectorAll(".workflow-metric-grid, .queue-list, .queue-insight p, .bar-chart, .throughput-summary, .location-grid").forEach((element) => { element.textContent = text; });
     document.querySelector(".priority-table tbody").innerHTML = `<tr><td colspan="4">${text}</td></tr>`;
     document.querySelectorAll(".stock-list, .activity-list").forEach((element) => { element.innerHTML = `<li>${text}</li>`; });
-    rows = [];
+    priorityRows = [];
     showToast(error?.message || text);
   }
 

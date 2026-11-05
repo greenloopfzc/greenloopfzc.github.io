@@ -21,3 +21,9 @@ These are business display requirements, not permission to disclose protected
 names or to delete, reset, or otherwise change business records.
 
 - Supplier/company identity selectors (especially Create stock entry) show only the base supplier code and permitted company name. Quantity brackets are added only when a specific receipt or newly entered receipt quantity is known; never combine separate receipts in a company label.
+
+## Report pagination
+
+- Keep regular report/data tables paginated at 50 records per page, with Previous/Next and visible ranges. Do not automatically fetch or render all matching pages.
+- Keep complete PDF/Excel/CSV downloads independent from on-screen pagination.
+- Explicit bulk entry/paste/scanner trays retain their full pasted/selected lines and existing manual Save/Transfer behavior; do not reintroduce Parts issue-selection caps.
