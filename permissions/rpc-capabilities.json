@@ -3541,5 +3541,25 @@
   },
   "get_lab_overdue_card_version": {
     "read": true
+  },
+  "get_full_imei_workflow_v2": {
+    "page": "reports",
+    "capability": "workflow_correction",
+    "read": true
+  },
+  "save_full_imei_workflow_v2": {
+    "page": "reports",
+    "capability": "workflow_correction"
+  },
+  "apply_imei_workflow_stage_action_v1": {
+    "page": "reports",
+    "capability": "workflow_correction"
+  },
+  "save_reopened_initial_qc_v1": {
+    "page": "initial_qc",
+    "capability": "entry"
+  },
+  "get_workflow_stage_controls_version": {
+    "read": true
   }
 }

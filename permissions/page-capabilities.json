@@ -1038,6 +1038,16 @@
           "key": "delete_export_boxes",
           "label": "Delete export boxes",
           "write": true
+        },
+        {
+          "key": "workflow_delete",
+          "label": "Delete IMEI workflow entries (Reports only)",
+          "write": true
+        },
+        {
+          "key": "workflow_move_back",
+          "label": "Move Issuance back to Initial QC (Reports only)",
+          "write": true
         }
       ]
     },
@@ -1401,7 +1411,9 @@
       "actions": [
         "report_imei_correction_search",
         "correction",
-        "workflow_correction"
+        "workflow_correction",
+        "workflow_delete",
+        "workflow_move_back"
       ],
       "search": "report_imei_correction_search"
     },
@@ -1490,6 +1502,8 @@
     "production_delete_all": "production_view",
     "report_deleted_history_search": "report_deleted_history",
     "report_deleted_history_sort": "report_deleted_history",
-    "delete_export_boxes": "report_export_boxes"
+    "delete_export_boxes": "report_export_boxes",
+    "workflow_delete": "report_imei_correction",
+    "workflow_move_back": "report_imei_correction"
   }
 }

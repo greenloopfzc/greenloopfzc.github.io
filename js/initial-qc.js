@@ -308,7 +308,7 @@
   }
 
   function clearAutoData(row) {
-    delete row.dataset.saveRequest;
+    delete row.dataset.saveRequest;delete row.dataset.reopened;
     row.dataset.loadVersion = String(Number(row.dataset.loadVersion || 0) + 1);
     row.dataset.loading = "";
     ["serial", "region", "model", "storage", "color", "battery", "supplier"].forEach((key) => {
@@ -425,6 +425,7 @@
       carrySimpleField(row, "gcGrade");
       applyGradeHousing(row);
     }
+    if(result.reopened_inspection){row.dataset.reopened='yes';setGroupValues(row,'part',result.reopened_inspection.parts||[]);setGroupValues(row,'service',result.reopened_inspection.services||[]);row.dataset.housingOverride='yes';}
     row.classList.remove("is-error");
     row.classList.add("is-loaded");
     setRowState(row, "");
@@ -667,7 +668,7 @@
       p_supplier_grade: submission.supplierGrade, p_gc_grade: submission.gcGrade,
       p_request_id: row.dataset.saveRequest
     };
-    const { data: saved, error } = await getClient().rpc(submission.directReady ? "save_initial_qc_direct_ready_v1" : "save_initial_qc_inspection_v1", payload);
+    const { data: saved, error } = await getClient().rpc(row.dataset.reopened==="yes"?"save_reopened_initial_qc_v1":submission.directReady ? "save_initial_qc_direct_ready_v1" : "save_initial_qc_inspection_v1",row.dataset.reopened==="yes"?{...payload,p_direct_ready:submission.directReady}:payload);
     row.dataset.saving = "";
 
     if (error) {
