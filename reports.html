@@ -21,8 +21,8 @@
     <link rel="stylesheet" href="css/damage-management.css?v=20261007-damage-payable-1">
     <link rel="stylesheet" href="css/complete-device-details.css?v=20261001-android-support-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script defer src="js/permission-catalog.js?v=20261105-workflow-stage-controls-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261105-workflow-stage-controls-1"></script>
+    <script defer src="js/permission-catalog.js?v=20261106-bulk-imei-correction-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261106-bulk-imei-correction-1"></script>
 <script defer src="js/page-capabilities.js?v=20261104-report-permissions-1"></script>
 <script defer src="js/imei-scan.js?v=20261105-issuance-sidebar-1"></script>
 <script defer src="js/imei-stage-notice.js?v=20261102-imei-scan-location-1"></script>
@@ -46,7 +46,7 @@
     <link rel="stylesheet" href="css/restricted-scopes.css?v=20261030-restricted-scopes-1">
     <script defer src="js/restricted-scopes.js?v=20261030-restricted-scopes-1"></script>
     <script defer src="js/stock-parts-cost.js?v=20261105-stock-consistency-1"></script>
-    <script defer src="js/reports.js?v=20261105-stock-consistency-1"></script>
+    <script defer src="js/reports.js?v=20261106-bulk-imei-correction-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
     <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
   <link rel="stylesheet" href="css/sidebar-compact.css?v=20261009-sidebar-pdf-1">
@@ -56,13 +56,15 @@
   <script defer src="js/clean-layout.js?v=20261030-supplier-progress-1"></script>
   <script defer src="js/suspicious-badge.js?v=20261105-stock-consistency-1"></script>
 <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261102-imei-scan-location-1">
-  <link rel="stylesheet" href="css/full-imei-correction.css?v=20261105-workflow-stage-controls-1">
-  <script defer src="js/full-imei-correction.js?v=20261105-workflow-stage-controls-1"></script>
+  <link rel="stylesheet" href="css/full-imei-correction.css?v=20261106-bulk-imei-correction-1">
+  <script defer src="js/full-imei-correction.js?v=20261106-bulk-imei-correction-1"></script>
   <link rel="stylesheet" href="css/stock-parts-cost.css?v=20261030-stock-parts-cost-1">
   <link rel="stylesheet" href="css/stock-grade-analysis.css?v=20261104-stock-grade-analysis-1">
+  <script src="js/bulk-imei-correction.js?v=20261106-bulk-imei-correction-1"></script>
   <script defer src="js/stock-grade-analysis.js?v=20261105-stock-consistency-1"></script>
   <script defer src="js/stock-grade-analysis-pdf.js?v=20261105-complete-stock-lists-1"></script>
-  </head>
+    <link rel="stylesheet" href="css/bulk-imei-correction.css?v=20261106-bulk-imei-correction-1">
+</head>
   <body class="app-page">
     <div class="app-shell">
       <aside id="sidebar" class="sidebar" aria-label="Main navigation">
@@ -105,6 +107,7 @@
               <button class="report-tab" type="button" data-report="stock_returns" aria-pressed="false" hidden data-capability="report_stock_return" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">↩</span><span class="report-tab-label">Stock Return</span></button>
               <button class="report-tab" type="button" data-report="restricted_data" aria-pressed="false" hidden data-capability="report_restricted_data" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">⊘</span><span class="report-tab-label">Restricted Data</span></button>
               <button class="report-tab" type="button" data-report="data_correction" aria-pressed="false" hidden data-capability="report_imei_correction" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">✎</span><span class="report-tab-label">IMEI Data Correction</span></button>
+              <button class="report-tab" type="button" data-report="bulk_imei_correction" aria-pressed="false" hidden data-capability="bulk_imei_correction" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">&#9638;</span><span class="report-tab-label">Bulk IMEI Correction</span></button>
               <button class="report-tab" type="button" data-report="manual_damage" aria-pressed="false" hidden data-capability="report_damage" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">▥</span><span class="report-tab-label">Live Damage Report</span></button>
               <button class="report-tab" type="button" data-report="production_correction" aria-pressed="false" hidden data-capability="production_view" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">▤</span><span class="report-tab-label">Available Stock Correction</span></button>
               <button class="report-tab" type="button" data-report="deleted_history" aria-pressed="false" hidden data-capability="report_deleted_history" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">↶</span><span class="report-tab-label">Deleted History</span></button>

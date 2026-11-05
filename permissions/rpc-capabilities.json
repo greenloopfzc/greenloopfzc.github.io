@@ -1347,6 +1347,23 @@
     },
     "get_stock_bulk_search_version": {
       "read": true
+    },
+    "get_bulk_imei_correction_options_v1": {
+      "page": "reports",
+      "capability": "bulk_imei_correction",
+      "read": true
+    },
+    "get_bulk_imei_correction_v1": {
+      "page": "reports",
+      "capability": "bulk_imei_correction",
+      "read": true
+    },
+    "save_bulk_imei_correction_v1": {
+      "page": "reports",
+      "capability": "bulk_imei_correction"
+    },
+    "get_bulk_imei_correction_version": {
+      "read": true
     }
   },
   "get_box_status_v1": {

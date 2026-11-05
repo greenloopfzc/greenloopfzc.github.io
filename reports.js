@@ -21,8 +21,8 @@
   let activeReport = "";
   let loadedReport = "";
   const reportSections = window.GREENLOOP_PERMISSION_CATALOG?.reportSections || {};
-  const allowedReport = key => Boolean(reportSections[key] && window.GREENLOOP_CAN?.(reportSections[key].view,"reports"));
-  const selfLoadedReports = new Set(["supplier_progress","stock_grade_analysis","stock_parts_cost","manual_damage","production_correction","complete_device_details","data_correction","restricted_data"]);
+  const allowedReport = key => key==="bulk_imei_correction" ? Boolean(window.GREENLOOP_CAN?.("report_imei_correction","reports")&&window.GREENLOOP_CAN?.("workflow_correction","reports")&&window.GREENLOOP_CAN?.("bulk_imei_correction","reports")) : Boolean(reportSections[key] && window.GREENLOOP_CAN?.(reportSections[key].view,"reports"));
+  const selfLoadedReports = new Set(["bulk_imei_correction","supplier_progress","stock_grade_analysis","stock_parts_cost","manual_damage","production_correction","complete_device_details","data_correction","restricted_data"]);
   let selectedExportBox = "";
   let exportBoxImeiFilter = "";
   let correctionRecord = null;
@@ -61,9 +61,9 @@
   function queueExternalReportRefresh() {
     externalRefreshPending = true;
     window.clearTimeout(externalRefreshTimer);
-    if (app.hidden || document.visibilityState === "hidden" || deletionBusy || reportMutationPending || window.GREENLOOP_FULL_IMEI_CORRECTION?.isBusy()) return;
+    if (app.hidden || document.visibilityState === "hidden" || deletionBusy || reportMutationPending || (window.GREENLOOP_FULL_IMEI_CORRECTION?.isBusy()||window.GREENLOOP_BULK_IMEI_CORRECTION?.isBusy())) return;
     externalRefreshTimer = window.setTimeout(() => {
-      if (app.hidden || document.visibilityState === "hidden" || deletionBusy || reportMutationPending || window.GREENLOOP_FULL_IMEI_CORRECTION?.isBusy()) return;
+      if (app.hidden || document.visibilityState === "hidden" || deletionBusy || reportMutationPending || (window.GREENLOOP_FULL_IMEI_CORRECTION?.isBusy()||window.GREENLOOP_BULK_IMEI_CORRECTION?.isBusy())) return;
       externalRefreshPending = false;
       resetDeletionPreview();
       correctionRecord = null;
@@ -172,6 +172,7 @@
       description: "Delete selected IMEIs, a supplier, invoice, Stock/Batch or all operational IMEIs. Every deletion is saved in Deleted History.",
       columns: []
     },
+    bulk_imei_correction: {title:"Bulk IMEI Correction",description:"Edit one IMEI, a pasted list or selected stock in the table. Review all changed cells before saving.",columns:[]},
     data_correction: {
       title: "IMEI data correction",
       description: "Search one device and correct its master, receiving, and grade information. Every old and new value is permanently audited.",
@@ -924,7 +925,7 @@
     window.GREENLOOP_ACTIVE_REPORT=activeReport;
     filterForm.querySelectorAll('input,button').forEach(control=>{const allowed=Boolean(activeReport&&window.GREENLOOP_CAN?.('search','reports'));control.disabled=!allowed;if(allowed){control.removeAttribute('aria-disabled');control.removeAttribute('data-view-only-locked');if(control.title==='Access not granted')control.removeAttribute('title');}});
     if(!activeReport){
-      for(const name of ['GREENLOOP_STOCK_GRADE_ANALYSIS','GREENLOOP_STOCK_PARTS_COST','GREENLOOP_RESTRICTED_SCOPES','GREENLOOP_FULL_IMEI_CORRECTION','GREENLOOP_PRODUCTION_CORRECTION','GREENLOOP_DAMAGE_MANAGEMENT','GREENLOOP_COMPLETE_DEVICE_DETAILS'])window[name]?.unmount();
+      for(const name of ['GREENLOOP_STOCK_GRADE_ANALYSIS','GREENLOOP_STOCK_PARTS_COST','GREENLOOP_RESTRICTED_SCOPES','GREENLOOP_FULL_IMEI_CORRECTION','GREENLOOP_BULK_IMEI_CORRECTION','GREENLOOP_PRODUCTION_CORRECTION','GREENLOOP_DAMAGE_MANAGEMENT','GREENLOOP_COMPLETE_DEVICE_DETAILS'])window[name]?.unmount();
       filterForm.hidden=true;document.querySelectorAll('.table-filters').forEach(el=>el.hidden=true);document.getElementById('supplier-progress-controls')?.setAttribute('hidden','');
       panelKicker.textContent='Reports';panelTitle.textContent='Reports';panelDescription.textContent='';rowCount.textContent='';
       reportContent.innerHTML='<p class="report-empty">No reports assigned.</p>';return;
@@ -933,6 +934,7 @@
     if(activeReport!=="stock_grade_analysis")window.GREENLOOP_STOCK_GRADE_ANALYSIS?.unmount();
     if(activeReport!=="stock_parts_cost")window.GREENLOOP_STOCK_PARTS_COST?.unmount();
     if(activeReport!=="restricted_data")window.GREENLOOP_RESTRICTED_SCOPES?.unmount();
+    if(activeReport!=='bulk_imei_correction')window.GREENLOOP_BULK_IMEI_CORRECTION?.unmount();
     if (activeReport !== 'data_correction') window.GREENLOOP_FULL_IMEI_CORRECTION?.unmount();
     document.querySelectorAll('.table-filters').forEach(el=>el.hidden=true);
     document.querySelectorAll(".report-tab[data-report]").forEach((tab) => {
@@ -944,6 +946,11 @@
     const supplierControls=document.getElementById("supplier-progress-controls");if(supplierControls)supplierControls.hidden=activeReport!=="supplier_progress";
     filterForm.hidden = activeReport === "supplier_progress" || activeReport === "stock_parts_cost" || activeReport === "stock_grade_analysis" || liveDetails || activeReport === "restricted_data" || activeReport === "data_correction" || activeReport === "manual_damage" || activeReport === "production_correction";
     window.GREENLOOP_PRODUCTION_CORRECTION?.unmount();
+    if(activeReport==='bulk_imei_correction'){
+      filterForm.hidden=true;window.GREENLOOP_DAMAGE_MANAGEMENT?.unmount();window.GREENLOOP_COMPLETE_DEVICE_DETAILS?.unmount();
+      panelKicker.textContent='Reports';panelTitle.textContent=reports.bulk_imei_correction.title;panelDescription.textContent=reports.bulk_imei_correction.description;rowCount.textContent='Reports only';
+      window.GREENLOOP_BULK_IMEI_CORRECTION?.mount(reportContent);return;
+    }
     if(activeReport === "stock_grade_analysis") {
       window.GREENLOOP_DAMAGE_MANAGEMENT?.unmount();window.GREENLOOP_COMPLETE_DEVICE_DETAILS?.unmount();
       panelKicker.textContent="Initial QC analysis";panelTitle.textContent=reports.stock_grade_analysis.title;panelDescription.textContent=reports.stock_grade_analysis.description;rowCount.textContent="Supplier / stock / invoice";
@@ -1066,7 +1073,8 @@
   filterForm.addEventListener("submit", loadReports);
   tabs.addEventListener("click", (event) => {
     const tab = event.target.closest(".report-tab[data-report]");
-    if (window.GREENLOOP_FULL_IMEI_CORRECTION?.isSaving()) return;
+    if (window.GREENLOOP_FULL_IMEI_CORRECTION?.isSaving()||window.GREENLOOP_BULK_IMEI_CORRECTION?.isSaving()) return;
+    if(window.GREENLOOP_BULK_IMEI_CORRECTION?.isBusy()&&!window.confirm("Discard unsaved Bulk IMEI corrections and leave this report?"))return;
     if (!tab || tab.hidden || deletionBusy || reportMutationPending || window.GREENLOOP_DAMAGE_MANAGEMENT?.isBusy() || (tab.dataset.report !== "overview" && !reports[tab.dataset.report])) return;
     if(!allowedReport(tab.dataset.report))return;
     if(tab.dataset.report === "stock_parts_cost" && !window.GREENLOOP_CAN?.("stock_parts_cost","reports"))return;

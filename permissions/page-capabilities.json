@@ -1048,6 +1048,11 @@
           "key": "workflow_move_back",
           "label": "Move Issuance back to Initial QC (Reports only)",
           "write": true
+        },
+        {
+          "key": "bulk_imei_correction",
+          "label": "Bulk IMEI Correction (editable table; requires Full IMEI Correction)",
+          "write": true
         }
       ]
     },
@@ -1413,7 +1418,8 @@
         "correction",
         "workflow_correction",
         "workflow_delete",
-        "workflow_move_back"
+        "workflow_move_back",
+        "bulk_imei_correction"
       ],
       "search": "report_imei_correction_search"
     },
@@ -1504,6 +1510,7 @@
     "report_deleted_history_sort": "report_deleted_history",
     "delete_export_boxes": "report_export_boxes",
     "workflow_delete": "report_imei_correction",
-    "workflow_move_back": "report_imei_correction"
+    "workflow_move_back": "report_imei_correction",
+    "bulk_imei_correction": "report_imei_correction"
   }
 }
