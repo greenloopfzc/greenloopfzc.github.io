@@ -27,3 +27,9 @@ names or to delete, reset, or otherwise change business records.
 - Keep regular report/data tables paginated at 50 records per page, with Previous/Next and visible ranges. Do not automatically fetch or render all matching pages.
 - Keep complete PDF/Excel/CSV downloads independent from on-screen pagination.
 - Explicit bulk entry/paste/scanner trays retain their full pasted/selected lines and existing manual Save/Transfer behavior; do not reintroduce Parts issue-selection caps.
+
+## Issuance inline editing
+
+- Lab & Glass Issuance edits stay in the same IMEI row, in Parts Needed and Service Needed, with Initial QC style dropdowns and plus/minus controls. Do not open a separate editor panel.
+- Do not show a quantity input. Each newly selected part has one unit for that IMEI. A layout update must not reset existing saved quantities or business records.
+- Save / Cancel stay on the same row. Saving changes and transferring the phone remain separate actions.

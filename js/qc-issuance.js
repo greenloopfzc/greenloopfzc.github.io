@@ -3,7 +3,7 @@
   'use strict';
   const $=s=>document.querySelector(s),app=$('#issuance-app'),body=$('#issuance-body');
   const client=window.GREENLOOP_GET_CLIENT(),records=new Map(),timers=new WeakMap(),prepared=new Map();
-  let technicians=[],sequence=0,busy=false,stopped=false,paste,editing=null;
+  let technicians=[],sequence=0,busy=false,stopped=false,paste,editing=null,workCatalog=null,catalogAt=0;
   const selectionTemplate={technician:'',destination:'lab_glass'};
   const can=()=>!stopped&&window.GREENLOOP_CAN?.('entry','initial_qc')===true;
   const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -31,96 +31,103 @@
       other.querySelector(selector).value=value;delete other.dataset.issueRequest;sync(other);
     }
   }
-  function createRows(n){for(let i=0;i<n;i++)body.insertAdjacentHTML('beforeend',`<tr data-row-id="issue-${++sequence}"><td class="issuance-imei-cell"><input class="qc-issuance-imei" placeholder="Scan IMEI" maxlength="15" inputmode="numeric" autocomplete="off" data-capability="entry" aria-label="Scan IMEI"><small data-row-state role="status" hidden></small></td><td data-phone>—</td><td data-storage>—</td><td data-color>—</td><td data-battery>—</td><td data-stock>—</td><td data-supplier-grade>—</td><td data-gl-grade>—</td><td data-parts>—</td><td data-services>—</td><td><select data-technician data-capability="entry" aria-label="Assign technician">${options(selectionTemplate.technician)}</select></td><td><select data-destination data-capability="entry" aria-label="Destination"><option value="lab_glass">Lab &amp; Glass</option><option value="b_dept">B-DEPT</option></select></td><td><div class="issuance-row-actions"><button type="button" class="secondary-button issuance-edit" data-edit-work data-capability="entry" title="Edit Parts / Services" aria-label="Edit Parts / Services" disabled>Edit</button><button type="button" class="primary-button" data-transfer data-capability="entry" disabled>Transfer</button><button type="button" class="secondary-button issuance-reload" data-reload data-capability="entry" aria-label="Reload details" title="Reload saved details">↻</button></div></td></tr>`);
+  function createRows(n){for(let i=0;i<n;i++)body.insertAdjacentHTML('beforeend',`<tr data-row-id="issue-${++sequence}"><td class="issuance-imei-cell"><input class="qc-issuance-imei" placeholder="Scan IMEI" maxlength="15" inputmode="numeric" autocomplete="off" data-capability="entry" aria-label="Scan IMEI"><small data-row-state role="status" hidden></small></td><td data-phone>—</td><td data-storage>—</td><td data-color>—</td><td data-battery>—</td><td data-stock>—</td><td data-supplier-grade>—</td><td data-gl-grade>—</td><td data-parts>—</td><td data-services>—</td><td><select data-technician data-capability="entry" aria-label="Assign technician">${options(selectionTemplate.technician)}</select></td><td><select data-destination data-capability="entry" aria-label="Destination"><option value="lab_glass">Lab &amp; Glass</option><option value="b_dept">B-DEPT</option></select></td><td><div class="issuance-row-actions"><button type="button" class="primary-button" data-work-save data-capability="entry" hidden>Save</button><button type="button" class="secondary-button" data-work-cancel data-capability="entry" hidden>Cancel</button><button type="button" class="secondary-button issuance-edit" data-edit-work data-capability="entry" title="Edit Parts / Services" aria-label="Edit Parts / Services" disabled>Edit</button><button type="button" class="primary-button" data-transfer data-capability="entry" disabled>Transfer</button><button type="button" class="secondary-button issuance-reload" data-reload data-capability="entry" aria-label="Reload details" title="Reload saved details">↻</button></div></td></tr>`);
     for(const row of [...body.rows].slice(-n))row.querySelector('[data-destination]').value=selectionTemplate.destination;
     $('#issuance-lines').textContent=`${body.rows.length} lines`;if(!paste?.busy)syncAll();
   }
   function clearRow(row){records.delete(row);row.dataset.ticket=String(Number(row.dataset.ticket||0)+1);delete row.dataset.issueRequest;row.dataset.loading='';for(const selector of ['[data-phone]','[data-storage]','[data-color]','[data-battery]','[data-stock]','[data-supplier-grade]','[data-gl-grade]','[data-parts]','[data-services]']){const cell=row.querySelector(selector);cell.textContent='—';cell.removeAttribute('title');cell.removeAttribute('aria-label');}state(row);sync(row);}
   async function rpc(name,args={}){const{data,error}=await client.rpc(name,args);if(error)throw error;return data;}
   function workMessage(text=''){
-    const e=$('#issuance-work-message');e.textContent=text;e.hidden=!text;
+    if(editing)state(editing.row,text,Boolean(text)&&text!=='Saving changes…');
   }
   function syncWorkEditor(){
     const locked=busy||paste?.busy||!can();
-    $('#issuance-work-editor').querySelectorAll('input,select,button').forEach(e=>e.disabled=locked);
+    for(const row of body.rows){
+      const active=editing?.row===row;
+      for(const selector of ['[data-edit-work]','[data-transfer]','[data-reload]'])row.querySelector(selector).hidden=active;
+      for(const selector of ['[data-work-save]','[data-work-cancel]']){
+        const button=row.querySelector(selector);button.hidden=!active;button.disabled=locked||!active;
+      }
+      if(active)for(const cell of row.querySelectorAll('[data-parts],[data-services]'))cell.querySelectorAll('select,button').forEach(e=>e.disabled=locked);
+    }
     for(const id of ['issuance-transfer-all','issuance-add','issuance-clear','issuance-load-all','issuance-refresh']){
       const e=$('#'+id);e.disabled=busy||paste?.busy||Boolean(editing)||(e.dataset.capability==='entry'&&!can());
     }
   }
+  function renderSavedWork(row,r){
+    for(const [selector,values]of [['[data-parts]',r.parts.map(p=>p.name)],['[data-services]',r.services]]){
+      const cell=row.querySelector(selector);cell.textContent=values.length?values.join('; '):'None';cell.title=cell.textContent;
+    }
+  }
+  function workSelect(kind,value){
+    const items=editing.catalog[kind==='part'?'parts':'services'].map(p=>p.name);
+    if(value&&!items.includes(value))items.push(value);
+    return `<select data-work-choice="${kind}" data-capability="entry" aria-label="${kind==='part'?'Select part':'Select service'}"><option value="">${kind==='part'?'Select part':'Select service'}</option>${items.map(name=>`<option value="${esc(name)}"${name===value?' selected':''}>${esc(name)}</option>`).join('')}</select>`;
+  }
   function renderWorkEditor(){
     if(!editing)return;
-    const {parts,services,catalog}=editing;
-    $('#issuance-edit-parts').innerHTML=parts.length?parts.map((p,i)=>`<div class="issuance-selected-item"><span>${esc(p.name)}</span><input type="number" min="1" max="10000" step="1" value="${esc(p.quantity)}" data-edit-quantity="${i}" data-capability="entry" aria-label="Quantity for ${esc(p.name)}"><button type="button" class="secondary-button" data-remove-edit-part="${i}" data-capability="entry" aria-label="Remove ${esc(p.name)} part">Remove</button></div>`).join(''):'<p class="issuance-work-empty">No parts selected</p>';
-    $('#issuance-edit-services').innerHTML=services.length?services.map((name,i)=>`<div class="issuance-selected-item issuance-selected-service"><span>${esc(name)}</span><button type="button" class="secondary-button" data-remove-edit-service="${i}" data-capability="entry" aria-label="Remove ${esc(name)} service">Remove</button></div>`).join(''):'<p class="issuance-work-empty">No services selected</p>';
-    const key=v=>String(v).trim().replace(/\s+/g,' ').toLowerCase();
-    $('#issuance-part-choice').innerHTML='<option value="">Choose part</option>'+catalog.parts.filter(p=>!parts.some(x=>key(x.name)===key(p.name))).map(p=>`<option value="${esc(p.name)}">${esc(p.name)}</option>`).join('');
-    $('#issuance-service-choice').innerHTML='<option value="">Choose service</option>'+catalog.services.filter(p=>!services.some(x=>key(x)===key(p.name))).map(p=>`<option value="${esc(p.name)}">${esc(p.name)}</option>`).join('');
+    for(const kind of ['part','service']){
+      const values=kind==='part'?editing.parts.map(p=>p.name):editing.services;
+      const cell=editing.row.querySelector(kind==='part'?'[data-parts]':'[data-services]');cell.removeAttribute('title');
+      cell.innerHTML=`<div class="issuance-inline-group" data-work-group="${kind}"><div class="issuance-inline-list">${values.map(value=>workSelect(kind,value)).join('')}</div><button type="button" class="secondary-button" data-work-add="${kind}" data-capability="entry" title="Add another ${kind}" aria-label="Add another ${kind}">+</button><button type="button" class="secondary-button issuance-inline-minus" data-work-remove="${kind}" data-capability="entry" title="Remove last ${kind}" aria-label="Remove last ${kind}">−</button></div>`;
+    }
     syncWorkEditor();
   }
   function closeWorkEditor(){
-    editing?.row.classList.remove('is-editing');editing=null;
-    const panel=$('#issuance-work-editor');panel.hidden=true;
-    $('#issuance-edit-parts').replaceChildren();$('#issuance-edit-services').replaceChildren();
-    $('#issuance-work-phone').textContent='';workMessage();syncAll();
+    const row=editing?.row;editing=null;
+    if(row?.isConnected){row.classList.remove('is-editing');const r=records.get(row);if(r)renderSavedWork(row,r);state(row,'Awaiting Issuance');}
+    syncAll();
   }
   async function openWorkEditor(row){
     const r=records.get(row);
     if(editing||busy||paste?.busy||!can()||!r||row.dataset.completed==='yes')return;
-    lock(true);message();
+    lock(true);state(row,'Loading options…');message();
     try{
-      const catalog=await rpc('get_ranked_qc_dropdowns_v1');
+      const catalog=workCatalog&&Date.now()-catalogAt<60000?workCatalog:await rpc('get_ranked_qc_dropdowns_v1');
       if(!can()||!row.isConnected||records.get(row)!==r)return;
-      if(!Array.isArray(catalog?.parts)||!Array.isArray(catalog?.services)||![...catalog.parts,...catalog.services].every(o=>typeof o.name==='string'&&o.name.trim()))throw Error('The parts and services dropdowns could not be loaded. Try Edit again.');
-      editing={row,record:r,catalog,parts:r.parts.map(p=>({name:p.name,quantity:p.quantity})),services:[...r.services],request:null};
-      $('#issuance-work-phone').textContent=`IMEI ${r.imei} · ${r.model||'Phone'} · ${storage(r.storage_gb)}`;
-      row.classList.add('is-editing');workMessage();renderWorkEditor();
-      $('#issuance-work-editor').hidden=false;$('#issuance-work-editor').scrollIntoView({block:'nearest',behavior:'smooth'});
-    }catch(e){message(e.message||'The editor could not be opened.');}
+      if(!Array.isArray(catalog?.parts)||!Array.isArray(catalog?.services)||![...catalog.parts,...catalog.services].every(o=>typeof o.name==='string'&&o.name.trim()))throw Error('Parts and services options could not load. Try Edit again.');
+      workCatalog=catalog;catalogAt=Date.now();
+      editing={row,record:r,catalog,parts:r.parts.length?r.parts.map(p=>({name:p.name,quantity:p.quantity})):[{name:'',quantity:1}],services:r.services.length?[...r.services]:[''],request:null};
+      row.classList.add('is-editing');renderWorkEditor();state(row,'Editing parts / services');
+    }catch(e){state(row,e.message||'The editor could not be opened.',true);}
     finally{lock(false);}
   }
   async function saveWorkEditor(){
     if(!editing||busy||paste?.busy||!can())return;
-    const draft=editing,r=draft.record;
-    if(draft.parts.length>100||draft.services.length>100){workMessage('Select no more than 100 different parts and 100 services.');return;}
-    if(draft.parts.some(p=>!Number.isInteger(Number(p.quantity))||Number(p.quantity)<1||Number(p.quantity)>10000||String(p.quantity).trim()==='')){workMessage('Enter a whole quantity from 1 to 10,000 for every part.');return;}
+    const draft=editing,r=draft.record,parts=draft.parts.filter(p=>p.name),services=draft.services.filter(Boolean);
+    if(parts.length>100||services.length>100){workMessage('Select no more than 100 different parts and 100 services.');return;}
+    const key=v=>String(v).trim().replace(/\s+/g,' ').toLowerCase();
+    if(new Set(parts.map(p=>key(p.name))).size!==parts.length||new Set(services.map(key)).size!==services.length){workMessage('Select each part and service only once.');return;}
     draft.request ||= crypto.randomUUID();lock(true);workMessage('Saving changes…');
     try{
       const result=await rpc('update_qc_issuance_requirements_v1',{
-        p_job_id:r.job_id,p_revision:r.revision,p_parts:draft.parts.map(p=>({part_name:p.name,quantity:Number(p.quantity)})),p_services:draft.services,p_request_id:draft.request
+        p_job_id:r.job_id,p_revision:r.revision,p_parts:parts.map(p=>({part_name:p.name,quantity:p.quantity})),p_services:services,p_request_id:draft.request
       });
       if(stopped||editing!==draft||!can()||!draft.row.isConnected)return;
       const updated=result?.row;
-      if(result.saved!==true||updated?.job_id!==r.job_id||updated?.imei!==r.imei||!Array.isArray(updated.parts)||!Array.isArray(updated.services)||typeof updated.revision!=='string')throw Error('The saved changes could not be verified. Keep this editor open and retry, or reload the phone.');
-      prepared.clear();populate(draft.row,updated);closeWorkEditor();
-      state(draft.row,'Changes saved · Awaiting Issuance');
+      if(result.saved!==true||updated?.job_id!==r.job_id||updated?.imei!==r.imei||!Array.isArray(updated.parts)||!Array.isArray(updated.services)||typeof updated.revision!=='string')throw Error('Saved changes could not be verified. Retry Save or cancel and reload the phone.');
+      prepared.clear();populate(draft.row,updated);closeWorkEditor();state(draft.row,'Changes saved · Awaiting Issuance');
       window.dispatchEvent(new CustomEvent('greenloop:workflow-committed',{detail:{source:'qc-issuance-edit',imeis:[r.imei]}}));
     }catch(e){if(editing===draft)workMessage(e.message||'Changes were not saved. Your selections are still here.');}
     finally{lock(false);}
   }
-  $('#issuance-work-save').addEventListener('click',()=>void saveWorkEditor());
-  $('#issuance-work-cancel').addEventListener('click',()=>{if(!busy&&!paste?.busy)closeWorkEditor();});
-  $('#issuance-part-add').addEventListener('click',()=>{
-    if(!editing||busy||paste?.busy||!can())return;const name=$('#issuance-part-choice').value;
-    if(!name)return;if(editing.parts.some(p=>p.name===name))return;
-    editing.parts.push({name,quantity:1});editing.request=null;workMessage();renderWorkEditor();
-  });
-  $('#issuance-service-add').addEventListener('click',()=>{
-    if(!editing||busy||paste?.busy||!can())return;const name=$('#issuance-service-choice').value;
-    if(!name||editing.services.includes(name))return;
-    editing.services.push(name);editing.request=null;workMessage();renderWorkEditor();
-  });
-  $('#issuance-work-editor').addEventListener('click',event=>{
+  function changeWorkChoice(select){
+    if(!editing||busy||paste?.busy||!can()||select.closest('tr')!==editing.row)return;
+    const kind=select.dataset.workChoice,index=[...editing.row.querySelectorAll(`[data-work-choice="${kind}"]`)].indexOf(select);
+    if(kind==='part'){
+      const old=editing.parts[index];editing.parts[index]={name:select.value,quantity:old.name===select.value?old.quantity:1};
+    }else editing.services[index]=select.value;
+    editing.request=null;workMessage();
+  }
+  function changeWorkLines(kind,add){
     if(!editing||busy||paste?.busy||!can())return;
-    const part=event.target.closest('[data-remove-edit-part]'),service=event.target.closest('[data-remove-edit-service]');
-    if(part)editing.parts.splice(Number(part.dataset.removeEditPart),1);
-    else if(service)editing.services.splice(Number(service.dataset.removeEditService),1);else return;
+    const list=kind==='part'?editing.parts:editing.services;
+    if(add)list.push(kind==='part'?{name:'',quantity:1}:'');
+    else if(list.length>1)list.pop();else list[0]=kind==='part'?{name:'',quantity:1}:'';
     editing.request=null;workMessage();renderWorkEditor();
-  });
-  $('#issuance-work-editor').addEventListener('input',event=>{
-    if(!editing||busy||paste?.busy||!can()||!event.target.matches('[data-edit-quantity]'))return;
-    editing.parts[Number(event.target.dataset.editQuantity)].quantity=event.target.value;editing.request=null;workMessage();
-  });
-  body.addEventListener('paste',event=>{if(editing){event.preventDefault();event.stopImmediatePropagation();workMessage('Save or cancel these changes before pasting more phones.');}},true);
+  }
+  body.addEventListener('paste',event=>{if(editing){event.preventDefault();event.stopImmediatePropagation();workMessage('Save or cancel this row before pasting more phones.');}},true);
+  window.addEventListener('storage',event=>{if(event.key==='greenloop-qc-work-options-changed'){workCatalog=null;catalogAt=0;}});
 
   function populate(row,r){
     records.set(row,r);delete row.dataset.issueRequest;
@@ -131,8 +138,7 @@
     cell('[data-stock]',supplier,receipt);row.querySelector('[data-stock]').setAttribute('aria-label',receipt);
     const saved=`Inspection saved: ${date(r.saved_at)}${r.saved_by?' · '+r.saved_by:''}`;
     cell('[data-supplier-grade]',r.supplier_grade||'—',saved);cell('[data-gl-grade]',r.gl_grade||'—',saved);
-    cell('[data-parts]',r.parts.length?r.parts.map(p=>`${p.name} × ${p.quantity}`).join('; '):'None');
-    cell('[data-services]',r.services.length?r.services.join('; '):'None');
+    renderSavedWork(row,r);
     row.dataset.inspectionRevision=r.revision;state(row,'Awaiting Issuance');sync(row);
   }
   async function prepare(imeis){prepared.clear();for(let i=0;i<imeis.length;i+=500){const chunk=imeis.slice(i,i+500);const data=await rpc('get_qc_issuance_rows_v1',{p_imeis:chunk,p_limit:500});for(const r of data.rows)prepared.set(r.imei,r);}}
@@ -179,11 +185,24 @@
   function reset(){if(editing||busy||paste?.busy)return;if([...body.rows].some(r=>records.has(r)&&r.dataset.completed!=='yes')&&!window.confirm('Clear this unfinished handover tray? Saved inspections stay in the queue.'))return;body.innerHTML='';records.clear();prepared.clear();paste?.clear();createRows(10);message();}
   body.addEventListener('input',event=>{const input=event.target.closest('.qc-issuance-imei');if(!input||editing)return;const row=input.closest('tr');clearTimeout(timers.get(row));input.value=input.value.replace(/\D/g,'').slice(0,15);clearRow(row);if(input.value.length===15){timers.set(row,setTimeout(()=>loadRow(row).catch(e=>message(e.message)),120));const next=[...body.querySelectorAll('.qc-issuance-imei')].find(e=>e!==input&&!e.disabled&&!e.value);if(document.activeElement===input)next?.focus();}});
   body.addEventListener('keydown',event=>{if(editing||event.key!=='Enter'||!event.target.matches('.qc-issuance-imei'))return;event.preventDefault();const row=event.target.closest('tr');clearTimeout(timers.get(row));void loadRow(row).catch(e=>message(e.message));});
-  body.addEventListener('change',e=>{const row=e.target.closest('tr');if(!row||editing||!can()||busy||paste?.busy||row.dataset.completed==='yes')return;if(e.target.matches('[data-destination],[data-technician]')){delete row.dataset.issueRequest;carrySelection(row,e.target.matches('[data-technician]')?'technician':'destination');sync(row);}});
-  body.addEventListener('click',e=>{const row=e.target.closest('tr');if(!row||busy||paste?.busy||!can()||editing)return;if(e.target.closest('[data-edit-work]'))void openWorkEditor(row);if(e.target.closest('[data-transfer]'))void transferMany([row]);if(e.target.closest('[data-reload]')){clearRow(row);void loadRow(row).catch(e=>message(e.message));}});
+  body.addEventListener('change',e=>{const row=e.target.closest('tr');if(!row||!can()||busy||paste?.busy||row.dataset.completed==='yes')return;if(e.target.matches('[data-work-choice]')){changeWorkChoice(e.target);return;}if(editing)return;if(e.target.matches('[data-destination],[data-technician]')){delete row.dataset.issueRequest;carrySelection(row,e.target.matches('[data-technician]')?'technician':'destination');sync(row);}});
+  body.addEventListener('click',e=>{
+    const row=e.target.closest('tr');if(!row||busy||paste?.busy||!can())return;
+    if(editing){
+      if(editing.row!==row)return;
+      if(e.target.closest('[data-work-save]'))void saveWorkEditor();
+      else if(e.target.closest('[data-work-cancel]'))closeWorkEditor();
+      else if(e.target.closest('[data-work-add]'))changeWorkLines(e.target.closest('[data-work-add]').dataset.workAdd,true);
+      else if(e.target.closest('[data-work-remove]'))changeWorkLines(e.target.closest('[data-work-remove]').dataset.workRemove,false);
+      return;
+    }
+    if(e.target.closest('[data-edit-work]'))void openWorkEditor(row);
+    if(e.target.closest('[data-transfer]'))void transferMany([row]);
+    if(e.target.closest('[data-reload]')){clearRow(row);void loadRow(row).catch(e=>message(e.message));}
+  });
   $('#issuance-transfer-all').addEventListener('click',()=>{const rows=[...body.rows].filter(r=>records.has(r)&&r.dataset.completed!=='yes');if(!rows.length){message('Scan or paste at least one saved inspection first.');return;}void transferMany(rows);});
   $('#issuance-load-all').addEventListener('click',()=>void loadAll());$('#issuance-clear').addEventListener('click',reset);$('#issuance-add').addEventListener('click',()=>{if(!editing&&!busy&&!paste?.busy&&can())createRows(10);});
-  $('#issuance-refresh').addEventListener('click',()=>{if(editing||busy||paste?.busy)return;void refresh().catch(e=>message(e.message));});
+  $('#issuance-refresh').addEventListener('click',()=>{if(editing||busy||paste?.busy)return;workCatalog=null;catalogAt=0;void refresh().catch(e=>message(e.message));});
   window.addEventListener('greenloop:imei-scan',event=>{if(editing||!can()||busy||paste?.busy)return;const imei=String(event.detail?.imei||'');if(!/^\d{15}$/.test(imei))return;const existing=[...body.rows].find(r=>r.querySelector('.qc-issuance-imei').value===imei);if(existing){event.preventDefault();existing.scrollIntoView({block:'center'});state(existing,'This IMEI is already in the tray.');return;}let blank=[...body.querySelectorAll('.qc-issuance-imei')].find(e=>!e.disabled&&!e.value);if(!blank){createRows(1);blank=body.lastElementChild.querySelector('.qc-issuance-imei');}event.preventDefault();blank.value=imei;void loadRow(blank.closest('tr')).catch(e=>message(e.message));});
   function stop(){stopped=true;closeWorkEditor();records.clear();prepared.clear();body.innerHTML='';app.hidden=true;message('Access ended. Reload after signing in.');}
   window.addEventListener('greenloop:office-locked',stop);window.addEventListener('pagehide',stop);client.auth.onAuthStateChange?.(e=>{if(e==='SIGNED_OUT')stop();});

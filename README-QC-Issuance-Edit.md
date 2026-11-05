@@ -1,11 +1,13 @@
 # Edit requirements before Issuance
 
-Each loaded phone has an Edit button. It opens an inline Parts / Services panel
-identified by IMEI, model and storage. Choose existing managed dropdown options,
-add or remove requirements, set part quantities, then Save Changes. Cancel
-leaves the saved list unchanged. Other tray actions wait while this editor is
-open. Saving is explicit and does not transfer the phone. Technician and route
-choices stay selected; the row receives the fresh inspection revision.
+Each loaded phone has an Edit button. Parts Needed and Service Needed become
+Initial QC style dropdowns in that same row. Plus adds a dropdown; minus removes
+the last selection (or clears the only one). Save / Cancel are in the row's
+Actions cell. There is no separate panel or quantity input. New selections have
+one unit per IMEI; existing saved quantities are preserved unless a part is
+replaced. Cancel leaves the saved list unchanged. Saving is explicit and does
+not transfer the phone. Technician and route choices stay selected; the row
+receives the fresh inspection revision.
 
 The existing Initial QC Entry permission permits this action. View Only cannot
 edit. The server enforces Office Only, active accounts, current revision and
