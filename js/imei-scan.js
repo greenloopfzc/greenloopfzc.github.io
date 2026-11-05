@@ -63,7 +63,7 @@
     return null; // Reports and global IMEI Search intentionally cover every stage.
   }
   function nativeLocationCheck(input){
-    return input.matches('.qc-issuance-imei,.qc-bulk-imei,.final-row-imei,#technician-imei-scan,.batch-row-imei,#imei-1,#export-imei');
+    return input.matches('.qc-issuance-imei,.qc-bulk-imei,.final-row-imei,#technician-imei-scan,.batch-row-imei,[data-b-dept-scan],#imei-1,#export-imei');
   }
   async function checkLocation(input){
     const accepted=expected(input),imei=input.value.trim();

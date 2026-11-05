@@ -37,7 +37,7 @@
       if(!nav)return;
       nav.querySelectorAll('.nav-item').forEach(item=>{
         const icon=item.querySelector('.nav-icon');if(!icon)return;
-        const copy=item.cloneNode(true);copy.querySelectorAll('.nav-icon,.nav-count').forEach(n=>n.remove());
+        const copy=item.cloneNode(true);copy.querySelectorAll('.nav-icon,.nav-count,[data-workflow-badge]').forEach(n=>n.remove());
         const name=copy.textContent.trim().replace(/\s+/g,' ');
         if(name){item.setAttribute('aria-label',name);item.title=name;}
         const route=item.getAttribute('href')||name;

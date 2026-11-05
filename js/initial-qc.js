@@ -518,7 +518,6 @@
     if (error) throw error;
     pendingJobs = data?.pending || [];
     queueCount.textContent = `${pendingJobs.length} QC pending`;
-    document.querySelector("#qc-issuance-count").textContent = String(data?.awaiting_issuance || 0);
     queueCount.setAttribute("aria-label", `View ${pendingJobs.length} phones waiting for Initial QC`);
     if (!pendingModal.hidden) renderPendingJobs(pendingSearch.value);
   }

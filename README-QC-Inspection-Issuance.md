@@ -5,11 +5,10 @@ parts and services are saved immediately. No technician or destination is chosen
 in this tray. Stock Grade & Work Analysis and Parts Required can include saved
 inspection data while the phone remains physically at Initial QC.
 
-The Lab & Glass Issuance card appears before Manage Dropdowns. It opens
-`qc-issuance.html` in a separate browser tab/window, preserving the inspection
-tray. The page is part of the existing Initial QC page permission. View allows
+The Lab & Glass Issuance link appears immediately after Initial QC in the sidebar.
+It opens the existing full `qc-issuance.html` page. The page is part of the existing Initial QC page permission. View allows
 reading the queue; Entry allows scanning, pasting, assignment and transfer.
-There is no additional permission tick or sidebar page.
+There is no additional permission tick; both sidebar links use Initial QC access.
 
 Scan an IMEI, paste an Excel IMEI column, or load all awaiting inspections.
 Each line shows the canonical saved phone details, supplier code with receipt

@@ -18,7 +18,7 @@
     <link rel="stylesheet" href="css/styles.css?v=20261016-strict-view-only-1">
     <link rel="stylesheet" href="css/initial-qc.css?v=20261104-qc-issuance-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script defer src="js/imei-scan.js?v=20261105-stock-consistency-1"></script>
+  <script defer src="js/imei-scan.js?v=20261105-issuance-sidebar-1"></script>
 <script defer src="js/imei-stage-notice.js?v=20261102-imei-scan-location-1"></script>
   <script defer src="js/permission-catalog.js?v=20261104-report-permissions-1"></script>
 <script defer src="js/rpc-capabilities.js?v=20261105-stock-consistency-1"></script>
@@ -26,23 +26,23 @@
 <link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
 <script defer src="js/office-access.js?v=20261024-office-access-1"></script>
 <link rel="stylesheet" href="css/stock-consistency.css?v=20261105-stock-consistency-1">
-<script defer src="js/bulk-imei.js?v=20261105-stock-consistency-1"></script>
+<script defer src="js/bulk-imei.js?v=20261105-issuance-sidebar-1"></script>
 <script defer src="js/stock-consistency.js?v=20261105-complete-stock-lists-1"></script>
 <script src="complete-lists.js?v=20261105-complete-stock-lists-1" defer></script>
-  <script defer src="js/config.js?v=20261105-complete-stock-lists-1"></script>
+  <script defer src="js/config.js?v=20261105-issuance-sidebar-1"></script>
   <script defer src="js/login-activity.js?v=20261013-search-tv-1"></script>
   <link rel="stylesheet" href="css/record-search.css?v=20261017-find-record-popup-1">
   <script defer src="js/record-search.js?v=20261105-stock-consistency-1"></script>
-    <script defer src="js/part-notifications.js?v=20261103-workflow-polish-1"></script>
+    <script defer src="js/part-notifications.js?v=20261105-issuance-sidebar-1"></script>
   <script defer src="js/employee-updates.js?v=20261105-stock-consistency-1"></script>
   <link rel="stylesheet" href="css/qc-excel-paste.css?v=20261104-qc-excel-paste-1">
   <script defer src="js/qc-excel-paste.js?v=20261105-complete-stock-lists-1"></script>
-  <script defer src="js/initial-qc.js?v=20261105-complete-stock-lists-1"></script>
+  <script defer src="js/initial-qc.js?v=20261105-issuance-sidebar-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
     <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261102-imei-scan-location-1">
   <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
   <link rel="stylesheet" href="css/sidebar-compact.css?v=20261009-sidebar-pdf-1">
-  <script defer src="js/sidebar-compact.js?v=20261009-sidebar-pdf-1"></script>
+  <script defer src="js/sidebar-compact.js?v=20261105-issuance-sidebar-1"></script>
   <link rel="stylesheet" href="css/clean-layout.css?v=20261017-clean-layout-1">
   <script defer src="js/clean-layout.js?v=20261030-supplier-progress-1"></script>
   <script defer src="js/suspicious-badge.js?v=20261105-stock-consistency-1"></script>
@@ -78,7 +78,7 @@
           <section id="qc-app" class="qc-app" hidden>
             <section class="qc-bulk-toolbar">
               <div><p class="panel-kicker">Initial QC work tray</p><h2>Scan IMEIs first, then inspect every row</h2><p>Only scanned IMEIs are processed. Pending IMEIs are never loaded automatically.</p></div>
-              <div class="qc-bulk-toolbar-actions"><a id="qc-open-issuance" class="secondary-button qc-issuance-link" href="qc-issuance.html" target="_blank" rel="noopener" data-capability="view" data-capability-page="initial_qc"><span>Lab &amp; Glass Issuance</span><strong id="qc-issuance-count">0</strong><span aria-hidden="true">↗</span></a><button id="qc-manage-options" class="secondary-button" type="button" data-capability="manage_options" data-capability-page="initial_qc" hidden>Manage Dropdowns</button><button id="queue-count" class="queue-count queue-count-button" type="button">0 waiting</button><button id="auto-pick-pending" class="secondary-button auto-pick-button" type="button">Auto pick all</button><span id="tray-count" class="queue-count tray-count">10 lines</span><button id="show-imei-columns" class="secondary-button" type="button">&larr; IMEI</button><button id="show-technician-columns" class="secondary-button" type="button">Save &rarr;</button><button id="add-ten-rows" class="secondary-button" type="button">+ Add 10 lines</button><button id="clear-tray" class="secondary-button" type="button">Clear tray</button></div>
+              <div class="qc-bulk-toolbar-actions"><button id="qc-manage-options" class="secondary-button" type="button" data-capability="manage_options" data-capability-page="initial_qc" hidden>Manage Dropdowns</button><button id="queue-count" class="queue-count queue-count-button" type="button">0 waiting</button><button id="auto-pick-pending" class="secondary-button auto-pick-button" type="button">Auto pick all</button><span id="tray-count" class="queue-count tray-count">10 lines</span><button id="show-imei-columns" class="secondary-button" type="button">&larr; IMEI</button><button id="show-technician-columns" class="secondary-button" type="button">Save &rarr;</button><button id="add-ten-rows" class="secondary-button" type="button">+ Add 10 lines</button><button id="clear-tray" class="secondary-button" type="button">Clear tray</button></div>
             </section>
             <p class="qc-excel-paste-help">Paste an IMEI column from Excel into an empty IMEI line to load the whole list.</p>
             <p id="qc-message" class="form-message receiving-message" role="status" aria-live="polite"></p>

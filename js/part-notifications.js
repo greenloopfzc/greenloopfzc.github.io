@@ -6,6 +6,7 @@
   const config = window.GREENLOOP_CONFIG || {};
   const stages = [
     { file: "initial-qc.html", key: "initial_qc", label: "Initial QC" },
+    { file: "qc-issuance.html", key: "qc_issuance", label: "Lab & Glass Issuance" },
     { file: "laboratory.html", key: ["laboratory", "glass"], badgeKey: "lab_glass", label: "Lab & Glass" },
     { file: "parts.html", key: "parts", label: "Parts" },
     { file: "final-qc.html", key: "final_qc", label: "Final QC" },
@@ -141,11 +142,16 @@
       if (nextUser !== userId) { disconnect(); hideAllBadges(); userId = nextUser; }
       if (!userId) { hideAllBadges(); return; }
       connect(client);
-      const [{data,error},partsResult]=await Promise.all([withDeadline(client.rpc('get_workflow_notification_counts')),withDeadline(client.rpc('get_parts_flow_counts_v1')).catch(()=>null)]);
+      await window.GREENLOOP_ACCESS_READY;
+      const canReadIssuance=window.GREENLOOP_CAN?.('view','initial_qc')===true;
+      const [{data,error},partsResult,issuanceResult]=await Promise.all([withDeadline(client.rpc('get_workflow_notification_counts')),withDeadline(client.rpc('get_parts_flow_counts_v1')).catch(()=>null),canReadIssuance?withDeadline(client.rpc('get_qc_issuance_options_v1')).catch(()=>null):null]);
       if (requestEpoch !== epoch || stopped || document.hidden) return;
       if (error) throw error;
       failures = 0;
-      const updated=partsResult&&!partsResult.error?{...(Array.isArray(data)?data[0]:data),parts:partsResult.data}:data;
+      const updated={...(Array.isArray(data)?data[0]:data)};
+      if(partsResult&&!partsResult.error)updated.parts=partsResult.data;
+      if(!canReadIssuance)updated.qc_issuance=0;
+      else if(issuanceResult&&!issuanceResult.error&&Number.isSafeInteger(Number(issuanceResult.data?.awaiting_issuance))&&Number(issuanceResult.data.awaiting_issuance)>=0)updated.qc_issuance=Number(issuanceResult.data.awaiting_issuance);
       if(requestEpoch!==epoch||stopped||document.hidden)return;
       renderCounts(updated);
       const countsKey=JSON.stringify(updated);if(countsKey!==lastCountsKey||notifyAfterRead){lastCountsKey=countsKey;document.dispatchEvent(new Event("greenloop:workflow-notifications-refreshed"));}
@@ -163,7 +169,7 @@
     const counts = Array.isArray(data) ? (data[0] || {}) : (data || {});
     stages.forEach((stage) => {
       const badge = createBadge(stage);
-      if (!badge) return;
+      if (!badge || stage.key === "qc_issuance" && counts.qc_issuance === undefined) return;
       const count = Math.max(0, Array.isArray(stage.key)
         ? stage.key.reduce((total, key) => total + Number(counts[key] || 0), 0)
         : Number(counts[stage.key] || 0));
@@ -213,6 +219,7 @@
     window.addEventListener('storage', (event) => {
       if (event.key === 'greenloop-workflow-commit-v1') {forceDispatch=true;refreshWorkflowNotifications();}
     });
+    window.addEventListener('greenloop:permissions-changed', refreshWorkflowNotifications);
     window.addEventListener('online', refreshWorkflowNotifications);
     window.addEventListener('focus', refreshWorkflowNotifications);
     const auth = getClient()?.auth;
