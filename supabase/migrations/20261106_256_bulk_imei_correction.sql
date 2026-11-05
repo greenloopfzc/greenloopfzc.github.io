@@ -160,4 +160,3 @@ revoke all on function public.get_bulk_imei_correction_version()from public;gran
 do $$begin if public.get_bulk_imei_correction_version()is distinct from '20261106-bulk-imei-correction-1'then raise exception 'Bulk IMEI Correction verification failed. Nothing installed.';end if;end;$$;
 notify pgrst,'reload schema';commit;
 select public.get_bulk_imei_correction_version()as installed_bulk_imei_correction_version;
-
