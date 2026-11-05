@@ -195,7 +195,7 @@
     const searchField = searchInput.closest('.dashboard-local-search');
     const filterToolbar = document.querySelector('#dashboard-queue-filters .table-filter-toolbar');
     if (searchField && filterToolbar && searchField.parentElement !== filterToolbar) filterToolbar.prepend(searchField);
-    body.innerHTML = matching.length ? matching.slice(0, 20).map((row) => {
+    body.innerHTML = matching.length ? matching.map((row) => {
       const age = Number(row.days_open) || 0;
       const status = titleCase(row.status);
       const style = row.status?.includes("in_progress") ? "info" : "warning";

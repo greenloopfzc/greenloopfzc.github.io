@@ -27,9 +27,9 @@
   return roots.reduce((s,r)=>({received:s.received===null||r.received_quantity===null?null:s.received+Number(r.received_quantity),returned:s.returned+Number(r.returned_quantity),replacement_received:s.replacement_received+Number(r.replacement_quantity),balance:s.balance===null||r.balance_quantity===null?null:s.balance+Number(r.balance_quantity),return_pending:s.return_pending+Number(r.return_pending),receipts:s.receipts+1}),{received:0,returned:0,replacement_received:0,balance:0,return_pending:0,receipts:0});
  }
  function label(code,quantity,name,fallback='—'){
-  const raw=String(code||'').trim(),clean=base(raw),embedded=raw.match(/-\((\d+)\)$/),sup=rows.filter(x=>x.supplier_code===clean);
-  const qty=embedded?Number(embedded[1]):quantity!==null&&quantity!==undefined&&quantity!==''&&Number.isSafeInteger(Number(quantity))&&Number(quantity)>=0?Number(quantity):sup.length===1&&sup[0].received_quantity!==null?Number(sup[0].received_quantity):null;
-  const text=qty===null&&sup.length>1?sup.map(r=>clean+(r.received_quantity===null?'':`-(${r.received_quantity})`)).filter((v,i,a)=>a.indexOf(v)===i).join(' / '):clean+(qty===null?'':`-(${qty})`);return names()&&name?[text,String(name).trim()].filter(Boolean).join(' '):(text||fallback);
+  const raw=String(code||'').trim(),clean=base(raw),embedded=raw.match(/-\((\d+)\)$/);
+  const qty=embedded?Number(embedded[1]):quantity!==null&&quantity!==undefined&&quantity!==''&&Number.isSafeInteger(Number(quantity))&&Number(quantity)>=0?Number(quantity):null;
+  const text=clean+(qty===null?'':`-(${qty})`);return names()&&name?[text,String(name).trim()].filter(Boolean).join(' '):(text||fallback);
  }
  function labelRow(row){const r=resolve(row),s=one(row?.supplier)||{};return label(r?.supplier_code||row?.supplier_code||s.supplier_code,r?.received_quantity??row?.receipt_quantity??row?.planned_quantity??row?.stock_quantity??row?.received_quantity,r?.supplier_name??row?.supplier_name??s.company_name);}
  function scoped(filters={},values=null){

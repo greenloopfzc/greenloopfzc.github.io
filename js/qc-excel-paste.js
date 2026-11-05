@@ -37,7 +37,7 @@
       if(item.record?.found&&item.record.current_stage){const button=document.createElement('button');button.type='button';button.className='secondary-button';button.textContent='Show current location';button.dataset.capability='view';button.dataset.capabilityPage=page;button.addEventListener('click',()=>{if(root.GREENLOOP_CAN?.('view',page))void root.GREENLOOP_IMEI_STAGE_NOTICE.show({imei:item.value,knownRecord:item.record,title:'Phone unavailable here',message:item.message});});li.append(button);}list.append(li);
     }
     function update(job,finished=false){if(!job.live||stopped)return;if(!permitted()){region.hidden=true;return;}
-      status.textContent=finished?`${job.total} pasted · ${job.loaded} loaded · ${job.issues.length} need checking${job.unloaded?' · '+job.unloaded+' not loaded':''}${job.cancel?' · Stopped':''}`:`Loading ${job.settled} of ${job.rows.length} IMEIs… ${job.loaded} loaded`;
+      status.textContent=finished?`${job.total} pasted · ${job.rows.length} tray lines · ${job.loaded} loaded · ${job.issues.length} need checking${job.unloaded?' · '+job.unloaded+' not loaded':''}${job.cancel?' · Stopped':''}`:`Loading ${job.settled} of ${job.rows.length} IMEIs… ${job.loaded} loaded`;
       if(job.headers&&finished)status.textContent+=` · ${job.headers} column heading ignored`;
       region.dataset.state=finished?(job.issues.length||job.unloaded?'review':'success'):'loading';stop.hidden=finished;stop.disabled=job.cancel;
       if(finished){list.replaceChildren();job.issues.forEach(issue);details.hidden=!job.issues.length;summary.textContent=`Check ${job.issues.length} IMEI${job.issues.length===1?'':'s'}`;}
@@ -50,17 +50,17 @@
       const active=()=>current===job&&job.live&&!stopped&&permitted()&&tableBody.isConnected;
       const occupied=new Set([...tableBody.querySelectorAll(selector)].map(e=>e.value.trim()).filter(Boolean));
       const accepted=[];
-      for(const item of parsed.entries){if(occupied.has(item.value))job.issues.push({...item,message:'Duplicate IMEI: already in this tray or this pasted list.'});else{occupied.add(item.value);accepted.push(item);}}
+      for(const item of parsed.entries){const duplicate=occupied.has(item.value);if(duplicate)job.issues.push({...item,message:'Duplicate IMEI: already in this tray or this pasted list. This extra line cannot be saved.'});occupied.add(item.value);accepted.push({...item,duplicate});}
       let start=[...tableBody.rows].indexOf(input.closest('tr'));
       let blanks=[...tableBody.rows].slice(Math.max(start,0)).filter(r=>{const e=r.querySelector(selector);return !e.value.trim()&&!e.disabled&&r.dataset.completed!=='yes'&&r.dataset.saving!=='yes'&&r.dataset.loading!=='yes';});
       if(accepted.length>blanks.length){createRows(accepted.length-blanks.length);blanks=[...tableBody.rows].slice(Math.max(start,0)).filter(r=>{const e=r.querySelector(selector);return !e.value.trim()&&!e.disabled&&r.dataset.completed!=='yes'&&r.dataset.saving!=='yes'&&r.dataset.loading!=='yes';});}
-      for(let i=0;i<accepted.length;i++){const row=blanks[i];if(!row){job.issues.push({...accepted[i],message:'This row could not be prepared. Paste again into an empty IMEI line.'});continue;}clearRow(row);row.querySelector(selector).value=accepted[i].value;rowState(row,'Waiting to load…',false);job.rows.push({...accepted[i],row,started:false});}
+      for(let i=0;i<accepted.length;i++){const row=blanks[i];if(!row){job.issues.push({...accepted[i],message:'This row could not be prepared. Paste again into an empty IMEI line.'});continue;}clearRow(row);row.querySelector(selector).value=accepted[i].value;if(accepted[i].duplicate){row.dataset.pasteDuplicate='yes';rowState(row,'Duplicate IMEI — this extra line cannot be saved.');}else{delete row.dataset.pasteDuplicate;rowState(row,'Waiting to load…',false);}job.rows.push({...accepted[i],row,started:false});}
       lock(job);update(job);
       try{
         if(job.rows.length&&active())await prepare?.(job.rows.map(r=>r.value));
         let next=0;
         async function worker(){while(next<job.rows.length&&!job.cancel&&active()){
-          const item=job.rows[next++];item.started=true;
+          const item=job.rows[next++];item.started=true;if(item.duplicate){job.settled++;update(job);continue;}
           try{const result=await loadRow(item.row,{bulk:true,isCurrent:active});if(!active())return;
             if(result?.loaded)job.loaded++;else job.issues.push({...item,message:result?.message||'This phone could not be loaded. Press Enter on its row to retry.',record:result?.record});
           }catch(error){if(active()){const message=error.message||'Could not load this phone. Press Enter on its row to retry.';rowState(item.row,message);job.issues.push({...item,message});}}
@@ -70,7 +70,7 @@
       }catch(error){for(const item of job.rows.filter(r=>!r.started)){rowState(item.row,error.message||'Queue could not load. Press Enter to retry.');job.issues.push({...item,message:error.message||'Queue could not load. Press Enter to retry.'});item.started=true;}}
       finally{
         for(const item of job.rows.filter(r=>!r.started)){job.unloaded++;rowState(item.row,'Not loaded — paste stopped. Press Enter to retry.');}
-        unlock(job);update(job,true);if(current===job)current=null;
+        unlock(job);for(const item of job.rows)if(item.row.classList.contains('is-error'))item.row.querySelectorAll('.qc-row-save,.final-row-save,[data-transfer]').forEach(b=>b.disabled=true);update(job,true);if(current===job)current=null;
       }
     }
     stop.addEventListener('click',()=>{if(current){current.cancel=true;stop.disabled=true;status.textContent='Stopping after the phones already being checked…';}});
@@ -83,6 +83,7 @@
       if(tableBody.querySelector('tr[data-saving="yes"],tr[data-loading="yes"]')||app.querySelector('#auto-pick-pending:disabled')){region.hidden=false;status.textContent='Wait for the current QC operation to finish, then paste again.';details.hidden=true;stop.hidden=true;return;}
       void run(input,parse(text)).catch(error=>{if(current)unlock(current);region.dataset.state='review';status.textContent=error.message||'The pasted list could not load. Existing tray entries are preserved.';stop.hidden=true;current=null;});
     },true);
+    root.addEventListener('input',event=>{const input=event.target?.closest?.(selector);if(input&&tableBody.contains(input)&&!current)delete input.closest('tr').dataset.pasteDuplicate;},true);
     function block(event){if(current&&app.contains(event.target)&&!region.contains(event.target)){event.preventDefault();event.stopImmediatePropagation();}}
     for(const type of ['click','input','change','keydown','submit'])root.addEventListener(type,block,true);
     root.addEventListener('greenloop:imei-scan',event=>{if(current){event.preventDefault();event.stopImmediatePropagation();}},true);

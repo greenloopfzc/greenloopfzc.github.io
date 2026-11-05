@@ -19,3 +19,5 @@ Persistent user requirement recorded on 5 November 2026 (Asia/Dubai):
 
 These are business display requirements, not permission to disclose protected
 names or to delete, reset, or otherwise change business records.
+
+- Supplier/company identity selectors (especially Create stock entry) show only the base supplier code and permitted company name. Quantity brackets are added only when a specific receipt or newly entered receipt quantity is known; never combine separate receipts in a company label.

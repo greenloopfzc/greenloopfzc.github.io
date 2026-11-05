@@ -349,7 +349,7 @@
     else if (record.matched_type === "secondary") problem = `This is IMEI 2 of IMEI 1 ${record.primary_imei || "not recorded"}. Use IMEI 1 for this phone.`;
     else {
       const stage = window.GREENLOOP_IMEI_SCAN?.stageKey(record.current_stage);
-      if (stage && stage !== "final_qc") problem = `Current stage: ${record.current_stage}. This phone is not waiting in Final QC.`;
+      if (stage && stage !== "final_qc") problem = `Current stage: ${window.GREENLOOP_DEPT_NAME(record.current_stage)}. This phone is not waiting in Final QC.`;
     }
     if (problem) { row.classList.add("is-error"); setRowState(row,problem,"is-error"); return {loaded:false,message:problem,record}; }
     await loadScannedRow(row,{...options,primaryChecked:true});
@@ -364,7 +364,7 @@
     const input = row.querySelector(".final-row-imei");
     const imei = input.value.trim();
     if (!/^\d{15}$/.test(imei) || row.dataset.loading === "yes" || row.dataset.completed === "yes") return;
-    const duplicate = [...tableBody.querySelectorAll(".final-row-imei")].find((other) => other !== input && other.value.trim() === imei);
+    const duplicate = [...tableBody.querySelectorAll(".final-row-imei")].find((other) => other !== input && other.closest("tr").dataset.pasteDuplicate !== "yes" && other.value.trim() === imei);
     if (duplicate) {
       row.classList.add("is-error");
       setRowState(row, "Duplicate IMEI in this tray", "is-error");

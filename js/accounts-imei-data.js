@@ -10,7 +10,7 @@
   const storage = n => n == null ? '—' : Number(n) >= 1024 && Number(n) % 1024 === 0 ? Number(n)/1024+' TB' : n+' GB';
   const can = c => window.GREENLOOP_CAN?.(c,'accounts') === true;
   const allowed = () => can('view') && can('imei_data');
-  const columns = [['imei','IMEI'],['model','Model'],['storage_gb','GB'],['color','Color'],['supplier_code','Supplier'],['batch_number','Stock / Batch No.'],['received_at','Date Received']];
+  const columns = [[null,'S.No'],['imei','IMEI'],['model','Model'],['storage_gb','GB'],['color','Color'],['supplier_code','Supplier'],['batch_number','Stock / Batch No.'],['invoice_number','Invoice No.'],['received_at','Date Received']];
   let client, catalogue = null, report = null, visible = false, stopped = false, loading = false, exporting = false;
   let offset = 0, sortKey = 'imei', direction = 'asc', generation = 0, searchTimer, pdfUrl = '', pdfFilename = '';
 
@@ -35,7 +35,7 @@
     <div id="aid-summary" class="aid-summary"></div>
     <div class="aid-table-wrap"><table class="aid-table"><thead><tr>${columns.map(([key,label])=>`<th scope="col"${key?' data-aid-heading="'+key+'"':''}>${key?`<button class="aid-sort" type="button" data-aid-sort="${key}" data-capability="sort" data-capability-page="accounts">${label} <span aria-hidden="true">↕</span></button>`:label}</th>`).join('')}</tr></thead><tbody id="aid-rows"></tbody></table></div>
     <div class="aid-footer"><span id="aid-count">Choose IMEI DATA to load records.</span><div><button id="aid-prev" type="button" class="secondary-button" data-capability="imei_data" data-capability-page="accounts">Previous</button><button id="aid-next" type="button" class="secondary-button" data-capability="imei_data" data-capability-page="accounts">Next</button></div></div>
-    <p class="aid-note">Returned phones remain attached to their original stock and appear in red. Pending returns use a separate status. A return without a recorded IMEI is shown explicitly.</p>
+    <p class="aid-note">Red rows are returned phones; green rows are their entered replacements, grouped under the same S.No. Original stock and return history remain available.</p>
     <dialog id="aid-pdf-dialog" aria-labelledby="aid-pdf-title"><div class="aid-pdf-header"><h2 id="aid-pdf-title">IMEI DATA - PDF preview</h2><div><button id="aid-pdf-download" type="button" class="primary-button" data-capability="imei_download" data-capability-page="accounts">Download PDF</button><button id="aid-pdf-close" type="button" class="secondary-button" data-capability="imei_data" data-capability-page="accounts">Close</button></div></div><iframe id="aid-pdf-frame" title="IMEI DATA PDF preview"></iframe><a id="aid-pdf-open" target="_blank" rel="noopener" data-capability="imei_download" data-capability-page="accounts">Open PDF in a new tab</a></dialog>`;
 
   function message(text = '', error = false) {
@@ -104,7 +104,7 @@
     const fields = [['Total records','total_records'],['In company','in_company'],['Ready Stock','ready'],['In process','in_process'],['Exported','exported'],['Returned','returned']];
     $('#aid-summary').innerHTML = fields.map(([label,key])=>`<div${key==='returned'?' class="aid-return-total"':''}><span>${label}</span><strong>${num(report.summary[key])}</strong></div>`).join('');
     $('#aid-scope').textContent = [$('#aid-supplier').selectedOptions[0]?.textContent,$('#aid-batch').value ? $('#aid-batch').selectedOptions[0]?.textContent : 'All stock / batches',$('#aid-invoice').value ? 'Invoice '+$('#aid-invoice').value : '',report.filters.from_date ? 'From '+report.filters.from_date : '',report.filters.to_date ? 'To '+report.filters.to_date : '',report.summary.missing_imei ? num(report.summary.missing_imei)+' return records have no recorded IMEI' : ''].filter(Boolean).join(' · ');
-    $('#aid-rows').innerHTML = report.rows.length ? report.rows.map(r=>`<tr class="${r.returned?'aid-returned':r.return_pending?'aid-return-pending':''}" data-record-key="${esc(r.record_key)}"><td class="aid-imei"><strong>${esc(r.imei || 'Not recorded')}</strong>${!r.imei?'<small>Unentered stock return</small>':''}${r.returned?'<small class="aid-return-label">Returned to supplier</small>':r.return_pending?'<small class="aid-return-label">Return pending</small>':''}</td><td>${esc(r.model || 'Not recorded')}</td><td>${esc(storage(r.storage_gb))}</td><td>${esc(r.color || 'Not recorded')}</td><td>${esc(supplierLabel(r))}</td><td>${esc(r.batch_number || 'Not recorded')}</td><td>${esc(receivedDate(r.received_at))}</td></tr>`).join('') : '<tr><td colspan="7" class="aid-empty">No IMEI or return records match this selection.</td></tr>';
+    $('#aid-rows').innerHTML = report.rows.length ? report.rows.map((r,i)=>`<tr class="${r.returned?'aid-returned':r.is_replacement?'aid-replacement':r.return_pending?'aid-return-pending':''}" data-record-key="${esc(r.record_key)}" aria-label="${r.returned?'Returned phone':r.is_replacement?'Replacement phone':'Phone'}"><td class="aid-serial">${num(r.serial_no||i+1)}</td><td class="aid-imei"><strong>${esc(r.imei || 'Not recorded')}</strong>${!r.imei?'<small>Unentered stock return</small>':''}${r.return_pending?'<small>Return pending</small>':''}</td><td>${esc(r.model || 'Not recorded')}</td><td>${esc(storage(r.storage_gb))}</td><td>${esc(r.color || 'Not recorded')}</td><td>${esc(supplierLabel(r))}</td><td>${esc(r.batch_number || 'Not recorded')}</td><td>${esc(r.invoice_number || 'Not recorded')}</td><td>${esc(receivedDate(r.received_at))}</td></tr>`).join('') : '<tr><td colspan="9" class="aid-empty">No IMEI or return records match this selection.</td></tr>';
     for (const input of root.querySelectorAll('select[data-aid-filter]')) {
       const key = input.dataset.aidFilter, values = [...(report.facets[key] || [])].sort((a,b)=>key==='storage_gb'?Number(a)-Number(b):String(a).localeCompare(String(b),'en',{numeric:true}));
       fillSelect(input,values.map(v=>({value:v,label:key==='storage_gb'?storage(v):v})),'All');
@@ -118,7 +118,7 @@
   async function load() {
     if (!visible || stopped || !allowed() || exporting) return;
     const ticket = ++generation, sig = signature(); loading = true; report = null; controls(); message('Loading IMEI DATA…');
-    $('#aid-rows').innerHTML='<tr><td colspan="7" class="aid-empty">Loading records…</td></tr>';$('#aid-summary').replaceChildren();$('#aid-count').textContent='Loading…';
+    $('#aid-rows').innerHTML='<tr><td colspan="9" class="aid-empty">Loading records…</td></tr>';$('#aid-summary').replaceChildren();$('#aid-count').textContent='Loading…';
     try {
       const data = await rpc('get_accounts_imei_data_v1',{p_filters:filters(),p_offset:offset,p_limit:50,p_sort_key:sortKey,p_sort_direction:direction});
       if (ticket !== generation || sig !== signature() || !visible || stopped || !allowed()) return;

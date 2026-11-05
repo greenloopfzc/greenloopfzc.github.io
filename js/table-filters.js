@@ -248,7 +248,7 @@
     }
     mountPager();
     const size = options.pageSize || 50;
-    function pager(busy) {pagination.hidden=bulkLoaded; previous.disabled=busy||filter.offset===0;next.disabled=busy||filter.offset+size>=total; }
+    function pager(busy) {pagination.hidden=false;previous.hidden=next.hidden=true; previous.disabled=busy||filter.offset===0;next.disabled=busy||filter.offset+size>=total; }
     previous.onclick=()=>{filter.offset=Math.max(0,filter.offset-size);filter.load().catch(()=>{});};
     next.onclick=()=>{filter.offset+=size;filter.load().catch(()=>{});};
     filter.load = async () => {
@@ -258,11 +258,11 @@
         let {data,error}=await client.rpc('get_sorted_filter_records_v1',{p_source:options.source,p_filters:filter.query(),p_offset:filter.offset,p_limit:size,...filter.sortArgs()});
         if(token!==version)return;
         if(error)throw error;
-        bulkLoaded=Boolean(window.GREENLOOP_BULK_IMEI?.list(filter.query()._search));
+        bulkLoaded=true;
         if(bulkLoaded){const all=[...(data.rows||[])];let start=filter.offset+all.length;while(start<Number(data.total)){const r=await client.rpc('get_sorted_filter_records_v1',{p_source:options.source,p_filters:filter.query(),p_offset:start,p_limit:size,...filter.sortArgs()});if(token!==version)return;if(r.error)throw r.error;if(!r.data?.rows?.length)throw Error('The pasted list changed while loading. Retry the list.');all.push(...r.data.rows);start+=r.data.rows.length;}data={...data,rows:all};filter.offset=0;}
         total=Number(data.total);
         if(filter.offset && filter.offset>=total){filter.offset=Math.max(0,Math.floor(Math.max(0,total-1)/size)*size);return filter.load();}
-        filter.result(data);count.textContent=bulkLoaded?`${total} matching pasted phone records`:total?`${filter.offset+1}–${Math.min(filter.offset+size,total)} of ${total}`:'0 records';
+        filter.result(data);count.textContent=window.GREENLOOP_BULK_IMEI?.list(filter.query()._search)?`${total} matching phone records`:`${total} records`;
         options.onResult(data);mountPager();return data;
       } catch(e) {
         if(token===version){total=0;count.textContent='Unavailable';filter.fail(e.message||'Could not load records.');options.onError?.(e);}

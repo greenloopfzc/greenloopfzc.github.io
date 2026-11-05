@@ -26,8 +26,8 @@
    if(r.receipt_summary){const stock=r.receipt_summary,extra=[['Received',stock.received],['Returned',stock.returned],['Replacement received',stock.replacement_received],['Stock balance',stock.balance]];for(let i=0;i<extra.length;i++){rect(M+i*w,y,w,38,'#eff6f3');centered(extra[i][0],M+i*w,y-6,w,7.5,false,muted);centered(extra[i][1]===null?'Not recorded':F.num(extra[i][1]),M+i*w,y-18,w,14,true,green);}y-=52;}
   }
   function cellRow(lines,widths,{header=false,total=false,offset=0,take=null}={}){const n=take??Math.max(...lines.map(v=>v.length)),h=n*12+14;let x=M;for(let i=0;i<lines.length;i++){rect(x,y,widths[i],h,header?green:total?'#e7f2ec':'#ffffff');lines[i].slice(offset,offset+n).forEach((line,j)=>centered(line,x,y-7-j*12,widths[i],header?8:9,header||total||i===0,header?'#ffffff':ink));x+=widths[i];}y-=h;}
-  function section(label,cols,rows,total){
-   const widths=cols.length===4?[145,140,180,IW-465]:[132,43,...Array(cols.length-2).fill((IW-175)/(cols.length-2))];
+  function section(label,cols,rows,total){const numbered=/^model$/i.test(cols[0]);if(numbered){cols=['S.No',...cols];rows=rows.map((r,i)=>[String(i+1),...r]);total=['',...total];}
+   const widths=numbered?[36,96,43,...Array(cols.length-3).fill((IW-175)/(cols.length-3))]:cols.length===4?[145,140,180,IW-465]:[132,43,...Array(cols.length-2).fill((IW-175)/(cols.length-2))];
    const header=cols.map((c,i)=>wrap(c,widths[i]-10,8,true));
    function heading(cont=false){if(y<140)start();text(label+(cont?' (continued)':''),M,y,13,true,green);y-=23;cellRow(header,widths,{header:true});}
    heading();

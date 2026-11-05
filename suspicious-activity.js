@@ -80,7 +80,7 @@
   $('sa-download').addEventListener('click',async()=>{if(!can('download'))return;const b=$('sa-download');b.disabled=true;try{const data=await rpc('get_suspicious_alerts_v1',{p_filters:filters,p_sort:sort,p_offset:0,p_download:true});
     const csvCell=v=>'"'+String(v??'').replace(/^[\s]*[=+@-]/,"'$&").replaceAll('"','""')+'"';
     const lines=[['UAE date & time','Priority','Activity','Why flagged','User','IMEI / box / employee','Department','Status'],...data.rows.map(a=>[stamp(a.occurred_at),a.priority,a.title,a.reason,a.actor_name,a.entity,a.department,statusLabel(a.status)])];
-    const url=URL.createObjectURL(new Blob(['\ufeff'+lines.map(row=>row.map(csvCell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='Greenloop-Suspicious-Activity.csv';a.dataset.capability='download';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    const url=URL.createObjectURL(new Blob(['\ufeff'+window.GREENLOOP_COMPLETE_LISTS.csvRows(lines).map(row=>row.map(csvCell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='Greenloop-Suspicious-Activity.csv';a.dataset.capability='download';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
   }catch(e){message(e.message);}finally{b.disabled=false;}});
   window.addEventListener('greenloop:suspicious-summary',e=>{if(e.detail!==summary){showSummary(e.detail);if(!$('sa-detail').open&&!$('sa-rules').open)load();}});
   (async()=>{await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();if(!can('view'))return;locks();await Promise.all([load(),refreshSummary()]);})();
