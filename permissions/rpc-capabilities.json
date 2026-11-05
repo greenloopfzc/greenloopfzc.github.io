@@ -3533,5 +3533,13 @@
   },
   "get_qc_direct_ready_version": {
     "read": true
+  },
+  "get_lab_overdue_report_v1": {
+    "page": "lab_glass",
+    "capability": "view",
+    "read": true
+  },
+  "get_lab_overdue_card_version": {
+    "read": true
   }
 }

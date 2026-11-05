@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en" data-global-imei-search="off">
+  <head>
+    <meta charset="utf-8">
+  <script src="js/appearance.js?v=20261017-settings-appearance-1"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0d5c43">
+    <meta name="description" content="Greenloop Laboratory and B-DEPT technician workbench.">
+    <title>Overdue Lab &amp; Glass | Greenloop</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css?v=20261016-strict-view-only-1">
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="js/imei-scan.js?v=20261105-issuance-sidebar-1"></script>
+<script defer src="js/imei-stage-notice.js?v=20261102-imei-scan-location-1"></script>
+  <script defer src="js/permission-catalog.js?v=20261104-report-permissions-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261105-lab-overdue-card-1"></script>
+<script defer src="js/page-capabilities.js?v=20261104-report-permissions-1"></script>
+<link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
+<script defer src="js/office-access.js?v=20261024-office-access-1"></script>
+<link rel="stylesheet" href="css/stock-consistency.css?v=20261105-stock-consistency-1">
+<script defer src="js/bulk-imei.js?v=20261105-issuance-sidebar-1"></script>
+<script defer src="js/stock-consistency.js?v=20261105-complete-stock-lists-1"></script>
+<script src="complete-lists.js?v=20261105-report-pages-50-1" defer></script>
+  <script defer src="js/config.js?v=20261105-lab-overdue-card-1"></script>
+  <script defer src="js/login-activity.js?v=20261013-search-tv-1"></script>
+  <link rel="stylesheet" href="css/record-search.css?v=20261017-find-record-popup-1">
+  <script defer src="js/record-search.js?v=20261105-stock-consistency-1"></script>
+    <script defer src="js/part-notifications.js?v=20261105-qc-notification-counts-1"></script>
+      <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
+    <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261102-imei-scan-location-1">
+  <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
+  <link rel="stylesheet" href="css/sidebar-compact.css?v=20261009-sidebar-pdf-1">
+  <script defer src="js/sidebar-compact.js?v=20261105-issuance-sidebar-1"></script>
+  <link rel="stylesheet" href="css/clean-layout.css?v=20261017-clean-layout-1">
+  <script defer src="js/clean-layout.js?v=20261030-supplier-progress-1"></script>
+  <script defer src="js/suspicious-badge.js?v=20261105-stock-consistency-1"></script>
+
+
+
+<link rel="stylesheet" href="css/lab-overdue.css?v=20261105-lab-overdue-card-1">
+<script defer src="js/lab-overdue.js?v=20261105-lab-overdue-card-1"></script>
+</head>
+<body class="app-page">
+    <div class="app-shell">
+      <aside id="sidebar" class="sidebar" aria-label="Main navigation">
+        <div class="sidebar-top"><a class="app-brand" href="dashboard.html"><span class="gl-wordmark"><img src="assets/greenloop-fzc-logo.jpg" alt="Greenloop FZC" width="1280" height="427"></span></a><button id="close-menu" hidden aria-hidden="true" tabindex="-1" class="icon-button close-menu" type="button" aria-label="Close menu">×</button></div>
+        <nav class="sidebar-nav"></nav>
+        <div class="sidebar-user"><span class="user-avatar">SA</span><span><strong>System Admin</strong><small>Super Admin</small></span></div>
+      </aside>
+      <div id="menu-backdrop" class="menu-backdrop" hidden></div>
+      <main class="app-main">
+        <header class="topbar"><button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button><div class="breadcrumb"><a href="dashboard.html">Dashboard</a><span>/</span><strong>Overdue Lab &amp; Glass</strong></div><div class="topbar-actions"><span class="live-chip">Live database</span></div></header>
+        <div class="page-content lo-page"><section class="page-heading"><div><p class="eyebrow">Lab &amp; Glass · Pending work</p><h1>Overdue Phones — 2+ Days</h1><p>Only phones pending over two days. Sunday is excluded.</p></div><a class="secondary-button" href="laboratory.html">← Back to Lab &amp; Glass</a></section>
+        <p id="permission-message" class="access-message" role="status" hidden></p>
+        <section id="lab-overdue-app" hidden>
+          <div class="lo-topline"><div class="lo-summary"><span><strong id="lo-phone-total">…</strong>overdue phones</span><span><strong id="lo-employee-total">…</strong>technicians</span></div><small id="lo-updated"></small></div>
+          <p class="lo-note">Time continues from the original Lab arrival, including phones returned from Final QC. Each phone is counted once.</p>
+          <section class="lo-panel"><header class="lo-panel-heading"><h2 id="lo-view-title">Technicians with overdue phones</h2><div class="lo-actions"><button id="lo-back" class="secondary-button" type="button" data-capability="view" data-capability-page="lab_glass" data-search-read-only hidden>← Technicians</button><button id="lo-refresh" class="secondary-button" type="button" data-capability="view" data-capability-page="lab_glass" data-search-read-only>Refresh</button></div></header>
+          <p id="lo-message" class="lo-message" role="status" aria-live="polite"></p>
+          <div id="lo-employees-view"><div id="lo-employees" class="lo-employees"></div></div>
+          <div id="lo-phones-view" hidden><div class="lo-table-wrap"><table class="lo-table"><thead><tr><th>S.No</th><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>BH</th><th>Supplier code</th><th>Stock / Invoice</th><th>Department</th><th>Original arrival · UAE</th><th>Pending time</th></tr></thead><tbody id="lo-phone-rows"></tbody></table></div></div>
+          <footer class="lo-pager"><span id="lo-range"></span><div><button id="lo-prev" type="button" class="secondary-button" data-capability="view" data-capability-page="lab_glass" data-search-read-only disabled>Previous</button><button id="lo-next" type="button" class="secondary-button" data-capability="view" data-capability-page="lab_glass" data-search-read-only disabled>Next</button></div></footer>
+          </section></section></div></main></div></body></html>
