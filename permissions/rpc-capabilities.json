@@ -1220,6 +1220,13 @@
       "capability": "view",
       "read": true
     },
+    "get_qc_issuance_edit_version": {
+      "read": true
+    },
+    "update_qc_issuance_requirements_v1": {
+      "page": "initial_qc",
+      "capability": "entry"
+    },
     "get_qc_issuance_options_v1": {
       "page": "initial_qc",
       "capability": "view",

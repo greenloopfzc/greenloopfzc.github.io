@@ -21,3 +21,16 @@
 .issuance-carry-help{margin-top:0}
 #issuance-message{padding:.8rem 1rem;border-radius:12px;border:1px solid currentColor;line-height:1.6}#issuance-message.is-success{color:var(--nm-green,#087653)}
 @media(max-width:650px){.qc-bulk-toolbar-actions>*{flex:1}.issuance-table-wrap{max-width:100%}}
+
+.issuance-table .issuance-edit{flex:0 0 28px;width:28px;padding:0 3px}
+.issuance-table tr.is-editing td{background:var(--nm-green-bg,#e0f0e7)}
+.issuance-work-editor[hidden]{display:none}
+.issuance-work-editor{margin:14px 0 18px;padding:20px;border:1px solid var(--nm-accent,#087653);border-radius:20px;background:var(--nm-card,#f6f8fa);color:var(--nm-ink,#203b2e);box-shadow:var(--nm-shadow,4px 5px 9px #71869450,-3px -3px 8px #ffffff80)}
+.issuance-work-editor header,.issuance-work-editor footer,.issuance-work-editor footer>div{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.issuance-work-editor h2{margin:0;font-size:1.15rem}.issuance-work-editor header p{margin:6px 0 0;font-size:.85rem}.issuance-work-editor h3{font-size:.95rem;margin:0 0 10px}
+.issuance-editor-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin:20px 0}
+.issuance-selected-list{display:grid;gap:8px}.issuance-selected-item{display:grid;grid-template-columns:minmax(0,1fr) 90px auto;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--nm-line,#cbd6df);border-radius:12px;font-size:.85rem}.issuance-selected-service{grid-template-columns:minmax(0,1fr) auto}
+.issuance-selected-item>span{overflow-wrap:anywhere}.issuance-work-editor input,.issuance-work-editor select{min-width:0;width:100%;box-sizing:border-box;min-height:38px;height:auto;font:inherit;color:inherit;background:var(--nm-well,#e6edf1);border:1px solid var(--nm-line,#cbd6df);border-radius:10px;padding:8px;box-shadow:var(--nm-inset,inset 2px 2px 5px #718b9c33)}
+.issuance-selected-item button{min-height:36px;padding:8px 12px;font-size:.8rem}.issuance-editor-add{display:grid;grid-template-columns:minmax(0,1fr) 42px;gap:8px;margin-top:14px}.issuance-editor-add label{grid-column:1/-1;font-size:.8rem;font-weight:700}.issuance-editor-add button{padding:6px;min-height:38px;font-size:1.2rem}
+.issuance-work-empty{margin:0;padding:12px;color:var(--nm-muted,#637b8f);font-size:.85rem}.issuance-work-message{font-size:.85rem;line-height:1.5;color:var(--nm-red,#b6322b)}.issuance-work-message[hidden]{display:none}.issuance-work-editor footer>span{font-size:.8rem;color:var(--nm-muted,#637b8f)}
+@media(max-width:700px){.issuance-editor-grid{grid-template-columns:1fr}.issuance-work-editor{padding:14px}.issuance-selected-item{grid-template-columns:minmax(0,1fr) 70px auto}}
