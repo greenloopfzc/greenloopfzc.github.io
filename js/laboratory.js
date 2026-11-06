@@ -123,8 +123,8 @@
     technicianLinesTitle.textContent = "Pending work";
     technicianLinesHelp.textContent = "After Pass, choose Ready Stock, Lab & Glass or Final QC. Lab requires a technician; saved parts and services are preserved. Ready Stock requires Final Grade. Initial BH stays in history.";
     refreshFrameButton.hidden = false;
-    linesHead.innerHTML = "<th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>Initial BH</th><th>Final BH</th><th>Supplier code</th><th>Supplier grade</th><th>Initial grade</th><th>Final grade</th><th>Pass</th><th>Fail</th><th>Save</th>";
-    document.querySelector("#workflow-rule-text").textContent = "B-DEPT Pass can send the phone to Ready Stock with Final Grade, or to Lab & Glass with a technician, required parts and services. Fail keeps the phone in B-DEPT and records the failure.";
+    linesHead.innerHTML = "<th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>Initial BH</th><th>Final BH</th><th>Supplier code</th><th>Supplier grade</th><th>Initial grade</th><th>Final grade</th><th>Pass</th><th>Fail</th><th>Destination / Save</th>";
+    document.querySelector("#workflow-rule-text").textContent = "B-DEPT Pass can send the phone to Ready Stock with Final Grade, Lab & Glass with a technician, or directly to Final QC. Saved requirements are preserved. Fail keeps the phone in B-DEPT and records the failure.";
   }
 
   function showFrameView(view, moveFocus = false) {

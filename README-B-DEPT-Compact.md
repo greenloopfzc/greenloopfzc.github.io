@@ -1,0 +1,7 @@
+# Compact B-DEPT work rows
+
+B-DEPT pending rows use a content-sized table with a small leftmost S.No, clear grid boundaries and compact 32px raised controls. Destination, optional Lab technician and Save sit on one line. Default per-row instructions remain available to assistive technology without adding repeated visual height; the visible header is Destination / Save. Final BH and its source remain visible. Lab phone-card separation is unchanged because layout styles are scoped to body.frame-mode and the pending-work panel.
+
+Columns grow with headings, data and controls. Wide tables scroll inside the panel on smaller viewports without widening the page. Existing three destinations, selection behavior, manual Save, permissions, 50-row pagination, bulk trays and saved business data are preserved. No new SQL, Edge, secret, driver or permission tick; previous B-DEPT routing migration 257 remains a checked prerequisite.
+
+Validation: native Chrome renders actual B-DEPT row templates at 1900,1280,390px in light/dark raised themes. Normal/Lab rows measure 45px; controls and full selected values fit; S.No is 34px; long models grow their column; desktop Lab destination / technician / Save fit within the table and narrow pages retain internal horizontal scrolling. Screenshots inspected. Five actual-app DOM checks cover Issuance to B-DEPT, all three Pass destinations and view-only restrictions. No live installation, database mutation or publication by Codex.
