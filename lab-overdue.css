@@ -6,3 +6,6 @@
 /* Solid alert launch card; keep existing raised shape and dimensions. */
 html .lab-overdue-launch,html .lab-overdue-launch:hover,html .lab-overdue-launch:focus-visible,html[data-mode="dark"] .lab-overdue-launch{background:#c7352b;color:#fff;border-color:#c7352b;}
 html .lab-overdue-launch *,html[data-mode="dark"] .lab-overdue-launch strong:last-child{color:#fff!important;}
+
+/* The live count ID has its own legacy important color rule. */
+html .app-page .lab-overdue-launch #lab-overdue-count,html[data-mode="dark"] .app-page .lab-overdue-launch #lab-overdue-count{color:#fff!important}
