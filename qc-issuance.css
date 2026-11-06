@@ -1,10 +1,10 @@
 /* One compact phone line, matching the Initial QC tray. */
 .issuance-table-wrap{max-width:100%;overflow:auto;border:1px solid var(--nm-line,#c7d5df);border-radius:20px;background:var(--nm-card,#f6f8fa);box-shadow:var(--nm-shadow,4px 5px 9px #71869450,-3px -3px 8px #ffffff80)}
-.issuance-table{width:100%;min-width:1240px;table-layout:fixed;border-collapse:separate;border-spacing:0;color:var(--nm-ink,#203b2e);font-size:.67rem;line-height:1.2}
+.issuance-table{width:auto;min-width:100%;table-layout:auto;border-collapse:separate;border-spacing:0;color:var(--nm-ink,#203b2e);font-size:.67rem;line-height:1.2}
 .issuance-table th,.issuance-table td{min-width:0;border-right:1px solid var(--nm-line,#cbd6df);border-bottom:1px solid var(--nm-line,#cbd6df);text-align:center;vertical-align:middle}
 .issuance-table th:last-child,.issuance-table td:last-child{border-right:0}.issuance-table tbody tr:last-child td{border-bottom:0}
-.issuance-table th{padding:7px 5px;font-size:.6rem;line-height:1.15;letter-spacing:.025em;font-weight:800;text-transform:uppercase;background:var(--nm-well,#e5edf2);color:var(--nm-muted,#536878);overflow-wrap:anywhere}
-.issuance-table td{padding:4px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.issuance-table th{padding:7px 5px;font-size:.6rem;line-height:1.15;letter-spacing:.025em;font-weight:800;text-transform:uppercase;white-space:nowrap;background:var(--nm-well,#e5edf2);color:var(--nm-muted,#536878);overflow-wrap:anywhere}
+.issuance-table td{padding:4px;font-weight:650;overflow:visible;white-space:nowrap}
 .issuance-table input,.issuance-table select{box-sizing:border-box;width:100%;min-width:0;min-height:32px;height:32px;margin:0;border:1px solid var(--nm-line,#c9d6e1);border-radius:10px;background:var(--nm-well,#e6edf1);color:inherit;padding:0 5px;font:inherit;box-shadow:var(--nm-inset,inset 2px 2px 5px #718b9c33)}
 .issuance-table .qc-issuance-imei{font-weight:750;text-align:center;letter-spacing:.01em}
 .issuance-table input:focus-visible,.issuance-table select:focus-visible,.issuance-table button:focus-visible{outline:2px solid var(--nm-accent,#087653);outline-offset:1px}
@@ -33,3 +33,12 @@
 .issuance-table .issuance-inline-group button{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;width:25px;min-width:25px;height:32px;min-height:32px;margin:0;padding:0;font-size:.9rem;font-weight:800;border:1px solid var(--nm-line,#c9d6e1);border-radius:10px;box-shadow:var(--nm-shadow-sm,2px 3px 5px #71869460,-2px -2px 5px #ffffffb0)}
 .issuance-table .issuance-inline-minus{color:var(--nm-red,#b6322b);background:var(--nm-red-bg,#fae9e7);border-color:var(--nm-red,#b6322b)}
 .issuance-row-actions [data-work-save],.issuance-row-actions [data-work-cancel]{flex:1}
+
+/* Content-driven columns: no positional percentage widths after the serial moves. */
+.issuance-table .qc-issuance-imei{width:19ch;min-width:19ch}
+.issuance-table select{width:auto;min-width:max-content;max-width:none}
+.issuance-row-actions{width:max-content;min-width:max-content;flex-wrap:nowrap}
+.issuance-table [data-transfer],.issuance-row-actions [data-work-save],.issuance-row-actions [data-work-cancel]{flex:0 0 auto;width:auto}
+.issuance-table .issuance-edit{width:auto;flex:0 0 auto;min-width:28px}
+.issuance-inline-group{grid-template-columns:minmax(max-content,1fr) 25px 25px;min-width:max-content}
+.issuance-table th.gl-serial,.issuance-table td.gl-serial{width:1px;white-space:nowrap}
