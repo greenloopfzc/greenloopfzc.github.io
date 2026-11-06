@@ -23,14 +23,20 @@ foreach($name in @('Start-Greenloop.ps1','Watch-Greenloop-Reader.ps1')){
 }
 foreach($value in $updates.Values){$tokens=$null;$errors=$null;[void][Management.Automation.Language.Parser]::ParseInput($value,[ref]$tokens,[ref]$errors);if($errors.Count){throw 'Updated reader/auto-start syntax verification failed.'}}
 if($CheckOnly){Write-Host 'Installed reader is compatible; iPhone/Android and other extensions are preserved. CheckOnly made no changes.';return}
-$ownedIds=[Collections.Generic.List[int]]::new()
-# Only restart the exact installed reader process; no ADB/phone reset commands.
 $watch=Join-Path $root 'Watch-Greenloop-Reader.ps1'
-foreach($script in @($watch,$target)){
- $quoted=[regex]::Escape($script)
- $owned=@(Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" | Where-Object { $_.ProcessId -ne $PID -and $_.CommandLine -match ('(?i)(?:^|\s)-File\s+"'+$quoted+'"(?:\s|$)') })
- foreach($process in $owned){$ownedIds.Add([int]$process.ProcessId)}
+function Test-ExactReaderCommand([string]$Command,[string]$ScriptPath){
+ $escaped=[regex]::Escape($ScriptPath.Replace('/','\'))
+ return $Command.Replace('/','\') -match ('(?i)(?:^|\s)-File\s+(?:"'+$escaped+'"|'+$escaped+')(?:\s|$)')
 }
+function Get-OwnedReaderProcesses([string]$ScriptPath){
+ @(Get-CimInstance Win32_Process -Filter "Name='powershell.exe' OR Name='pwsh.exe'" | Where-Object {
+  $_.ProcessId -ne $PID -and (Test-ExactReaderCommand ([string]$_.CommandLine) $ScriptPath)
+ })
+}
+# Query ownership before any writes. An unavailable process inventory must not
+# leave a partially updated reader. Support quoted and unquoted -File paths.
+[void](Get-OwnedReaderProcesses $watch)
+[void](Get-OwnedReaderProcesses $target)
 $backup=Join-Path $root ('before-battery-details-'+(Get-Date -Format 'yyyyMMdd-HHmmss-fff'))
 [void][IO.Directory]::CreateDirectory($backup)
 foreach($name in $updates.Keys){[IO.File]::WriteAllBytes((Join-Path $backup $name),[IO.File]::ReadAllBytes((Join-Path $root $name)))}
@@ -45,7 +51,20 @@ try{
  throw
 }
 Write-Host ('Reader and auto-start checks updated. Original backup: '+$backup)
-foreach($ownedId in $ownedIds){Stop-Process -Id $ownedId -ErrorAction Stop}
+# Stop the supervisor first; it must not respawn a reader during replacement.
+$stopped=0
+foreach($process in (Get-OwnedReaderProcesses $watch)){
+ Stop-Process -Id $process.ProcessId -ErrorAction Stop
+ Wait-Process -Id $process.ProcessId -Timeout 10 -ErrorAction SilentlyContinue
+ $stopped++
+}
+# Re-enumerate children after the supervisor has stopped to close the race.
+foreach($process in (Get-OwnedReaderProcesses $target)){
+ Stop-Process -Id $process.ProcessId -ErrorAction Stop
+ Wait-Process -Id $process.ProcessId -Timeout 10 -ErrorAction SilentlyContinue
+ $stopped++
+}
+Write-Host "Stopped $stopped exact Greenloop reader / supervisor processes; starting the updated reader."
 $exe=Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'
 Start-Process -FilePath $exe -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-File',('"'+$watch+'"')) -WindowStyle Hidden
 # Existing supervisor may start the replacement; if it is absent, start it here.
