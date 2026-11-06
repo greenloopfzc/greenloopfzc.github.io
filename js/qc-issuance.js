@@ -171,7 +171,6 @@
     if(!can()||!r||row.dataset.completed==='yes'||row.querySelector('.qc-issuance-imei').value.trim()!==r.imei)return{ok:false,error:'Load this saved inspection first.'};
     const dest=row.querySelector('[data-destination]').value,technician=dest==='lab_glass'?row.querySelector('[data-technician]').value:null;
     if(dest==='lab_glass'&&!technician){state(row,'Choose a Lab technician.',true);return{ok:false,error:'Choose a Lab technician.'};}
-    if(dest==='b_dept'&&(r.parts.length||r.services.length||String(r.gl_grade).toUpperCase()==='D')){const error='B-DEPT direct transfer needs no parts or services and a non-D GL grade. Choose Lab & Glass for repair work.';state(row,error,true);return{ok:false,error};}
     row.dataset.issueRequest ||= crypto.randomUUID();row.dataset.saving='yes';state(row,'Transferring…');
     try{
       const result=await rpc('issue_initial_qc_inspection_v1',{p_job_id:r.job_id,p_revision:r.revision,p_destination:dest,p_technician_roster_id:technician||null,p_request_id:row.dataset.issueRequest});
