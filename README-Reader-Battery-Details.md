@@ -1,0 +1,9 @@
+# Connected reader battery and details
+
+USB inspection of the connected iPhone confirmed that the old reader returned only its basic identity contract and preferred NominalChargeCapacity for its estimate. The compatible PC patch uses a full read-only device-information query, returns available phone name, OS, firmware, baseband, cycle count, charging state and raw/design capacity fields. It prefers explicit device health percentages when provided, otherwise Raw Maximum / Design capacity with a Nominal fallback. Estimates remain labelled estimates; matching this sample's Settings value does not make all capacity estimates exact Settings readings. Battery charge percentage is never substituted for battery health.
+
+The report maps these additional fields even through the compatible v1/device endpoint. Unavailable carrier, blacklist, Find My, activation-lock, MDM and parts-history checks are not fabricated. Android functions, identity rules, permissions, origin restrictions, installed extension functions outside the two reviewed functions and database records are preserved.
+
+Install the PC patch on every cable-reading PC, then publish the website. The installer backs up reader/startup files, updates their hashes, identifies only the exact reader/supervisor process before writing and restarts that service. No driver reinstall, phone reset, new SQL, Edge/JWT or secret change. CheckOnly never writes or restarts.
+
+Validation: connected iPhone read-only test matched 92% estimated and 252 cycles; actual report DOM tested with edit and view-only access; capacities/OS/firmware/charging/unknown checks verified. Patch idempotency, direct-health priority, no false health from charge-level values, no fabricated unavailable health, untouched Android/HTTP/origin functions, PowerShell syntax and compatible installed hashes pass. No live PC installation or publication performed by Codex.

@@ -128,12 +128,12 @@
     const key = source.connectionId || source.serialNumber || source.imei;
     if (!key) throw new Error('The reader did not return a phone identity.');
     const output = {};
-    for (const [name, from] of Object.entries({ brand: 'brand', platform: 'platform', iosVersion: 'osVersion', phoneName: 'phoneName', model: 'model', storageGb: 'storageGb', color: 'color', serialNumber: 'serialNumber', region: 'phoneRegion', imei1: 'imei', imei2: 'imei2', batteryHealth: 'batteryHealth' })) {
+    for (const [name, from] of Object.entries({ brand: 'brand', platform: 'platform', iosVersion: 'osVersion', phoneName: 'phoneName', model: 'model', storageGb: 'storageGb', color: 'color', serialNumber: 'serialNumber', region: 'phoneRegion', imei1: 'imei', imei2: 'imei2', batteryHealth: 'batteryHealth', batteryCycleCount: 'batteryCycleCount', chargingStatus: 'chargingStatus', rawCapacity: 'rawCapacity', designCapacity: 'designCapacity', bootFirmware: 'bootFirmware', baseband: 'baseband', appVersion: 'readerDetailsVersion' })) {
       const value = source[from];
       if (value === null || value === undefined || String(value).trim() === '') continue;
       if (['batteryHealth', 'storageGb'].includes(name) && (!Number.isFinite(Number(value)) || Number(value) <= 0)) continue;
       const estimated = name === 'batteryHealth' && source.batteryHealthSource === 'capacity-estimate';
-      output[name] = { value: `${value}${name === 'storageGb' ? ' GB' : name === 'batteryHealth' ? '%' : ''}${estimated ? ' (estimated)' : ''}`, status: estimated ? 'calculated' : 'read', source: estimated ? 'Cable reader capacity estimate, not a verified health reading' : source.platform === 'android' ? 'Android cable reader: available device properties' : 'Cable reader (basic details only)' };
+      output[name] = { value: `${value}${name === 'storageGb' ? ' GB' : name === 'batteryHealth' ? '%' : ['rawCapacity','designCapacity'].includes(name) ? ' mAh' : ''}${estimated ? ' (estimated)' : ''}`, status: estimated ? 'calculated' : 'read', source: estimated ? 'Raw maximum / design capacity estimate; may differ from iPhone Settings Maximum Capacity' : source.platform === 'android' ? 'Android cable reader: available device properties' : 'Cable reader (basic details only)' };
     }
     output.usbConnectionStatus = { value: 'Connected', status: 'read', source: 'Successful local cable reader response' };
     return { deviceKey: String(key), platform: source.platform || 'ios', fields: output };
