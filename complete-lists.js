@@ -35,8 +35,8 @@
    if(complex)continue;
    table.classList.add('gl-content-table');table.parentElement?.classList.add('gl-content-scroll');
    const original=[...head.cells].filter(c=>!c.hasAttribute('data-gl-serial'));
-   const existing=original.find(c=>/^(?:S\.?\s*No\.?|#|No\.)$/i.test(c.textContent.trim()));
-   if(existing){const index=existing.cellIndex;existing.classList.add('gl-serial');if(index){head.prepend(existing);for(const b of [...table.tBodies,...(table.tFoot?[table.tFoot]:[])])for(const row of b.rows)if(row.cells.length===original.length&&[...row.cells].every(c=>c.colSpan===1))row.prepend(row.cells[index]);}continue;}
+   const existing=original.find(c=>/^(?:S\.?\s*No\.?|#|No\.)$/i.test(String(c.dataset.sortLabel||c.textContent).replace(/[↑↓↕]/g,'').trim()));
+   if(existing){head.querySelectorAll('[data-gl-serial]').forEach(c=>c.remove());for(const b of [...table.tBodies,...(table.tFoot?[table.tFoot]:[])])for(const row of b.rows){row.querySelectorAll(':scope > [data-gl-serial]').forEach(c=>c.remove());for(const c of row.cells)if(c.dataset.glOriginalSpan){c.colSpan=Number(c.dataset.glOriginalSpan);delete c.dataset.glOriginalSpan;}}const index=existing.cellIndex;existing.classList.add('gl-serial');if(index){head.prepend(existing);for(const b of [...table.tBodies,...(table.tFoot?[table.tFoot]:[])])for(const row of b.rows)if(row.cells.length===original.length&&[...row.cells].every(c=>c.colSpan===1))row.prepend(row.cells[index]);}continue;}
    if(!head.querySelector('[data-gl-serial]')){const th=document.createElement('th');th.dataset.glSerial='';th.className='gl-serial';th.scope='col';th.textContent='S.No';head.prepend(th);}else if(head.firstElementChild!==head.querySelector('[data-gl-serial]'))head.prepend(head.querySelector('[data-gl-serial]'));
    let n=0;
    for(const body of table.tBodies)for(const row of body.rows){

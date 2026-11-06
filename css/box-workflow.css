@@ -40,3 +40,15 @@
 .box-actions button[hidden] { display:none; }
 @media(max-width:700px){ .box-queue-filter,.box-queue-card { padding:15px; } .box-table { font-size:.8rem; } }
 @media print { @page { size:A4 portrait; margin:10mm; } .sidebar,.topbar,.page-heading,.box-queue-filter,#box-queue-list,.box-queue-pagination,#box-queue-message,.box-actions,.box-review-note,.toast { display:none!important; } .app-main,.page-content { margin:0!important; padding:0!important; } .box-queue-card:not(#box-queue-detail) { display:none; } #box-queue-detail { padding:0; margin:0; border:0; box-shadow:none; } .box-table-wrap { overflow:visible; } .box-table { font-size:8pt; table-layout:fixed; color:#000; } .box-table th,.box-table td { padding:5px 3px; border:1px solid #9ba9ad; } .box-table tr { break-inside:avoid; } .box-table thead { display:table-header-group; } }
+
+/* The detailed Accounts sheet includes source invoice and batch columns. */
+@media print{
+ @page box-review{size:A4 landscape;margin:10mm}
+ html body.app-page #box-queue-detail{page:box-review}
+ html body.app-page #box-queue-detail .box-table-wrap{width:100%!important;max-width:100%!important;overflow:visible!important}
+ html body.app-page #box-queue-detail table.box-table{width:100%!important;min-width:100%!important;max-width:100%!important;table-layout:auto!important}
+ html body.app-page #box-queue-detail table.box-table tr>:is(th,td){font-size:8.5pt!important;line-height:1.2!important;white-space:normal!important;overflow-wrap:anywhere!important;min-width:0!important;padding:5px 4px!important;color:#111!important;background:#fff!important}
+ html body.app-page #box-queue-detail table.box-table th{background:#eee!important}
+ html body.app-page #box-queue-detail table.box-table tr>:is(:first-child,:nth-child(2)){white-space:nowrap!important;overflow-wrap:normal!important}
+ html body.app-page #box-queue-detail table.box-table thead{display:table-header-group!important}
+}
