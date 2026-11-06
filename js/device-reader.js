@@ -134,7 +134,7 @@
       try {
         // USB startup + optional diagnostics are bounded by the helper. Do not
         // abort a healthy first read after only 2.5 seconds.
-        const response = await fetch(endpoint, { cache: "no-store", signal: AbortSignal.timeout(20000) });
+        const response = await (window.GREENLOOP_READER_CONNECTION?.fetch || ((p, o) => fetch(endpoint, o)))("/v1/device", { cache: "no-store", signal: AbortSignal.timeout(20000) });
         const payload = await response.json();
         readerResponded = true;
         readerMessage = payload?.message || "Connect one unlocked phone and accept Trust if asked.";

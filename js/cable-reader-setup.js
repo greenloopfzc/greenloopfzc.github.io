@@ -33,7 +33,7 @@
     check.disabled = true;
     state.textContent = "Checking this computer...";
     try {
-      const response = await fetch("http://127.0.0.1:51892/health", { cache: "no-store", signal: AbortSignal.timeout(3500) });
+      const response = await (window.GREENLOOP_READER_CONNECTION?.fetch || ((p, o) => fetch("http://127.0.0.1:51892/health", o)))("/health", { cache: "no-store", signal: AbortSignal.timeout(3500) });
       const health = await response.json();
       if (!response.ok || health.ok !== true || health.service !== "Greenloop Read-Only Device Reader" || health.mode !== "read-only") throw new Error("unrecognized");
       if (request !== sequence) return;

@@ -116,7 +116,7 @@
   function clear() { devicePlatform = ''; fields = {}; advancedFields = {}; advancedRead = 0; advancedPending = false; deviceKey = ''; lastRead = 0; manualValue = 'Not checked'; paint(false); advancedStatus('Advanced checks wait for a connected phone.'); }
   function advancedStatus(text) { if (host) host.querySelector('.cdd-advanced-status').textContent = text; }
   async function request(path, signal, timeout = 20000) {
-    const response = await fetch(`${endpoint}${path}`, { cache: 'no-store', signal: AbortSignal.any([signal, AbortSignal.timeout(timeout)]) });
+    const response = await (window.GREENLOOP_READER_CONNECTION?.fetch || ((p, o) => fetch(`${endpoint}${p}`, o)))(path, { cache: 'no-store', signal: AbortSignal.any([signal, AbortSignal.timeout(timeout)]) });
     if (response.status === 404) return { unsupported: true };
     const data = await response.json();
     if (!response.ok || data.ok !== true) throw new Error(data.message || 'The connected phone could not be read.');
