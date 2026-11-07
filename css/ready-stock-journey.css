@@ -70,3 +70,5 @@
 .journey-full-activity {margin-top:18px;border-top:1px solid var(--nm-line,#d6e2d9);padding-top:12px;}
 .journey-full-activity > summary {cursor:pointer;font-size:.85rem;font-weight:700;color:var(--nm-accent,#087859);padding:8px 0;}
 .journey-full-activity .stock-journey-steps {margin-top:12px;}
+
+.journey-step-current{margin:6px 0 0;font-size:.82rem;line-height:1.5;color:var(--nm-accent,#087859)}.journey-current-step{border-left:3px solid var(--nm-accent,#087859);padding-left:12px!important;border-radius:8px}

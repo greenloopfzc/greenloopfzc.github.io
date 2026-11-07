@@ -85,3 +85,5 @@ html:is([data-design="neumorphism"],[data-mode="dark"]) .history-content { --his
 .history-activity-record h4 { margin:0 0 5px; font-size:.9rem; }
 .history-activity-record p,.history-activity-record .history-bullets { margin:5px 0; font-size:.8rem; line-height:1.6; }
 @media print { #history-rows .journey-summary-step { break-inside:avoid; } }
+
+.journey-step-current{margin:6px 0 0;font-size:.82rem;line-height:1.5;color:var(--nm-accent,#087859)}.journey-current-step{border-left:3px solid var(--nm-accent,#087859);padding-left:12px!important;border-radius:8px}

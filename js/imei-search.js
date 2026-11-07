@@ -389,7 +389,7 @@ function buildStageSections(sortedRows) {
     renderBasicTable(data.device || {},rows);
     const visibleRows=rows.map(row=>({...row,details:visibleDetails(row)}));
     const compact=window.GREENLOOP_STOCK_JOURNEY.render(visibleRows,{
-      escape:escapeHtml,date:journeyMoment,
+      escape:escapeHtml,date:journeyMoment,currentStage:currentStage(data.device || {}),
       money:value=>number(value)===null ? missing : number(value).toLocaleString("en-GB",{minimumFractionDigits:2,maximumFractionDigits:2})
     });
     body.innerHTML=rows.length ? compact+`<details class="history-full-activity"><summary>Full activity (${rows.length} records)</summary><ol class="history-activity-list">${visibleRows.map(renderActivity).join("")}</ol></details>` : '<p class="history-missing">No history has been recorded for this phone.</p>';

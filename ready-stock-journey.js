@@ -182,7 +182,7 @@
       }
       return `<li class="stock-journey-step"><h3>${escapeHtml(window.GREENLOOP_DEPT_NAME(item.title || 'Recorded step'))}</h3><ul>${details.join('')}</ul></li>`;
     }).join('') + '</ol>' : '<p>No recorded steps are available for this phone yet.</p>';
-    detailBody.innerHTML = window.GREENLOOP_STOCK_JOURNEY.render(records, {escape:escapeHtml,date:journeyDate,money:formatMoney}) +
+    detailBody.innerHTML = window.GREENLOOP_STOCK_JOURNEY.render(records, {escape:escapeHtml,date:journeyDate,money:formatMoney,currentStage:current}) +
       (records.length ? '<details class="journey-full-activity"><summary>Full activity ('+records.length+' records)</summary>'+fullActivity+'</details>' : '');
     window.GREENLOOP_LAB_DELAY?.mountHistory(detailBody,selectedDevice,"ready_stock_journey");
   }
