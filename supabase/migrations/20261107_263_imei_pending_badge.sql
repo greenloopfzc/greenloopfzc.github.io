@@ -20,9 +20,9 @@ begin
  then raise exception 'Sidebar count routine differs from the reviewed installation. No changes applied.';end if;
  if md5(reviewed)='1987f835cd5ba8ecf9630f3d64c25763'then
   definition:=replace(pg_get_functiondef(p.oid),E'\r\n',E'\n');
-  definition:=replace(definition,$old$  select coalesce(sum(greatest(0,b.planned_quantity-coalesce(x.n,0))),0)into n from public.receiving_batches b
-  left join lateral(select count(distinct d.id)n from public.jobs j join public.devices d on d.id=j.device_id and d.deleted_at is null where j.receiving_batch_id=b.id and j.deleted_at is null)x on true;$old$,$new$  -- Use the same eligible receipts and return-adjusted balance as the IMEI Entry selector.
-  select coalesce(sum(remaining_quantity),0)into n from public.get_open_stock_entry_batches_with_lines();$new$);
+  definition:=replace(definition,replace($old$  select coalesce(sum(greatest(0,b.planned_quantity-coalesce(x.n,0))),0)into n from public.receiving_batches b
+  left join lateral(select count(distinct d.id)n from public.jobs j join public.devices d on d.id=j.device_id and d.deleted_at is null where j.receiving_batch_id=b.id and j.deleted_at is null)x on true;$old$,E'\r\n',E'\n'),replace($new$  -- Use the same eligible receipts and return-adjusted balance as the IMEI Entry selector.
+  select coalesce(sum(remaining_quantity),0)into n from public.get_open_stock_entry_batches_with_lines();$new$,E'\r\n',E'\n'));
   execute definition;
  end if;
  if(select md5(replace(prosrc,E'\r\n',E'\n'))from pg_proc where oid=p.oid)is distinct from '8e534ffcb0f44cb69e495275ef82f718'then raise exception 'IMEI badge count replacement failed. Installation rolled back.';end if;
