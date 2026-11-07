@@ -5,12 +5,20 @@
 
   const config = window.GREENLOOP_CONFIG || {};
   const stages = [
-    { file: "initial-qc.html", key: "initial_qc", label: "Initial QC" },
-    { file: "qc-issuance.html", key: "qc_issuance", label: "Lab & Glass Issuance" },
-    { file: "laboratory.html", key: ["laboratory", "glass"], badgeKey: "lab_glass", label: "Lab & Glass" },
-    { file: "parts.html", key: "parts", label: "Parts" },
-    { file: "final-qc.html", key: "final_qc", label: "Final QC" },
-    { file: "laboratory.html#frame", key: "frame", badgeKey: "frame", label: "B-DEPT" }
+    {file:'stock-entry.html',key:'stock_received',page:'stock_received',label:'Stock Received',unit:'phones received'},
+    {file:'imei-entry.html',key:'imei_entry',page:'imei_entry',label:'IMEI Entry',unit:'phones awaiting IMEI entry'},
+    {file:'initial-qc.html',key:'initial_qc',page:'initial_qc',label:'Initial QC',unit:'phones awaiting inspection'},
+    {file:'qc-issuance.html',key:'qc_issuance',page:'initial_qc',label:'Lab & Glass Issuance',unit:'phones awaiting issuance'},
+    {file:'stock-return.html',key:'supplier_returns',page:'supplier_returns',label:'Return/Replacement',unit:'phones awaiting supplier return'},
+    {file:'laboratory.html',key:'lab_glass',page:'lab_glass',label:'Lab & Glass',unit:'pending phones'},
+    {file:'parts.html',key:'parts',page:'parts',label:'Parts',unit:'phones awaiting parts issue or return review'},
+    {file:'final-qc.html',key:'final_qc',page:'final_qc',label:'Final QC',unit:'phones awaiting Final QC'},
+    {file:'laboratory.html#frame',key:'frame',page:'frame_department',label:'B-DEPT',unit:'pending phones'},
+    {file:'ready-stock.html',key:'ready_stock',page:'ready_stock',label:'Ready Stock',unit:'available ready phones'},
+    {file:'export-box.html',key:'box_entry',page:'export_boxes',label:'Box Entry',unit:'draft or recheck boxes'},
+    {file:'accounts.html',key:'accounts',page:'accounts',label:'Accounts',unit:'boxes awaiting verification'},
+    {file:'stock-exported.html',key:'stock_exported',page:'stock_exported',label:'Stock Exported',unit:'exported phones'},
+    {file:'ready-stock-journey.html',key:'stock_journey',page:'ready_stock_journey',label:'Stock Journey',unit:'recorded phones'}
   ];
   let supabaseClient;
   let refreshTimer, pollTimer, channel, authSubscription;
@@ -74,10 +82,7 @@
   }
 
   function hideAllBadges() {
-    stages.forEach((stage) => {
-      const badge = createBadge(stage);
-      if (badge) badge.hidden = true;
-    });
+    document.querySelectorAll('[data-workflow-badge],[data-accounts-pending-badge]').forEach(badge=>{badge.hidden=true;badge.textContent='';});
   }
 
   function disconnect() {
@@ -143,28 +148,15 @@
       if (!userId) { hideAllBadges(); return; }
       connect(client);
       await window.GREENLOOP_ACCESS_READY;
-      const canReadIssuance=window.GREENLOOP_CAN?.('view','initial_qc')===true;
-      const [{data,error},partsResult,qcResult]=await Promise.all([withDeadline(client.rpc('get_workflow_notification_counts')),withDeadline(client.rpc('get_parts_flow_counts_v1')).catch(()=>null),canReadIssuance?withDeadline(client.rpc('get_qc_stage_notification_counts_v1')).catch(()=>null):null]);
-      if (requestEpoch !== epoch || stopped || document.hidden) return;
-      if (error) throw error;
-      failures = 0;
-      const updated={...(Array.isArray(data)?data[0]:data)};
-      if(partsResult&&!partsResult.error)updated.parts=partsResult.data;
-      // The legacy workflow count includes saved inspections. Never display it
-      // as the inspection-only badge, including during a partial read failure.
-      delete updated.initial_qc;
-      delete updated.qc_issuance;
-      if(!canReadIssuance){updated.initial_qc=0;updated.qc_issuance=0;}
-      else if(qcResult&&!qcResult.error){
-        const qc=Array.isArray(qcResult.data)?qcResult.data[0]:qcResult.data;
-        const valid=key=>typeof qc?.[key]==='number'&&Number.isSafeInteger(qc[key])&&qc[key]>=0;
-        if(valid('initial_qc')&&valid('qc_issuance')){
-          updated.initial_qc=qc.initial_qc;updated.qc_issuance=qc.qc_issuance;
-        }
-      }
+      const {data,error}=await withDeadline(client.rpc('get_sidebar_notification_counts_v1'));
+      if(requestEpoch!==epoch||stopped||document.hidden)return;
+      if(error)throw error;
+      const updated=Array.isArray(data)?data[0]:data;
+      if(!updated||typeof updated!=='object'||Array.isArray(updated)||Object.values(updated).some(n=>!Number.isSafeInteger(n)||n<0))throw new Error('Invalid sidebar counts');
+      failures=0;
       if(requestEpoch!==epoch||stopped||document.hidden)return;
       renderCounts(updated);
-      const countsKey=JSON.stringify(updated);if(countsKey!==lastCountsKey||notifyAfterRead){lastCountsKey=countsKey;document.dispatchEvent(new Event("greenloop:workflow-notifications-refreshed"));}
+      const countsKey=JSON.stringify(updated);if(countsKey!==lastCountsKey||notifyAfterRead){lastCountsKey=countsKey;document.dispatchEvent(new CustomEvent("greenloop:workflow-notifications-refreshed",{detail:{counts:{...updated}}}));}
     } catch (_) {
       // A temporary connection failure must not make pending work disappear.
       failures += 1;
@@ -175,18 +167,22 @@
     }
   }
 
-  function renderCounts(data) {
-    const counts = Array.isArray(data) ? (data[0] || {}) : (data || {});
-    stages.forEach((stage) => {
-      const badge = createBadge(stage);
-      if (!badge || ["initial_qc","qc_issuance"].includes(stage.key) && counts[stage.key] === undefined) return;
-      const count = Math.max(0, Array.isArray(stage.key)
-        ? stage.key.reduce((total, key) => total + Number(counts[key] || 0), 0)
-        : Number(counts[stage.key] || 0));
-      badge.textContent = String(count);
-      badge.hidden = count === 0;
-      badge.title = `${count} ${stage.label} item(s) pending`;
-    });
+  function setBadge(badge,count,title){
+    badge.textContent=String(count);badge.hidden=count===0;badge.title=`${count} ${title}`;badge.setAttribute('aria-label',badge.title);
+  }
+  function renderCounts(counts){
+    for(const stage of stages){
+      const badge=createBadge(stage);if(!badge)continue;
+      if(window.GREENLOOP_CAN?.('view',stage.page)!==true||!Object.hasOwn(counts,stage.key)){badge.hidden=true;badge.textContent='';continue;}
+      setBadge(badge,counts[stage.key],stage.unit);
+    }
+    const card=document.querySelector('[data-accounts-view="verify"]');
+    if(card){
+      let badge=card.querySelector('[data-accounts-pending-badge]');
+      if(!badge){badge=document.createElement('span');badge.className='accounts-pending-badge';badge.dataset.accountsPendingBadge='';badge.hidden=true;card.appendChild(badge);}
+      if(window.GREENLOOP_CAN?.('view','accounts')===true&&Object.hasOwn(counts,'accounts'))setBadge(badge,counts.accounts,'boxes awaiting verification');
+      else{badge.hidden=true;badge.textContent='';}
+    }
   }
 
   function markManualImeiAction(event) {
@@ -229,7 +225,8 @@
     window.addEventListener('storage', (event) => {
       if (event.key === 'greenloop-workflow-commit-v1') {forceDispatch=true;refreshWorkflowNotifications();}
     });
-    window.addEventListener('greenloop:permissions-changed', refreshWorkflowNotifications);
+    window.addEventListener('greenloop:permissions-changed',()=>{epoch++;lastCountsKey='';hideAllBadges();refreshWorkflowNotifications();});
+    window.addEventListener('greenloop:office-locked',()=>{stopped=true;epoch++;disconnect();hideAllBadges();window.clearTimeout(pollTimer);});
     window.addEventListener('online', refreshWorkflowNotifications);
     window.addEventListener('focus', refreshWorkflowNotifications);
     const auth = getClient()?.auth;

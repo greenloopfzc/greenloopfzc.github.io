@@ -52,3 +52,5 @@
  html body.app-page #box-queue-detail table.box-table tr>:is(:first-child,:nth-child(2)){white-space:nowrap!important;overflow-wrap:normal!important}
  html body.app-page #box-queue-detail table.box-table thead{display:table-header-group!important}
 }
+
+.accounts-section-card{position:relative}.accounts-pending-badge{position:absolute;top:12px;right:12px;min-width:24px;height:24px;padding:0 7px;border:2px solid white;border-radius:999px;background:#dc2f25;color:white;font-size:12px;font-weight:800;line-height:20px;text-align:center;white-space:nowrap;box-shadow:0 2px 7px #a0191259}.accounts-pending-badge[hidden]{display:none!important}
