@@ -2,6 +2,7 @@
  'use strict';
  let libraryPromise;
  const clean=v=>String(v??'').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g,'').replace(/[–—‑]/g,'-');
+  const display=v=>clean(root.GREENLOOP_BATCH_TEXT?root.GREENLOOP_BATCH_TEXT(v):v);
  function library(){if(root.PDFLib)return Promise.resolve(root.PDFLib);if(!libraryPromise)libraryPromise=new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='js/vendor/pdf-lib-1.17.1.min.js';s.onload=()=>root.PDFLib?resolve(root.PDFLib):(libraryPromise=null,reject(Error('PDF library unavailable. Retry.')));s.onerror=()=>{libraryPromise=null;s.remove();reject(Error('PDF library could not load. Check the connection and retry.'));};document.head.append(s);});return libraryPromise;}
  async function create(r){
   const F=root.GREENLOOP_STOCK_GRADE_FORMAT;F.validate(r);if(!r.selected||!r.rows.length)throw Error('Select stock with entered IMEIs before creating a PDF.');
@@ -10,11 +11,11 @@
   let logo;try{const res=await fetch('assets/greenloop-fzc-logo.jpg');if(res.ok)logo=await doc.embedJpg(await res.arrayBuffer());}catch(_){}
   const W=595.28,H=841.89,M=28,IW=W-2*M,ink='#243b4b',green='#087651',muted='#536a76',border='#cad8df',pages=[],canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');let ops,y;
   const width=(s,n=9,b=false)=>{try{return(b?bold:regular).widthOfTextAtSize(clean(s),n);}catch(_){ctx.font=(b?'bold ':'')+n+'px Arial';return ctx.measureText(clean(s)).width;}};
-  function wrap(v,max,n=9,b=false){const result=[];for(const paragraph of clean(v).split(/\r?\n/)){let line='';for(const word of paragraph.split(/\s+/).filter(Boolean)){if(line&&width(line+' '+word,n,b)>max){result.push(line);line='';}let part='';for(const ch of word){if(part&&width(part+ch,n,b)>max){if(line){result.push(line);line='';}result.push(part);part='';}part+=ch;}line+=(line?' ':'')+part;}result.push(line);}return result;}
+  function wrap(v,max,n=9,b=false){const result=[];for(const paragraph of display(v).replace(/(BATCH-[A-Za-z0-9_-]+)(-\(\d+\))/g,(all,batch,qty)=>width(all,n,b)>max?batch+'\n'+qty:all).split(/\r?\n/)){let line='';for(const word of paragraph.split(/\s+/).filter(Boolean)){if(line&&width(line+' '+word,n,b)>max){result.push(line);line='';}let part='';for(const ch of word){if(part&&width(part+ch,n,b)>max){if(line){result.push(line);line='';}result.push(part);part='';}part+=ch;}line+=(line?' ':'')+part;}result.push(line);}return result;}
   const text=(v,x,top,n=9,b=false,color=ink)=>ops.push({kind:'text',text:clean(v),x,top,n,b,color});
   const rect=(x,top,w,h,fill)=>ops.push({kind:'rect',x,top,w,h,fill});
   const centered=(v,x,top,w,n=9,b=false,color=ink)=>text(v,x+(w-width(v,n,b))/2,top,n,b,color);
-  const unique=values=>[...new Set(values.filter(Boolean))],suppliers=unique(r.stocks.map(s=>F.supplier(s,r))),batches=unique(r.stocks.map(s=>s.batch_number)),invoices=unique(r.stocks.map(s=>s.invoice_number));
+  const unique=values=>[...new Set(values.filter(Boolean))],suppliers=unique(r.stocks.map(s=>F.supplier(s,r))),batches=unique(r.stocks.map(s=>root.GREENLOOP_BATCH_LABEL(s.batch_number,{batch_number:s.batch_number,receipt_quantity:s.stock_quantity}))),invoices=unique(r.stocks.map(s=>s.invoice_number));
   const fullScope=['Supplier: '+(suppliers.length===1?suppliers[0]:suppliers.length+' suppliers'),'Stock / Batch: '+(batches.length===1?batches[0]:batches.length+' selected batches')+' | Invoice: '+(invoices.length===1?invoices[0]:invoices.length+' invoices')],longScope=fullScope.some(value=>wrap(value,IW,8).length>3);
   function start(){
    ops=[];pages.push(ops);if(logo)ops.push({kind:'logo',x:M,top:H-24,w:166,h:55.38});else text('GREENLOOP FZC',M,H-31,23,true,green);
@@ -41,7 +42,7 @@
   section('Percentage analysis',cols.map(c=>c[1]),r.rows.map(percentage),percentage({...r.totals,model:'TOTAL'}));
   const notes=[...(r.other_grades.length?['Other grades: '+r.other_grades.map(g=>g.grade+': '+F.num(g.qty)).join(' | ')]:[]),'Initial QC GL Grade and required work. Later Lab additions are excluded.','Percentages use entered model Qty; totals use total entered Qty. Glass and Polish can overlap.','Returned phones remain included in their original stock analysis.'];
   for(const note of notes)for(const line of wrap(note,IW,8)){if(y<62)start();text(line,M,y,8,false,muted);y-=12;}
-  if(r.stocks.length>1||longScope){y-=20;section('Selected stock receipts',['Supplier','Stock / Batch','Invoice','Received Qty'],r.stocks.map(s=>[F.supplier(s,r),s.batch_number,s.invoice_number||'Not recorded',F.num(s.stock_quantity)]),null);}
+  if(r.stocks.length>1||longScope){y-=20;section('Selected stock receipts',['Supplier','Stock / Batch','Invoice','Received Qty'],r.stocks.map(s=>[F.supplier(s,r),root.GREENLOOP_BATCH_LABEL(s.batch_number,{batch_number:s.batch_number,receipt_quantity:s.stock_quantity}),s.invoice_number||'Not recorded',F.num(s.stock_quantity)]),null);}
   const rgb=hex=>lib.rgb(...hex.match(/[\da-f]{2}/gi).map(v=>parseInt(v,16)/255));
   for(let i=0;i<pages.length;i++){ops=pages[i];text('GREENLOOP FZC | Initial QC stock analysis',M,35,7,false,muted);const label='Page '+(i+1)+' of '+pages.length;text(label,W-M-width(label,7),24,7,false,muted);const p=doc.addPage([W,H]);let unicode=false;try{for(const op of ops)if(op.kind==='text')(op.b?bold:regular).encodeText(op.text);}catch(_){unicode=true;}
    if(!unicode){for(const op of ops){if(op.kind==='text')p.drawText(op.text,{x:op.x,y:op.top-op.n,size:op.n,font:op.b?bold:regular,color:rgb(op.color)});else if(op.kind==='logo')p.drawImage(logo,{x:op.x,y:op.top-op.h,width:op.w,height:op.h});else p.drawRectangle({x:op.x,y:op.top-op.h,width:op.w,height:op.h,color:rgb(op.fill),borderColor:rgb(border),borderWidth:.45});}}

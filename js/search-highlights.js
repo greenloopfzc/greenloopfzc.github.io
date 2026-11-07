@@ -9,6 +9,7 @@
       mark.replaceWith(...mark.childNodes);
       parent.normalize();
     });
+    window.GREENLOOP_BATCH_DISPLAY?.refresh(root);
     if (!term) return;
     const pattern = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
     const groups = new Map();

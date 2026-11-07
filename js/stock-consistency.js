@@ -8,10 +8,10 @@
  const names=()=>window.GREENLOOP_CAN_VIEW_PARTNER_NAMES===true;
  function clear(){generation++;rows=[];stamp=0;scope='';pending=null;}
  async function ready(){
-  let page=window.GREENLOOP_PAGE_ACCESS?.pageKey;if(page==='supplier_returns'&&!window.GREENLOOP_CAN?.('view',page))page=['supplier_return_approval','supplier_return_handover'].find(p=>window.GREENLOOP_CAN?.('view',p))||page;if(!allowed.has(page)||!window.GREENLOOP_CAN?.('view',page))return rows;
+  let page=window.GREENLOOP_PAGE_ACCESS?.pageKey;if(!allowed.has(page)&&window.GREENLOOP_CAN?.('view','imei_search'))page='imei_search';if(page==='supplier_returns'&&!window.GREENLOOP_CAN?.('view',page))page=['supplier_return_approval','supplier_return_handover'].find(p=>window.GREENLOOP_CAN?.('view',p))||page;if(!allowed.has(page)||!window.GREENLOOP_CAN?.('view',page))return rows;
   const key=page+':'+names();if(scope===key&&Date.now()-stamp<60000)return rows;if(pending&&scope===key)return pending;
   scope=key;const revision=++generation;
-  pending=(async()=>{const{data,error}=await window.GREENLOOP_GET_CLIENT().rpc('get_stock_receipt_catalog_v1',{p_page:page});if(error)throw Error(error.message||'Stock balances unavailable.');if(!Array.isArray(data)||data.some(x=>!x.batch_id||x.received_quantity!==null&&!Number.isSafeInteger(Number(x.received_quantity))||x.balance_quantity!==null&&!Number.isSafeInteger(Number(x.balance_quantity))))throw Error('Stock balances could not be verified.');if(revision===generation){rows=data;stamp=Date.now();}return rows;})().catch(e=>{if(revision===generation){rows=[];stamp=0;}window.dispatchEvent(new CustomEvent('greenloop:stock-unavailable',{detail:{message:e.message}}));return rows;}).finally(()=>{if(revision===generation)pending=null;});
+  pending=(async()=>{const{data,error}=await window.GREENLOOP_GET_CLIENT().rpc('get_stock_receipt_catalog_v1',{p_page:page});if(error)throw Error(error.message||'Stock balances unavailable.');if(!Array.isArray(data)||data.some(x=>!x.batch_id||x.received_quantity!==null&&!Number.isSafeInteger(Number(x.received_quantity))||x.balance_quantity!==null&&!Number.isSafeInteger(Number(x.balance_quantity))))throw Error('Stock balances could not be verified.');if(revision===generation){rows=data;stamp=Date.now();window.GREENLOOP_BATCH_DISPLAY?.refresh();}return rows;})().catch(e=>{if(revision===generation){rows=[];stamp=0;}window.dispatchEvent(new CustomEvent('greenloop:stock-unavailable',{detail:{message:e.message}}));return rows;}).finally(()=>{if(revision===generation)pending=null;});
   return pending;
  }
  function resolve(row){
@@ -42,6 +42,7 @@
  }
  function summaryText(s){return s?`Received stock: ${num(s.received)} | Returned: ${num(s.returned)} | Replacement received: ${num(s.replacement_received)} | Stock balance: ${num(s.balance)}`:'';}
  function enrich(data,context={}){
+  window.GREENLOOP_BATCH_DISPLAY?.remember(data);
   const seen=new WeakSet();function visit(v){if(!v||typeof v!=='object'||seen.has(v))return;seen.add(v);if(Array.isArray(v)){v.forEach(visit);return;}const r=resolve(v);
    if(r){v.receipt_metrics={received:r.received_quantity,returned:r.returned_quantity,replacement_received:r.replacement_quantity,balance:r.balance_quantity,return_pending:r.return_pending};v.receipt_quantity=r.received_quantity;if(v.supplier_code)v.supplier_code=label(r.supplier_code,r.received_quantity,null);}
    for(const[key,value]of Object.entries(v))if(key!=='receipt_metrics')visit(value);

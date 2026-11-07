@@ -1,7 +1,8 @@
 (function(root) {
   'use strict';
   const loads=new Map(),clean=v=>String(v??'').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g,'').replace(/[–—‑]/g,'-');
-  const xml=v=>clean(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
+  const display=v=>clean(root.GREENLOOP_BATCH_TEXT?root.GREENLOOP_BATCH_TEXT(v):v);
+  const xml=v=>display(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
   const date=v=>v?new Date(v).toLocaleString('en-GB',{timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true}):'Not recorded';
   const gb=n=>n==null?'Not recorded':Number(n)>=1024&&Number(n)%1024===0?Number(n)/1024+' TB':n+' GB';
   const receivedDate=v=>v?new Date(v).toLocaleDateString('en-GB',{timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric'}):'Not recorded';
@@ -9,7 +10,7 @@
   const supplier=(row,r)=>root.GREENLOOP_STOCK?root.GREENLOOP_STOCK.label(row.supplier_code,row.received_quantity,names(r)?row.supplier_name:null,'Not recorded'):String(row.supplier_code||'Not recorded').replace(/-\(\d+\)$/,'')+'-('+row.received_quantity+')'+(names(r)&&row.supplier_name?' '+row.supplier_name:'');
   const file=(r,ext)=>'Greenloop-Stock-Replacement-'+(r.selection?.batch_number||'Selected-Stock').replace(/[^A-Za-z0-9_-]+/g,'-').slice(0,65)+'-'+new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Dubai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(r.generated_at))+'.'+ext;
   function verify(r){if(!r||!Array.isArray(r.rows)||!r.summary||new Set(r.rows.map(x=>x.group_id)).size!==r.rows.length||!Number.isFinite(Date.parse(r.generated_at)))throw Error('The complete selected replacement report is required.');}
-  const batches=r=>(r.receipts||[]).map(p=>[p.batch_number,p.invoice_number,p.quantity+' received',...(p.phones||[]).map(x=>[x.imei,x.model,x.gb+' GB',x.color].filter(Boolean).join(' / '))].filter(Boolean).join('\n')).join('\n\n')||'Awaiting replacement';
+  const batches=r=>(r.receipts||[]).map(p=>[root.GREENLOOP_BATCH_LABEL(p.batch_number,{batch_number:p.batch_number,receipt_quantity:p.quantity}),p.invoice_number,p.quantity+' received',...(p.phones||[]).map(x=>[x.imei,x.model,x.gb+' GB',x.color].filter(Boolean).join(' / '))].filter(Boolean).join('\n')).join('\n\n')||'Awaiting replacement';
   function library(name,path){if(root[name])return Promise.resolve(root[name]);if(!loads.has(name))loads.set(name,new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=path;s.onload=()=>{if(root[name])resolve(root[name]);else{loads.delete(name);s.remove();reject(Error('Export library unavailable. Retry.'));}};s.onerror=()=>{loads.delete(name);s.remove();reject(Error('Export library could not load. Check the connection and retry.'));};document.head.append(s);}));return loads.get(name);}
   function scope(r){const f=r.filters||{};return [r.selection_label||'Supplier stock replacements',f.from_date?'From '+f.from_date:'',f.to_date?'To '+f.to_date:'',f.query?'Search: '+f.query:''].filter(Boolean).join(' | ');}
   function summary(r){return (r.receipt_summary&&root.GREENLOOP_STOCK?root.GREENLOOP_STOCK.summaryText(r.receipt_summary)+" | ":"")+`Returns: ${r.rows.length} | Returned phones: ${r.summary.returned} | Replacement received: ${r.summary.received} | Pending: ${r.summary.pending}`;}
@@ -23,7 +24,7 @@
     const W=595.28,H=841.89,M=28,cols=[65,85,93,54,54,54,94.28,40],size=8,line=11.5,ink='#233b40',green='#087651',muted='#536a76',red='#9c332b',border='#cad8df',pages=[];
     const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');let page,y,tableTop;
     const width=(s,n=size,b=false)=>{try{return(b?bold:regular).widthOfTextAtSize(s,n);}catch(_){ctx.font=(b?'bold ':'')+n+'px Arial';return ctx.measureText(s).width;}};
-    function wrap(value,max,n=size,b=false){const out=[];for(const paragraph of clean(value).replace(/\r/g,'').split('\n')){let current='';for(const word of paragraph.split(/\s+/)){if(!word)continue;if(current&&width(current+' '+word,n,b)>max){out.push(current);current='';}let piece='';for(const char of word){if(piece&&width(piece+char,n,b)>max){if(current){out.push(current);current='';}out.push(piece);piece='';}piece+=char;}current+=(current?' ':'')+piece;}out.push(current);}return out.length?out:[''];}
+    function wrap(value,max,n=size,b=false){const out=[];for(const paragraph of display(value).replace(/(BATCH-[A-Za-z0-9_-]+)(-\(\d+\))/g,(all,batch,qty)=>width(all,n,b)>max?batch+'\n'+qty:all).replace(/\r/g,'').split('\n')){let current='';for(const word of paragraph.split(/\s+/)){if(!word)continue;if(current&&width(current+' '+word,n,b)>max){out.push(current);current='';}let piece='';for(const char of word){if(piece&&width(piece+char,n,b)>max){if(current){out.push(current);current='';}out.push(piece);piece='';}piece+=char;}current+=(current?' ':'')+piece;}out.push(current);}return out.length?out:[''];}
     function text(value,x,top,n=size,b=false,color=ink){page.push({kind:'text',text:clean(value),x,top,n,b,color});}
     function rect(x,top,w,h,fill){page.push({kind:'rect',x,top,w,h,fill});}
     function cells(values,{header=false,returned=false,pending=false}={}){const height=Math.max(1,...values.map(v=>v.length))*line+12;let x=M;for(let i=0;i<values.length;i++){rect(x,y,cols[i],height,header?green:returned?'#fff1ee':pending?'#fff9eb':'#ffffff');values[i].forEach((s,j)=>text(s,x+5,y-6-j*line,size,header||i===0,header?'#ffffff':returned?red:ink));x+=cols[i];}y-=height;}
@@ -37,7 +38,7 @@
     }
     function row(values,r){const lines=values.map((v,i)=>wrap(v,cols[i]-10));const n=Math.max(...lines.map(v=>v.length));let at=0;if(n*line+12<=tableTop-54&&n*line+12>y-54)start();while(at<n){let fit=Math.floor((y-54-12)/line);if(fit<1){start();fit=Math.floor((y-54-12)/line);}const take=Math.min(fit,n-at),part=lines.map(v=>v.slice(at,at+take));if(at>0){part[0]=wrap((r.return_reference||'Return')+' (cont.)',cols[0]-10).slice(0,take);}cells(part,{returned:r.returned,pending:r.return_pending&&!r.returned});at+=take;if(at<n)start();}}
     start();
-    r.rows.forEach((p,index)=>row([supplier(p,r),[p.batch_number,p.invoice_number].filter(Boolean).join('\n'),[p.return_reference,date(p.returned_at),p.status,...(p.imeis||[])].join('\n'),String(p.returned_quantity),String(p.replacement_received),String(p.replacement_pending),batches(p),String(index+1)],p));
+    r.rows.forEach((p,index)=>row([supplier(p,r),[root.GREENLOOP_BATCH_LABEL(p.batch_number,p),p.invoice_number].filter(Boolean).join('\n'),[p.return_reference,date(p.returned_at),p.status,...(p.imeis||[])].join('\n'),String(p.returned_quantity),String(p.replacement_received),String(p.replacement_pending),batches(p),String(index+1)],p));
     if(!r.rows.length)row(['No records','','','','','',''],{});
     pages.forEach((ops,i)=>{page=ops;text('Replacement receipts follow the normal IMEI Entry and QC process.',M,36,7,false,muted);const label='Page '+(i+1)+' of '+pages.length;text(label,W-M-width(label,7),23,7,false,muted);});
     const rgb=hex=>lib.rgb(...hex.match(/[\da-f]{2}/gi).map(v=>parseInt(v,16)/255));
@@ -56,7 +57,7 @@
     const str=(ref,value,style=0)=>`<c r="${ref}" t="inlineStr" s="${style}"><is><t xml:space="preserve">${xml(value)}</t></is></c>`;
     const merged=(n,value,style,height)=>`<row r="${n}" ht="${height}" customHeight="1">${str('A'+n,value,style)}</row>`;
     let rows=merged(1,'GREENLOOP FZC',1,30)+merged(2,'Stock Replacement',1,28)+merged(3,scope(r),0,42)+merged(4,'Generated '+date(r.generated_at)+' | UAE (UTC+4)',0,24)+merged(5,summary(r),0,30)+`<row r="7" ht="36" customHeight="1">${headers.map((h,i)=>str(letter(i)+'7',h,2)).join('')}</row>`;
-    r.rows.forEach((p,i)=>{const n=i+8,style=0,values=[supplier(p,r),p.batch_number,p.invoice_number,p.return_reference,date(p.returned_at),p.returned_quantity,p.replacement_received,p.replacement_pending,p.other_settled,(p.imeis||[]).join('\n'),batches(p),String(i+1)];
+    r.rows.forEach((p,i)=>{const n=i+8,style=0,values=[supplier(p,r),root.GREENLOOP_BATCH_LABEL(p.batch_number,p),p.invoice_number,p.return_reference,date(p.returned_at),p.returned_quantity,p.replacement_received,p.replacement_pending,p.other_settled,(p.imeis||[]).join('\n'),batches(p),String(i+1)];
       rows+=`<row r="${n}" ht="${Math.min(409,Math.max(36,batches(p).split('\n').length*14+12))}" customHeight="1">${values.map((v,j)=>typeof v==='number'?`<c r="${letter(j)+n}" s="0"><v>${Number(v)}</v></c>`:str(letter(j)+n,v,style)).join('')}</row>`;});
     rows+=merged(lastRow+2,summary(r),1,30);
     const ns='http://schemas.openxmlformats.org/';

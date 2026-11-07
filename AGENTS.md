@@ -22,6 +22,13 @@ names or to delete, reset, or otherwise change business records.
 
 - Supplier/company identity selectors (especially Create stock entry) show only the base supplier code and permitted company name. Quantity brackets are added only when a specific receipt or newly entered receipt quantity is known; never combine separate receipts in a company label.
 
+## Batch number and original receipt quantity
+
+- Every displayed batch number also shows that exact receipt's original quantity, for example `BATCH-2026-0001-(100)`, on pages, filters/selectors, details, print/PDF and spreadsheet exports.
+- Batch quantity is visible to every allowed viewer; supplier/customer names retain their existing permissions.
+- This is a display label. Keep canonical batch numbers, IDs, option values, search/filter arguments and saved records unchanged.
+- Use the original receipt quantity; show returned, replacement and balance quantities separately. Never use a model subgroup count, combine deliveries or invent an unavailable quantity.
+
 ## Report pagination
 
 - Keep regular report/data tables paginated at 50 records per page, with Previous/Next and visible ranges. Do not automatically fetch or render all matching pages.
