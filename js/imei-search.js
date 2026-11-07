@@ -375,7 +375,11 @@ function buildStageSections(sortedRows) {
       ["Stock/Batch No",field(receipt,"Receipt","Batch")],["Invoice No",field(receipt,"Invoice")],["Stock received",receipt.occurred_at ? moment(receipt.occurred_at) : ""],
       ["Device number",device.device_number]
     ];
-    values.push(["Current location",scalar(device.current_status).toLowerCase()==="returned_to_supplier" ? "Returned to Supplier" : place(device.current_location)]);
+    const stage = currentStage(device);
+    const currentLocation = scalar(device.current_status).toLowerCase() === "returned_to_supplier"
+      ? "Returned to Supplier"
+      : stage.toLowerCase() === "lab & glass issuance" ? stage : place(device.current_location);
+    values.push(["Current location", currentLocation]);
     if(scalar(device.region))values.push(["Phone region",device.region]);
     const cells=values.map(([name,value],index)=>`<th scope="row">${escapeHtml(name)}</th><td${index===values.length-1 && values.length%2 ? ' colspan="3"' : ""}>${safe(value)}</td>`);
     header.innerHTML=`<div class="history-basic-heading"><h2 id="history-device-name">Device details</h2>${badge(currentStage(device))}</div><table class="history-basic-table"><caption class="history-sr-only">Basic phone and supplier details</caption><tbody>${cells.reduce((html,cell,index)=>html+(index%2===0 ? "<tr>" : "")+cell+(index%2===1 || index===cells.length-1 ? "</tr>" : ""),"")}</tbody></table>`;
