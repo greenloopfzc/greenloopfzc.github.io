@@ -121,6 +121,13 @@ begin
   execute body;
   changed:=array_append(changed,target);
 
+  target:='greenloop_private.wfs_qc_prefill(jsonb)'::regprocedure;
+  body:=replace(pg_get_functiondef(target),chr(13)||chr(10),chr(10));
+  body:=pg_temp.bdept_replace(body,'where f.inspection_id=a.inspection_id and f.issue_found)',
+    'where f.inspection_id=a.inspection_id and f.issue_found and (greenloop_private.bdept_return_order(a.job_id) is null or public.is_initial_qc_service(f.check_item)))');
+  execute body;
+  changed:=array_append(changed,target);
+
   target:='greenloop_private.wfs_qc_resave(uuid,jsonb,jsonb,text,text,text,uuid,boolean)'::regprocedure;
   body:=replace(pg_get_functiondef(target),chr(13)||chr(10),chr(10));
   body:=pg_temp.bdept_replace(body,'order by reopened_at desc for update limit 1','order by (resaved_at is null) desc,reopened_at desc,request_id for update limit 1');
@@ -241,7 +248,7 @@ begin
     'greenloop_private.bdept_return_order(uuid)'::regprocedure,'greenloop_private.bdept_return_to_qc(uuid,text,integer,boolean,text)'::regprocedure]) f;
 end;$patch$;
 create or replace function public.get_b_dept_qc_return_version() returns text language sql stable security definer set search_path=pg_catalog,public as $$
- select case when (select count(*)=8 and bool_and(coalesce(md5(pg_get_functiondef(to_regprocedure(identity)))=hash,false)) from greenloop_private.bdept_qc_return_installation)
+ select case when (select count(*)=9 and bool_and(coalesce(md5(pg_get_functiondef(to_regprocedure(identity)))=hash,false)) from greenloop_private.bdept_qc_return_installation)
  and not exists(select 1 from greenloop_private.bdept_qc_return_installation where has_function_privilege('anon',to_regprocedure(identity),'execute') or has_function_privilege('authenticated',to_regprocedure(identity),'execute'))
  and not has_table_privilege('authenticated','greenloop_private.bdept_qc_returns','SELECT,INSERT,UPDATE,DELETE,TRUNCATE') then '20261107-bdept-qc-return-1' end
 $$;
@@ -253,4 +260,3 @@ end$$;
 notify pgrst,'reload schema';
 commit;
 select public.get_b_dept_qc_return_version() as installed_b_dept_qc_return_version;
-
