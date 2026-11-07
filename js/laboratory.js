@@ -121,10 +121,10 @@
     frameScan=window.GREENLOOP_B_DEPT_SCAN.mount({host:framePendingPanel,getRows:()=>technicianRows,reload:()=>loadFrameRows(true),render:renderFrameLines,start:()=>workFilters.clear(),allowed:()=>editable()&&window.GREENLOOP_CAN?.('entry','frame_department')===true});
     linesKicker.hidden = true;
     technicianLinesTitle.textContent = "Pending work";
-    technicianLinesHelp.textContent = "After Pass, choose Ready Stock, Lab & Glass or Final QC. Lab requires a technician; saved parts and services are preserved. Ready Stock requires Final Grade. Initial BH stays in history.";
+    technicianLinesHelp.textContent = "Choose a destination after Pass. Selections carry to the visible rows below. Save each phone to transfer it.";
     refreshFrameButton.hidden = false;
     linesHead.innerHTML = "<th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>Initial BH</th><th>Final BH</th><th>Supplier code</th><th>Supplier grade</th><th>Initial grade</th><th>Final grade</th><th>Pass</th><th>Fail</th><th>Destination / Save</th>";
-    document.querySelector("#workflow-rule-text").textContent = "B-DEPT Pass can send the phone to Ready Stock with Final Grade, Lab & Glass with a technician, or directly to Final QC. Saved requirements are preserved. Fail keeps the phone in B-DEPT and records the failure.";
+    document.querySelector("#workflow-rule-text").textContent = "Ready Stock needs a Final Grade. Lab & Glass needs a technician. Choose Initial QC for reinspection or Lab & Glass Issuance to reassign the saved inspection. Fail keeps the phone in B-DEPT.";
   }
 
   function showFrameView(view, moveFocus = false) {
@@ -317,11 +317,38 @@
     if(!Array.isArray(data?.technicians)||!Array.isArray(data?.defaults)||!Array.isArray(data?.parts)||!Array.isArray(data?.services))throw Error('Lab technician choices could not be verified. Refresh B-DEPT.');
     frameLabTechnicians=data.technicians;frameLabDefaults=new Map(data.defaults.map(x=>[String(x.step_id),String(x.technician_id)]));
   }
+  const frameDestinationNames = {
+    ready_stock: 'Ready Stock', lab_glass: 'Lab & Glass', final_qc: 'Final QC',
+    initial_qc: 'Initial QC', issuance: 'Lab & Glass Issuance'
+  };
+
+  function carryFrameSelection(control) {
+    if (!editable() || !window.GREENLOOP_CAN?.('entry', 'frame_department') || control.disabled) return;
+    const source = control.closest('tr[data-step-id]');
+    if (!source) return;
+    const result = control.dataset.frameResult;
+    const selector = ['[data-frame-result]', '[data-frame-final-grade]', '[data-frame-destination]', '[data-frame-lab-technician]'].find(key => control.matches(key));
+    for (let row = source; row; row = row.nextElementSibling) {
+      if (!row.dataset.stepId || row.dataset.busy === 'yes' || row.dataset.saved === 'yes' ||
+          row.hidden || row.style.display === 'none') continue;
+      if (result) {
+        for (const box of row.querySelectorAll(selector)) {
+          if (box.dataset.frameResult === result) box.checked = control.checked;
+          else if (control.checked) box.checked = false;
+        }
+      } else {
+        const field = row.querySelector(selector);
+        if (field && (selector !== '[data-frame-lab-technician]' || !field.disabled)) field.value = control.value;
+      }
+      if (selector !== '[data-frame-final-grade]') updateFrameRoute(row);
+    }
+  }
+
   function updateFrameRoute(row) {
     const result=row.querySelector('[data-frame-result]:checked')?.dataset.frameResult||'',route=row.querySelector('[data-frame-destination]'),lab=result==='pass'&&route.value==='lab_glass';
     route.disabled=result!=='pass'||!editable();row.querySelector('[data-frame-lab-wrap]').hidden=!lab;row.querySelector('[data-frame-lab-technician]').disabled=!lab||!editable();
     row.querySelector('[data-frame-final-grade]').disabled=route.value!=='ready_stock'||!editable();row.querySelector('[data-complete-frame]').disabled=!result||!editable();
-    row.querySelector('.line-status').textContent=result==='pass'?(lab?'Choose technician, then transfer to Lab & Glass':route.value==='final_qc'?'Transfer directly to Final QC':'Select Final Grade, then move to Ready Stock'):result==='fail'?'Will stay in B-DEPT':'Select Pass or Fail';
+    row.querySelector('.line-status').textContent=result==='pass'?(lab?'Choose technician, then transfer to Lab & Glass':route.value==='ready_stock'?'Select Final Grade, then move to Ready Stock':'Transfer to '+frameDestinationNames[route.value]):result==='fail'?'Will stay in B-DEPT':'Select Pass or Fail';
   }
   for(const event of ['greenloop:office-locked','greenloop:signed-out'])window.addEventListener(event,()=>frameDrafts.clear());
   function captureFrameDrafts(){
@@ -364,7 +391,7 @@
         <td><select class="frame-final-grade" data-frame-final-grade aria-label="Final Grade">${frameGradeMarkup()}</select></td>
         <td><label class="frame-pass-check"><input type="checkbox" data-frame-result="pass"><span>Pass</span></label></td>
         <td><label class="frame-fail-check"><input type="checkbox" data-frame-result="fail"><span>Fail</span></label></td>
-        <td class="b-dept-route-cell"><label class="b-dept-route">After Pass<select data-frame-destination aria-label="Pass destination" data-capability="entry" data-capability-page="frame_department" disabled><option value="ready_stock">Ready Stock</option><option value="lab_glass">Lab &amp; Glass</option><option value="final_qc">Final QC</option></select></label><label class="b-dept-route" data-frame-lab-wrap hidden>Lab technician<select data-frame-lab-technician aria-label="Lab technician" data-capability="entry" data-capability-page="frame_department" disabled>${frameLabMarkup(frameLabDefaults.get(String(row.step_id)))}</select></label><button class="line-save frame-ready" type="button" data-complete-frame="${escapeHtml(row.step_id)}" disabled>Save</button><small class="line-status">Select Pass or Fail</small></td>
+        <td class="b-dept-route-cell"><label class="b-dept-route">After Pass<select data-frame-destination aria-label="Pass destination" data-capability="entry" data-capability-page="frame_department" disabled><option value="ready_stock">Ready Stock</option><option value="lab_glass">Lab &amp; Glass</option><option value="final_qc">Final QC</option><option value="initial_qc">Initial QC</option><option value="issuance">Lab &amp; Glass Issuance</option></select></label><label class="b-dept-route" data-frame-lab-wrap hidden>Lab technician<select data-frame-lab-technician aria-label="Lab technician" data-capability="entry" data-capability-page="frame_department" disabled>${frameLabMarkup(frameLabDefaults.get(String(row.step_id)))}</select></label><button class="line-save frame-ready" type="button" data-complete-frame="${escapeHtml(row.step_id)}" disabled>Save</button><small class="line-status">Select Pass or Fail</small></td>
       </tr>`;
     }).join("");
     restoreFrameDrafts();
@@ -681,8 +708,9 @@
     if (error) { setBoardMessage(error.message); return; }
     row.dataset.saved = "yes";
     frameDrafts.delete(String(button.dataset.completeFrame));
-    if(result==='pass')frameScan?.complete(row.querySelector('.line-imei').textContent.trim(),destination==='lab_glass'?'Passed — transferred to Lab & Glass.':destination==='final_qc'?'Passed — transferred to Final QC.':'Passed — transferred to Ready Stock.');
-    showToast(result === "pass" ? (destination === "lab_glass" ? "B-DEPT passed. Phone transferred to the selected Lab technician." : destination === "final_qc" ? "B-DEPT passed. Phone sent directly to Final QC." : `B-DEPT passed with grade ${finalGrade}. Phone sent directly to Ready Stock.`) : "B-DEPT failed. Phone remains in B-DEPT and the failure was recorded.");
+    const destinationName = frameDestinationNames[destination];
+    if (result === 'pass') frameScan?.complete(row.querySelector('.line-imei').textContent.trim(), 'Passed — transferred to ' + destinationName + '.');
+    showToast(result === 'pass' ? 'B-DEPT passed. Phone sent to ' + destinationName + '.' : 'B-DEPT failed. Phone remains in B-DEPT.');
     document.dispatchEvent(new CustomEvent("greenloop:notifications-changed"));
     await refreshAll();
   }
@@ -801,21 +829,16 @@
       markLineChanged(row);
       return;
     }
-    if(event.target.matches('[data-frame-destination]')){updateFrameRoute(event.target.closest('tr'));return;}
+    if (event.target.matches('[data-frame-destination], [data-frame-final-grade], [data-frame-result], [data-frame-lab-technician]')) {
+      carryFrameSelection(event.target);
+      return;
+    }
     if (event.target.matches('[data-b-dept-unavailable]')) {
       const input = event.target.closest('tr').querySelector('[data-b-dept-bh]');
       input.disabled = event.target.checked; if (event.target.checked) input.value = "";
       return;
     }
-    const checkbox = event.target.closest("[data-frame-result]");
-    if (!checkbox) return;
-    const row = checkbox.closest("tr");
-    if (checkbox.checked) row.querySelectorAll("[data-frame-result]").forEach((other) => { if (other !== checkbox) other.checked = false; });
-    const button = row.querySelector("[data-complete-frame]");
-    const status = row.querySelector(".line-status");
-    const result = row.querySelector("[data-frame-result]:checked")?.dataset.frameResult || "";
-    button.disabled = !result;
-    updateFrameRoute(row);
+
   });
   document.querySelector('#open-lab-bulk')?.addEventListener('click',event=>{
     if([...lineDrafts.values()].some(d=>d.partsDirty||d.servicesDirty)||technicianWorkRows.querySelector('tr[data-busy="yes"]')){
