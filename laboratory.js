@@ -118,7 +118,7 @@
     frameReportPanel.setAttribute('role', 'tabpanel');
     frameReportPanel.setAttribute('aria-labelledby', 'frame-history-tab');
     showFrameView('pending');
-    frameScan=window.GREENLOOP_B_DEPT_SCAN.mount({host:framePendingPanel,getRows:()=>technicianRows,reload:()=>loadFrameRows(true),render:renderFrameLines,start:()=>workFilters.clear(),allowed:()=>editable()&&window.GREENLOOP_CAN?.('entry','frame_department')===true});
+    frameScan=window.GREENLOOP_B_DEPT_SCAN.mount({host:framePendingPanel,getRows:()=>technicianRows,reload:()=>loadFrameRows(true),render:renderFrameLines,start:()=>workFilters.clear(),resetDrafts:()=>{frameDrafts.clear();technicianWorkRows.replaceChildren();},allowed:()=>editable()&&window.GREENLOOP_CAN?.('entry','frame_department')===true});
     linesKicker.hidden = true;
     technicianLinesTitle.textContent = "Pending work";
     technicianLinesHelp.textContent = "Choose a destination after Pass. Selections carry to the visible rows below. Save each phone to transfer it.";

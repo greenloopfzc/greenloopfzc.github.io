@@ -2,7 +2,7 @@
 (() => {
  'use strict';
  const valid=v=>/^\d{15}$/.test(v),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- function mount({host,getRows,reload,render,start,allowed}){
+ function mount({host,getRows,reload,render,start,allowed,resetDrafts}){
   const panel=document.createElement('section');panel.className='b-dept-scan';panel.setAttribute('aria-label','Scan B-DEPT phones');
   panel.innerHTML='<div class="b-dept-scan-field"><label for="b-dept-scan-imei">Scan / paste IMEIs</label><input id="b-dept-scan-imei" type="text" inputmode="numeric" autocomplete="off" maxlength="15" data-b-dept-scan data-imei-scan data-capability="entry" data-capability-page="frame_department" placeholder="Scan a phone or paste an Excel IMEI column"><small>Each scan adds a new line. The scanner stays ready for the next phone.</small></div><div class="b-dept-scan-actions"><button type="button" class="secondary-button" data-frame-show-all data-capability="view" data-capability-page="frame_department" data-search-read-only>Auto Pick</button><button type="button" class="secondary-button" data-frame-clear-tray data-capability="view" data-capability-page="frame_department" data-search-read-only>Clear Tray</button><span data-frame-scan-count role="status" aria-live="polite"></span></div>';
   host.querySelector('#lab-work-filters').before(panel);
@@ -59,6 +59,7 @@
    if(window.GREENLOOP_CAN?.('view','frame_department')!==true||host.querySelector('tr[data-busy="yes"]'))return;
    const revision=++ticket;
    selected=!showPending;entries=[];invalidValues=[];input.value='';
+   resetDrafts?.();
    await start();
    if(revision!==ticket||stopped)return;
    changed();
