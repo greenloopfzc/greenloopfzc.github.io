@@ -374,7 +374,7 @@
       return;
     }
     technicianWorkRows.innerHTML = visible.map((row) => {
-      if(row.scan_issue)return frameScan.issueMarkup(row);
+      if(row.scan_issue||row.scan_empty)return frameScan.issueMarkup(row);
       const supplier = typeof window.GREENLOOP_SUPPLIER_RECEIPT_LABEL === "function"
         ? GREENLOOP_RECEIPTS.label(isFrameMode?"frame_department":"lab_glass",row.imei,row.supplier_code,row.planned_quantity,row.supplier_name,"—")
         : (row.supplier_code || "—");
