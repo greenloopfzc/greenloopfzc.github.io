@@ -336,7 +336,7 @@
       card.querySelectorAll('[data-report-permission]').forEach(group=>{
         const check=group.querySelector(`[data-access-capability="${group.dataset.reportView}"]`),on=view.checked&&check.checked;
         group.classList.toggle('is-selected',on);
-        group.querySelectorAll('.report-permission-actions [data-access-capability]').forEach(field=>{if(checkbox===check&&!on)field.checked=false;field.disabled=!on;});
+        group.querySelectorAll('.report-permission-actions [data-access-capability]').forEach(field=>{field.disabled=pageLocked||!on;});
       });
     }
     if (card.dataset.pagePermission === "damage_report") {
@@ -397,6 +397,8 @@
       : String(users[0]?.user_id || "");
     renderUsers();
     renderEditor();
+    setMessage(permissionMessage);
+    permissionMessage.hidden = true;
   }
 
   async function readFunctionError(error) {
