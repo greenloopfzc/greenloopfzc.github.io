@@ -178,6 +178,9 @@
     const label = row.querySelector("[data-battery-unavailable-label]");
     const checkbox = row.querySelector("[data-battery-unavailable]");
     const input = row.querySelector("[data-final-battery]");
+    const issued = rowSteps.get(row.dataset.rowId)?.batteryDefault?.diagnostic_battery_installed === true;
+    input.readOnly = issued;
+    if (issued) { checkbox.checked = false; input.value = "100"; }
     label.hidden = !android;
     if (!android) checkbox.checked = false;
     input.disabled = android && checkbox.checked;
@@ -397,6 +400,13 @@
     const { error: receivedError } = await getClient().rpc("receive_final_qc_phone", { p_final_qc_step_id: step.id });
     if (!isCurrent()) return;
     if (receivedError) throw receivedError;
+    if (!options.bulk && !options.queueRefreshed) {
+      const {data:values,error}=await getClient().rpc('get_final_qc_battery_defaults_v1',{p_step_ids:[step.id]});
+      if (!isCurrent()) return;
+      if (error) throw error;
+      const checked=verifiedBatteryDefaults([step.id],values);
+      step={...step,batteryDefault:checked.get(step.id)};
+    }
     const job = getJob(step) || {};
     const device = getDevice(step) || {};
     const supplier = getSupplier(job) || {};
@@ -409,7 +419,7 @@
     const batteryDefault = step.batteryDefault;
     if (!batteryDefault) throw new Error("Refresh the Final QC queue to verify Battery Health.");
     row.querySelector("[data-final-battery]").value = batteryDefault.final_battery_health === null ? "" : String(batteryDefault.final_battery_health);
-    row.querySelector("[data-final-battery]").title = batteryDefault.diagnostic_battery_installed ? "Diagnostic Battery installed — automatic 100%" : "Final Battery Health";
+    row.querySelector("[data-final-battery]").title = batteryDefault.diagnostic_battery_installed ? "Diagnostic Battery issued — automatic 100%" : "Final Battery Health";
     row.querySelector("[data-battery-unavailable]").checked = device.device_platform === "android" && batteryDefault.battery_health_unavailable;
     syncBatteryAvailability(row);
     row.querySelector('[data-auto="supplier"]').textContent = supplierLabel(supplier, job.receiving_batch);
@@ -421,6 +431,17 @@
     } catch (error) {
       if (isCurrent()) { rowSteps.delete(row.dataset.rowId); setRowState(row, error.message || "Could not load IMEI", "is-error"); }
     } finally { if (isCurrent()) row.dataset.loading = ""; }
+  }
+
+  function verifiedBatteryDefaults(ids,values) {
+    if (!Array.isArray(values)) throw new Error('Final Battery Health defaults could not be verified. Refresh and try again.');
+    const defaults=new Map();
+      for (const value of values) {
+        if (!ids.includes(value.step_id) || defaults.has(value.step_id) || typeof value.diagnostic_battery_installed !== "boolean" || typeof value.battery_health_unavailable !== "boolean" || !(value.final_battery_health === null || Number.isInteger(value.final_battery_health) && value.final_battery_health >= 0 && value.final_battery_health <= 100) || value.diagnostic_battery_installed && (value.final_battery_health !== 100 || value.battery_health_unavailable)) throw new Error("Final Battery Health defaults could not be verified. Refresh and try again.");
+        defaults.set(value.step_id, value);
+      }
+      if (!ids.every(id => defaults.has(id))) throw new Error("The Final QC queue changed. Refresh and try again.");
+    return defaults;
   }
 
   async function loadQueue() {
@@ -444,11 +465,7 @@
       if(defaultsError)throw defaultsError;if(!Array.isArray(values))throw new Error('Final Battery Health defaults could not be verified. Refresh and try again.');
       if(contextError)throw contextError;if(!Array.isArray(contexts))throw new Error('Return technician assignments could not be verified. Refresh Final QC.');
       for(const step of nextSteps.slice(offset,offset+500))step.failureReturnContext=contexts.find(c=>c.step_id===step.id)||null;
-      for (const value of values) {
-        if (!ids.includes(value.step_id) || defaults.has(value.step_id) || typeof value.diagnostic_battery_installed !== "boolean" || typeof value.battery_health_unavailable !== "boolean" || !(value.final_battery_health === null || Number.isInteger(value.final_battery_health) && value.final_battery_health >= 0 && value.final_battery_health <= 100) || value.diagnostic_battery_installed && (value.final_battery_health !== 100 || value.battery_health_unavailable)) throw new Error("Final Battery Health defaults could not be verified. Refresh and try again.");
-        defaults.set(value.step_id, value);
-      }
-      if (!ids.every(id => defaults.has(id))) throw new Error("The Final QC queue changed. Refresh and try again.");
+      for(const [id,value]of verifiedBatteryDefaults(ids,values))defaults.set(id,value);
     }
     nextSteps.forEach(step => { step.batteryDefault = defaults.get(step.id); });
     queueSteps = nextSteps;
@@ -489,7 +506,7 @@
         await Promise.all(pending.slice(start, end).map((item, offset) => {
           const row = rows[start + offset];
           row.querySelector(".final-row-imei").value = item.imei;
-          return loadScannedRow(row);
+          return loadScannedRow(row,{queueRefreshed:true});
         }));
         autoPickButton.textContent = `Loading ${end}/${pending.length}`;
       }
