@@ -93,7 +93,7 @@
  }
  function clear(){hints.clear();catalogue=null;index.clear();pattern=null;}
  window.GREENLOOP_BATCH_LABEL=batchLabel;window.GREENLOOP_BATCH_TEXT=text;
- window.GREENLOOP_BATCH_DISPLAY={refresh,remember,clear,readArgs};
+ window.GREENLOOP_BATCH_DISPLAY={refresh,remember,clear,readArgs,rawText};
  window.addEventListener('beforeprint',()=>refresh());
  for(const event of ['greenloop:office-locked','greenloop:signed-out','greenloop:permissions-changed'])window.addEventListener(event,clear);
  if(document.body)start();else document.addEventListener('DOMContentLoaded',start,{once:true});

@@ -125,7 +125,8 @@
       const r = get(row);
       if (applied._search) {
         const values = (latestOptions.searchFields || fields.map(f=>f[0])).map(key=>fieldValue(r,key));
-        if (!(window.GREENLOOP_BULK_IMEI?window.GREENLOOP_BULK_IMEI.matches(normalized(values.join(' ')),normalized(applied._search)):normalized(values.join(' ')).includes(normalized(applied._search)))) return false;
+        const term=window.GREENLOOP_BATCH_DISPLAY?.rawText(applied._search)??applied._search;
+        if (!(window.GREENLOOP_BULK_IMEI?window.GREENLOOP_BULK_IMEI.matches(normalized(values.join(' ')),normalized(term)):normalized(values.join(' ')).includes(normalized(term)))) return false;
       }
       const d = day(fieldValue(r, latestOptions.dateKey));
       if (applied._from && (!d || d < applied._from)) return false;
@@ -163,7 +164,7 @@
     const api = {
       bar, controls, panel, toolbar, actions, refreshLayout, adopt,
       externalFilters(items) { external = items || []; refreshLayout(); },
-      query: () => ({...applied}),
+      query: () => window.GREENLOOP_BATCH_DISPLAY?.readArgs({p_filters:applied}).p_filters || ({...applied}),
       sortArgs: () => sorting.args(),
       sortRows: rows => sorting.sort(rows),
       setSortFields: fields => { latestOptions = {...latestOptions,sortFields:fields}; sorting.refresh(latestOptions); },
