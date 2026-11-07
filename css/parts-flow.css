@@ -22,3 +22,12 @@ html[data-mode="dark"] .pf-app [data-pf-tone="complete"],html[data-mode="dark"] 
 .pp-card{position:relative;padding-right:64px}.pp-card .pp-pending-badge{position:absolute;top:14px;right:14px;display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 6px;box-sizing:border-box;border:2px solid #fff;border-radius:999px;background:#dc2f25!important;color:#fff!important;box-shadow:0 2px 7px #a0191259;font-size:12px;font-weight:800;line-height:1;white-space:nowrap}.pp-pending-badge[data-count-state=stale]{opacity:.8}
 
 .pf-table .pf-supplier-code{font-weight:800;white-space:nowrap}.pf-supplier-detail strong{color:var(--nm-ink,#24343b);font-weight:800}
+
+/* Parts Ordered keeps current work apart from issued and completed history. */
+.pf-order-tabs{display:flex;flex-wrap:wrap;gap:12px;margin:18px 0 10px}
+.pf-order-tabs button{display:inline-flex;align-items:center;justify-content:center;gap:14px;min-height:46px;padding:10px 18px;border:1px solid var(--nm-line,#cad8e0);border-radius:13px;background:var(--nm-card,#f4f8fb);color:var(--nm-ink,#24343b);box-shadow:var(--nm-shadow,4px 4px 9px #17384425,-3px -3px 8px #ffffffbf);font:inherit;font-weight:700;cursor:pointer}
+.pf-order-tabs strong{min-width:28px;padding:3px 7px;border-radius:8px;background:var(--nm-well,#e5edf2);font-variant-numeric:tabular-nums}
+.pf-order-tabs button[aria-pressed=true]{border-color:var(--nm-green,#087651);background:var(--nm-green-bg,#dfefe6);color:var(--nm-green,#075c42)}
+.pf-order-tabs button:focus-visible{outline:2px solid var(--nm-green,#087651);outline-offset:3px}
+.pf-order-note{font-size:12px;color:var(--nm-muted,#546b77);margin:0 0 16px}
+@media(max-width:600px){.pf-order-tabs{gap:8px}.pf-order-tabs button{flex:1;padding:9px;gap:7px;font-size:12px}}
