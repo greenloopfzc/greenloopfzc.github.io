@@ -37,7 +37,7 @@
   <script defer src="js/record-search.js?v=20261105-stock-consistency-1"></script>
     <script defer src="js/part-notifications.js?v=20261105-qc-notification-counts-1"></script>
   <script defer src="js/lab-delay.js?v=20261024-lab-delay-1"></script>
-  <script defer src="js/dashboard.js?v=20261105-report-pages-50-1"></script>
+  <script defer src="js/dashboard.js?v=20261107-dashboard-no-priority-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
     <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
   <link rel="stylesheet" href="css/sidebar-compact.css?v=20261009-sidebar-pdf-1">
@@ -119,12 +119,6 @@
       <main class="app-main">
         <header class="topbar">
           <button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button>
-          <div class="search-box">
-            <label class="sr-only" for="dashboard-search">Search by IMEI, job, shipment, or RMA</label>
-            <span aria-hidden="true">⌕</span>
-            <input id="dashboard-search" type="search" placeholder="Search IMEI, job, shipment, or RMA">
-            <kbd>⌘ K</kbd>
-          </div>
           <div class="topbar-actions">
             <span class="live-chip">Live database</span>
 
@@ -187,26 +181,7 @@
             </article>
           </section>
 
-          <section class="dashboard-grid secondary-grid">
-            <article class="panel priority-panel">
-              <div class="panel-heading">
-                <div>
-                  <p class="panel-kicker">Action needed</p>
-                  <h2>Priority queue</h2>
-                </div>
-                <button class="panel-link module-link" type="button" data-module="Priority queue">View all <span aria-hidden="true">→</span></button>
-              </div>
-              <div class="priority-table-wrap">
-                <table class="priority-table">
-                  <thead><tr><th>Job</th><th>Current task</th><th>Age</th><th>Status</th></tr></thead>
-                  <tbody>
-                    <tr><td colspan="4">Loading active devices...</td></tr>
-                  </tbody>
-                </table>
-                <p id="search-empty" class="search-empty" hidden>No active job matches that search.</p>
-              </div>
-            </article>
-
+          <section class="dashboard-grid">
             <article class="panel stock-panel">
               <div class="panel-heading">
                 <div>

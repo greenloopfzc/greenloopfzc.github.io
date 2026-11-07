@@ -5,8 +5,6 @@
   const backdrop = document.querySelector("#menu-backdrop");
   const openMenuButton = document.querySelector("#open-menu");
   const closeMenuButton = document.querySelector("#close-menu");
-  const searchInput = document.querySelector("#dashboard-search");
-  const searchEmpty = document.querySelector("#search-empty");
   const toast = document.querySelector("#toast");
   const dashboardTitle = document.querySelector("#dashboard-title");
   const liveHeadlines = document.querySelector(".live-headlines");
@@ -14,9 +12,7 @@
   const config = window.GREENLOOP_CONFIG || {};
   let client;
   let toastTimer;
-  let priorityRows = [];
   let liveHeadlinesSignature = "";
-  let priorityOffset=0,priorityKey="",priorityPager;
 
   document.querySelector("#dashboard-date").textContent = new Intl.DateTimeFormat("en-US", {
     weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "Asia/Dubai"
@@ -188,48 +184,6 @@
     document.querySelector(".throughput-summary").innerHTML = `<strong>${displayedTotal}</strong><span>phones passed Final QC in the last 7 days</span><em>${counts.get(today) || 0} passed today</em>`;
   }
 
-  function renderPriority(rowsToRender) {
-    priorityRows=rowsToRender;
-    const query=searchInput.value.trim().toLowerCase();
-    const body = document.querySelector(".priority-table tbody");
-    const matching=window.GREENLOOP_FILTERS.use('dashboard-queue-filters',rowsToRender,{
-      before:body.closest('table'),search:false,fields:[['status','Stage'],['model','Model']],onChange:()=>renderPriority(rowsToRender)
-    }).filter(row=>[row.job_number,row.imei,row.model,row.status].join(' ').toLowerCase().includes(query));
-    const searchField = searchInput.closest('.dashboard-local-search');
-    const filterToolbar = document.querySelector('#dashboard-queue-filters .table-filter-toolbar');
-    if (searchField && filterToolbar && searchField.parentElement !== filterToolbar) filterToolbar.prepend(searchField);
-    const key=JSON.stringify(matching.map(row=>row.id||row.job_id||row.imei||row.job_number));
-    if(key!==priorityKey){priorityOffset=0;priorityKey=key;}
-    if(priorityOffset>=matching.length)priorityOffset=Math.max(0,Math.floor(Math.max(0,matching.length-1)/50)*50);
-    if(!priorityPager){
-      priorityPager=document.createElement('nav');priorityPager.id='dashboard-queue-pages';priorityPager.className='table-filter-pagination';priorityPager.setAttribute('aria-label','Work queue pages');
-      priorityPager.innerHTML='<button type="button" class="secondary-button" data-priority-prev data-capability="view" data-capability-page="overview" data-search-read-only>Previous</button><button type="button" class="secondary-button" data-priority-next data-capability="view" data-capability-page="overview" data-search-read-only>Next</button><span role="status" data-priority-count></span>';
-      body.closest('table').after(priorityPager);
-    }
-    const previous=priorityPager.querySelector('[data-priority-prev]'),next=priorityPager.querySelector('[data-priority-next]');
-    previous.disabled=priorityOffset===0;next.disabled=priorityOffset+50>=matching.length;
-    previous.onclick=()=>{if(priorityOffset>=50){priorityOffset-=50;renderPriority(rowsToRender);}};
-    next.onclick=()=>{if(priorityOffset+50<matching.length){priorityOffset+=50;renderPriority(rowsToRender);}};
-    priorityPager.querySelector('[data-priority-count]').textContent=matching.length?`${priorityOffset+1}–${Math.min(priorityOffset+50,matching.length)} of ${matching.length}`:'0 records';
-    body.innerHTML = matching.length ? matching.slice(priorityOffset,priorityOffset+50).map((row) => {
-      const age = Number(row.days_open) || 0;
-      const status = titleCase(row.status);
-      const style = row.status?.includes("in_progress") ? "info" : "warning";
-      return `<tr data-search="${escapeHtml([row.job_number, row.imei, row.model, row.status].join(" ").toLowerCase())}">
-        <td><strong>${escapeHtml(row.job_number || "-")}</strong><small>${escapeHtml(row.imei || "-")}</small></td>
-        <td>${escapeHtml(status)}</td><td>${age} day${age === 1 ? "" : "s"}</td><td><span class="status-chip ${style}">${escapeHtml(status)}</span></td>
-      </tr>`;
-    }).join("") : '<tr><td colspan="4">No active devices need attention.</td></tr>';
-    searchEmpty.hidden=matching.length!==0||!query;
-    window.GREENLOOP_HIGHLIGHTS?.show(body,query);
-    document.querySelector("#dashboard-queue-filters .table-filter-status").textContent=`${matching.length} matching records`;
-  }
-
-  function isReadyStockStatus(status) {
-    return ["qc_passed", "production_pending", "production_completed", "ready_for_packing", "ready_for_shipment"]
-      .includes(String(status || "").trim().toLowerCase().replaceAll(" ", "_"));
-  }
-
   function renderParts(inventory) {
     const list = document.querySelector(".stock-list");
     const lowStock = inventory.filter((row) => row.low_stock).slice(0, 4);
@@ -256,10 +210,6 @@
     document.querySelector(".activity-list").innerHTML = items.length ? items.map((item) => `
       <li><i class="activity-dot ${item.style}"></i><span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.text)}</small></span><time>${escapeHtml(new Date(item.time).toLocaleTimeString([], { timeZone: "Asia/Dubai", hour: "2-digit", minute: "2-digit", hour12: true }))}</time></li>
     `).join("") : '<li><span><strong>No recent live activity.</strong><small>New receipts and workflow actions will appear here.</small></span></li>';
-  }
-
-  function filterRows() {
-    renderPriority(priorityRows);
   }
 
   async function loadLiveDashboard() {
@@ -294,7 +244,6 @@
     await refreshLiveHeadlines();
     renderQueues(summary, readyTotal);
     renderThroughput(reportData.final_qc || [], days);
-    renderPriority((reportData.work_in_progress || []).filter((row) => !isReadyStockStatus(row.status)));
     renderParts(reportData.parts_inventory || []);
     renderLiveStatus(summary, readyTotal, reportData);
     renderActivity(reportData);
@@ -303,21 +252,14 @@
   function showDashboardUnavailable(error) {
     const text = "Live data could not be loaded. Refresh the page to try again.";
     document.querySelectorAll(".workflow-metric-grid, .queue-list, .queue-insight p, .bar-chart, .throughput-summary, .location-grid").forEach((element) => { element.textContent = text; });
-    document.querySelector(".priority-table tbody").innerHTML = `<tr><td colspan="4">${text}</td></tr>`;
     document.querySelectorAll(".stock-list, .activity-list").forEach((element) => { element.innerHTML = `<li>${text}</li>`; });
-    priorityRows = [];
     showToast(error?.message || text);
   }
 
   openMenuButton.addEventListener("click", () => setMenu(true));
   closeMenuButton.addEventListener("click", () => setMenu(false));
   backdrop.addEventListener("click", () => setMenu(false));
-  searchInput.addEventListener("input", filterRows);
-  searchInput.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") { searchInput.value = ""; filterRows(); searchInput.blur(); }
-  });
   document.addEventListener("keydown", (event) => {
-    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") { event.preventDefault(); searchInput.focus(); }
     if (event.key === "Escape") setMenu(false);
   });
 
