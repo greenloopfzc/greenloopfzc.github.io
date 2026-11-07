@@ -98,11 +98,21 @@ revoke all on function greenloop_private.bdept_return_to_qc(uuid,text,integer,bo
 create or replace function pg_temp.bdept_replace(body text, original text, replacement text)
 returns text language plpgsql as $$
 begin
+  body:=replace(body,chr(13)||chr(10),chr(10));
+  original:=replace(original,chr(13)||chr(10),chr(10));
+  replacement:=replace(replacement,chr(13)||chr(10),chr(10));
   if cardinality(string_to_array(body,original))<>2 then
     raise exception 'B-DEPT return installation: expected clause missing or ambiguous: %',left(original,100);
   end if;
   return replace(body,original,replacement);
 end$$;
+-- Store the helper definitions consistently across clipboard line endings.
+do $normalize$declare helper regprocedure;begin
+  foreach helper in array array['greenloop_private.bdept_return_order(uuid)'::regprocedure,
+    'greenloop_private.bdept_return_to_qc(uuid,text,integer,boolean,text)'::regprocedure] loop
+    execute replace(pg_get_functiondef(helper),chr(13)||chr(10),chr(10));
+  end loop;
+end;$normalize$;
 create table if not exists greenloop_private.bdept_qc_return_installation(identity text primary key,hash text not null);
 alter table greenloop_private.bdept_qc_return_installation enable row level security;
 revoke all on greenloop_private.bdept_qc_return_installation from public,anon,authenticated;
