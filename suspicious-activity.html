@@ -20,7 +20,7 @@
   <script defer src="js/imei-scan.js?v=20261105-issuance-sidebar-1"></script>
 <script defer src="js/imei-stage-notice.js?v=20261102-imei-scan-location-1"></script>
   <script defer src="js/permission-catalog.js?v=20261109-issuance-access-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261109-issuance-access-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261109-content-protection-1"></script>
 <script defer src="js/page-capabilities.js?v=20261104-report-permissions-1"></script>
 <link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
 <script defer src="js/office-access.js?v=20261024-office-access-1"></script>
@@ -29,7 +29,7 @@
 <script defer src="js/stock-consistency.js?v=20261107-batch-quantity-labels-1"></script>
 <script defer src="js/batch-quantity-display.js?v=20261107-batch-quantity-labels-1"></script>
 <script src="complete-lists.js?v=20261106-box-print-columns-1" defer></script>
-  <script defer src="js/config.js?v=20261109-issuance-access-1"></script>
+  <script defer src="js/config.js?v=20261109-content-protection-1"></script>
   <script defer src="js/login-activity.js?v=20261013-search-tv-1"></script>
   <link rel="stylesheet" href="css/record-search.css?v=20261017-find-record-popup-1">
   <script defer src="js/record-search.js?v=20261105-stock-consistency-1"></script>
@@ -41,9 +41,9 @@
   <script defer src="js/sidebar-compact.js?v=20261105-issuance-sidebar-1"></script>
   <link rel="stylesheet" href="css/clean-layout.css?v=20261017-clean-layout-1">
   <script defer src="js/clean-layout.js?v=20261030-supplier-progress-1"></script>
-  <link rel="stylesheet" href="css/suspicious-activity.css?v=20261019-security-console-1">
-  <script defer src="js/suspicious-activity.js?v=20261105-complete-stock-lists-1"></script>
-  <script defer src="js/suspicious-badge.js?v=20261105-stock-consistency-1"></script>
+  <link rel="stylesheet" href="css/suspicious-activity.css?v=20261109-content-protection-1">
+  <script defer src="js/suspicious-activity.js?v=20261109-content-protection-1"></script>
+  <script defer src="js/suspicious-badge.js?v=20261109-content-protection-1"></script>
 </head>
     <body class="app-page suspicious-page">
     <div class="app-shell">
@@ -87,7 +87,7 @@
             <div class="sa-table-wrap"><table class="sa-table" aria-label="Suspicious activity alerts"><thead><tr>
               <th aria-sort="descending"><button data-capability="sort" data-sa-sort="time">Date &amp; time ↓</button></th>
               <th><button data-capability="sort" data-sa-sort="priority">Priority ↕</button></th>
-              <th>Activity / why flagged</th><th><button data-capability="sort" data-sa-sort="name">User ↕</button></th><th>IMEI / box / employee</th><th>Status</th><th>Evidence</th>
+              <th>Activity / why flagged</th><th><button data-capability="sort" data-sa-sort="name">User ↕</button></th><th>Entity / page</th><th>Status</th><th>Evidence</th>
             </tr></thead><tbody id="sa-rows"><tr><td colspan="7" class="sa-empty">Loading alerts…</td></tr></tbody></table></div>
             <footer class="sa-pagination"><button id="sa-prev" class="secondary-button" data-capability="view">Previous</button><span id="sa-page">—</span><button id="sa-next" class="secondary-button" data-capability="view">Next</button></footer>
           </section>

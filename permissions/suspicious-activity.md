@@ -31,3 +31,7 @@ The sidebar shows the number of new alerts. Visible pages refresh the summary ev
 - Failed-password attempts, exact device identity, IP/location anomalies, rapid QC batches, stock theft and unlogged activity are not claimed to be detected.
 - This release uses recorded facts and configured rules, not an AI verdict or automatic punishment.
 - Backend changes require migration 177. No Edge Function deployment or JWT setting change is required.
+
+## Protected content attempts (migration 275)
+
+Authenticated pages restrict ordinary selection/copy outside editable fields and briefly cover browser-observed capture shortcuts. Red content_protection alerts record server-attributed account/page/time and explicitly client-reported actions. They never assert capture completion. No selected text, clipboard, screenshots or credentials are collected. OS/camera/other-app captures that do not deliver browser events are not detectable. No blur/right-click capture heuristic is used. Existing review permissions and audited rule settings apply; no automatic punishment. Self-logging requires active page/office access, idempotent IDs, and 30 events per account per minute. Standard alert pages use 50 rows; CSV download remains separate. See README-Content-Protection.md for coverage and installation limits.

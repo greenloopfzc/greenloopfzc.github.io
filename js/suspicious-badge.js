@@ -6,8 +6,9 @@
   async function refresh(){if(busy||document.hidden||!window.GREENLOOP_CAN?.('view','suspicious_activity'))return;busy=true;try{const r=await window.GREENLOOP_GET_CLIENT().rpc('get_suspicious_summary_v1');if(!r.error&&r.data){display(r.data);window.dispatchEvent(new CustomEvent('greenloop:suspicious-summary',{detail:r.data}));}}catch{}finally{busy=false;}}
   window.addEventListener('greenloop:suspicious-summary',e=>display(e.detail));
   window.addEventListener('greenloop:workflow-committed',refresh);
+  window.addEventListener('greenloop:security-attempt-logged',refresh);
   window.addEventListener('focus',refresh);document.addEventListener('visibilitychange',refresh);
-  window.addEventListener('storage',e=>{if(e.key==='greenloop-workflow-commit-v1')refresh();});
+  window.addEventListener('storage',e=>{if(['greenloop-workflow-commit-v1','greenloop-security-attempt-v1'].includes(e.key))refresh();});
   const start=()=>{if(!window.GREENLOOP_CAN?.('view','suspicious_activity'))return;if(!timer)timer=setInterval(refresh,15000);refresh();};
   window.addEventListener('pagehide',()=>{clearInterval(timer);timer=null;});
   window.addEventListener('pageshow',start);

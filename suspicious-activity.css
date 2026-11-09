@@ -184,3 +184,8 @@
  .suspicious-page .sa-pagination button { padding:8px 12px; }.sa-coverage summary { padding:14px; }
 }
 @media(prefers-reduced-motion:reduce) { .suspicious-page .sa-stat { transition:none; } }
+
+/* Recorded protection attempts have a red row, including page and reason. */
+.suspicious-page .sa-table tbody tr[data-sa-rule="content_protection"] td {background:#4a292e!important;color:#ffe5df!important;border-top-color:#986269!important;border-bottom-color:#986269!important}
+.suspicious-page .sa-table tbody tr[data-sa-rule="content_protection"] td:first-child {border-left:4px solid #df8177!important}
+.suspicious-page .sa-table tbody tr[data-sa-rule="content_protection"] p,.suspicious-page .sa-table tbody tr[data-sa-rule="content_protection"] small,.suspicious-page .sa-table tbody tr[data-sa-rule="content_protection"] .sa-actor,.suspicious-page .sa-table tbody tr[data-sa-rule="content_protection"] .sa-entity {color:#f4c8c3!important}

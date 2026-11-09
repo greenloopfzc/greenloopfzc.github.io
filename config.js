@@ -799,3 +799,6 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
   }
  };
 })();
+
+// Shared authenticated-page UI restrictions; business inputs and paste stay available.
+(() => { const script=document.createElement('script');script.src='js/content-protection.js?v=20261109-content-protection-1';script.defer=true;document.head.append(script); })();

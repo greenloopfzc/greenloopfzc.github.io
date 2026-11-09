@@ -33,3 +33,5 @@
 (function(root){Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,{get_stock_receipt_correction_receipts_v1:{page:'reports',capability:'report_receipt_correction',read:true},get_stock_receipt_correction_detail_v1:{page:'reports',capability:'report_receipt_correction',read:true},correct_stock_receipt_quantity_v1:{page:'reports',capability:'receipt_quantity_correction'},get_stock_receipt_correction_version:{read:true}});})(typeof window!=="undefined"?window:globalThis);
 
 (function(root){Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,{get_lab_technician_visibility_v1:{page:'lab_glass',capability:'view',read:true},set_lab_technician_visibility_v1:{page:'lab_glass',capability:'manage_options'},get_lab_technician_visibility_version:{read:true}});})(typeof window!=='undefined'?window:globalThis);
+
+(function(root){const rule={dynamic:'filter_source',parameter:'p_page',read:true};for(const p of root.GREENLOOP_PERMISSION_CATALOG.pages)rule[p.key]={page:p.key,capability:'view'};Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,{log_content_protection_attempt_v1:rule,get_content_protection_version:{read:true}});})(typeof window!=='undefined'?window:globalThis);
