@@ -1,5 +1,5 @@
 -- Independent Lab & Glass Issuance permissions. Existing business records are untouched.
-begin;
+do $qcia_install$begin
 do $$declare component text;probe jsonb;begin
  if to_regprocedure('public.get_issuance_access_version()')is not null then
   if public.get_issuance_access_version()is distinct from '20261109-issuance-access-1'then raise exception 'Existing Issuance access integrity differs.';end if;
@@ -8,8 +8,6 @@ do $$declare component text;probe jsonb;begin
  foreach component in array array['get_complete_stock_lists_version','get_qc_issuance_edit_version','get_sidebar_counts_version','get_qc_work_options_version','get_qc_duplicate_stage_version']loop
  probe:=public.get_installation_component_version(component);if probe#>>'{result,ok}'is distinct from 'true'then raise exception 'Existing required component could not be verified: %',component;end if;end loop;
 end;$$;
-create temp table qcia_changed(id regprocedure primary key)on commit drop;
-create temp table qcia_existing on commit drop as select p.id user_id,greenloop_private.user_capabilities(p.id)->'initial_qc' caps from public.user_profiles p;
 create or replace function greenloop_private.qcia_require(write_access boolean default false)returns void language plpgsql stable security definer set search_path=pg_catalog,public as $$begin
  perform greenloop_private.require_office_network();perform greenloop_private.pf_cap('qc_issuance',case when write_access then 'entry'else 'view'end);
 end;$$;
@@ -18,7 +16,7 @@ create or replace function pg_temp.qcia_patch(sig text,needle text,replacement t
  if id is null then raise exception 'Issuance permission routine missing: %',sig;end if;body:=replace(pg_get_functiondef(id),chr(13),'');
  if position(replacement in body)>0 then return;end if;
  if (length(body)-length(replace(body,needle,'')))/length(needle)<>1 then raise exception 'Issuance permission boundary differs: %',sig;end if;
- execute replace(body,needle,replacement);insert into qcia_changed values(id)on conflict do nothing;
+ execute replace(body,needle,replacement);
 end;$$;
 do $patch$declare f record;sig text;definition text;begin
  for f in select *from(values
@@ -59,8 +57,8 @@ insert into greenloop_private.page_capability_catalog values('qc_issuance','[{"k
 -- One-time copy of effective Initial QC access preserves who can already use Issuance.
 do $$begin if to_regprocedure('public.get_issuance_access_version()')is null then
  insert into public.user_page_permissions(user_id,page_key,access_level,assigned_by)
- select user_id,'qc_issuance',case when caps?'entry'then 'edit'else 'view'end,null from qcia_existing where caps?'view' on conflict(user_id,page_key)do nothing;
- update greenloop_private.user_page_capabilities u set capabilities=u.capabilities||jsonb_build_object('qc_issuance',coalesce((select jsonb_agg(v)from jsonb_array_elements_text(e.caps)v where v in('view','search','entry')),'[]'))from qcia_existing e where u.user_id=e.user_id and not u.capabilities?'qc_issuance';
+ select user_id,'qc_issuance',case when caps?'entry'then 'edit'else 'view'end,null from (select p.id user_id,greenloop_private.user_capabilities(p.id)->'initial_qc' caps from public.user_profiles p) e where caps?'view' on conflict(user_id,page_key)do nothing;
+ update greenloop_private.user_page_capabilities u set capabilities=u.capabilities||jsonb_build_object('qc_issuance',coalesce((select jsonb_agg(v)from jsonb_array_elements_text(e.caps)v where v in('view','search','entry')),'[]'))from (select p.id user_id,greenloop_private.user_capabilities(p.id)->'initial_qc' caps from public.user_profiles p) e where u.user_id=e.user_id and not u.capabilities?'qc_issuance';
 end if;end;$$;
 create or replace function greenloop_private.qcia_choices()returns jsonb language plpgsql security definer set search_path=pg_catalog,public as $$begin
  -- greenloop-office-wrapper-196
@@ -99,9 +97,15 @@ do $$declare original text;body text;newhash text;begin
  update greenloop_private.installation_component_engine set hash=md5(pg_get_functiondef('greenloop_private.vc2_catalog()'::regprocedure))where identity='greenloop_private.vc2_catalog()';
  end if;
 end;$$;
--- Reseal only the exact reviewed routines changed above.
+create or replace function pg_temp.qcia_ids()returns regprocedure[]language plpgsql as $ids$declare ids regprocedure[];core regprocedure;begin
+ select array_agg(to_regprocedure(implementation))into ids from greenloop_private.office_routines where to_regprocedure(identity)=any(array[
+ 'public.get_stock_receipt_catalog_v1(text)'::regprocedure,'public.get_qc_issuance_options_v1()'::regprocedure,'public.get_qc_issuance_rows_v1(text[],date,date,integer,integer)'::regprocedure,'public.issue_initial_qc_inspection_v1(uuid,text,text,uuid,uuid)'::regprocedure,'public.get_qc_work_options_v1(text)'::regprocedure,'public.get_imei_duplicate_stage_v1(text)'::regprocedure]);
+ if cardinality(ids)<>6 or array_position(ids,null)is not null then raise exception 'Issuance permission routines could not be resolved.';end if;
+ select oid::regprocedure into strict core from pg_proc where pronamespace='greenloop_private'::regnamespace and proname like 'cap_impl_%'and position('v_allowed_pages' in prosrc)>0 and position('p_user_id' in prosrc)>0;
+ return ids||array[core,'greenloop_private.qcie_save(uuid,text,jsonb,jsonb,uuid)'::regprocedure,'greenloop_private.qdr_stock_selection(text,jsonb,integer,integer)'::regprocedure,'greenloop_private.sbn_counts()'::regprocedure,'public.get_qc_issuance_edit_version()'::regprocedure];end;$ids$;
+-- Reseal only the exact reviewed permission routines above.
 do $seal$declare ids regprocedure[];t record;begin
- select array_agg(id)into ids from qcia_changed;
+ ids:=pg_temp.qcia_ids();
  update greenloop_private.office_routines set original_hash=md5(pg_get_functiondef(to_regprocedure(implementation))),wrapped_hash=md5(pg_get_functiondef(to_regprocedure(identity)))where to_regprocedure(identity)=any(ids)or to_regprocedure(implementation)=any(ids);
  update greenloop_private.capability_routines set original_hash=md5(pg_get_functiondef(to_regprocedure(implementation))),wrapped_hash=md5(pg_get_functiondef(to_regprocedure(identity)))where to_regprocedure(identity)=any(ids)or to_regprocedure(implementation)=any(ids);
  for t in select c.table_name,c.column_name hash_col,i.column_name id_col from information_schema.columns c join information_schema.columns i on i.table_schema=c.table_schema and i.table_name=c.table_name where c.table_schema='greenloop_private'and c.table_name like '%installation'and c.column_name in('hash','definition_hash')and i.column_name in('identity','object_identity','function_identity')loop execute format('update greenloop_private.%I set %I=md5(pg_get_functiondef(to_regprocedure(%I)))where to_regprocedure(%I)=any($1)',t.table_name,t.hash_col,t.id_col,t.id_col)using ids;end loop;
@@ -119,9 +123,10 @@ create or replace function public.get_issuance_access_version()returns text lang
  and not has_function_privilege('authenticated','greenloop_private.qcia_require(boolean)','EXECUTE')and not has_function_privilege('anon','public.get_qc_issuance_choices_v1()','EXECUTE')and has_function_privilege('authenticated','public.get_qc_issuance_choices_v1()','EXECUTE')
  and not has_table_privilege('authenticated','greenloop_private.issuance_access_installation','SELECT,INSERT,UPDATE,DELETE,TRUNCATE')then '20261109-issuance-access-1'end;$$;
 revoke all on function public.get_issuance_access_version()from public;grant execute on function public.get_issuance_access_version()to anon,authenticated;
-insert into greenloop_private.issuance_access_installation select id::text,md5(pg_get_functiondef(id))from qcia_changed on conflict(identity)do update set hash=excluded.hash;
+insert into greenloop_private.issuance_access_installation select id::text,md5(pg_get_functiondef(id))from unnest(pg_temp.qcia_ids())id on conflict(identity)do update set hash=excluded.hash;
 insert into greenloop_private.issuance_access_installation select s,md5(pg_get_functiondef(s::regprocedure))from unnest(array['greenloop_private.qcia_require(boolean)','greenloop_private.qcia_choices()','public.get_qc_issuance_choices_v1()','public.get_issuance_access_version()'])s on conflict(identity)do update set hash=excluded.hash;
 insert into greenloop_private.issuance_access_installation values('catalog',(select md5(capabilities::text)from greenloop_private.page_capability_catalog where page_key='qc_issuance'))on conflict(identity)do update set hash=excluded.hash;
 do $$begin if public.get_issuance_access_version()is distinct from '20261109-issuance-access-1'or public.get_page_capabilities_version()is distinct from '20261016-page-capabilities-1'or public.get_office_access_version()is distinct from '20261024-office-access-1'then raise exception 'Issuance access installation failed. Transaction rolled back.';end if;end;$$;
-notify pgrst,'reload schema';commit;
+notify pgrst,'reload schema';
+end;$qcia_install$;
 select public.get_issuance_access_version()as installed_issuance_access_version;
