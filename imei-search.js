@@ -227,7 +227,7 @@ function buildStageSections(sortedRows) {
   }
   function place(value) {
     const names = { LAB:"Lab & Glass", LABORATORY:"Lab & Glass", LAB_GLASS:"Lab & Glass", GLASS:"Lab & Glass", "FINAL-QC":"Final QC", FINAL_QC:"Final QC", "INITIAL-QC":"Initial QC", INITIAL_QC:"Initial QC", FRAME:"B-DEPT", PRODUCTION:"Ready Stock", "PRODUCTION DEPARTMENT":"Ready Stock", READY:"Ready Stock", "READY-STOCK":"Ready Stock", READY_STOCK:"Ready Stock", PARTS:"Parts", OUTBOUND:"Export" };
-    return names[scalar(value).toUpperCase()] || scalar(value);
+    return window.GREENLOOP_DEPT_NAME(names[scalar(value).toUpperCase()] || scalar(value));
   }
   const safe = value => escapeHtml(scalar(value) || missing);
   function moment(value) { return timestamp(value) === null ? missing : `${date(value)}, ${date(value,true)}`; }
@@ -255,7 +255,7 @@ function buildStageSections(sortedRows) {
     return parts.map(part => {
       const qty = number(part.quantity), unit = number(part.unit_cost), total = number(part.total_cost);
       const price = unit === null ? "Price not recorded" : `${money(unit)} each${total === null ? "" : `; total ${money(total)}`}`;
-      return `${fact(action,`${scalar(part.name) || "Part name not recorded"}${qty === null ? "" : ` × ${qty}`}`)} — ${escapeHtml(price)} · ${escapeHtml(moment(row.occurred_at))} · ${fact("By",row.actor)}`;
+      return `${fact(action,`${scalar(part.name) || "Part name not recorded"}${qty === null ? "" : ` × ${qty}`}`)} — ${escapeHtml(price)} · ${escapeHtml(moment(row.occurred_at))} · ${fact(row.stage==="assignment"?"Assigned technician":row.automatic_direct_bdept?"Transfer action by":"By",row.actor)}`;
     });
   }
   function rowBullets(row, sectionKey) {
@@ -354,13 +354,25 @@ function buildStageSections(sortedRows) {
     const names={received:"IMEI Entry — saved",initial_qc_pending:"Initial QC",initial_qc_completed:"Initial QC — completed",no_work_required:"Initial QC — no work required",parts_pending:"Parts",laboratory_pending:"Lab & Glass",laboratory_in_progress:"Lab & Glass",glass_pending:"Lab & Glass",glass_in_progress:"Lab & Glass",frame_pending:"B-DEPT",frame_in_progress:"B-DEPT",final_qc_pending:"Final QC",qc_failed:"Final QC — failed",qc_passed:"Ready Stock",production_pending:"Ready Stock",production_completed:"Ready Stock",ready_for_packing:"Ready Stock",ready_for_shipment:"Ready Stock",shipped:"Export / Shipped",supplier_return_requested:"Stock Return — requested",return_pending:"Stock Return — pending",returned_to_supplier:"Returned to supplier"};
     return names[status] || scalar(device.current_status);
   }
-  function renderActivity(row) {
-    const details=visibleDetails(row).map(item=>`<li>${fact(item.label,item.value)}</li>`);
+  function renderActivity(row,children="") {
+    const details=visibleDetails(row).map(item=>`<li>${fact(item.label,/^(From|To|Department|Next step|Next department|Destination|Reason|Movement reason|Notes|Original recorded title)$/i.test(item.label)?window.GREENLOOP_DEPT_NAME(item.value):item.value)}</li>`);
     for(const part of (Array.isArray(row.parts)?row.parts:[])) {
       details.push(`<li>${fact("Part",[scalar(part.name),number(part.quantity)===null ? "" : "× "+part.quantity,number(part.unit_cost)===null ? "Price not recorded" : money(part.unit_cost)+" / part"].filter(Boolean).join(" · "))}</li>`);
     }
     if(number(row.duration_seconds)!==null)details.push(`<li>${fact(row.duration_label || "Recorded time",duration(row.duration_seconds))}</li>`);
-    return `<li class="history-activity-record" data-record-id="${escapeHtml(row.id)}"><h4>${safe(window.GREENLOOP_DEPT_NAME(row.title || stages[row.stage] || row.stage))}</h4><p>${safe(journeyMoment(row.occurred_at))} · ${fact("By",row.actor)}${scalar(row.status) ? " · "+fact("Status",label(row.status)) : ""}${scalar(row.job_number) ? " · "+fact("Job",row.job_number) : ""}</p>${details.length ? `<ul class="history-bullets">${details.join("")}</ul>` : ""}</li>`;
+    return `<li class="history-activity-record" data-record-id="${escapeHtml(row.id)}"><h4>${safe(window.GREENLOOP_DEPT_NAME(row.display_title || row.title || stages[row.stage] || row.stage))}</h4><p>${safe(journeyMoment(row.occurred_at))} · ${fact(row.stage==="assignment"?"Assigned technician":row.automatic_direct_bdept?"Transfer action by":"By",row.actor)}${scalar(row.status) ? " · "+fact(row.automatic_direct_bdept?"Original system status":"Status",label(row.status)) : ""}${scalar(row.job_number) ? " · "+fact("Job",row.job_number) : ""}</p>${details.length ? `<ul class="history-bullets">${details.join("")}</ul>` : ""}${children}</li>`;
+  }
+  function renderActivityList(rows) {
+    const attached=new Map(),children=new Set();
+    for(const row of rows.filter(r=>r.automatic_direct_bdept)){
+      const anchor=rows.find(r=>r.direct_bdept_transfer&&r.job_number&&r.job_number===row.job_number&&timestamp(r.occurred_at)===timestamp(row.occurred_at));
+      if(anchor){if(!attached.has(anchor))attached.set(anchor,[]);attached.get(anchor).push(row);children.add(row);}
+    }
+    return rows.filter(r=>!children.has(r)).map(row=>{
+      const items=attached.get(row)||[];
+      const nested=items.length?`<details class="history-system-records"><summary>Automatic routing records (${items.length})</summary><ol class="history-activity-list">${items.map(r=>renderActivity(r)).join("")}</ol></details>`:"";
+      return renderActivity(row,nested);
+    }).join("");
   }
   function renderBasicTable(device,rows) {
     const names=Boolean(window.GREENLOOP_CAN_VIEW_PARTNER_NAMES);
@@ -379,21 +391,23 @@ function buildStageSections(sortedRows) {
     const currentLocation = scalar(device.current_status).toLowerCase() === "returned_to_supplier"
       ? "Returned to Supplier"
       : stage.toLowerCase() === "lab & glass issuance" ? stage : place(device.current_location);
-    values.push(["Current location", currentLocation]);
+    values.push(["Current location", stage ? place(stage) : currentLocation]);
+    if(device.initial_battery_health!==undefined)values.push(["Initial BH",device.initial_battery_health===null?"Not recorded":device.initial_battery_health+"%"]);
+    if(device.grade_source){values.push(["Supplier grade (current saved)",device.supplier_grade],["GL grade (current saved)",device.gl_grade]);}
     if(scalar(device.region))values.push(["Phone region",device.region]);
     const cells=values.map(([name,value],index)=>`<th scope="row">${escapeHtml(name)}</th><td${index===values.length-1 && values.length%2 ? ' colspan="3"' : ""}>${safe(value)}</td>`);
     header.innerHTML=`<div class="history-basic-heading"><h2 id="history-device-name">Device details</h2>${badge(currentStage(device))}</div><table class="history-basic-table"><caption class="history-sr-only">Basic phone and supplier details</caption><tbody>${cells.reduce((html,cell,index)=>html+(index%2===0 ? "<tr>" : "")+cell+(index%2===1 || index===cells.length-1 ? "</tr>" : ""),"")}</tbody></table>`;
   }
   function renderHistory(data) {
-    const rows=(Array.isArray(data.rows)?data.rows:[]).filter(row=>row && typeof row==="object").map((row,index)=>({row,index,stamp:timestamp(row.occurred_at)})).sort((a,b)=>(a.stamp===null?Infinity:a.stamp)-(b.stamp===null?Infinity:b.stamp)||a.index-b.index).map(item=>item.row);
+    const rows=window.GREENLOOP_STOCK_JOURNEY.activity(data.rows);
     renderBasicTable(data.device || {},rows);
     const visibleRows=rows.map(row=>({...row,details:visibleDetails(row)}));
     const compact=window.GREENLOOP_STOCK_JOURNEY.render(visibleRows,{
       escape:escapeHtml,date:journeyMoment,currentStage:currentStage(data.device || {}),
       money:value=>number(value)===null ? missing : number(value).toLocaleString("en-GB",{minimumFractionDigits:2,maximumFractionDigits:2})
     });
-    body.innerHTML=rows.length ? compact+`<details class="history-full-activity"><summary>Full activity (${rows.length} records)</summary><ol class="history-activity-list">${visibleRows.map(renderActivity).join("")}</ol></details>` : '<p class="history-missing">No history has been recorded for this phone.</p>';
-    count.textContent="Journey in recorded order · All dates and times are UAE time";
+    body.innerHTML=rows.length ? compact+`<details class="history-full-activity"><summary>Full activity (${rows.length} records)</summary><ol class="history-activity-list">${renderActivityList(visibleRows)}</ol></details>` : '<p class="history-missing">No history has been recorded for this phone.</p>';
+    count.textContent="Journey by recorded time · Same-time actions follow workflow order · UAE time";
     const totals=data.summary || {};
     const unpriced=number(totals.unpriced_manual_part_quantity) || 0;
     summary.innerHTML=unpriced>0
@@ -419,11 +433,11 @@ function buildStageSections(sortedRows) {
     const version=++searchVersion;
     result.hidden=true;receiptResult.hidden=true;setMessage();setSubmitting(true);
     try {
-      const response=await withTimeout(getClient().rpc("search_imei_journey_v1",{p_imei:identifier}));
+      const response=await withTimeout(getClient().rpc("get_imei_activity_journey_v1",{p_imei:identifier}));
       if(version!==searchVersion)return;
       if(response.error)throw response.error;
       const raw=response.data;
-      const history=Array.isArray(raw)?raw[0]?.search_imei_journey_v1 || raw[0]:raw;
+      const history=Array.isArray(raw)?raw[0]?.get_imei_activity_journey_v1 || raw[0]:raw;
       if(!history?.found){setMessage("This device is no longer available. Search again.");return;}
       await GREENLOOP_RECEIPTS.load("imei_search",[history.device?.imei_1]);
       if(version!==searchVersion)return;

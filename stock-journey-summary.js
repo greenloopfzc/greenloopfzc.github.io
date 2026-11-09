@@ -30,6 +30,8 @@
     return route?place(route[1]):'';
   }
   function kind(r){
+    if(r.automatic_direct_bdept===true)return 'support';
+    if(r.direct_bdept_transfer===true)return 'frame';
     const id=prefix(r),s=norm(r.stage),t=norm(r.title);
     if(s==='qc issuance'||s==='lab & glass issuance'||s==='lab and glass issuance'||t==='lab & glass issuance')return 'qc_issuance';
     if(prefix(r)==='event'&&recordedDestination(r))return recordedDestination(r);
@@ -55,8 +57,48 @@
   }
   function target(r){return recordedDestination(r)||place(field(r,'Destination','Next department','Next step','To','Department'))||(/ready stock/i.test(field(r,'Reason'))?'ready_stock':'');}
   function rank(e){if(e.kind==='movement')return 80;if(prefix(e.row)==='event'&&recordedDestination(e.row))return 75;return ({stock_received:0,imei_entry:10,initial_qc:20,qc_issuance:75,laboratory:30,glass:30,final_qc:40,frame:50,ready_stock:60,export:70})[e.kind]??75;}
+  function activity(rows){
+    const source=(Array.isArray(rows)?rows:[]).filter(r=>r&&typeof r==='object');
+    const when=r=>stamp(r),same=(a,b)=>text(a.job_number)&&text(a.job_number)===text(b.job_number)&&when(a)!==null&&when(a)===when(b);
+    const direct=r=>r.direct_bdept_transfer===true||prefix(r)==='event'&&/^initial qc sent phone directly to (?:frame(?: department)?|b[- ]dept)$/i.test(text(r.title));
+    const decorated=source.map((r,index)=>{
+      const row={...r,details:(Array.isArray(r.details)?r.details:[]).map(d=>({...d}))};
+      const isDirect=direct(r);
+      const note=field(r,'Notes');
+      // Require the explicit direct-route marker or a matching direct-transfer
+      // event. A normal Final QC pass at the same time is never suppressed.
+      const automatic=r.automatic_direct_bdept===true||prefix(r)==='final-qc'&&/Initial QC direct route to Frame/.test(note)
+        ||source.some(d=>direct(d)&&same(d,r))&&(
+          prefix(r)==='movement'&&/^(Initial QC completed\s*[-–—]\s*no repair required|Final QC routed to Frame for required work)$/.test(field(r,'Reason','Movement reason'))
+          ||prefix(r)==='event'&&/^Final QC sent to (Frame|B-DEPT)$/i.test(text(r.title)));
+      if(isDirect){row.direct_bdept_transfer=true;row.stage='frame';row.display_title='Initial QC — Direct transfer to B-DEPT';}
+      if(automatic){
+        row.automatic_direct_bdept=true;
+        row.display_title=prefix(r)==='movement'?'Automatic location update — direct B-DEPT route':'Automatic routing record — direct B-DEPT route';
+        if(!field(row,'Record meaning'))row.details.push({label:'Record meaning',value:'Created automatically for the direct Initial QC → B-DEPT transfer; not a separate Final QC inspection.'});
+        if(!field(row,'Original recorded title'))row.details.push({label:'Original recorded title',value:text(r.title)});
+      }
+      return {row,index,at:when(r)};
+    });
+    const ordered=decorated.sort((a,b)=>(a.at??Infinity)-(b.at??Infinity)||a.index-b.index);
+    const ties=new Map();
+    ordered.forEach((e,index)=>{if(e.at===null||!text(e.row.job_number))return;const k=e.at+'|'+text(e.row.job_number);if(!ties.has(k))ties.set(k,[]);ties.get(k).push(index);});
+    const priority=r=>{
+      if(r.direct_bdept_transfer)return 25;
+      if(r.automatic_direct_bdept)return prefix(r)==='final-qc'?26:prefix(r)==='event'?27:/no repair required$/.test(field(r,'Reason','Movement reason'))?28:29;
+      const k=kind(r);
+      if(k==='movement')return 80;
+      if(prefix(r)==='event'&&recordedDestination(r))return 75;
+      return ({stock_received:0,imei_entry:10,initial_qc:20,laboratory:30,glass:30,final_qc:40,frame:50,ready_stock:60,export:70,qc_issuance:75})[k]??75;
+    };
+    for(const indexes of ties.values()){
+      const sorted=indexes.map(i=>ordered[i]).sort((a,b)=>priority(a.row)-priority(b.row)||a.index-b.index);
+      indexes.forEach((i,n)=>{ordered[i]=sorted[n];});
+    }
+    return ordered.map(e=>e.row);
+  }
   function group(rows){
-    const entries=(Array.isArray(rows)?rows:[]).filter(r=>r&&typeof r==='object').map((row,index)=>({row,index,at:stamp(row),kind:kind(row),job:text(row.job_number)}));
+    const entries=activity(rows).map((row,index)=>({row,index,at:stamp(row),kind:kind(row),job:text(row.job_number)}));
     const ordered=entries.slice().sort((a,b)=>(a.at??Infinity)-(b.at??Infinity)||(a.job===b.job?rank(a)-rank(b):0)||a.index-b.index);
     const sections=[],support=[],visits=new Map();let current=null;
     function add(e,key){
@@ -109,10 +151,10 @@
       if(inspections.length>1&&inspections.at(-1).occurred_at!==inspections[0].occurred_at)when+=' → '+date(inspections.at(-1).occurred_at);
       const results=unique(g.anchors.map(r=>/^(pass|fail)$/i.test(text(r.status))?norm(r.status):''));
       const suffix=results.length?' — '+results.map(r=>r==='pass'?'Pass':'Fail').join(' → '):'';
-      const title=(titles[g.key]||titles.other)+(['laboratory','glass'].includes(g.key)&&g.rework?' Rework':'')+suffix;
+      const title=(g.key==='frame'&&g.anchors.some(r=>r.direct_bdept_transfer)&&!inspections.length?'B-DEPT — Direct transfer':titles[g.key]||titles.other)+(['laboratory','glass'].includes(g.key)&&g.rework?' Rework':'')+suffix;
       const facts=[];const add=(label,value)=>{if(value)facts.push('<span><strong>'+esc(label)+':</strong> '+esc(value)+'</span>');};
       if(g.key==='stock_received'){add('Stock/Batch No',vals('Receipt','Batch').join(', '));add('Invoice',vals('Invoice').join(', '));add('Supplier',vals('Supplier code','Supplier name').join(', '));}
-      if(g.key==='initial_qc')add('Findings',vals('Findings','Problems').join('; '));
+      if(g.key==='initial_qc'){for(const label of ['Supplier grade (current saved)','GL grade (current saved)','Saved parts requirements','Saved service requirements'])add(label,vals(label).join('; '));add('Findings',vals('Findings','Problems').join('; '));}
       if(['laboratory','glass'].includes(g.key)){
         const techs=unique(g.rows.filter(r=>prefix(r)==='assignment'||/^timer-/.test(prefix(r))).map(r=>r.actor).concat(vals('Technician','Assigned technician')));
         add('Technician',techs.join(', '));
@@ -130,5 +172,5 @@
     const currentTail=currentKey&&groups.at(-1)?.key!==currentKey?'<li class="journey-summary-step journey-current-step"><span class="journey-step-number">'+(groups.length+1)+'</span><div><h3>'+esc(currentLabel)+'</h3>'+currentNote()+'</div></li>':'';
     return html||currentTail?'<ol class="stock-journey-compact">'+html+currentTail+'</ol>':'<p>No dated stages recorded yet. See Full activity for the saved records.</p>';
   }
-  root.GREENLOOP_STOCK_JOURNEY={group,render};
+  root.GREENLOOP_STOCK_JOURNEY={activity,group,render};
 })(typeof window==='object'?window:globalThis);

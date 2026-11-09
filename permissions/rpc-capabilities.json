@@ -1364,6 +1364,14 @@
     },
     "get_bulk_imei_correction_version": {
       "read": true
+    },
+    "get_imei_activity_journey_v1": {
+      "page": "imei_search",
+      "capability": "view",
+      "read": true
+    },
+    "get_imei_activity_journey_version": {
+      "read": true
     }
   },
   "get_box_status_v1": {
