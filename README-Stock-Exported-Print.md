@@ -1,0 +1,11 @@
+# Stock Exported — Box Entry style PDF and print
+
+Stock Exported > open a box > Print Box opens the same A4 Portrait packing-sheet preview as Box Entry. The preview provides Print, Download PDF and Close. Its logo, font sizes, margins, seven packing columns, total, page number and Quality Control Team footer match Box Entry. Standard phone lines fit 50 per page; 51 or 100 lines continue on another branded page. Long custom text can wrap and require more space.
+
+The print document is isolated from the application page, so the Stock Exported sidebar, search controls, wide source-detail table, theme and landscape rules do not enter the printout. The on-screen source-detail columns remain available. Printing reloads the full canonical selected box; search or sorting in its screen table does not remove phones from the packing sheet.
+
+The existing Stock Exported View and Print permissions control the preview, PDF download and print. A view-only account can print when its Print tick is granted. Permission loss, office lock, sign-out, page exit and Close remove the preview and revoke its local PDF URL. Printing performs no workflow writes and does not verify a box or mark printing complete. Accounts retains its existing separate Printing completed acknowledgement. Box Entry retains its default acknowledgement and printed grade mapping: BA -> A, BB -> B; saved grades remain unchanged.
+
+This print change needs no new SQL, Edge Function, JWT, secret or permission tick. The publisher checks earlier required installations; it preserves the earlier Stock Receipt Correction and Ready Stock updates. After LIVE - VERIFIED, use Ctrl+F5 > Stock Exported > open a box > Print Box.
+
+Verification: 46/50/51/100-line PDFs match the existing Box Entry measured layout exactly. Native Chrome actual Stock Exported page: fresh box reads; preview; actual PDF download; isolated browser print; 50 phones on one A4 Portrait page; Print permission while view-only; denied print before a read; permission revocation; mobile and Close; unchanged Accounts manual printing acknowledgement. PDF and rendered print pages were visually checked. No live records, SQL or deployment were changed during preparation.
