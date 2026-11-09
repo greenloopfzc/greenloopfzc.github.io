@@ -54,3 +54,7 @@
 }
 
 .accounts-section-card{position:relative}.accounts-pending-badge{position:absolute;top:12px;right:12px;min-width:24px;height:24px;padding:0 7px;border:2px solid white;border-radius:999px;background:#dc2f25;color:white;font-size:12px;font-weight:800;line-height:20px;text-align:center;white-space:nowrap;box-shadow:0 2px 7px #a0191259}.accounts-pending-badge[hidden]{display:none!important}
+
+/* Totals cover every filtered row, independently of the fifty-row page. */
+html body.app-page .accounts-stock-table tfoot .accounts-stock-total>th,html body.app-page .accounts-stock-table tfoot .accounts-stock-total>td{background:#dcefe5!important;color:#07543c!important;font-weight:800;border-top:2px solid #21866a!important;padding-top:12px;padding-bottom:12px}
+html body.app-page .accounts-stock-table tfoot .accounts-stock-total>th{text-align:left!important;white-space:normal}

@@ -3601,5 +3601,21 @@
   },
   "get_workflow_stage_controls_version": {
     "read": true
+  },
+  "get_accounts_stock_report_v2": {
+    "dynamic": "accounts_stock",
+    "parameter": "p_kind",
+    "read": true,
+    "supplier": {
+      "page": "accounts",
+      "capability": "supplier_stock"
+    },
+    "customer": {
+      "page": "accounts",
+      "capability": "customer_stock"
+    }
+  },
+  "get_accounts_stock_filters_version": {
+    "read": true
   }
 }

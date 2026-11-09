@@ -5,7 +5,8 @@
   const value = v => esc(v === null || v === undefined || v === '' ? '—' : v);
   const date = v => v ? new Date(v).toLocaleString('en-GB', {timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric',hour:'numeric',minute:'2-digit',hour12:true}) : 'Not recorded';
   let context, customers = [], namesAllowed = false, view = 'verify', offset = 0, total = 0;
-  let query = {from:null,to:null,search:null};
+  let query = {from:null,to:null,search:null},stockGeneration=0;
+  const mayReadStock=kind=>window.GREENLOOP_CAN?.('view','accounts')===true&&window.GREENLOOP_CAN?.(kind+'_stock','accounts')===true;
   async function rpc(name, args = {}) {
     const {data,error} = await context.client.rpc(name,args);
     if (error) throw error;
@@ -46,15 +47,18 @@
   }
   const supplierColumns = [['Supplier','supplier_name'],['Code','supplier_code'],['Stock/Batch No','batch_number'],['Invoice / Receipt','invoice_number'],['Received · UAE','received_at'],['Model','model'],['GB','storage_gb'],['Color','color'],['Received','received'],['In company','in_company'],['Ready','ready'],['In process','in_process'],['Exported','exported'],['Returned','returned']];
   const customerColumns = [['Customer','customer_name'],['Customer code','customer_code'],['Exported · UAE','exported_at'],['Box','box_number'],['Model','model'],['GB','storage_gb'],['Color','color'],['Grade','final_grade'],['Qty','quantity'],['Supplier','supplier_name'],['Supplier code','supplier_code'],['Stock/Batch No','batch_number'],['Invoice','invoice_number'],['Stock received · UAE','received_at']];
+  function columnsFor(data) { return (view==='supplier'?supplierColumns:customerColumns).filter(([,key])=>data.names_allowed||!['supplier_name','customer_name'].includes(key)); }
   function table(data) {
-    const columns = view === 'supplier' ? supplierColumns : customerColumns;
-    if (!data.rows.length) return '<p class="box-empty">No stock found for these filters.</p>';
-    return `<div class="box-table-wrap"><table class="box-table accounts-stock-table"><thead><tr>${columns.map(([label])=>`<th scope="col">${esc(label)}</th>`).join('')}</tr></thead><tbody>${data.rows.map(row=>'<tr>'+columns.map(([,key])=>{
-      let content = key.endsWith('_at') ? value(date(row[key])) : value(key === 'invoice_number' ? row.invoice_number || row.batch_number : row[key]);
-      if (key === 'in_process' && row.awaiting_imei > 0) content += `<small>${value(row.awaiting_imei)} awaiting IMEI</small>`;
-      if (key === 'box_number' && row.state === 'legacy') content += '<small>Historical</small>';
+    const columns=columnsFor(data),numeric=view==='supplier'?new Set(['received','in_company','ready','in_process','exported','returned']):new Set(['quantity']);
+    const first=columns.findIndex(([,key])=>numeric.has(key));
+    const footer=`<tfoot><tr class="accounts-stock-total"><th scope="row" colspan="${first+1}">Total · All matching records</th>${columns.slice(first).map(([,key])=>`<td>${numeric.has(key)?value(Number(data.totals[key]||0).toLocaleString('en-GB')):''}</td>`).join('')}</tr></tfoot>`;
+    const rows=data.rows.map((row,index)=>'<tr><td>'+String(offset+index+1)+'</td>'+columns.map(([,key])=>{
+      let content=key.endsWith('_at')?value(date(row[key])):key==='batch_number'?value(window.GREENLOOP_BATCH_LABEL?.(row.batch_number,row)||row.batch_number):value(key==='invoice_number'?row.invoice_number||row.batch_number:row[key]);
+      if(key==='in_process'&&row.awaiting_imei>0)content+=`<small>${value(row.awaiting_imei)} awaiting IMEI</small>`;
+      if(key==='box_number'&&row.state==='legacy')content+='<small>Historical</small>';
       return `<td>${content}</td>`;
-    }).join('')+'</tr>').join('')}</tbody></table></div>`;
+    }).join('')+'</tr>').join('');
+    return `<div class="box-table-wrap"><table class="box-table accounts-stock-table"><thead><tr><th scope="col">S.No</th>${columns.map(([label])=>`<th scope="col">${esc(label)}</th>`).join('')}</tr></thead><tbody>${rows||`<tr><td colspan="${columns.length+1}" class="box-empty">No stock found for these filters.</td></tr>`}</tbody>${footer}</table></div>`;
   }
   function pagination() {
     $('#accounts-stock-prev').disabled = context.isBusy() || offset === 0;
@@ -62,21 +66,28 @@
   }
   const stockFilters=window.GREENLOOP_FILTERS.get('accounts-record-filters',{
     before:$('#accounts-stock-filter'),sortTarget:'#accounts-stock-list',dateKey:'received_at',dateLabel:'Received / exported',
-    fields:[['supplier_code','Supplier code'],['batch_number','Stock/Batch No'],['customer_code','Customer code'],['model','Model'],['storage_gb','GB'],['color','Color'],['final_grade','Grade']],
+    fields:[['supplier_name','Supplier name'],['supplier_code','Supplier code'],['batch_number','Stock/Batch No'],['invoice_number','Invoice'],['customer_name','Customer name'],['customer_code','Customer code'],['model','Model'],['storage_gb','GB'],['color','Color'],['final_grade','Grade']],
     onChange:()=>{offset=0;return loadStock();}
   });
+  for(const key of ['supplier_name','customer_name'])stockFilters.controls.get(key).closest('label').hidden=true;
   $('#accounts-stock-filter').hidden=true;
   stockFilters.bar.querySelector('.table-filter-actions').append($('#accounts-stock-refresh'));
   async function loadStock() {
-    if (view === 'verify' || view === 'imei' || context.isBusy()) return;
+    if (!context || view === 'verify' || view === 'imei' || context.isBusy() || !mayReadStock(view)) return;
+    const token=++stockGeneration,requestedView=view;
     context.lock(true); stockFilters.setBusy(true);
     const msg = $('#accounts-stock-message');
     msg.textContent = ''; msg.classList.remove('is-visible');
     try {
-      const data = await rpc('get_stock_batch_report_v1',{...stockFilters.sortArgs(),p_source:'accounts_'+view,p_filters:stockFilters.query(),p_offset:offset,p_limit:50});
+      const data = await rpc('get_accounts_stock_report_v2',{...stockFilters.sortArgs(),p_kind:view,p_filters:stockFilters.query(),p_offset:offset,p_limit:50});
+      if(token!==stockGeneration||requestedView!==view||!mayReadStock(requestedView))return;
+      if(!Array.isArray(data.rows)||!data.totals||!Number.isSafeInteger(Number(data.total)))throw new Error('Stock report could not be verified.');
+      for(const key of ['supplier_name','customer_name'])stockFilters.controls.get(key).closest('label').hidden=!data.names_allowed||(key==='customer_name'&&view==='supplier');
+      stockFilters.setSortFields(columnsFor(data).map(([label,key])=>[key,label,key.endsWith('_at')?'date':undefined]));
+      window.GREENLOOP_BATCH_DISPLAY?.remember(data);
       stockFilters.result(data);
       total = data.total;
-      $('#accounts-stock-list').innerHTML = table(data);window.GREENLOOP_STOCK?.mount($('#accounts-stock-list'),window.GREENLOOP_STOCK.scoped(stockFilters.query(),data.rows));
+      $('#accounts-stock-list').innerHTML=table(data);if(data.receipt_summary)$('#accounts-stock-list').insertAdjacentHTML('afterbegin',window.GREENLOOP_STOCK?.summaryHtml(data.receipt_summary)||'');
       const metrics = view === 'supplier' ? [['Received','received'],['In company','in_company'],['Ready','ready'],['In process','in_process'],['Exported','exported'],['Returned','returned']] : [['Exported phones','exported']];
       $('#accounts-stock-totals').innerHTML = metrics.map(([label,key])=>`<div><span>${esc(label)}</span><strong>${value(data.totals[key] || 0)}</strong></div>`).join('');
       $('#accounts-stock-count').textContent = total ? `${offset+1}–${Math.min(offset+50,total)} of ${total} rows` : '0 rows';
@@ -92,6 +103,7 @@
   }
   function showView(next) {
     if (context.isBusy() || window.GREENLOOP_ACCOUNTS_IMEI?.isBusy() || !['verify','supplier','customer','imei'].includes(next)) return;
+    if(['supplier','customer'].includes(next)&&!mayReadStock(next))return;
     view = next;
     document.querySelectorAll('[data-accounts-view]').forEach(b=>{const active=b.dataset.accountsView===view;b.classList.toggle('is-active',active);b.setAttribute('aria-pressed',String(active));});
     $('#accounts-verify-panel').hidden = view !== 'verify';
@@ -102,6 +114,7 @@
     const supplier = view === 'supplier';
     stockFilters.setSortFields((supplier ? supplierColumns : customerColumns).map(([label,key])=>[key,label,key.endsWith('_at')?'date':undefined]));
     for (const key of ['_from', '_to']) stockFilters.controls.get(key).title = supplier ? 'Stock received date range' : 'Exported date range';
+    for(const key of ['supplier_name','customer_name'])stockFilters.controls.get(key).closest('label').hidden=true;
     stockFilters.controls.get('customer_code').closest('label').hidden=supplier;
     stockFilters.controls.get('final_grade').closest('label').hidden=supplier;
     $('#accounts-stock-title').textContent = supplier ? 'Supplier Stock' : 'Customer Stock';
@@ -134,5 +147,11 @@
     $('#accounts-stock-next').addEventListener('click',()=>{if(!context.isBusy() && offset+50<total){offset+=50;loadStock();}});
     window.setInterval(()=>{if(!document.hidden)loadStock();},30000);
   }
+  function clearStock(){
+    stockGeneration++;$('#accounts-stock-list').replaceChildren();$('#accounts-stock-totals').replaceChildren();$('#accounts-stock-count').textContent='';total=0;
+    for(const key of ['supplier_name','customer_name']){const input=stockFilters.controls.get(key);input.replaceChildren(new Option('All',''));input.closest('label').hidden=true;}
+    stockFilters.clear();
+  }
+  for(const event of ['greenloop:office-locked','greenloop:signed-out','greenloop:permissions-changed'])window.addEventListener(event,clearStock);
   window.GREENLOOP_ACCOUNTS = {init,picker,reloadCustomers};
 })();
