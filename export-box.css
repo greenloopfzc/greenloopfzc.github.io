@@ -97,3 +97,8 @@
  html body.app-page .export-sheet-footer img{width:100%!important;height:auto!important}
  html body.app-page .export-line-action,html body.app-page .bulk-imei-status{display:none!important}
 }
+
+/* Failed attempts are review rows, not saved export items. */
+html body.app-page table.export-sheet tr.export-scan-issue>td{background:#fde9e7!important;color:#ac2424!important;border-color:#edc0bb!important}
+html body.app-page table.export-sheet .export-scan-reason{white-space:normal!important;min-width:220px;max-width:400px;overflow-wrap:anywhere;line-height:1.35;text-align:left!important}
+@media print{html body.app-page table.export-sheet tr.export-scan-issue>td{background:#fde9e7!important;color:#ac2424!important;print-color-adjust:exact!important;-webkit-print-color-adjust:exact!important}}

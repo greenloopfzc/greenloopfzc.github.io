@@ -27,6 +27,7 @@
   let client;
   let currentBox;
   let lines = [];
+  let scanIssues=[],issueBoxId=null,issueSequence=0,needsCleanPrint=false;
   let scanTimer;
   let toastTimer;
   let scanning = false;
@@ -76,12 +77,23 @@
     }, 3400);
   }
 
+  function invalidatePrint() { printedSnapshot=null;confirmPrintButton.hidden=true; }
+  function setIssueBox(id) { if(issueBoxId!==id){scanIssues=[];issueBoxId=id;needsCleanPrint=false;invalidatePrint();} }
+  function addScanIssue(imei,reason) {
+    setIssueBox(currentBox?.box_id);scanIssues.push({id:String(++issueSequence),imei:String(imei||''),reason:String(reason||'This IMEI could not be added to the box.')});
+    needsCleanPrint=true;invalidatePrint();
+  }
+  function removeScanIssue(id) {
+    if(!can('scan')||boxBusy||scanning)return;
+    scanIssues=scanIssues.filter(r=>r.id!==id);invalidatePrint();render();if(!imeiInput.disabled)imeiInput.focus();
+  }
   function removableDraft() {
     return can("scan") && currentBox?.box_status === "open" && workflow?.state === "draft" && !workflow?.saved_at;
   }
   function render() {
     const removable=removableDraft();
-    document.querySelector('#export-delete-heading').hidden=!removable;
+    document.querySelector('#export-delete-heading').hidden=!(removable||scanIssues.length&&can('scan'));
+    document.querySelector('#export-issue-heading').hidden=!scanIssues.length;
     if (!currentBox) {
       boxNumber.textContent = "No open export box";
       boxStatus.textContent = "View only";
@@ -91,26 +103,28 @@
       tableBody.innerHTML = '<tr><td class="export-sheet-empty" colspan="7">No open export box is available.</td></tr>';
       return;
     }
-    const count = lines.length;
+    const count = lines.length,issueCount=scanIssues.length,mayRemove=removable||issueCount&&can("scan");
     const isFinished = ["full", "closed"].includes(String(currentBox.box_status));
 
     boxNumber.textContent = currentBox.box_number || "Export Box";
     boxStatus.textContent = isFinished ? "Box finished" : "Open for scanning";
     boxCount.textContent = `${count} phone${count === 1 ? "" : "s"}`;
-    boxRemaining.textContent = isFinished ? "Start a new box" : "Ready to scan";
+    boxRemaining.textContent = issueCount ? `${issueCount} scan issue${issueCount===1?"":"s"} - delete before saving` : isFinished ? "Start a new box" : "Ready to scan";
     progressBar.style.width = count ? "100%" : "0";
-    startNextButton.disabled = !(isFinished ? can("scan") : can("save")) || boxBusy || scanning || (!isFinished && (count === 0 || workflow?.printed_revision !== workflow?.revision || !workflow?.printed_at));
+    startNextButton.disabled = !(isFinished ? can("scan") : can("save")) || boxBusy || scanning || issueCount>0 || needsCleanPrint || (!isFinished && (count === 0 || workflow?.printed_revision !== workflow?.revision || !workflow?.printed_at));
     startNextButton.textContent = isFinished ? "Start next box" : "Save Box";
-    printButton.disabled = !can("print") || count === 0 || scanning || boxBusy;
-    confirmPrintButton.disabled = !can("print") || scanning || boxBusy;
+    printButton.disabled = !can("print") || count+issueCount === 0 || scanning || boxBusy;
+    confirmPrintButton.disabled = !can("print") || scanning || boxBusy || issueCount>0;
     imeiInput.disabled = !can("scan") || boxBusy || isFinished || scanning;
     sheetTitle.textContent = `${currentBox.box_number || "Export Box"} - Export packing list`;
     sheetDate.textContent = `Opened: ${formatDateTime(currentBox.opened_at)}`;
-    sheetTotal.textContent = `${count} phone${count === 1 ? "" : "s"}`;
+    sheetTotal.textContent = `${count} valid phone${count === 1 ? "" : "s"}`+(issueCount?` · ${issueCount} scan issue${issueCount===1?"":"s"}`:"");
 
-    tableBody.innerHTML = lines.length
-      ? lines.map((line) => `<tr><td>${escapeHtml(line.serial_no)}</td><td>${escapeHtml(line.imei)}</td><td>${escapeHtml(line.model || "-")}</td><td>${escapeHtml(line.storage_gb ? `${line.storage_gb} GB` : "-")}</td><td>${escapeHtml(line.final_grade || "-")}</td><td>${escapeHtml(line.color || "-")}</td><td>${escapeHtml(line.box_number || currentBox.box_number)}</td>${removable?`<td class="export-line-action"><button type="button" class="secondary-button" data-draft-remove="${escapeHtml(line.id)}" data-capability="scan" data-capability-page="export_boxes" ${boxBusy||scanning?'disabled':''} aria-label="Delete ${escapeHtml(line.imei)} from this box">Delete</button></td>`:''}</tr>`).join("")
-      : `<tr><td class="export-sheet-empty" colspan="${removable?8:7}">Scan the first Ready Stock IMEI to add it to this box.</td></tr>`;
+    const validRows=lines.map(line=>`<tr><td>${escapeHtml(line.serial_no)}</td><td>${escapeHtml(line.imei)}</td><td>${escapeHtml(line.model||"-")}</td><td>${escapeHtml(line.storage_gb?`${line.storage_gb} GB`:"-")}</td><td>${escapeHtml(line.final_grade||"-")}</td><td>${escapeHtml(line.color||"-")}</td><td>${escapeHtml(line.box_number||currentBox.box_number)}</td>${issueCount?'<td class="export-scan-reason">-</td>':''}${mayRemove?`<td class="export-line-action">${removable?`<button type="button" class="secondary-button" data-draft-remove="${escapeHtml(line.id)}" data-capability="scan" data-capability-page="export_boxes" ${boxBusy||scanning?'disabled':''} aria-label="Delete ${escapeHtml(line.imei)} from this box">Delete</button>`:''}</td>`:''}</tr>`).join('');
+    const lastSerial=lines.reduce((n,r)=>Math.max(n,Number(r.serial_no)||0),0);
+    const issueRows=scanIssues.map((r,i)=>`<tr class="export-scan-issue" data-scan-issue="${r.id}"><td>${lastSerial+i+1}</td><td>${escapeHtml(r.imei)}</td><td>-</td><td>-</td><td>-</td><td>-</td><td>${escapeHtml(currentBox.box_number)}</td><td class="export-scan-reason">${escapeHtml(r.reason)}</td>${mayRemove?`<td class="export-line-action"><button type="button" class="secondary-button" data-issue-remove="${r.id}" data-capability="scan" data-capability-page="export_boxes" ${boxBusy||scanning?'disabled':''} aria-label="Delete scan issue ${escapeHtml(r.imei)}">Delete</button></td>`:''}</tr>`).join('');
+    tableBody.innerHTML=validRows+issueRows||`<tr><td class="export-sheet-empty" colspan="${7+(mayRemove?1:0)}">Scan the first Ready Stock IMEI to add it to this box.</td></tr>`;
+
   }
 
   async function removeDraftLine(itemId) {
@@ -154,6 +168,7 @@
       if (error) throw error;
       nextLines = Array.isArray(data) ? data : [];
     }
+    setIssueBox(nextBox?.box_id);
     currentBox = nextBox;
     lines = nextLines;
     await loadWorkflow();
@@ -166,6 +181,7 @@
     if (!currentBox?.box_id) return;
     const {data,error}=await getClient().rpc("get_box_workflow_v1",{p_box_id:currentBox.box_id});
     if(error)throw error;
+    setIssueBox(currentBox.box_id);
     workflow=data.box;
     // Print the lines and revision from the same database snapshot. A second
     // scanner must not make an older sheet qualify as the current printed box.
@@ -173,12 +189,13 @@
     currentBox={...currentBox,...data.box};
   }
   async function printBox() {
-    if(!can("print") || boxBusy || scanning || !lines.length)return;
+    if(!can("print") || boxBusy || scanning || !(lines.length+scanIssues.length))return;
     boxBusy=true;render();setMessage();
     try {
       await loadLines();
       const snapshot={boxId:currentBox.box_id,revision:workflow.revision};
-      await window.GREENLOOP_BOX_PRINT.open({box:{...workflow},lines:[...lines]},{allowed:()=>can("print")});
+      await window.GREENLOOP_BOX_PRINT.open({box:{...workflow},lines:[...lines],issues:scanIssues.map(r=>({...r}))},{allowed:()=>can("print")});
+      if(scanIssues.length){invalidatePrint();setMessage();return;}
       printedSnapshot=snapshot;
       confirmPrintButton.hidden=!can("print");
       setMessage("Print from the preview. After printing succeeds, close the preview and choose Printing completed.","success");
@@ -186,18 +203,19 @@
     finally{boxBusy=false;render();}
   }
   async function confirmPrint() {
-    if(!can("print") || boxBusy || scanning || !printedSnapshot)return;
+    if(!can("print") || boxBusy || scanning || !printedSnapshot || scanIssues.length)return;
     boxBusy=true;render();
     try {
       const {error}=await getClient().rpc("mark_box_printed_v1",{p_box_id:printedSnapshot.boxId,p_revision:printedSnapshot.revision});if(error)throw error;
-      await loadWorkflow();setMessage("Printing confirmed. Save Box to send it to Accounts.","success");
+      await loadWorkflow();needsCleanPrint=false;setMessage("Printing confirmed. Save Box to send it to Accounts.","success");
     }catch(error){printedSnapshot=null;confirmPrintButton.hidden=true;setMessage(error.message);}
     finally{boxBusy=false;render();}
   }
   async function scanImei() {
     const imei = imeiInput.value.replace(/\D/g, "").slice(0, 15);
     imeiInput.value = imei;
-    if (!can("scan") || boxBusy || scanning || imei.length !== 15) return;
+    if (!can("scan") || boxBusy || scanning || !currentBox?.box_id || currentBox.box_status!=="open") return;
+    if(imei.length!==15){if(imei){addScanIssue(imei,"Use a valid 15-digit IMEI.");imeiInput.value="";render();}return;}
 
     scanning = true;
     setMessage();
@@ -220,16 +238,8 @@
       showToast(`Phone ${result.serial_no} added to the export box.`);
       return {ok:true};
     } catch (error) {
-      setMessage(error.message || "This IMEI could not be added to the export box.");
-      imeiInput.select();
-      const duplicate = /this imei has already been placed in an export box/i.test(error.message || "");
-      const wrongStage = /this imei is not currently available in ready stock/i.test(error.message || "");
-      if (!window.GREENLOOP_BULK_IMEI?.busy && ["22023", "23505", "P0001"].includes(error.code) && (duplicate || wrongStage)) {
-        window.GREENLOOP_IMEI_STAGE_NOTICE?.show({
-          imei, title: duplicate ? "Duplicate phone" : "Phone unavailable here", message: error.message, onlyIfFound: !duplicate,
-          isCurrent: () => imeiInput.isConnected && imeiInput.value.trim() === imei
-        });
-      }
+      addScanIssue(imei,error.message||"This IMEI could not be added to the export box.");
+      imeiInput.value="";setMessage();
       return {ok:false,error:error.message};
     } finally {
       scanning = false;
@@ -242,6 +252,8 @@
     clearTimeout(scanTimer);
     if (!can("scan") || boxBusy || scanning || !currentBox?.box_id || currentBox.box_status !== "open") throw new Error("This box is not available for scanning.");
     if (!options.isCurrent()) return {loaded:0,issues:[]};
+    for(const rejected of options.rejected||[])addScanIssue(rejected.imei,rejected.message);
+    if(!imeis.length){imeiInput.value="";render();return {loaded:0,issues:[]};}
     scanning=true;setMessage();render();
     try {
       const {data,error}=await getClient().rpc("scan_imeis_to_export_box_v1",{p_box_id:currentBox.box_id,p_revision:workflow.revision,p_imeis:imeis});
@@ -249,21 +261,26 @@
       if(!data?.box || !Array.isArray(data.lines) || !Array.isArray(data.results))throw new Error("The box response could not be verified. Refresh the box before retrying.");
       if(options.isCurrent()) {
         workflow=data.box;currentBox={...currentBox,...data.box};lines=data.lines;
-        printedSnapshot=null;confirmPrintButton.hidden=true;imeiInput.value="";
-        setMessage(`${data.loaded} of ${imeis.length} IMEIs added to ${data.box.box_number}.`+(data.results.some(r=>!r.ok)?" Check the IMEIs listed below.":" Ready to scan."),data.results.some(r=>!r.ok)?"error":"success");
+        invalidatePrint();imeiInput.value="";
+        for(const r of data.results)if(!r.ok)addScanIssue(r.imei,r.message);
+        setMessage(scanIssues.length?"":`${data.loaded} of ${imeis.length} IMEIs added to ${data.box.box_number}. Ready to scan.`,"success");
       }
-      return {loaded:data.loaded,issues:data.results.filter(r=>!r.ok).map(r=>r.imei+" — "+r.message)};
+      return {loaded:data.loaded,issues:[]};
     } catch(error) {
       // A lost response can follow a committed request. Reload the canonical
       // box once instead of retrying writes and risking duplicate scans.
       try { if(options.isCurrent())await loadLines(); } catch (_) {}
-      if(options.isCurrent())setMessage(error.message || "Bulk IMEIs could not be added. Check the box before retrying.");
-      throw error;
+      if(options.isCurrent()){
+        for(const imei of imeis)if(!lines.some(r=>r.imei===imei))addScanIssue(imei,error.message||"The scan result could not be verified. Check this phone before retrying.");
+        imeiInput.value="";setMessage();
+      }
+      return {loaded:imeis.filter(v=>lines.some(r=>r.imei===v)).length,issues:[]};
     } finally {scanning=false;render();if(!imeiInput.disabled)imeiInput.focus();}
   }
 
   async function finishAndStartNext() {
     if (!currentBox || !(String(currentBox.box_status) === "open" ? can("save") : can("scan")) || scanning || boxBusy) return;
+    if(scanIssues.length||needsCleanPrint)return;
     if (!lines.length && String(currentBox.box_status) === "open") return;
     if (String(currentBox.box_status) === "open" && (workflow?.printed_revision !== workflow?.revision || !workflow?.printed_at)) { setMessage("Print and confirm printing before saving this box."); return; }
     boxBusy = true;
@@ -309,7 +326,7 @@
   document.querySelector("#open-menu").addEventListener("click", () => setMenu(true));
   document.querySelector("#close-menu").addEventListener("click", () => setMenu(false));
   backdrop.addEventListener("click", () => setMenu(false));
-  window.GREENLOOP_BULK_IMEI?.register({selector:'#export-imei',capability:'scan',cancellable:false,load:pasteImeis});
+  window.GREENLOOP_BULK_IMEI?.register({selector:'#export-imei',capability:'scan',cancellable:false,inlineIssues:true,load:pasteImeis});
   imeiInput.addEventListener("input", () => {
     imeiInput.value = imeiInput.value.replace(/\D/g, "").slice(0, 15);
     clearTimeout(scanTimer);
@@ -321,7 +338,8 @@
   startNextButton.addEventListener("click", () => finishAndStartNext().catch((error) => setMessage(error.message || "The next export box could not be opened.")));
   printButton.addEventListener("click", printBox);
   confirmPrintButton.addEventListener("click", confirmPrint);
-  tableBody.addEventListener('click',event=>{const button=event.target.closest('[data-draft-remove]');if(button)removeDraftLine(button.dataset.draftRemove);});
+  tableBody.addEventListener('click',event=>{const button=event.target.closest('[data-draft-remove]');if(button)removeDraftLine(button.dataset.draftRemove);const issue=event.target.closest('[data-issue-remove]');if(issue)removeScanIssue(issue.dataset.issueRemove);});
+  for(const event of ['greenloop:office-locked','greenloop:signed-out'])window.addEventListener(event,()=>{scanIssues=[];invalidatePrint();render();});
   initialize().catch((error) => {
     permissionMessage.textContent = error.message || "Export Boxes could not be loaded.";
     permissionMessage.hidden = false;
