@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css?v=20261016-strict-view-only-1">
-    <link rel="stylesheet" href="css/ready-stock.css?v=20261028-ready-stock-imeis-1">
+    <link rel="stylesheet" href="css/ready-stock.css?v=20261109-ready-stock-box-grades-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="js/imei-scan.js?v=20261105-issuance-sidebar-1"></script>
 <script defer src="js/imei-stage-notice.js?v=20261102-imei-scan-location-1"></script>
@@ -37,7 +37,7 @@
     <script defer src="js/part-notifications.js?v=20261109-issuance-access-1"></script>
     <script defer src="js/employee-updates.js?v=20261105-stock-consistency-1"></script>
   <script defer src="js/storage-options.js?v=20261027-iphone-entry-options-1"></script>
-  <script defer src="js/ready-stock.js?v=20261105-qc-direct-ready-1"></script>
+  <script defer src="js/ready-stock.js?v=20261109-ready-stock-box-grades-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
     <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261102-imei-scan-location-1">
   <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
@@ -81,6 +81,7 @@
               </div>
             </section>
             <section id="ready-stock-view" aria-label="Ready Stock data">
+                <div id="ready-stock-grades" class="ready-stock-grades" role="group" aria-label="Ready Stock by grade"></div>
               <section class="ready-stock-panel"><div id="ready-stock-date-controls" class="ready-stock-filters table-filter-native" hidden><label>From<input id="ready-stock-from" type="date" title="Ready Stock date"></label><label>To<input id="ready-stock-to" type="date" title="Ready Stock date"></label><button id="apply-ready-stock-range" class="primary-button" type="button">Apply dates</button><button id="clear-ready-stock-range" class="secondary-button" type="button">All dates</button></div><button id="refresh-ready-stock" class="secondary-button ready-stock-refresh" type="button">Refresh</button><div class="ready-stock-table-wrap"><table class="ready-stock-table"><thead id="ready-stock-head"><tr><th>Model</th><th>RMA</th><th>Latest Ready Stock date</th><th>Total Qty</th></tr></thead><tbody id="ready-stock-body"><tr><td class="ready-stock-empty" colspan="4">Loading Ready Stock...</td></tr></tbody><tfoot id="ready-stock-foot"><tr><th>Total</th><th>0</th><th>-</th><th>0 pcs</th></tr></tfoot></table></div></section>
             </section>
             <section id="ready-stock-rework-view" aria-label="Send for rework" hidden>

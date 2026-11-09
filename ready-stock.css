@@ -1,4 +1,12 @@
 /* Ready Stock */
+.ready-stock-grades { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:12px; margin:0 0 18px; }
+.ready-stock-grade-card { display:grid; justify-items:center; align-content:center; gap:4px; padding:12px 8px; border:1px solid var(--nm-line,#d3e1e5); border-top:3px solid var(--nm-accent,#087451); border-radius:16px; color:var(--nm-ink,#203540); background:var(--nm-card,#f5f8fb); box-shadow:var(--nm-shadow,4px 5px 8px #17342625,-3px -3px 6px #ffffffba); text-align:center; }
+.ready-stock-grade-card > span { font-size:.82rem; font-weight:800; }
+.ready-stock-grade-card > strong { font:800 1.65rem Manrope,sans-serif; line-height:1.2; }
+.ready-stock-grade-card > small { color:var(--nm-muted,#587080); font-size:.7rem; }
+.ready-stock-grade-card .ready-stock-quantity { padding:2px 8px; }
+@media(max-width:800px) { .ready-stock-grades { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+@media(max-width:400px) { .ready-stock-grades { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 .ready-stock-content { max-width: 1300px; }
 .ready-stock-heading { align-items: center; }
 .ready-stock-heading-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 10px; min-width: 0; }

@@ -5,6 +5,8 @@
   const app = document.querySelector("#ready-stock-app");
   const permissionMessage = document.querySelector("#permission-message");
   const total = document.querySelector("#ready-stock-total");
+  const gradeSummary = document.querySelector("#ready-stock-grades");
+  const stockGrades = ["A", "B", "D", "BA", "BB", "RMA"];
   const tableHead = document.querySelector("#ready-stock-head");
   const tableBody = document.querySelector("#ready-stock-body");
   const tableFoot = document.querySelector("#ready-stock-foot");
@@ -170,7 +172,7 @@
   }
 
   function buildGradeList(data, rows) {
-    const labels = new Map();
+    const labels = new Map(stockGrades.map(grade => [normalize(grade), grade]));
     (data?.grade_options || []).forEach((grade) => {
       const label = String(grade || "").trim();
       if (label) labels.set(normalize(label), label);
@@ -208,6 +210,12 @@
     rows.forEach((row) => {
       grades.forEach((grade) => gradeTotals.set(grade.key, Number(gradeTotals.get(grade.key) || 0) + Number(row.grades.get(grade.key) || 0)));
     });
+    // Canonical grades remain separate here; packing-sheet aliases apply only at print time.
+    gradeSummary.innerHTML = stockGrades.map(grade => {
+      const gradeRows = flatRows.filter(row => stockGroup(row).g === normalize(grade));
+      const quantity = gradeRows.reduce((sum, row) => sum + Number(row.quantity || 0), 0);
+      return `<div class="ready-stock-grade-card" data-ready-grade="${grade}"><span>${grade === "RMA" ? "RMA Stock" : "Grade " + grade}</span><strong>${quantityButton(quantity, grade + " · Ready Stock", gradeRows)}</strong><small>phones</small></div>`;
+    }).join("");
 
     const filters = window.GREENLOOP_FILTERS.get('ready-stock-filters');
     const refresh = document.querySelector('#refresh-ready-stock');

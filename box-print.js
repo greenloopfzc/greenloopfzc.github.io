@@ -1,15 +1,17 @@
 /* Isolated A4 Portrait packing PDF and vector print preview, using Damage Report branding. */
 (function(root){
  'use strict';
- const VERSION='20261109-box-print-footer-1',W=595.276,H=841.89,M=36,BODY=W-2*M;
+ const VERSION='20261109-ready-stock-box-grades-1',W=595.276,H=841.89,M=36,BODY=W-2*M;
  const clean=v=>String(v??'').replace(/[\u0000-\u001f\u007f]/g,' ').replace(/[–—‑]/g,'-').replace(/\s+/g,' ').trim();
  const label=v=>clean(v)||'Not recorded';
+ // Packing labels only. Never rewrite the stored grade or the Ready Stock grade.
+ const packingGrade=v=>{const grade=clean(v).toUpperCase();return grade==='BA'?'A':grade==='BB'?'B':label(v);};
  let libraryPromise,dialog,objectUrl,activeTicket=0,printFrame;
  function library(){if(root.PDFLib)return Promise.resolve(root.PDFLib);if(!root.document)return Promise.reject(Error('PDF library is unavailable.'));if(!libraryPromise)libraryPromise=new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='js/vendor/pdf-lib-1.17.1.min.js';s.onload=()=>root.PDFLib?resolve(root.PDFLib):(libraryPromise=null,reject(Error('PDF tools did not load. Please retry.')));s.onerror=()=>{libraryPromise=null;s.remove();reject(Error('PDF tools could not load. Check the connection and retry.'));};document.head.append(s);});return libraryPromise;}
  function date(v){if(!v)return 'Not recorded';const d=new Date(v);if(!Number.isFinite(d.getTime()))return 'Not recorded';return d.toLocaleString('en-GB',{timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true})+' UAE';}
  function prepare(data){
   if(!data?.box||!clean(data.box.box_number)||!Array.isArray(data.lines)||!(data.lines.length+(data.issues?.length||0)))throw Error('A non-empty box is required for printing.');
-  const seen=new Set(),serials=new Set();const rows=data.lines.map((r,i)=>{const imei=clean(r.imei);if(!/^\d{15}$/.test(imei)||seen.has(imei))throw Error('A box IMEI is missing, invalid or duplicated. Reload the box before printing.');seen.add(imei);const serial=r.serial_no??i+1;if(!Number.isSafeInteger(Number(serial))||Number(serial)<1||serials.has(Number(serial)))throw Error('A box serial number is invalid or duplicated. Reload the box.');serials.add(Number(serial));return[String(serial),imei,label(r.model),r.storage_gb?Number(r.storage_gb)>=1024?Number(r.storage_gb)/1024+' TB':r.storage_gb+' GB':'Not recorded',label(r.final_grade),label(r.color),clean(r.box_number)||clean(data.box.box_number)];});
+  const seen=new Set(),serials=new Set();const rows=data.lines.map((r,i)=>{const imei=clean(r.imei);if(!/^\d{15}$/.test(imei)||seen.has(imei))throw Error('A box IMEI is missing, invalid or duplicated. Reload the box before printing.');seen.add(imei);const serial=r.serial_no??i+1;if(!Number.isSafeInteger(Number(serial))||Number(serial)<1||serials.has(Number(serial)))throw Error('A box serial number is invalid or duplicated. Reload the box.');serials.add(Number(serial));return[String(serial),imei,label(r.model),r.storage_gb?Number(r.storage_gb)>=1024?Number(r.storage_gb)/1024+' TB':r.storage_gb+' GB':'Not recorded',packingGrade(r.final_grade),label(r.color),clean(r.box_number)||clean(data.box.box_number)];});
   const validCount=rows.length,issues=Array.isArray(data.issues)?data.issues:[],issueFlags=rows.map(()=>false),lastSerial=Math.max(0,...serials);
   if(issues.length){for(const row of rows)row.push('-');issues.forEach((r,i)=>{rows.push([String(lastSerial+i+1),label(r.imei),'-','-','-','-',clean(data.box.box_number),label(r.reason)]);issueFlags.push(true);});}
   return{boxNumber:clean(data.box.box_number),opened:date(data.box.opened_at),revision:data.box.revision,rows,validCount,issueCount:issues.length,issueFlags};
