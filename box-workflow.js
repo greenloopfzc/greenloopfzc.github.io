@@ -39,9 +39,10 @@
     renderDetail(await rpc('get_box_workflow_v1',{p_box_id:selected.box.box_id}),true);
     if(page==='stock_exported'){
       if(!selected.lines.length)throw Error('Print a non-empty box.');
-      if(!window.GREENLOOP_BOX_PRINT)throw Error('Print tools are unavailable. Refresh and try again.');
+      if(!window.GREENLOOP_BOX_PRINT||!window.GREENLOOP_STOCK_EXPORTED_PDF)throw Error('Print tools are unavailable. Refresh and try again.');
       const snapshot={id:selected.box.box_id,revision:selected.box.revision};
-      await window.GREENLOOP_BOX_PRINT.open(selected,{allowed:()=>exportedPrintAllowed()&&selected?.box.box_id===snapshot.id&&selected?.box.revision===snapshot.revision,afterPrintMessage:'Print dialog opened. You can also download this packing sheet as PDF.'});
+      const printData={...selected,lines:selected.lines.map(row=>{const source=window.GREENLOOP_STOCK?.resolve?.(row),receipt_quantity=source?.received_quantity??row.receipt_quantity,batch_number=source?.batch_number||row.batch_number;return {...row,receipt_quantity,supplier_code:window.GREENLOOP_SUPPLIER_RECEIPT_LABEL?.(source?.supplier_code||row.supplier_code,receipt_quantity,null)||row.supplier_code,supplier_name:row.supplier_name??source?.supplier_name,invoice_number:row.invoice_number||source?.invoice_number,received_at:row.received_at||source?.received_at,batch_number:window.GREENLOOP_BATCH_LABEL?.(batch_number,{...row,batch_number,receipt_quantity})||batch_number};})};
+      await window.GREENLOOP_BOX_PRINT.open(printData,{createReport:data=>window.GREENLOOP_STOCK_EXPORTED_PDF.create(data),allowed:()=>exportedPrintAllowed()&&selected?.box.box_id===snapshot.id&&selected?.box.revision===snapshot.revision,afterPrintMessage:'Print dialog opened. You can also download this full Stock Exported report as PDF.'});
       return;
     }
     printed={id:selected.box.box_id,revision:selected.box.revision};window.print();

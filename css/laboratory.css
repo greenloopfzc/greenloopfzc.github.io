@@ -257,3 +257,8 @@ body.app-page.frame-mode #frame-pending-panel table.technician-lines-table tr>td
 body.app-page.frame-mode #frame-pending-panel table.technician-lines-table [data-frame-empty-imei]{box-sizing:border-box;width:200px!important;min-width:0!important;max-width:200px!important;height:32px!important;min-height:32px!important;margin:0!important;padding:4px 8px!important;border-radius:8px;font-size:12px!important;line-height:1.2;font-weight:700;text-align:center}
 body.app-page.frame-mode #frame-pending-panel table.technician-lines-table tr>td:last-child{width:1%!important;white-space:nowrap}
 body.app-page.frame-mode #frame-pending-panel table.technician-lines-table .line-save{box-sizing:border-box;width:auto!important;min-width:58px!important;height:32px!important;min-height:32px!important;padding:4px 12px!important;display:inline-flex!important;align-items:center;justify-content:center}
+
+/* Hidden workbench cards retain the raised design and remain available to IMEI lookup. */
+.technician-card.is-hidden-technician{border:1px dashed var(--muted,#637580);}
+.technician-hidden-label{font-size:.65rem;color:var(--muted,#637580);font-weight:700;}
+#show-hidden-technicians[aria-pressed="true"]{background:var(--green-light,#ddf0e6);border-color:var(--green,#007d59);}

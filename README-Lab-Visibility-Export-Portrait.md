@@ -1,0 +1,9 @@
+# Lab technician visibility and Stock Exported portrait print
+
+Lab & Glass: select a technician, then choose **Hide selected**. Choose **Show hidden**, select a hidden card, then **Show selected** to restore it. These controls change the shared Lab workbench card visibility only. They do not deactivate employees or change assignments, parts, services, TV selections, employee dropdowns or historical records. All pending phones remain in Total Pending; scanning a hidden employee's IMEI still opens its phone line. Unassigned phones cannot be hidden. New employees start visible.
+
+Saving visibility uses the existing Lab & Glass **Manage options** action and edit access. View-only users can reveal hidden cards temporarily with Show hidden, but cannot change the saved visibility. Save or cancel phone drafts first. Visibility is reloaded with the workbench refresh; a failed metadata read retains the last confirmed settings.
+
+Stock Exported > open box > Print Box: preview, Download PDF and Print use **A4 portrait**. The sheet preserves all twelve source columns: S.No, IMEI, Device, Model, GB, Grade, Color, Supplier, Supplier Code, Stock Received (UAE), Invoice, Stock/Batch No. Fifty standard phone rows fit one page with measured text and safe margins. Names follow existing permissions; supplier/batch labels retain the original receipt quantity. Canonical grades remain unchanged. Box Entry retains its separate packing-sheet layout and grade mapping.
+
+Run the supplied PowerShell publisher. It verifies the pinned source, previous installations, and the additive Lab visibility SQL before publishing. Missing SQL is copied to the clipboard for a NEW Supabase query. Required result: `installed_lab_technician_visibility_version = 20261109-lab-technician-visibility-1`. No Edge Function, JWT, secret or new permission tick is required. No live data, publication or database installation was performed while preparing this package.

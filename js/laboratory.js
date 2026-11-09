@@ -31,6 +31,26 @@
   const boardMessage = document.querySelector("#lab-board-message");
   const addTechnicianButton = document.querySelector("#add-lab-technician");
   const removeTechnicianButton = document.querySelector("#remove-lab-technician");
+  const hideTechnicianButton = document.querySelector('#hide-lab-technician');
+  const showHiddenButton = document.querySelector('#show-hidden-technicians');
+  let hiddenTechnicianIds = new Set(), showHiddenTechnicians = false, visibilityReady = false, visibilityBusy = false, visibilityRevision = 0;
+  const canManageVisibility = () => !isFrameMode && editable() && window.GREENLOOP_CAN?.('manage_options','lab_glass') === true;
+  const isHiddenTechnician = t => !t.unassigned && hiddenTechnicianIds.has(String(t.id));
+  const visibleTechnicians = () => technicians.filter(t => !isHiddenTechnician(t) || showHiddenTechnicians || String(t.id) === activeTechnicianId);
+  function applyVisibility(data) { if(!Array.isArray(data?.hidden_ids) || !data.hidden_ids.every(id=>typeof id==='string'))throw Error('Technician card visibility could not be verified. Refresh and retry.'); hiddenTechnicianIds = new Set(data.hidden_ids); visibilityReady = true; }
+  async function changeTechnicianVisibility() {
+    if (!canManageVisibility() || !visibilityReady || visibilityBusy) return;
+    const technician = technicians.find(t => String(t.id) === activeTechnicianId);
+    if (!technician || technician.unassigned || bulkWorkbenchImeis) return;
+    if (window.GREENLOOP_LAB_PENDING_CONTEXT.hasDrafts()) throw Error('Save or cancel your phone changes before hiding or showing a technician.');
+    const hidden = !isHiddenTechnician(technician); visibilityBusy = true; visibilityRevision++; renderTechnicianCards();
+    try {
+      const {data,error} = await getClient().rpc('set_lab_technician_visibility_v1',{p_employee_id:technician.id,p_hidden:hidden});
+      if (error) throw error; applyVisibility(data); visibilityRevision++;
+      if (hidden && !showHiddenTechnicians) { clearImeiFocus(false); activeTechnicianId = String(technicians.find(t => !isHiddenTechnician(t))?.id || ''); technicianRows = []; await loadTechnicianRows(); }
+      setBoardMessage(technician.full_name + (hidden ? ' is hidden from Lab & Glass cards. Records and pending phones are preserved.' : ' is visible in Lab & Glass again.'),true);
+    } finally { visibilityBusy = false; renderTechnicianCards(); }
+  }
   const sidebar = document.querySelector("#sidebar");
   const backdrop = document.querySelector("#menu-backdrop");
   const toast = document.querySelector("#toast");
@@ -144,15 +164,23 @@
     const pendingTotal=technicians.reduce((sum,t)=>sum+Math.max(0,Number(t.pending_count)||0),0);
     document.querySelector('#lab-total-pending-count').textContent=pendingTotal.toLocaleString('en-US');
     document.querySelector('#lab-total-pending-unit').textContent=pendingTotal===1?'phone':'phones';
-    technicianCards.innerHTML = technicians.length ? technicians.map((technician) => {
+    technicianCards.innerHTML = visibleTechnicians().length ? visibleTechnicians().map((technician) => {
       const count = Number(technician.pending_count || 0);
       const active = String(technician.id) === String(activeTechnicianId);
-      return `<button class="technician-card${active ? " is-active" : ""}" type="button" data-capability="view" data-capability-page="lab_glass" data-search-read-only data-technician-id="${escapeHtml(technician.id)}" aria-pressed="${active}"><span class="technician-avatar">${escapeHtml(initials(technician.full_name))}</span><span class="technician-card-copy"><strong>${escapeHtml(technician.full_name)}</strong><span>${count} ${technician.unassigned?'unassigned':'assigned'} IMEI${count === 1 ? "" : "s"}</span></span><span class="technician-card-count${count ? "" : " is-zero"}" aria-label="${count} pending phone${count===1?'':'s'}">${count.toLocaleString('en-US')}</span></button>`;
-    }).join("") : '<p class="technician-lines-empty">No technicians are available.</p>';
+      return `<button class="technician-card${active ? " is-active" : ""}${isHiddenTechnician(technician) ? " is-hidden-technician" : ""}" type="button" data-capability="view" data-capability-page="lab_glass" data-search-read-only data-technician-id="${escapeHtml(technician.id)}" aria-pressed="${active}"><span class="technician-avatar">${escapeHtml(initials(technician.full_name))}</span><span class="technician-card-copy"><strong>${escapeHtml(technician.full_name)}</strong>${isHiddenTechnician(technician)?'<small class="technician-hidden-label">Hidden card</small>':''}<span>${count} ${technician.unassigned?'unassigned':'assigned'} IMEI${count === 1 ? "" : "s"}</span></span><span class="technician-card-count${count ? "" : " is-zero"}" aria-label="${count} pending phone${count===1?'':'s'}">${count.toLocaleString('en-US')}</span></button>`;
+    }).join("") : '<p class="technician-lines-empty">No visible technician cards. Choose Show hidden to view hidden cards.</p>';
     const selected = bulkWorkbenchImeis?{full_name:"Pasted IMEIs",pending_count:technicianRows.length}:technicians.find((item) => String(item.id) === String(activeTechnicianId));
     technicianBoardTitle.textContent = selected?.unassigned?'Phones awaiting employee assignment':selected ? `${selected.full_name}'s assigned work` : "Select a technician";
     technicianLinesTitle.textContent = selected?.unassigned?'Unassigned phones':selected ? `${selected.full_name}'s phone lines` : "Assigned phone lines";
     removeTechnicianButton.disabled = !selected || !!selected.unassigned;
+    const hiddenCount=technicians.filter(isHiddenTechnician).length;
+    if(!hiddenCount)showHiddenTechnicians=false;
+    showHiddenButton.textContent=(showHiddenTechnicians?'Hide hidden':'Show hidden')+' ('+hiddenCount+')';
+    showHiddenButton.disabled=!visibilityReady || visibilityBusy || !hiddenCount;
+    showHiddenButton.setAttribute('aria-pressed',String(showHiddenTechnicians));
+    hideTechnicianButton.hidden=!canManageVisibility();
+    hideTechnicianButton.disabled=!visibilityReady || visibilityBusy || !selected || !!selected.unassigned || !!bulkWorkbenchImeis;
+    hideTechnicianButton.textContent=visibilityBusy?'Saving…':hiddenTechnicianIds.has(activeTechnicianId)?'Show selected':'Hide selected';
     document.querySelector('#technician-lines-help').textContent=selected?.unassigned?'Assign an employee to continue this phone’s work.':'Review the lower line, order required parts, then complete the job after Parts has issued them.';
     technicianImeiScan.disabled = !searchable();
     checkTechnicianImei.disabled = !searchable();
@@ -468,13 +496,17 @@
     if(!skipHistory)await loadFrameReport();
   }
   async function loadTechnicians(preferredId = activeTechnicianId) {
-    const selectionAtStart=activeTechnicianId;
-    if(!boardRead)boardRead=labRead(getClient().rpc('get_lab_employee_board_v1')).finally(()=>boardRead=null);
+    const selectionAtStart=activeTechnicianId,renderAtStart=JSON.stringify([technicians,activeTechnicianId,[...hiddenTechnicianIds],visibilityReady]);
+    if(!boardRead){const revision=visibilityRevision;boardRead=Promise.all([labRead(getClient().rpc('get_lab_employee_board_v1')),labRead(getClient().rpc('get_lab_technician_visibility_v1')).catch(error=>({error}))]).then(([board,visibility])=>{
+      if(!visibility.error && Array.isArray(visibility.data?.hidden_ids) && revision===visibilityRevision && !visibilityBusy)applyVisibility(visibility.data);
+      return board;
+    }).finally(()=>boardRead=null);}
     const {data,error}=await boardRead;if(error)throw error;
     if(activeTechnicianId!==selectionAtStart)preferredId=activeTechnicianId;
-    const next=data||[];const rosterChanged=JSON.stringify(technicians)!==JSON.stringify(next);technicians=next;
-    activeTechnicianId = technicians.some((item) => String(item.id) === String(preferredId)) ? String(preferredId) : String(technicians.find((item) => Number(item.pending_count || 0) > 0)?.id || technicians[0]?.id || "");
-    if(rosterChanged||document.querySelector('#lab-total-pending-count').textContent==='…')renderTechnicianCards();
+    const next=data||[];technicians=next;
+    activeTechnicianId = technicians.some((item) => String(item.id) === String(preferredId)) ? String(preferredId) : String(technicians.find((item) => !isHiddenTechnician(item) && Number(item.pending_count || 0) > 0)?.id || technicians.find(item=>!isHiddenTechnician(item))?.id || "");
+    if(hiddenTechnicianIds.has(activeTechnicianId)&&!showHiddenTechnicians&&!focusedImei&&!window.GREENLOOP_LAB_PENDING_CONTEXT.hasDrafts())activeTechnicianId=String(technicians.find(t=>!isHiddenTechnician(t))?.id||'');
+    if(renderAtStart!==JSON.stringify([technicians,activeTechnicianId,[...hiddenTechnicianIds],visibilityReady])||document.querySelector('#lab-total-pending-count').textContent==='…')renderTechnicianCards();
     for(const select of technicianWorkRows.querySelectorAll('[data-assign-employee]')){
       if(select===document.activeElement)continue;
       const choices=technicians.filter(t=>!t.unassigned),current=select.value;
@@ -730,7 +762,7 @@
     else {await loadFrameGrades();await refreshAll();}
     if (!isFrameMode) {
       window.GREENLOOP_EMPLOYEES?.watch(async()=>{if(!app.hidden&&!technicianWorkRows.querySelector('tr[data-busy="yes"]')){const previous=activeTechnicianId;await loadTechnicians(activeTechnicianId);if(previous!==activeTechnicianId&&!technicianEditorIsActive())await loadTechnicianRows();}});
-      const refreshBoard=()=>{if(!document.hidden&&!app.hidden&&app.isConnected)loadTechnicians(activeTechnicianId).catch(()=>{});};
+      const refreshBoard=()=>{if(!document.hidden&&!app.hidden&&app.isConnected){const previous=activeTechnicianId;loadTechnicians(previous).then(()=>{if(previous!==activeTechnicianId&&!technicianEditorIsActive())return loadTechnicianRows();}).catch(()=>{});}};
       document.addEventListener('greenloop:workflow-notifications-refreshed',refreshBoard);
       window.setInterval(refreshBoard,5000);
       window.setInterval(updatePhoneAges,60000);
@@ -769,6 +801,18 @@
   refreshFrameButton.addEventListener("click", () => refreshAll().catch((error) => setBoardMessage(error.message)));
   addTechnicianButton.addEventListener("click", () => addTechnician().catch((error) => setBoardMessage(error.message)));
   removeTechnicianButton.addEventListener("click", () => removeTechnician().catch((error) => setBoardMessage(error.message)));
+  hideTechnicianButton.addEventListener('click',()=>changeTechnicianVisibility().catch(error=>setBoardMessage(error.message)));
+  showHiddenButton.addEventListener('click',async()=>{
+    if(!visibilityReady || visibilityBusy)return;
+    if(window.GREENLOOP_LAB_PENDING_CONTEXT.hasDrafts()){setBoardMessage('Save or cancel your phone changes before changing the visible technician cards.');return;}
+    showHiddenTechnicians=!showHiddenTechnicians;
+    if(!showHiddenTechnicians && hiddenTechnicianIds.has(activeTechnicianId)){
+      clearImeiFocus(false);activeTechnicianId=String(technicians.find(t=>!isHiddenTechnician(t))?.id||'');technicianRows=[];
+      await loadTechnicianRows().catch(e=>setBoardMessage(e.message));
+    }
+    renderTechnicianCards();
+  });
+  document.addEventListener('greenloop:permissions-changed',()=>{if(!isFrameMode)renderTechnicianCards();});
   technicianCards.addEventListener("click", (event) => {
     const card = event.target.closest("[data-technician-id]"); if (!card) return;
     if(card.dataset.technicianId===activeTechnicianId&&!focusedImei)return;
