@@ -1,7 +1,7 @@
 /* Isolated A4 Portrait packing PDF and vector print preview, using Damage Report branding. */
 (function(root){
  'use strict';
- const VERSION='20261109-box-scan-issues-1',W=595.276,H=841.89,M=36,BODY=W-2*M;
+ const VERSION='20261109-box-print-heading-1',W=595.276,H=841.89,M=36,BODY=W-2*M;
  const clean=v=>String(v??'').replace(/[\u0000-\u001f\u007f]/g,' ').replace(/[–—‑]/g,'-').replace(/\s+/g,' ').trim();
  const label=v=>clean(v)||'Not recorded';
  let libraryPromise,dialog,objectUrl,activeTicket=0,printFrame;
@@ -35,7 +35,7 @@
   function brand(x,y,width){const crop={x:110,y:100,width:1080,height:230},scale=width/crop.width,height=crop.height*scale;page.pushOperators(lib.pushGraphicsState(),lib.rectangle(x,y,width,height),lib.clip(),lib.endPath());page.drawImage(logo,{x:x-crop.x*scale,y:y-(427-crop.y-crop.height)*scale,width:1280*scale,height:427*scale});page.pushOperators(lib.popGraphicsState());ops.push({kind:'brand',x,y,width,height,crop});}
   pages.forEach((rows,pi)=>{
    page=pdf.addPage([W,H]);ops=[];previewPages.push({width:W,height:H,ops});
-   brand(M,H-M-32,150);fit(report.boxNumber,W-M-255,H-M-13,14,255,bold,colors.green,'right');text('EXPORT PACKING LIST',M,H-94,17,BODY,bold);text('Opened: '+report.opened,M,H-112,8.2,BODY,font,colors.muted);
+   brand(M,H-M-32,150);fit(report.boxNumber,W-M-255,H-M-13,14,255,bold,colors.green,'right');text('EXPORT PACKING LIST',M,H-94,11,BODY,bold);text('Opened: '+report.opened,M,H-112,8.2,BODY,font,colors.muted);
    text(report.issueCount?'VALID: '+report.validCount+' | ISSUES: '+report.issueCount:'TOTAL PHONES: '+report.validCount,W-M-170,H-94,9,170,bold,report.issueCount?colors.red:colors.green,'right');line(M,H-121,W-M,H-121,colors.green);
    let top=tableTop,x=M;heads.forEach((h,i)=>{rect(x,top-tableHead,widths[i],tableHead,colors.heading);text(h,x+4,top-13,7.8,widths[i]-8,bold,colors.ink,'center');x+=widths[i];});top-=tableHead;
    rows.forEach((row,ri)=>{x=M;row.lines.forEach((parts,i)=>{rect(x,top-row.height,widths[i],row.height,row.issue?colors.redPale:ri%2?colors.pale:colors.white);const height=(parts.length-1)*lineHeight+size,baseline=top-(row.height-height)/2-size;parts.forEach((v,j)=>text(v,x+4,baseline-j*lineHeight,size,widths[i]-8,i===1?bold:font,row.issue?colors.red:colors.ink,i===7?'left':'center'));x+=widths[i];});top-=row.height;});
