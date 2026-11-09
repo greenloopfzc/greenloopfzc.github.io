@@ -27,7 +27,8 @@ html:is([data-design="neumorphism"],[data-mode="dark"]) .history-content { --his
 .journey-order-dot { width:7px; height:7px; flex:none; border-radius:50%; background:var(--history-green); }
 .history-result.imei-journey { padding:0; overflow:hidden; }
 .imei-journey-header { display:block; padding:0; }
-.history-basic-heading { display:flex; justify-content:space-between; align-items:center; gap:18px; padding:22px 26px; }
+.history-basic-heading { display:flex; flex-wrap:wrap; justify-content:flex-start; align-items:center; gap:12px; padding:22px 26px; }
+.history-basic-heading > .journey-badge { flex:0 1 auto; padding:8px 14px; font-size:1rem; }
 .history-basic-heading h2 { margin:0; color:var(--history-ink); font:750 1.25rem/1.4 "Manrope",Arial,sans-serif; }
 .history-basic-table { width:100%; border-collapse:collapse; table-layout:fixed; color:var(--history-ink); font-size:.89rem; }
 .app-page .history-basic-table th,.app-page .history-basic-table td { text-align:left!important; padding:12px 24px; border:1px solid var(--history-line); overflow-wrap:anywhere; vertical-align:top; }
