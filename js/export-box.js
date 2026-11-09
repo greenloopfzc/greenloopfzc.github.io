@@ -15,7 +15,6 @@
   const printButton = document.querySelector("#print-box-sheet");
   const tableBody = document.querySelector("#export-box-lines");
   const sheetTitle = document.querySelector("#export-sheet-title");
-  const sheetDate = document.querySelector("#export-sheet-date");
   const sheetTotal = document.querySelector("#export-sheet-total");
   const sidebar = document.querySelector("#sidebar");
   const backdrop = document.querySelector("#menu-backdrop");
@@ -117,7 +116,6 @@
     confirmPrintButton.disabled = !can("print") || scanning || boxBusy || issueCount>0;
     imeiInput.disabled = !can("scan") || boxBusy || isFinished || scanning;
     sheetTitle.textContent = `${currentBox.box_number || "Export Box"} - Export packing list`;
-    sheetDate.textContent = `Opened: ${formatDateTime(currentBox.opened_at)}`;
     sheetTotal.textContent = `${count} valid phone${count === 1 ? "" : "s"}`+(issueCount?` · ${issueCount} scan issue${issueCount===1?"":"s"}`:"");
 
     const validRows=lines.map(line=>`<tr><td>${escapeHtml(line.serial_no)}</td><td>${escapeHtml(line.imei)}</td><td>${escapeHtml(line.model||"-")}</td><td>${escapeHtml(line.storage_gb?`${line.storage_gb} GB`:"-")}</td><td>${escapeHtml(line.final_grade||"-")}</td><td>${escapeHtml(line.color||"-")}</td><td>${escapeHtml(line.box_number||currentBox.box_number)}</td>${issueCount?'<td class="export-scan-reason">-</td>':''}${mayRemove?`<td class="export-line-action">${removable?`<button type="button" class="secondary-button" data-draft-remove="${escapeHtml(line.id)}" data-capability="scan" data-capability-page="export_boxes" ${boxBusy||scanning?'disabled':''} aria-label="Delete ${escapeHtml(line.imei)} from this box">Delete</button>`:''}</td>`:''}</tr>`).join('');
