@@ -22,7 +22,7 @@
   let loadedReport = "";
   const reportSections = window.GREENLOOP_PERMISSION_CATALOG?.reportSections || {};
   const allowedReport = key => key==="bulk_imei_correction" ? Boolean(window.GREENLOOP_CAN?.("report_imei_correction","reports")&&window.GREENLOOP_CAN?.("workflow_correction","reports")&&window.GREENLOOP_CAN?.("bulk_imei_correction","reports")) : Boolean(reportSections[key] && window.GREENLOOP_CAN?.(reportSections[key].view,"reports"));
-  const selfLoadedReports = new Set(["bulk_imei_correction","supplier_progress","stock_grade_analysis","stock_parts_cost","manual_damage","production_correction","complete_device_details","data_correction","restricted_data"]);
+  const selfLoadedReports = new Set(["stock_receipt_correction","bulk_imei_correction","supplier_progress","stock_grade_analysis","stock_parts_cost","manual_damage","production_correction","complete_device_details","data_correction","restricted_data"]);
   let selectedExportBox = "";
   let exportBoxImeiFilter = "";
   let correctionRecord = null;
@@ -100,6 +100,7 @@
   }
 
   const reports = {
+    stock_receipt_correction:{title:"Stock Receipt Correction",description:"Correct a mistaken received quantity with permanent history. IMEIs, returns and replacements stay preserved.",columns:[]},
     stock_grade_analysis:{title:"Stock Grade & Work Analysis",description:"Initial QC GL grades and required Glass / Polish by supplier, stock / batch or invoice.",columns:[]},
     stock_parts_cost: {title:"Stock Parts Cost",description:"Supplier, invoice and batch parts cost with phone and part breakdown. Missing prices remain explicit.",columns:[]},
     manual_damage: {
@@ -925,12 +926,13 @@
     window.GREENLOOP_ACTIVE_REPORT=activeReport;
     filterForm.querySelectorAll('input,button').forEach(control=>{const allowed=Boolean(activeReport&&window.GREENLOOP_CAN?.('search','reports'));control.disabled=!allowed;if(allowed){control.removeAttribute('aria-disabled');control.removeAttribute('data-view-only-locked');if(control.title==='Access not granted')control.removeAttribute('title');}});
     if(!activeReport){
-      for(const name of ['GREENLOOP_STOCK_GRADE_ANALYSIS','GREENLOOP_STOCK_PARTS_COST','GREENLOOP_RESTRICTED_SCOPES','GREENLOOP_FULL_IMEI_CORRECTION','GREENLOOP_BULK_IMEI_CORRECTION','GREENLOOP_PRODUCTION_CORRECTION','GREENLOOP_DAMAGE_MANAGEMENT','GREENLOOP_COMPLETE_DEVICE_DETAILS'])window[name]?.unmount();
+      for(const name of ['GREENLOOP_STOCK_RECEIPT_CORRECTION','GREENLOOP_STOCK_GRADE_ANALYSIS','GREENLOOP_STOCK_PARTS_COST','GREENLOOP_RESTRICTED_SCOPES','GREENLOOP_FULL_IMEI_CORRECTION','GREENLOOP_BULK_IMEI_CORRECTION','GREENLOOP_PRODUCTION_CORRECTION','GREENLOOP_DAMAGE_MANAGEMENT','GREENLOOP_COMPLETE_DEVICE_DETAILS'])window[name]?.unmount();
       filterForm.hidden=true;document.querySelectorAll('.table-filters').forEach(el=>el.hidden=true);document.getElementById('supplier-progress-controls')?.setAttribute('hidden','');
       panelKicker.textContent='Reports';panelTitle.textContent='Reports';panelDescription.textContent='';rowCount.textContent='';
       reportContent.innerHTML='<p class="report-empty">No reports assigned.</p>';return;
     }
 
+    if(activeReport!=="stock_receipt_correction")window.GREENLOOP_STOCK_RECEIPT_CORRECTION?.unmount();
     if(activeReport!=="stock_grade_analysis")window.GREENLOOP_STOCK_GRADE_ANALYSIS?.unmount();
     if(activeReport!=="stock_parts_cost")window.GREENLOOP_STOCK_PARTS_COST?.unmount();
     if(activeReport!=="restricted_data")window.GREENLOOP_RESTRICTED_SCOPES?.unmount();
@@ -950,6 +952,11 @@
       filterForm.hidden=true;window.GREENLOOP_DAMAGE_MANAGEMENT?.unmount();window.GREENLOOP_COMPLETE_DEVICE_DETAILS?.unmount();
       panelKicker.textContent='Reports';panelTitle.textContent=reports.bulk_imei_correction.title;panelDescription.textContent=reports.bulk_imei_correction.description;rowCount.textContent='Reports only';
       window.GREENLOOP_BULK_IMEI_CORRECTION?.mount(reportContent);return;
+    }
+    if(activeReport === "stock_receipt_correction") {
+      filterForm.hidden=true;window.GREENLOOP_DAMAGE_MANAGEMENT?.unmount();window.GREENLOOP_COMPLETE_DEVICE_DETAILS?.unmount();
+      panelKicker.textContent="Reports · Audited correction";panelTitle.textContent=reports.stock_receipt_correction.title;panelDescription.textContent=reports.stock_receipt_correction.description;rowCount.textContent="Received stock quantity";
+      window.GREENLOOP_STOCK_RECEIPT_CORRECTION?.mount(reportContent);return;
     }
     if(activeReport === "stock_grade_analysis") {
       window.GREENLOOP_DAMAGE_MANAGEMENT?.unmount();window.GREENLOOP_COMPLETE_DEVICE_DETAILS?.unmount();
@@ -1005,6 +1012,7 @@
   async function loadReports(event) {
     event?.preventDefault();
     if(!allowedReport(activeReport))return;
+    if(activeReport==='stock_receipt_correction'){await window.GREENLOOP_STOCK_RECEIPT_CORRECTION?.refresh();return;}
     if(activeReport==='supplier_progress'){await loadSupplierProgress({refresh:true});return;}
     if(activeReport==='stock_grade_analysis'){await window.GREENLOOP_STOCK_GRADE_ANALYSIS?.refresh();return;}
     if(activeReport==='stock_parts_cost'){await window.GREENLOOP_STOCK_PARTS_COST?.refresh();return;}
@@ -1073,7 +1081,7 @@
   filterForm.addEventListener("submit", loadReports);
   tabs.addEventListener("click", (event) => {
     const tab = event.target.closest(".report-tab[data-report]");
-    if (window.GREENLOOP_FULL_IMEI_CORRECTION?.isSaving()||window.GREENLOOP_BULK_IMEI_CORRECTION?.isSaving()) return;
+    if (window.GREENLOOP_STOCK_RECEIPT_CORRECTION?.isSaving()||window.GREENLOOP_FULL_IMEI_CORRECTION?.isSaving()||window.GREENLOOP_BULK_IMEI_CORRECTION?.isSaving()) return;
     if(window.GREENLOOP_BULK_IMEI_CORRECTION?.isBusy()&&!window.confirm("Discard unsaved Bulk IMEI corrections and leave this report?"))return;
     if (!tab || tab.hidden || deletionBusy || reportMutationPending || window.GREENLOOP_DAMAGE_MANAGEMENT?.isBusy() || (tab.dataset.report !== "overview" && !reports[tab.dataset.report])) return;
     if(!allowedReport(tab.dataset.report))return;
