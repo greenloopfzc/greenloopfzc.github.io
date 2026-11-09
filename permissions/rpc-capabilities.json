@@ -1379,6 +1379,14 @@
     },
     "get_box_bulk_entry_version": {
       "read": true
+    },
+    "get_imei_bulk_history_list_v1": {
+      "page": "imei_search",
+      "capability": "search",
+      "read": true
+    },
+    "get_imei_bulk_history_version": {
+      "read": true
     }
   },
   "get_box_status_v1": {

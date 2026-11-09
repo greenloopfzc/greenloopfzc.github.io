@@ -23,3 +23,5 @@
 (function(root){Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,{get_imei_activity_journey_v1:{page:"imei_search",capability:"view",read:true},get_imei_activity_journey_version:{read:true}});})(typeof window!=="undefined"?window:globalThis);
 
 (function(root){Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,{scan_imeis_to_export_box_v1:{page:"export_boxes",capability:"scan"},get_box_bulk_entry_version:{read:true}});})(typeof window!=="undefined"?window:globalThis);
+
+(function(root){Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,{get_imei_bulk_history_list_v1:{page:"imei_search",capability:"search",read:true},get_imei_bulk_history_version:{read:true}});})(typeof window!=="undefined"?window:globalThis);

@@ -425,26 +425,46 @@ function buildStageSections(sortedRows) {
     let timer;
     return Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error("History is taking too long to load. Please search again.")), 25000); })]).finally(() => clearTimeout(timer));
   }
-  async function openDevice(item) {
+  const historyAnchor=document.createComment("Phone history home");result.before(historyAnchor);
+  let historyDialog,popupVersion=0,bulkVersion=0;
+  function restoreHistoryHome(){if(!result.closest('.history-dialog-body'))return;popupVersion++;result.hidden=true;historyAnchor.after(result);document.body.classList.remove('history-dialog-open');}
+  function closeHistoryPopup(){if(historyDialog?.open){historyDialog.close();restoreHistoryHome();}}
+  function historyPopup(){
+    if(historyDialog)return historyDialog;
+    historyDialog=document.createElement('dialog');historyDialog.id='imei-history-dialog';historyDialog.className='imei-history-dialog history-content';historyDialog.setAttribute('aria-labelledby','imei-history-dialog-title');
+    historyDialog.innerHTML='<header class="history-dialog-heading"><h2 id="imei-history-dialog-title">Phone history</h2><button type="button" class="secondary-button" data-history-close data-search-read-only data-capability="view" data-capability-page="imei_search">Close</button></header><p class="history-dialog-status" role="status" aria-live="polite"></p><div class="history-dialog-body"></div>';
+    historyDialog.querySelector('[data-history-close]').addEventListener('click',closeHistoryPopup);
+    historyDialog.addEventListener('close',()=>{if(!historyDialog.open)restoreHistoryHome();});
+    document.body.append(historyDialog);return historyDialog;
+  }
+  async function openDevice(item,{popup=false}={}) {
     if(!allowed)return;
-    const identifier=scalar(item.identifier || item.device_number || item.imei_1);
+    const identifier=scalar(item.imei_1 || item.identifier || item.device_number);
     if(!identifier)return;
-    query.value=identifier; searchWidget?.close();
+    searchWidget?.close();
+    let modal,status,popupToken;
+    if(popup){
+      modal=historyPopup();popupToken=++popupVersion;modal.querySelector('h2').textContent='Phone history · '+identifier;
+      status=modal.querySelector('[role="status"]');status.textContent='Loading phone history…';modal.querySelector('.history-dialog-body').append(result);
+      result.hidden=true;if(!modal.open)modal.showModal();document.body.classList.add('history-dialog-open');
+    }else{closeHistoryPopup();query.value=identifier;bulkVersion++;bulkSearchResult?.remove();result.hidden=true;receiptResult.hidden=true;setMessage();setSubmitting(true);}
     const version=++searchVersion;
-    result.hidden=true;receiptResult.hidden=true;setMessage();setSubmitting(true);
+    const current=()=>version===searchVersion&&(!popup||popupToken===popupVersion&&modal.open);
+    const report=text=>{if(popup)status.textContent=text;else setMessage(text);};
     try {
       const response=await withTimeout(getClient().rpc("get_imei_activity_journey_v1",{p_imei:identifier}));
-      if(version!==searchVersion)return;
+      if(!current())return;
       if(response.error)throw response.error;
       const raw=response.data;
       const history=Array.isArray(raw)?raw[0]?.get_imei_activity_journey_v1 || raw[0]:raw;
-      if(!history?.found){setMessage("This device is no longer available. Search again.");return;}
+      if(!history?.found){report("This device is no longer available. Search again.");return;}
       await GREENLOOP_RECEIPTS.load("imei_search",[history.device?.imei_1]);
-      if(version!==searchVersion)return;
+      if(!current())return;
       renderHistory(history);
-      window.history.replaceState(null,"",`?q=${encodeURIComponent(identifier)}`);
-    } catch(error) {if(version===searchVersion)setMessage(error.message || "Device history could not be loaded.");}
-    finally {if(version===searchVersion)setSubmitting(false);}
+      if(popup){status.textContent='';const full=body.querySelector('.history-full-activity');if(full)full.open=true;}
+      else window.history.replaceState(null,"",`?q=${encodeURIComponent(identifier)}`);
+    } catch(error) {if(current()){result.hidden=true;report(error.message || "Device history could not be loaded.");}}
+    finally {if(!popup&&version===searchVersion)setSubmitting(false);}
   }
   function receiptButtons() {
     const container=receiptResult.querySelector(".history-receipt-devices");
@@ -487,17 +507,31 @@ function buildStageSections(sortedRows) {
     finally{if(version===searchVersion)setSubmitting(false);}
   }
   let bulkSearchResult;
-  async function bulkSearch(imeis,{isCurrent=()=>true}={}){
-    const records=await window.GREENLOOP_RECORD_SEARCH.lookup(imeis.join(' '));if(!isCurrent())return {loaded:0};
-    searchWidget?.close();result.hidden=true;receiptResult.hidden=true;bulkSearchResult?.remove();
-    bulkSearchResult=document.createElement('section');bulkSearchResult.className='stock-bulk-results';bulkSearchResult.setAttribute('aria-label','Pasted phone results');
-    const heading=document.createElement('h2');heading.textContent=imeis.length+' pasted IMEIs';bulkSearchResult.append(heading);
-    const table=document.createElement('table');table.innerHTML='<thead><tr><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>Supplier</th><th>Current stage</th><th>Details</th></tr></thead>';const body=document.createElement('tbody');table.append(body);bulkSearchResult.append(table);
-    let loaded=0;for(const imei of imeis){const record=records.items.find(r=>[r.imei_1,r.imei_2,r.identifier].includes(imei)),tr=document.createElement('tr');
-      const fields=record?[imei,record.model||'Not recorded',record.storage_gb?window.GREENLOOP_STORAGE?.label(record.storage_gb)||record.storage_gb+' GB':'Not recorded',record.color||'Not recorded',window.GREENLOOP_STOCK?.labelRow(record)||record.supplier_code||'Not recorded',record.imei_2===imei?'IMEI 2 of '+record.imei_1:record.current_status||'Not recorded']:[imei,'Not found','','','',''];
-      fields.forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.append(td);});const td=document.createElement('td');if(record){loaded++;const b=document.createElement('button');b.type='button';b.className='secondary-button';b.textContent='Open journey';b.dataset.searchReadOnly='';b.dataset.capability='view';b.dataset.capabilityPage='imei_search';b.onclick=()=>openDevice(record);td.append(b);}tr.append(td);body.append(tr);
-    }
-    form.after(bulkSearchResult);query.removeAttribute('maxlength');query.value=imeis.join(' ');return {loaded};
+  async function bulkSearch(imeis,{isCurrent=()=>true,offset=0}={}){
+    const version=++bulkVersion;closeHistoryPopup();searchWidget?.close();result.hidden=true;receiptResult.hidden=true;bulkSearchResult?.remove();
+    const panel=document.createElement('section');bulkSearchResult=panel;panel.className='stock-bulk-results';panel.setAttribute('aria-label','Pasted phone results');panel.setAttribute('aria-busy','true');
+    const heading=document.createElement('h2');heading.textContent=imeis.length+' pasted IMEIs';panel.append(heading);
+    const status=document.createElement('p');status.setAttribute('role','status');status.textContent='Checking current stages…';panel.append(status);form.after(panel);
+    const current=()=>version===bulkVersion&&isCurrent()&&panel.isConnected;
+    try {
+      const response=await withTimeout(getClient().rpc('get_imei_bulk_history_list_v1',{p_imeis:imeis,p_offset:offset,p_limit:50}));
+      if(!current())return {loaded:0};if(response.error)throw response.error;
+      const data=response.data;
+      if(!Array.isArray(data?.rows)||!Number.isInteger(data.total)||data.rows.length>50)throw Error('The pasted phone list could not be verified. Please search again.');
+      const wrap=document.createElement('div');wrap.className='history-bulk-scroll';const table=document.createElement('table');table.innerHTML='<thead><tr><th>S.No</th><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>Supplier</th><th>Current stage</th><th>Details</th></tr></thead>';const tbody=document.createElement('tbody');table.append(tbody);wrap.append(table);panel.append(wrap);
+      let loaded=0;
+      data.rows.forEach((record,index)=>{
+        const found=record.found===true,tr=document.createElement('tr');
+        const fields=found?[offset+index+1,record.searched_imei,record.model||missing,record.storage_gb?window.GREENLOOP_STORAGE?.label(record.storage_gb)||record.storage_gb+' GB':missing,record.color||missing,window.GREENLOOP_STOCK?.labelRow(record)||record.supplier_code||missing,place(currentStage(record))]:[offset+index+1,record.searched_imei,'Not found','','','','Not found'];
+        fields.forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.append(td);});
+        if(found&&record.imei_2===record.searched_imei){const note=document.createElement('small');note.className='history-secondary-imei';note.textContent='IMEI 2 of '+record.imei_1;tr.cells[1].append(note);}
+        const td=document.createElement('td');if(found){loaded++;const button=document.createElement('button');button.type='button';button.className='secondary-button';button.textContent='Open history';button.dataset.searchReadOnly='';button.dataset.capability='view';button.dataset.capabilityPage='imei_search';button.addEventListener('click',()=>openDevice(record,{popup:true}));td.append(button);}tr.append(td);tbody.append(tr);
+      });
+      const end=offset+data.rows.length;status.textContent=data.total?`${offset+1}–${end} of ${data.total} IMEIs`:'No IMEIs to display.';
+      if(data.total>50){const pager=document.createElement('div');pager.className='history-bulk-pager';for(const [text,next,disabled]of[['Previous',Math.max(0,offset-50),offset===0],['Next',offset+50,end>=data.total]]){const button=document.createElement('button');button.type='button';button.className='secondary-button';button.textContent=text;button.disabled=disabled;button.dataset.searchReadOnly='';button.dataset.capability='search';button.dataset.capabilityPage='imei_search';button.addEventListener('click',()=>bulkSearch(imeis,{offset:next}));pager.append(button);}panel.append(pager);}
+      query.removeAttribute('maxlength');query.value=imeis.join(' ');return {loaded};
+    }catch(error){if(current())status.textContent=error.message||'The pasted phone list could not be loaded.';return {loaded:0,issues:[error.message||'Search failed']};}
+    finally{if(current())panel.setAttribute('aria-busy','false');}
   }
   window.GREENLOOP_BULK_IMEI?.register({selector:'#imei-query',capability:'search',load:bulkSearch});
   async function search(event) {
@@ -519,10 +553,11 @@ function buildStageSections(sortedRows) {
     if(requestedReceipt){await openReceipt({id:requestedReceipt});return;}
     if (requestedQuery.trim()) { query.value = requestedQuery.trim(); await search(); }
   }
-  query.addEventListener("input", () => { ++searchVersion;bulkSearchResult?.remove(); setSubmitting(false); result.hidden = true; receiptResult.hidden=true; setMessage(); });
+  query.addEventListener("input", () => { ++searchVersion;++bulkVersion;closeHistoryPopup();bulkSearchResult?.remove(); setSubmitting(false); result.hidden = true; receiptResult.hidden=true; setMessage(); });
   form.addEventListener("submit", search);
   document.querySelector("#open-menu").addEventListener("click", () => setMenu(true));
   document.querySelector("#close-menu").addEventListener("click", () => setMenu(false));
   backdrop.addEventListener("click", () => setMenu(false));
+  for(const name of ['greenloop:office-locked','greenloop:signed-out','greenloop:permissions-changed'])window.addEventListener(name,()=>{searchVersion++;bulkVersion++;closeHistoryPopup();result.hidden=true;receiptResult.hidden=true;bulkSearchResult?.remove();});
   initialize().catch(error => { permissionMessage.textContent = error.message || "IMEI Search could not be loaded."; permissionMessage.hidden = false; });
 })();
