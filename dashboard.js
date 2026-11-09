@@ -80,7 +80,7 @@
       ["IMEI Entry", workflow.imei_entry, "Waiting for IMEI entry", "imei-entry-stock", "imei-entry.html", "⌕"],
       ["Initial QC", workflow.initial_qc, "Waiting for inspection", "customer-stock", "initial-qc.html", "✓"],
       ["Lab & Glass", workflow.lab_glass, "Waiting for repair", "lab-stock", "laboratory.html", "⌁"],
-      ["Lab & Glass · 2+ Days", null, "Waiting 48 hours or more", "lab-delay-card", "#lab-delay-report", "◷"],
+      ["Lab & Glass · 2+ Days", null, "Sunday excluded", "lab-delay-card", "#lab-delay-report", "◷"],
       ["Parts", workflow.parts, "Open part requests", "rma-stock", "parts.html", "▦"],
       ["Final QC", workflow.final_qc, "Waiting for final check", "final-qc-stock", "final-qc.html", "◉"],
       ["B-DEPT", workflow.frame, "Waiting for frame work", "frame-stock", "laboratory.html#frame", "□"],

@@ -37,8 +37,8 @@
   <link rel="stylesheet" href="css/record-search.css?v=20261017-find-record-popup-1">
   <script defer src="js/record-search.js?v=20261105-stock-consistency-1"></script>
     <script defer src="js/part-notifications.js?v=20261109-issuance-access-1"></script>
-  <script defer src="js/lab-delay.js?v=20261024-lab-delay-1"></script>
-  <script defer src="js/dashboard.js?v=20261107-dashboard-no-priority-1"></script>
+  <script defer src="js/lab-delay.js?v=20261109-lab-sunday-counts-1"></script>
+  <script defer src="js/dashboard.js?v=20261109-lab-sunday-counts-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
     <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
   <link rel="stylesheet" href="css/sidebar-compact.css?v=20261009-sidebar-pdf-1">
@@ -146,7 +146,7 @@
 
           <section class="metric-grid workflow-metric-grid" aria-label="Live workflow summary"></section>
 <section id="lab-delay-report" class="lab-delay-panel" aria-labelledby="lab-delay-title" hidden>
- <header class="lab-delay-heading"><div><h2 id="lab-delay-title">Lab &amp; Glass · 2+ Days</h2><p>Phones still waiting at least 48 hours since entering Lab &amp; Glass.</p></div><div class="lab-delay-actions"><button id="lab-delay-refresh" class="secondary-button" type="button" data-search-read-only>Refresh</button><button id="lab-delay-close" class="secondary-button" type="button" data-search-read-only>Close</button></div></header>
+ <header class="lab-delay-heading"><div><h2 id="lab-delay-title">Lab &amp; Glass · 2+ Days</h2><p>Phones pending over 2 days since entering Lab &amp; Glass. Sunday is excluded (UAE).</p></div><div class="lab-delay-actions"><button id="lab-delay-refresh" class="secondary-button" type="button" data-search-read-only>Refresh</button><button id="lab-delay-close" class="secondary-button" type="button" data-search-read-only>Close</button></div></header>
  <p id="lab-delay-message" role="status" aria-live="polite"></p>
  <div id="lab-delay-table-wrap" class="lab-delay-table-wrap"><table id="lab-delay-table" class="lab-delay-table"><thead><tr><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>Grade</th><th>Supplier code</th><th>Department</th><th>Technician</th><th>Arrived</th><th>Waiting</th></tr></thead><tbody id="lab-delay-rows"></tbody></table></div>
  <footer class="lab-delay-footer"><span id="lab-delay-updated"></span><div class="lab-delay-actions"><button id="lab-delay-prev" class="secondary-button" type="button" data-search-read-only>Previous</button><span id="lab-delay-page"></span><button id="lab-delay-next" class="secondary-button" type="button" data-search-read-only>Next</button></div></footer>
