@@ -24,18 +24,17 @@
 
   function autoSaveEnabled() { return localStorage.getItem("greenloop-imei-auto-save") === "on"; }
 
+  const ENTRY_PAGE_SIZE = 50;
   function makeSlots(batch) {
+    const total = Math.min(ENTRY_PAGE_SIZE, Math.max(0, Math.floor(Number(batch.remaining_quantity) || 0)));
     const slots = [];
-    const lines = Array.isArray(batch.planned_lines) ? batch.planned_lines : [];
-    lines.forEach((line) => {
-      const remaining = Math.max(0, Number(line.remaining_quantity || 0));
-      for (let index = 0; index < remaining; index += 1) {
-        slots.push({ model: line.model || "", storage: line.storage_gb || "", color: line.color || "" });
-      }
-    });
-    const totalRemaining = Math.max(0, Number(batch.remaining_quantity || 0));
-    while (slots.length < totalRemaining) slots.push({ model: "", storage: "", color: "" });
-    return slots.slice(0, totalRemaining);
+    for (const line of Array.isArray(batch.planned_lines) ? batch.planned_lines : []) {
+      const count = Math.min(total - slots.length, Math.max(0, Math.floor(Number(line.remaining_quantity) || 0)));
+      for (let i = 0; i < count; i++) slots.push({ model: line.model || "", storage: line.storage_gb || "", color: line.color || "" });
+      if (slots.length === total) break;
+    }
+    while (slots.length < total) slots.push({ model: "", storage: "", color: "" });
+    return slots;
   }
 
   async function initialiseBatchEntry() {
@@ -62,11 +61,41 @@
     let currentBatch;
     let slots = [];
     let loadVersion = 0;
+    let pageLoading = false, pasteLoading = false;
+    const pastedByBatch = new Map(), savedOnPage = new Set();
+    const pendingPaste = () => {
+      const id = String(currentBatch?.batch_id || "");
+      if (!pastedByBatch.has(id)) pastedByBatch.set(id, []);
+      return pastedByBatch.get(id);
+    };
+    const entryRows = () => [...panel.querySelectorAll("tbody tr")];
+    const hasDraft = () => entryRows().some(row => row.dataset.saved !== "yes" &&
+      (row.querySelector(".batch-row-imei").value.trim() || row.querySelector(".batch-row-battery").value !== "" || row.dataset.cableConnectionId));
+    function syncEntryPage(message = "") {
+      const next = panel.querySelector('[data-entry-next]'), status = panel.querySelector('[data-entry-page-status]');
+      if (!next || !currentBatch) return;
+      const remaining = Math.max(0, Number(currentBatch.remaining_quantity) - savedOnPage.size);
+      const queued = pendingPaste().length;
+      status.textContent = message || `${remaining} phones remaining in this receipt${queued ? ` · ${queued} pasted IMEIs queued` : ""}. Up to 50 lines at a time.`;
+      next.disabled = !canEnter() || String(currentBatch.batch_id) !== batchSelect.value || pasteLoading || entryRows().some(row => row.dataset.busy === "yes") || hasDraft() || remaining === 0 || (!savedOnPage.size && !queued);
+      next.hidden = Number(currentBatch.remaining_quantity) <= ENTRY_PAGE_SIZE && !queued && !savedOnPage.size;
+    }
+    async function nextEntryPage() {
+      if (!canEnter() || String(currentBatch?.batch_id) !== batchSelect.value || pasteLoading || entryRows().some(row => row.dataset.busy === "yes") || hasDraft()) {
+        syncEntryPage("Save or clear the unfinished IMEI lines before opening the next 50 lines."); return;
+      }
+      if (!savedOnPage.size && !pendingPaste().length) return;
+      const id = String(currentBatch.batch_id);
+      if (await loadSelectedBatch(true) && String(currentBatch?.batch_id) === id && pendingPaste().length) {
+        try { await loadPastedImeis([], {isCurrent: () => batchSelect.value === id && canEnter()}); }
+        catch (error) { syncEntryPage(error.message || "Queued IMEIs could not load. Retry Next 50 lines."); }
+      }
+    }
     let autoSaveEpoch = 0;
     let autoSaveRunning = false;
     const autoSaveQueue = [];
     const queuedRows = new Set();
-    const canEnter = () => window.GREENLOOP_PAGE_ACCESS?.canEdit === true && (!window.GREENLOOP_CAN || window.GREENLOOP_CAN("entry", "imei_entry"));
+    const canEnter = () => !pageLoading && window.GREENLOOP_PAGE_ACCESS?.canEdit === true && (!window.GREENLOOP_CAN || window.GREENLOOP_CAN("entry", "imei_entry"));
     function cancelAutoSaves() {
       autoSaveEpoch += 1;
       autoSaveQueue.length = 0; queuedRows.clear();
@@ -95,6 +124,7 @@
       const status = row.querySelector(".batch-row-status");
       status.textContent = text;
       status.className = `batch-row-status${state ? ` ${state}` : ""}`;
+      syncEntryPage();
     }
     function syncRowKind(row) {
       const android = row.querySelector(".batch-row-platform").value === "android";
@@ -235,10 +265,11 @@
       panel.innerHTML = `
         <div class="form-panel-heading batch-entry-heading">
           <span class="section-number">02</span>
-          <div><h2>Bulk IMEI entry</h2><p>One editable line is shown for every phone remaining in this supplier batch.</p></div>
+          <div><h2>Bulk IMEI entry</h2><p>Up to 50 editable lines are opened at a time. Save these phones, then open the next set.</p></div>
           <label class="auto-save-control"><input class="batch-auto-save-toggle" type="checkbox"${autoSaveEnabled() ? " checked" : ""}><span>Auto Save</span><strong>${autoSaveEnabled() ? "ON" : "OFF"}</strong></label>
           <span class="batch-entry-count">${slots.length} lines</span>
         </div>
+        <div class="batch-entry-pages"><small data-entry-page-status role="status"></small><button type="button" class="secondary-button" data-entry-next data-capability="entry" disabled>Next 50 lines</button></div>
         <div class="batch-table-scroll">
           <table class="batch-entry-table">
             <thead><tr><th>#</th><th>IMEI</th><th>Phone type / Brand</th><th>Model</th><th>GB</th><th>Color</th><th>Battery Health</th><th>Save</th><th>Status</th></tr></thead>
@@ -258,6 +289,8 @@
         </div>
         <p class="batch-entry-help">Line 1 sets the default Model, GB and Color for the remaining lines. Any change on line 2 or later applies only to that phone. IMEI and Battery Health always remain blank for each phone.</p>`;
 
+      panel.querySelector("[data-entry-next]").addEventListener("click", nextEntryPage);
+      for (const [key,row] of cableRows) if (!panel.contains(row)) cableRows.delete(key);
       fillBlankSelectionsFromPreviousRow();
 
       panel.querySelectorAll(".batch-row-model, .batch-row-storage, .batch-row-color").forEach((select) => {
@@ -318,10 +351,12 @@
         window.dispatchEvent(new Event("greenloop:imei-auto-save-changed"));
       });
       syncBulkAutoSave();
+      syncEntryPage();
       panel.querySelector(".batch-row-imei")?.focus();
     }
 
     async function saveRow(row, automatic = false, epoch = autoSaveEpoch) {
+      if (pasteLoading) return;
       if (!row || row.dataset.busy === "yes" || row.dataset.saved === "yes") return;
       if (!canEnter()) { setRowStatus(row, "Entry permission is required", "is-error"); return; }
       if (automatic && (epoch !== autoSaveEpoch || !autoSaveEnabled() || !rowComplete(row))) return;
@@ -378,6 +413,7 @@
       row.dataset.busy = "";
       if (error) { button.disabled = false; setRowStatus(row, window.GREENLOOP_SHOW_IMEI_SAVE_ERROR?.(error, imei) || "Could not save - please retry", "is-error"); return; }
       row.dataset.saved = "yes";
+      savedOnPage.add(imei);
       savedImeis.add(imei);
       row.classList.add("batch-saved-row");
       row.querySelectorAll("input, select").forEach((control) => { control.disabled = true; });
@@ -393,63 +429,102 @@
         savingImeis.delete(imei);
         if (row.dataset.saved !== "yes") editableControls.forEach(([control, disabled]) => { control.disabled = disabled; });
         button.disabled = row.dataset.saved === "yes";
+        syncEntryPage();
       }
     }
 
-    async function loadSelectedBatch() {
-      const version = ++loadVersion;
-      const selectedId = batchSelect.value;
-      if (!batchSelect.value) { currentBatch = undefined; slots = []; renderRows(); return; }
-      if (String(currentBatch?.batch_id) === selectedId) { applyCableDevice(window.GREENLOOP_GET_CONNECTED_DEVICE?.()); return; }
-      let { data, error } = await api().rpc("get_open_stock_entry_batches_with_lines");
-      if (error) ({ data, error } = await api().rpc("get_open_stock_entry_batches"));
-      if (version !== loadVersion || batchSelect.value !== selectedId) return;
-      if (error) { panel.hidden = false; panel.textContent = `Could not load phone lines: ${error.message}`; return; }
-      currentBatch = (data || []).find((batch) => String(batch.batch_id) === String(batchSelect.value));
-      slots = currentBatch ? makeSlots(currentBatch) : [];
-      renderRows();
-      originalActions.hidden = !currentBatch;
-      applyCableDevice(window.GREENLOOP_GET_CONNECTED_DEVICE?.());
+    async function loadSelectedBatch(force = false) {
+      const version = ++loadVersion, selectedId = batchSelect.value;
+      if (!selectedId) { currentBatch = undefined; slots = []; savedOnPage.clear(); renderRows(); return false; }
+      if (String(currentBatch?.batch_id) === selectedId && force !== true) { applyCableDevice(window.GREENLOOP_GET_CONNECTED_DEVICE?.()); return true; }
+      const controls = force === true ? [...panel.querySelectorAll("input,select,button"), batchSelect].map(e => [e,e.disabled]) : [];
+      if (force === true) { pageLoading = true; cancelAutoSaves(); controls.forEach(([e]) => e.disabled = true); }
+      let refreshed = false, pageLoadError = "";
+      try {
+        let { data, error } = await api().rpc("get_open_stock_entry_batches_with_lines");
+        if (error) ({ data, error } = await api().rpc("get_open_stock_entry_batches"));
+        if (version !== loadVersion || batchSelect.value !== selectedId) return false;
+        if (error) throw error;
+        currentBatch = (data || []).find(batch => String(batch.batch_id) === selectedId);
+        savedOnPage.clear(); slots = currentBatch ? makeSlots(currentBatch) : [];
+        renderRows(); originalActions.hidden = !currentBatch; refreshed = true;
+        return true;
+      } catch (error) {
+        if (version === loadVersion) {
+          if (force === true) pageLoadError = `Could not load the next lines: ${error.message}. Saved entries are preserved; retry Next 50 lines.`;
+          else { panel.hidden = false; panel.textContent = `Could not load phone lines: ${error.message}`; }
+        }
+        return false;
+      } finally {
+        if (force === true) { pageLoading = false; controls.forEach(([e,disabled]) => {if(e.isConnected)e.disabled = disabled;}); }
+        syncEntryPage(pageLoadError);
+        if (refreshed) applyCableDevice(window.GREENLOOP_GET_CONNECTED_DEVICE?.());
+      }
     }
 
+    batchSelect.addEventListener("change", event => {
+      if (currentBatch && batchSelect.value !== String(currentBatch.batch_id) &&
+        (hasDraft() || pageLoading || pasteLoading || entryRows().some(row => row.dataset.busy === "yes"))) {
+        cancelAutoSaves();batchSelect.value = String(currentBatch.batch_id);event.stopImmediatePropagation();
+        syncEntryPage("Save or clear unfinished phone entries before changing the receipt.");
+      }
+    }, true);
     batchSelect.addEventListener("change", () => { cancelAutoSaves(); window.setTimeout(loadSelectedBatch, 80); });
     new MutationObserver(() => {
       if (batchSelect.value && !currentBatch) window.setTimeout(loadSelectedBatch, 80);
     }).observe(batchSelect, { childList: true });
     if (batchSelect.value) window.setTimeout(loadSelectedBatch, 250);
 
-    window.GREENLOOP_BULK_IMEI?.register({selector:'.batch-row-imei,#imei-1',capability:'entry',load:async(imeis,options)=>{
-      if(!currentBatch)throw Error('Choose a stock batch before pasting IMEIs.');
-      if(panel.querySelector('tr[data-saving="yes"]'))throw Error('Wait for the current save to finish.');
-      const occupied=new Set([...panel.querySelectorAll('.batch-row-imei')].map(e=>e.value).filter(Boolean)),accepted=imeis.filter(v=>!occupied.has(v)),issues=imeis.filter(v=>occupied.has(v)).map(v=>v+' — already in this tray');
-      let blanks=[...panel.querySelectorAll('tbody tr')].filter(row=>!row.querySelector('.batch-row-imei').value&&row.dataset.saved!=='yes');
-      if(blanks.length<accepted.length){
-        const old=[...panel.querySelectorAll('tbody tr')].map(row=>({dataset:{...row.dataset},className:row.className,fields:[...row.querySelectorAll('input,select,button')].map(e=>({value:e.value,checked:e.checked,disabled:e.disabled,dataset:{...e.dataset},text:e.tagName==='BUTTON'?e.textContent:null})),status:row.querySelector('.batch-row-status').textContent,statusClass:row.querySelector('.batch-row-status').className}));
-        for(let i=blanks.length;i<accepted.length;i++)slots.push({model:'',storage:'',color:''});renderRows();
-        old.forEach((v,i)=>{const row=panel.querySelectorAll('tbody tr')[i];Object.assign(row.dataset,v.dataset);row.className=v.className;[...row.querySelectorAll('input,select,button')].forEach((e,j)=>{const f=v.fields[j];if(!f)return;if(e.tagName==='SELECT'&&f.value&&![...e.options].some(o=>o.value===f.value))e.add(new Option(f.value,f.value));e.value=f.value;e.checked=f.checked;e.disabled=f.disabled;Object.assign(e.dataset,f.dataset);if(f.text!==null)e.textContent=f.text;});row.querySelector('.batch-row-status').textContent=v.status;row.querySelector('.batch-row-status').className=v.statusClass;});
-        blanks=[...panel.querySelectorAll('tbody tr')].filter(row=>!row.querySelector('.batch-row-imei').value&&row.dataset.saved!=='yes');
+    async function loadPastedImeis(imeis, options) {
+      if (!currentBatch || String(currentBatch.batch_id) !== batchSelect.value) throw Error('Choose a stock batch and wait for its entry lines before pasting IMEIs.');
+      if (!canEnter() || pasteLoading || entryRows().some(row => row.dataset.busy === 'yes')) throw Error('Wait for the current save or load to finish.');
+      const batchId = String(currentBatch.batch_id), version = loadVersion, queue = pendingPaste();
+      const occupied = new Set(entryRows().map(row => row.querySelector('.batch-row-imei').value).filter(Boolean));
+      queue.forEach(imei => occupied.add(imei));
+      const accepted = [], issues = [];
+      for (const imei of imeis) { if (occupied.has(imei)) issues.push(imei+' — already in this tray or its queue'); else { accepted.push(imei); occupied.add(imei); } }
+      const outstanding = entryRows().filter(row => row.dataset.saved !== 'yes' && row.querySelector('.batch-row-imei').value).length;
+      if (outstanding + queue.length + accepted.length > Math.max(0, Number(currentBatch.remaining_quantity) - savedOnPage.size)) throw Error('The pasted list exceeds this receipt remaining quantity. No new IMEIs from this paste were added.');
+      queue.push(...accepted);
+      const blanks = entryRows().filter(row => !row.querySelector('.batch-row-imei').value && row.dataset.saved !== 'yes');
+      const targets = queue.splice(0, blanks.length).map((imei,i) => { const row=blanks[i];row.hidden=false;row.querySelector('.batch-row-imei').value=imei;setRowStatus(row,'Pasted — checking IMEI');return row; });
+      const current = () => options.isCurrent() && version === loadVersion && String(currentBatch?.batch_id) === batchId && batchSelect.value === batchId;
+      pasteLoading = true; cancelAutoSaves(); syncEntryPage();
+      let next=0,loaded=0;
+      try {
+        async function worker() { while(next<targets.length && current()) {
+          const row=targets[next++],imei=row.querySelector('.batch-row-imei').value;
+          try { const {data,error}=await api().rpc('get_imei_duplicate_stage_v1',{p_imei:imei});if(error)throw error;
+            if(!current() || !panel.contains(row) || row.querySelector('.batch-row-imei').value!==imei)continue;
+            if(data?.found){const text=data.matched_type==='secondary'?'IMEI 2; use '+data.primary_imei:'Already exists at '+data.current_stage;setRowStatus(row,text,'is-error');issues.push(imei+' — '+text);}
+            else {setRowStatus(row,'Pasted — complete details and save');loaded++;}
+          } catch(error) {if(current()&&panel.contains(row)){setRowStatus(row,error.message||'IMEI check failed','is-error');issues.push(imei+' — '+error.message);}}
+        }}
+        await Promise.all(Array.from({length:Math.min(4,targets.length)},worker));
+        if(current()) {panel.hidden=false;panel.querySelector('.batch-entry-count').textContent=slots.length+' lines';}
+        return {loaded,issues};
+      } finally {
+        pasteLoading=false;syncEntryPage();
+        if(current()){entryRows().forEach(scheduleRowSave);applyCableDevice(window.GREENLOOP_GET_CONNECTED_DEVICE?.());}
       }
-      const targets=[];accepted.forEach((imei,i)=>{const row=blanks[i];row.hidden=false;row.querySelector('.batch-row-imei').value=imei;setRowStatus(row,'Checking IMEI…');targets.push(row);});
-      let next=0,loaded=0;async function worker(){while(next<targets.length&&options.isCurrent()){const row=targets[next++],imei=row.querySelector('.batch-row-imei').value;try{const{data,error}=await api().rpc('get_imei_duplicate_stage_v1',{p_imei:imei});if(error)throw error;if(data?.found){const text=data.matched_type==='secondary'?'IMEI 2; use '+data.primary_imei:'Already exists at '+data.current_stage;setRowStatus(row,text,'is-error');issues.push(imei+' — '+text);}else{setRowStatus(row,'Pasted — complete details and save');loaded++;scheduleRowSave(row);}}catch(e){setRowStatus(row,e.message||'IMEI check failed','is-error');issues.push(imei+' — '+e.message);}}}
-      await Promise.all(Array.from({length:Math.min(4,targets.length)},worker));
-      for(const row of panel.querySelectorAll('tbody tr'))row.hidden=!row.querySelector('.batch-row-imei').value&&!row.querySelector('.batch-row-battery').value;
-      panel.querySelector('.batch-entry-count').textContent=[...panel.querySelectorAll('tbody tr')].filter(r=>!r.hidden).length+' lines';
-      if(!panel.querySelector('[data-show-all-entry-lines]')){const b=document.createElement('button');b.type='button';b.className='secondary-button';b.dataset.showAllEntryLines='';b.dataset.capability='entry';b.textContent='Show all entry lines';b.addEventListener('click',()=>{for(const row of panel.querySelectorAll('tbody tr'))row.hidden=false;panel.querySelector('.batch-entry-count').textContent=slots.length+' lines';b.remove();});panel.querySelector('.batch-entry-heading').append(b);}
-      panel.hidden=false;return{loaded,issues};
-    }});
+    }
+    window.GREENLOOP_BULK_IMEI?.register({selector:'.batch-row-imei,#imei-1',capability:'entry',load:loadPastedImeis});
+    panel.addEventListener('input', () => syncEntryPage());
+    window.addEventListener('greenloop:permissions-changed', () => syncEntryPage());
     window.addEventListener("greenloop:entry-ready", loadSelectedBatch);
     window.addEventListener("greenloop:device", (event) => applyCableDevice(event.detail));
     window.addEventListener("greenloop:imei-entry-saved", (event) => {
       panel.querySelectorAll("tbody tr").forEach((row) => {
         if (row.querySelector(".batch-row-imei")?.value === event.detail.imei) {
           row.dataset.saved = "yes";
+          savedOnPage.add(event.detail.imei);
           row.querySelectorAll("input, select, button").forEach((control) => { control.disabled = true; });
           setRowStatus(row, event.detail.batteryHealthEstimated ? `Sent to Initial QC — BH ${event.detail.batteryHealth}% (Estimated)` : "Sent to Initial QC", "is-saved");
         }
       });
     });
     function applyCableDevice(device) {
-      if (!currentBatch || !panel || panel.hidden) return;
+      if (!currentBatch || !panel || panel.hidden || pageLoading || pasteLoading) return;
       if (String(currentBatch.batch_id) !== batchSelect.value) return;
       if (!device) return;
       const rows = [...panel.querySelectorAll("tbody tr")];
@@ -467,7 +542,7 @@
         : connectedImei ? rows.find((item) => item.querySelector(".batch-row-imei")?.value.trim() === connectedImei) : null;
       if (matchingRow?.dataset.saved === "yes") { window.GREENLOOP_CHECK_IMEI_DUPLICATE?.(connectedImei).catch(() => {}); return; }
       const row = matchingRow || rows.find((item) => item.dataset.saved !== "yes" && !item.dataset.cableConnectionId && !item.querySelector(".batch-row-imei").value.trim());
-      if (!row) return;
+      if (!row) { syncEntryPage("These entry lines are full. Save or clear unfinished phones, then choose Next 50 lines."); return; }
       if (row.dataset.busy === "yes") return;
       if (row.dataset.cableConnectionId !== connection) {
         // An IMEI may have been scanned before connecting the phone. Its row
