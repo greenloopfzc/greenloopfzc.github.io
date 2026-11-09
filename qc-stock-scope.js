@@ -3,12 +3,14 @@
  'use strict';
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  function attach({host,stage,client,load,blocked=()=>false}){
+  const page=stage==='issuance'?'qc_issuance':'initial_qc';
   const panel=document.createElement('section');panel.className='qc-stock-scope';panel.setAttribute('aria-label','Choose QC stock');
   panel.innerHTML='<label>Supplier<select data-qcs-supplier data-capability="search" data-capability-page="initial_qc"><option value="">All suppliers</option></select></label><label>Stock / Batch<select data-qcs-batch data-capability="search" data-capability-page="initial_qc"><option value="">All stocks / batches</option></select></label><label>Invoice<select data-qcs-invoice data-capability="search" data-capability-page="initial_qc"><option value="">All invoices</option></select></label><div class="qc-stock-actions"><button type="button" class="secondary-button" data-qcs-clear data-capability="search" data-capability-page="initial_qc">Clear</button><button type="button" class="primary-button" data-qcs-load data-capability="entry" data-capability-page="initial_qc">Load selected stock</button><small data-qcs-status role="status">Choose a supplier, stock or invoice.</small></div>';
+  panel.querySelectorAll('[data-capability-page]').forEach(e=>e.dataset.capabilityPage=page);
   host.after(panel);
   const supplier=panel.querySelector('[data-qcs-supplier]'),batch=panel.querySelector('[data-qcs-batch]'),invoice=panel.querySelector('[data-qcs-invoice]'),status=panel.querySelector('[data-qcs-status]'),button=panel.querySelector('[data-qcs-load]');
   let catalog=[],selection={},generation=0,loading=false,stopped=false;
-  const can=cap=>!stopped&&window.GREENLOOP_CAN?.(cap,'initial_qc')===true;
+  const can=cap=>!stopped&&window.GREENLOOP_CAN?.(cap,page)===true;
   const filters=()=>Object.fromEntries(Object.entries(selection).filter(([,v])=>v));
   const message=(text,error=false)=>{status.textContent=text;status.classList.toggle('is-error',error);};
   function sync(){for(const e of panel.querySelectorAll('select,button'))e.disabled=loading||!can(e.dataset.capability||'search');button.disabled=loading||!can('entry')||!can('search')||!Object.keys(filters()).length;}

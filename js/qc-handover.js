@@ -5,7 +5,8 @@
   if (!panel) return;
   const rows = new Map(), pending = new Set();
   let revision = 0, exporting = false, stopped = false, pdfUrl = '', libraryPromise, logoPromise;
-  const allowed = () => !stopped && window.GREENLOOP_CAN?.('entry','initial_qc') === true;
+  const page=location.pathname.endsWith('/qc-issuance.html')?'qc_issuance':'initial_qc';
+  const allowed = () => !stopped && window.GREENLOOP_CAN?.('entry',page) === true;
   const busy = () => pending.size > 0;
   function status(text = '', error = false) {
     const el = $('#qc-handover-message'); el.textContent = text; el.hidden = !text; el.classList.toggle('is-error',error);
@@ -73,7 +74,7 @@
       const url=URL.createObjectURL(new Blob([file.bytes],{type:'application/pdf'}));
       if(kind==='view') {
         closePdf();pdfUrl=url;$('#qc-handover-frame').src=url;$('#qc-handover-open').href=url;$('#qc-handover-file').href=url;$('#qc-handover-file').download=file.filename;$('#qc-handover-preview').showModal();
-      }else{const link=document.createElement('a');link.dataset.capability='entry';link.dataset.capabilityPage='initial_qc';link.href=url;link.download=file.filename;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);}
+      }else{const link=document.createElement('a');link.dataset.capability='entry';link.dataset.capabilityPage=page;link.href=url;link.download=file.filename;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);}
       status();
     }catch(error){if(allowed())status(error.message || 'The PDF could not be generated. Please try again.',true);}
     finally{exporting=false;update();}

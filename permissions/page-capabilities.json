@@ -137,6 +137,28 @@
       ]
     },
     {
+      "key": "qc_issuance",
+      "label": "Lab & Glass Issuance",
+      "description": "View saved inspections, edit parts/services, assign technicians and transfer phones.",
+      "capabilities": [
+        {
+          "key": "view",
+          "label": "View page",
+          "write": false
+        },
+        {
+          "key": "search",
+          "label": "Search & stock filters",
+          "write": false
+        },
+        {
+          "key": "entry",
+          "label": "Edit Parts / Services, assign & transfer phones",
+          "write": true
+        }
+      ]
+    },
+    {
       "key": "lab_glass",
       "label": "Lab & Glass",
       "description": "Receive, repair, request parts and complete technician work.",

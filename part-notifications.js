@@ -8,7 +8,7 @@
     {file:'stock-entry.html',key:'stock_received',page:'stock_received',label:'Stock Received',unit:'phones received'},
     {file:'imei-entry.html',key:'imei_entry',page:'imei_entry',label:'IMEI Entry',unit:'phones awaiting IMEI entry'},
     {file:'initial-qc.html',key:'initial_qc',page:'initial_qc',label:'Initial QC',unit:'phones awaiting inspection'},
-    {file:'qc-issuance.html',key:'qc_issuance',page:'initial_qc',label:'Lab & Glass Issuance',unit:'phones awaiting issuance'},
+    {file:'qc-issuance.html',key:'qc_issuance',page:'qc_issuance',label:'Lab & Glass Issuance',unit:'phones awaiting issuance'},
     {file:'stock-return.html',key:'supplier_returns',page:'supplier_returns',label:'Return/Replacement',unit:'phones awaiting supplier return'},
     {file:'laboratory.html',key:'lab_glass',page:'lab_glass',label:'Lab & Glass',unit:'pending phones'},
     {file:'parts.html',key:'parts',page:'parts',label:'Parts',unit:'phones awaiting parts issue or return review'},
