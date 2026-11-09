@@ -177,10 +177,11 @@
     boxBusy=true;render();setMessage();
     try {
       await loadLines();
-      printedSnapshot={boxId:currentBox.box_id,revision:workflow.revision};
-      window.print();
+      const snapshot={boxId:currentBox.box_id,revision:workflow.revision};
+      await window.GREENLOOP_BOX_PRINT.open({box:{...workflow},lines:[...lines]},{allowed:()=>can("print")});
+      printedSnapshot=snapshot;
       confirmPrintButton.hidden=!can("print");
-      setMessage("After the sheet has printed successfully, choose Printing completed. If you cancelled printing, print again.","success");
+      setMessage("Print from the preview. After printing succeeds, close the preview and choose Printing completed.","success");
     } catch(error){setMessage(error.message || "Printing could not start.");}
     finally{boxBusy=false;render();}
   }
