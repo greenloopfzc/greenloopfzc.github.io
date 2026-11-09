@@ -237,6 +237,30 @@
     }
   }
 
+  async function pasteImeis(imeis, options) {
+    clearTimeout(scanTimer);
+    if (!can("scan") || boxBusy || scanning || !currentBox?.box_id || currentBox.box_status !== "open") throw new Error("This box is not available for scanning.");
+    if (!options.isCurrent()) return {loaded:0,issues:[]};
+    scanning=true;setMessage();render();
+    try {
+      const {data,error}=await getClient().rpc("scan_imeis_to_export_box_v1",{p_box_id:currentBox.box_id,p_revision:workflow.revision,p_imeis:imeis});
+      if(error)throw error;
+      if(!data?.box || !Array.isArray(data.lines) || !Array.isArray(data.results))throw new Error("The box response could not be verified. Refresh the box before retrying.");
+      if(options.isCurrent()) {
+        workflow=data.box;currentBox={...currentBox,...data.box};lines=data.lines;
+        printedSnapshot=null;confirmPrintButton.hidden=true;imeiInput.value="";
+        setMessage(`${data.loaded} of ${imeis.length} IMEIs added to ${data.box.box_number}.`+(data.results.some(r=>!r.ok)?" Check the IMEIs listed below.":" Ready to scan."),data.results.some(r=>!r.ok)?"error":"success");
+      }
+      return {loaded:data.loaded,issues:data.results.filter(r=>!r.ok).map(r=>r.imei+" — "+r.message)};
+    } catch(error) {
+      // A lost response can follow a committed request. Reload the canonical
+      // box once instead of retrying writes and risking duplicate scans.
+      try { if(options.isCurrent())await loadLines(); } catch (_) {}
+      if(options.isCurrent())setMessage(error.message || "Bulk IMEIs could not be added. Check the box before retrying.");
+      throw error;
+    } finally {scanning=false;render();if(!imeiInput.disabled)imeiInput.focus();}
+  }
+
   async function finishAndStartNext() {
     if (!currentBox || !(String(currentBox.box_status) === "open" ? can("save") : can("scan")) || scanning || boxBusy) return;
     if (!lines.length && String(currentBox.box_status) === "open") return;
@@ -284,7 +308,7 @@
   document.querySelector("#open-menu").addEventListener("click", () => setMenu(true));
   document.querySelector("#close-menu").addEventListener("click", () => setMenu(false));
   backdrop.addEventListener("click", () => setMenu(false));
-  window.GREENLOOP_BULK_IMEI?.register({selector:'#export-imei',capability:'scan',load:async(imeis,options)=>{let loaded=0;const issues=[];for(const imei of imeis){if(!options.isCurrent())break;imeiInput.value=imei;const result=await scanImei();if(result?.ok)loaded++;else issues.push(imei+' — '+(result?.error||'not added; check box capacity and current stage'));}return{loaded,issues};}});
+  window.GREENLOOP_BULK_IMEI?.register({selector:'#export-imei',capability:'scan',cancellable:false,load:pasteImeis});
   imeiInput.addEventListener("input", () => {
     imeiInput.value = imeiInput.value.replace(/\D/g, "").slice(0, 15);
     clearTimeout(scanTimer);

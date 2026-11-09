@@ -45,7 +45,7 @@
 .export-sheet-footer { display: flex; justify-content: space-between; gap: 15px; padding: 12px 17px; color: #607168; font-size: .7rem; font-weight: 700; }
 @media (max-width: 900px) { .export-box-control { grid-template-columns: 1fr 1fr; } .export-scan-panel { grid-template-columns: 1fr; } }
 @media (max-width: 600px) { .export-box-heading { align-items: flex-start; } .export-box-control { grid-template-columns: 1fr; } .export-box-control .secondary-button, .export-box-control .primary-button, .export-box-actions .secondary-button, .export-box-actions .primary-button, .export-box-actions .danger-button { width: 100%; } .export-capacity-field input { width: 100%; } .export-sheet-heading, .export-sheet-footer { align-items: flex-start; flex-direction: column; } }
-@media print { @page { size: A4 landscape; margin: 10mm; } body { background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; } .sidebar, .topbar, .page-heading, .export-box-control, .export-box-actions, .export-scan-panel, .form-message, .toast, .menu-backdrop { display: none !important; } .app-shell, .app-main, .page-content, .export-box-content, .export-box-app { display: block !important; width: auto !important; max-width: none !important; margin: 0 !important; padding: 0 !important; } .export-sheet-panel { overflow: visible !important; border: 1px solid #111 !important; border-radius: 0 !important; box-shadow: none !important; } .export-sheet-wrap { overflow: visible !important; } .export-sheet { min-width: 0 !important; } .export-sheet th, .export-sheet td { border-color: #777 !important; padding: 6px 8px !important; color: #111 !important; font-size: 9pt !important; } .export-sheet th { background: #eee !important; } .export-print-brand { color: #00834f !important; font-size: 13pt !important; } .export-sheet-empty { display: none; } }
+@media print { @page { size: A4 portrait; margin: 10mm; } body { background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; } .sidebar, .topbar, .page-heading, .export-box-control, .export-box-actions, .export-scan-panel, .form-message, .toast, .menu-backdrop { display: none !important; } .app-shell, .app-main, .page-content, .export-box-content, .export-box-app { display: block !important; width: auto !important; max-width: none !important; margin: 0 !important; padding: 0 !important; } .export-sheet-panel { overflow: visible !important; border: 1px solid #111 !important; border-radius: 0 !important; box-shadow: none !important; } .export-sheet-wrap { overflow: visible !important; } .export-sheet { min-width: 0 !important; } .export-sheet th, .export-sheet td { border-color: #777 !important; padding: 6px 8px !important; color: #111 !important; font-size: 9pt !important; } .export-sheet th { background: #eee !important; } .export-print-brand { color: #00834f !important; font-size: 13pt !important; } .export-sheet-empty { display: none; } }
 
 @media print { .export-line-action { display:none !important; } }
 
@@ -77,3 +77,23 @@
 @media print{html body.app-page #box-entry-workspace{display:block!important;gap:0!important;margin:0!important;padding:0!important}html body.app-page .export-sheet-panel{break-inside:auto!important;page-break-inside:auto!important}}
 
 @media print{html body.app-page table.export-sheet{break-after:avoid;page-break-after:avoid}html body.app-page table.export-sheet tbody tr:last-child{break-after:avoid;page-break-after:avoid}}
+
+/* Fifty standard phone lines fit a single A4 Portrait packing sheet. */
+@media print{
+ @page greenloop-box-entry{size:A4 portrait;margin:8mm}
+ html body.app-page .export-sheet-panel{page:greenloop-box-entry!important;border:0!important}
+ html body.app-page .export-sheet-heading{padding:0 0 2mm!important;gap:3mm!important;align-items:center!important;flex-direction:row!important}
+ html body.app-page .export-print-brand{margin:0!important;letter-spacing:normal!important}
+ html body.app-page .export-print-brand .gl-wordmark{width:38mm!important;max-width:38mm!important}
+ html body.app-page .export-print-brand img{display:block!important;width:100%!important;height:auto!important}
+ html body.app-page .export-sheet-heading .panel-kicker{font:6pt/1.1 Arial,sans-serif!important;margin:1mm 0!important}
+ html body.app-page .export-sheet-heading h2{font:700 10pt/1.15 Arial,sans-serif!important;margin:1mm 0!important}
+ html body.app-page .export-sheet-heading>span{font:7pt/1.2 Arial,sans-serif!important;white-space:nowrap!important}
+ html body.app-page table.export-sheet tr>:is(th,td){font:8pt/1.1 Arial,sans-serif!important;padding:.45mm 1mm!important;height:auto!important;box-shadow:none!important;letter-spacing:normal!important}
+ html body.app-page table.export-sheet th{font-weight:700!important;padding:.7mm 1mm!important}
+ html body.app-page table.export-sheet tbody tr:nth-child(50n+1):not(:first-child){break-before:page!important;page-break-before:always!important}
+ html body.app-page .export-sheet-footer{padding:2mm 0 0!important;font:7pt/1.1 Arial,sans-serif!important;align-items:center!important;flex-direction:row!important;gap:3mm!important}
+ html body.app-page .export-sheet-footer .gl-wordmark{width:24mm!important;max-width:24mm!important}
+ html body.app-page .export-sheet-footer img{width:100%!important;height:auto!important}
+ html body.app-page .export-line-action,html body.app-page .bulk-imei-status{display:none!important}
+}

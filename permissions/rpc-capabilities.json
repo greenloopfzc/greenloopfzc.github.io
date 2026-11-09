@@ -1372,6 +1372,13 @@
     },
     "get_imei_activity_journey_version": {
       "read": true
+    },
+    "scan_imeis_to_export_box_v1": {
+      "page": "export_boxes",
+      "capability": "scan"
+    },
+    "get_box_bulk_entry_version": {
+      "read": true
     }
   },
   "get_box_status_v1": {
