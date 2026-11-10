@@ -249,7 +249,6 @@ document.addEventListener("click", (event) => {
     item("Final QC", "final-qc.html", "◉", page === "final-qc.html"),
     item("B-DEPT", "laboratory.html#frame", "□", (page === "laboratory.html" && window.location.hash === "#frame") || page === "b-dept-report.html"),
     item("Ready Stock", "ready-stock.html", "▤", page === "ready-stock.html"),
-    item("Stock Journey", "ready-stock-journey.html", "≡", page === "ready-stock-journey.html"),
     '<p class="nav-label">Control</p>',
     item("Reports", "reports.html", "▤", page === "reports.html"),
     item("Suspicious Activity", "suspicious-activity.html", "◇", page === "suspicious-activity.html"),
@@ -804,4 +803,4 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
 (() => { const script=document.createElement('script');script.src='js/content-protection.js?v=20261110-content-permissions-1';script.defer=true;document.head.append(script); })();
 
 // Full-width screen workspaces and responsive records; print/TV layouts stay independent.
-(() => {const css=document.createElement('link');css.rel='stylesheet';css.href='css/workspace-layout.css?v=20261110-dashboard-ready-layout-1';css.addEventListener('load',()=>window.dispatchEvent(new Event('resize')));document.head.append(css);const script=document.createElement('script');script.src='js/workspace-layout.js?v=20261110-dashboard-ready-layout-1';script.defer=true;document.head.append(script);})();
+(() => {const css=document.createElement('link');css.rel='stylesheet';css.href='css/workspace-layout.css?v=20261110-compact-qc-pdf-1';css.addEventListener('load',()=>window.dispatchEvent(new Event('resize')));document.head.append(css);const script=document.createElement('script');script.src='js/workspace-layout.js?v=20261110-compact-qc-pdf-1';script.defer=true;document.head.append(script);})();

@@ -26,3 +26,43 @@
  html body.app-page .app-main table.gl-table-cards colgroup {display:none}
  @media(max-width:600px) {html body.app-page .app-main > .page-content {padding-inline:10px!important}}
 }
+
+/* Compact operational rows; regular reports keep their existing workspace layout. */
+@media screen {
+ html body.app-page .app-main :is(.page-content,#frame-pending-panel) table.gl-work-tray {display:table!important;width:100%!important;min-width:0!important;max-width:100%!important;table-layout:fixed!important;border-collapse:collapse!important;border-spacing:0!important;font-size:11px!important;line-height:1.2!important}
+ html body.app-page .app-main :is(.page-content,#frame-pending-panel) table.gl-work-tray tr>:is(th,td) {display:table-cell;box-sizing:border-box;width:auto!important;min-width:0!important;max-width:none!important;height:auto!important;padding:4px 3px!important;vertical-align:middle!important;white-space:normal!important;overflow-wrap:anywhere!important;overflow:visible!important}
+ html body.app-page .app-main :is(.page-content,#frame-pending-panel) table.gl-work-tray thead th {width:var(--gl-tray-width,auto)!important;font-size:10px!important;line-height:1.15!important;padding:7px 3px!important;text-align:center!important}
+ html body.app-page .app-main :is(.page-content,#frame-pending-panel) table.gl-work-tray .gl-serial {width:28px!important;min-width:0!important;padding-inline:2px!important;text-align:center!important;white-space:nowrap!important}
+ html body.app-page .app-main :is(.page-content,#frame-pending-panel) table.gl-work-tray :is(input:not([type=checkbox]):not([type=radio]):not([type=hidden]),select) {box-sizing:border-box;width:100%!important;min-width:0!important;max-width:100%!important;min-height:32px!important;height:32px!important;margin:0!important;padding:3px 5px!important;font-size:11px!important;line-height:1.2!important;field-sizing:fixed}
+ html body.app-page .app-main :is(.page-content,#frame-pending-panel) table.gl-work-tray :is(button,.primary-button,.secondary-button,.frame-pass-check,.frame-fail-check,.final-check,.final-result-cell label,.qc-direct-choice) {box-sizing:border-box;min-width:0!important;max-width:100%!important;min-height:32px!important;height:32px!important;margin:0!important;padding:3px 5px!important;font-size:11px!important;line-height:1.15!important;white-space:nowrap!important}
+ html body.app-page .app-main :is(.page-content,#frame-pending-panel) table.gl-work-tray :is(input[type=checkbox],input[type=radio]) {width:14px!important;min-width:14px!important;height:14px!important;min-height:14px!important;flex:0 0 14px;margin:0!important}
+ html body.app-page .app-main :is(.page-content,#frame-pending-panel) table.gl-work-tray :is(.qc-bulk-multi,.final-bulk-multi,.issuance-inline-group,.qc-bulk-requirement-group,.final-grade-control) {display:grid!important;grid-template-columns:minmax(0,1fr) 24px 24px!important;align-items:start;gap:3px!important;width:100%!important;min-width:0!important;max-width:100%!important}
+ html body.app-page .app-main :is(.page-content,#frame-pending-panel) table.gl-work-tray :is(.qc-bulk-multi,.final-bulk-multi,.issuance-inline-group,.qc-bulk-requirement-group,.final-grade-control)>button {width:24px!important;padding:0!important}
+ html body.app-page .app-main :is(.page-content,#frame-pending-panel) table.gl-work-tray :is(.qc-save-route,.issuance-row-actions) {display:flex!important;align-items:center;gap:3px;flex-wrap:nowrap!important;width:100%!important;min-width:0!important;max-width:100%!important}
+ html body.app-page .app-main :is(.page-content,#frame-pending-panel) table.gl-work-tray .issuance-row-actions>button {flex:0 1 auto!important;width:auto!important}
+ html body.app-page .app-main :is(.page-content,#frame-pending-panel) table.gl-work-tray .issuance-row-actions>[data-transfer] {flex:1 1 auto!important}
+ html body.app-page .app-main :is(.page-content,#frame-pending-panel) table.gl-work-tray .qc-save-route>label {min-width:0;white-space:normal!important;font-size:10px!important;line-height:1.15}
+ html body.app-page .app-main :is(.page-content,#frame-pending-panel) table.gl-work-tray .b-dept-route-cell {white-space:normal!important}
+ html body.app-page .app-main :is(.page-content,#frame-pending-panel) table.gl-work-tray .b-dept-route {width:calc(100% - 54px)!important;min-width:0!important;margin-right:3px!important}
+ html body.app-page .app-main :is(.page-content,#frame-pending-panel) table.gl-work-tray .b-dept-route-cell>.line-save {width:48px!important;min-width:0!important;padding:3px!important}
+ html body.app-page .app-main :is(.page-content,#frame-pending-panel) table.gl-work-tray .b-dept-final-bh small {display:block;white-space:normal!important;margin:2px 0 0!important;font-size:9px}
+ html body.app-page .app-main .gl-work-tray-scroll {min-width:0!important;max-width:100%!important;overflow-x:visible!important}
+ /* Only screens narrower than the actual minimum control widths use labelled rows. */
+ html body.app-page .app-main :is(.page-content,#frame-pending-panel) table.gl-work-tray-stack {display:block!important}
+ html body.app-page .app-main :is(.page-content,#frame-pending-panel) table.gl-work-tray-stack :is(thead,tbody,tfoot) {display:block;width:100%!important}
+ html body.app-page .app-main :is(.page-content,#frame-pending-panel) table.gl-work-tray-stack thead {display:none}
+ html body.app-page .app-main :is(.page-content,#frame-pending-panel) table.gl-work-tray-stack tbody>tr {display:grid!important;grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr));gap:0;margin-bottom:8px;border:1px solid var(--nm-line,#cad6df);border-radius:12px}
+ html body.app-page .app-main :is(.page-content,#frame-pending-panel) table.gl-work-tray-stack tr>:is(th,td) {display:block!important;width:auto!important;padding:6px!important}
+ html body.app-page .app-main :is(.page-content,#frame-pending-panel) table.gl-work-tray-stack [data-gl-col-label]::before {content:attr(data-gl-col-label);display:block;font-size:10px;font-weight:750;margin-bottom:4px;color:var(--nm-muted,#536878)}
+ html body.app-page .app-main :is(.page-content,#frame-pending-panel) table.gl-work-tray-stack td[colspan] {grid-column:1/-1}
+}
+
+@media screen { html body.app-page .app-main :is(.page-content,#frame-pending-panel) table.gl-work-tray.gl-work-tray-stack tbody tr>td[data-gl-col-label] {width:100%!important;min-width:0!important;max-width:100%!important} }
+
+@media screen { html body.app-page .app-main table.gl-work-tray input[type=number] {appearance:textfield;-moz-appearance:textfield} html body.app-page .app-main table.gl-work-tray input[type=number]::-webkit-inner-spin-button,html body.app-page .app-main table.gl-work-tray input[type=number]::-webkit-outer-spin-button {-webkit-appearance:none;margin:0} }
+
+@media screen {
+ html body.app-page .app-main :is(.page-content,#frame-pending-panel) table.gl-work-tray tr.is-qc-failed>td {padding-bottom:var(--failure-panel-space,130px)!important}
+ html body.app-page .app-main :is(.page-content,#frame-pending-panel) table.gl-work-tray-stack tr.is-qc-failed {padding-bottom:var(--failure-panel-space,150px)!important}
+ html body.app-page .app-main :is(.page-content,#frame-pending-panel) table.gl-work-tray-stack tr.is-qc-failed>td {padding-bottom:6px!important}
+}

@@ -48,3 +48,9 @@ names or to delete, reset, or otherwise change business records.
 - Every allowed viewer can select/copy visible IMEI and batch-number values, including the batch receipt quantity label, without a content-protection alert. This exception must not include the surrounding row, supplier/customer names or other protected text.
 - Allowed copy/capture actions do not create Suspicious Activity alerts. Browser-observed restricted attempts retain the existing bounded, self-attributed alert behavior. Screenshot completion/prevention by operating-system tools is not observable or guaranteed by a website.
 - Saved or disabled identifier fields stay locked. Expose their value for selection/copy without enabling an entry control or changing its value.
+
+## Compact work trays and serial numbers
+
+- Initial QC, Lab & Glass Issuance, Final QC and B-DEPT use compact desktop rows with small controls and content-aware column widths. Generic report layout changes must not expand these work trays into desktop cards. Retain the raised design, same-row editing and all workflow behavior.
+- S.No is always the leftmost column in tables, PDF/print and spreadsheet exports. Keep the matching values, widths, totals and formulas aligned; never add a duplicate serial column.
+- Stock Journey is removed from sidebar navigation. IMEI Search history and existing stock records remain available.
