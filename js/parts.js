@@ -4,7 +4,7 @@ const $=s=>document.querySelector(s),esc=v=>String(v??'').replace(/[&<>"']/g,c=>
 const money=v=>v==null?'—':'AED '+Number(v).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
 const date=v=>v?new Date(v).toLocaleString('en-GB',{timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true}):'—';
 const labels={pending:'Awaiting Review',damaged:'Damaged',faulty:'Faulty',not_needed:'Not Needed',other:'Other'};
-const can=c=>window.GREENLOOP_CAN?.(c,'parts')===true,tone=s=>['Issued','Completed','approved','rejected'].includes(s)?'complete':'pending';
+const can=c=>window.GREENLOOP_CAN?.(c,'parts')===true,tone=s=>['Issued','Completed','No Parts Pending','approved','rejected'].includes(s)?'complete':'pending';
 let view='',orderTab='pending',category='pending',offset=0,total=0,loading=false,reloadQueued=false,busy=false,selected=null,orderFilters,returnFilters;
 async function rpc(name,args={}){const {data,error}=await GREENLOOP_GET_CLIENT().rpc(name,args);if(error)throw error;return data;}
 function msg(text='',bad=false){$('#pf-message').textContent=text;$('#pf-message').classList.toggle('is-error',bad);}
