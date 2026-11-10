@@ -56,7 +56,7 @@ for package in (args.msys/'var/lib/pacman/local').iterdir():
 assert sum(len(p['files']) for p in packages.values())==len(files)
 
 payload=stage/'payload';payload.mkdir(exist_ok=True)
-for name in ['Install-Cable-Reader.ps1','Setup-Utilities.ps1']:
+for name in ['Install-Cable-Reader.ps1','Setup-Utilities.ps1','Reader-Startup.ps1','Repair-Startup.ps1']:
     shutil.copyfile(here/name,payload/name)
 shutil.copyfile(here.parent/'dual-imei-reader/Update-Reader-Source.ps1',payload/'Update-Reader-Source.ps1')
 shutil.copytree(here/'reader',payload/'reader',dirs_exist_ok=True)

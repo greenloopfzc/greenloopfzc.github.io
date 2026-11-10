@@ -10,6 +10,7 @@ $watchScript=Join-Path $readerRoot 'Watch-Greenloop-Reader.ps1'
 $powershell=Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'
 . (Join-Path $PSScriptRoot 'Setup-Utilities.ps1')
 . (Join-Path $PSScriptRoot 'Update-Reader-Source.ps1')
+. (Join-Path $PSScriptRoot 'Reader-Startup.ps1')
 $utf8=New-Object Text.UTF8Encoding($false)
 function Get-TextHash([string]$Text){
  $sha=[Security.Cryptography.SHA256]::Create()
@@ -66,6 +67,8 @@ try{
  $stage=Join-Path $backupRoot 'download'
  Write-Output 'Checking Android tools...'
  if(-not $androidReady){$stagedTools=Get-OfficialPlatformTools $stage}
+ $selectedPort=Select-GreenloopReaderPort
+ $updates=ConvertTo-GreenloopStartupPlan $updates $selectedPort
  $writes=@{}
  foreach($name in $names){$writes[(Join-Path $readerRoot $name)]=$utf8.GetBytes($updates[$name])}
  foreach($file in $manifest.files | Where-Object {$_.path.StartsWith('apple/')}){
@@ -88,13 +91,7 @@ try{
   $index++
  }
  # No unrelated PowerShell or ADB processes are stopped.
- foreach($script in @($watchScript,$readerScript)){
-  $pattern='(?i)(?:^|\s)-File\s+"'+[regex]::Escape($script)+'"(?:\s|$)'
-  foreach($p in @(Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" | Where-Object {$_.ProcessId -ne $PID -and $_.ExecutablePath -ieq $powershell -and $_.CommandLine -match $pattern})){
-   $fresh=Get-CimInstance Win32_Process -Filter ('ProcessId='+$p.ProcessId) -ErrorAction SilentlyContinue
-   if($fresh -and $fresh.CreationDate -eq $p.CreationDate -and $fresh.CommandLine -match $pattern){Stop-Process -Id $p.ProcessId -ErrorAction Stop}
-  }
- }
+ Stop-GreenloopOwnedProcesses $readerRoot $powershell
  Write-Output 'Installing verified reader files and Windows sign-in shortcuts...'
  try{
   foreach($path in $writes.Keys){
@@ -112,10 +109,10 @@ try{
  if(-not (Test-PlatformTools)){throw 'Android tools verification did not pass. Setup is incomplete.'}
  & $powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File $launcherScript
  if($LASTEXITCODE -ne 0){throw 'Files installed; reader startup is pending. Rerun setup and send the log if this repeats.'}
- $health=Invoke-RestMethod -Uri 'http://127.0.0.1:51892/health' -TimeoutSec 10
- if(-not $health.ok -or $health.service -cne 'Greenloop Read-Only Device Reader' -or $health.mode -cne 'read-only' -or $health.dualImeiVersion -cne '20261023-dual-imei-1' -or -not $health.androidToolsReady){throw 'Reader running version could not be verified. Setup is incomplete.'}
+ $health=Get-GreenloopLocalHealth $selectedPort 10000
+ if(-not $health -or -not $health.ok -or $health.service -cne 'Greenloop Read-Only Device Reader' -or $health.mode -cne 'read-only' -or $health.dualImeiVersion -cne '20261023-dual-imei-1' -or -not $health.androidToolsReady){throw 'Reader running version could not be verified. Setup is incomplete.'}
  $hint=Get-AppleDriverHint
- @{version=$version;readerVerified=$true;phoneVerified=$false;installedAt=[datetime]::UtcNow.ToString('o');backup=$backupRoot;appleDriverHint=$hint} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $readerRoot 'cable-setup.json') -Encoding UTF8
+ @{version=$version;readerVerified=$true;phoneVerified=$false;readerPort=$selectedPort;installedAt=[datetime]::UtcNow.ToString('o');backup=$backupRoot;appleDriverHint=$hint} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $readerRoot 'cable-setup.json') -Encoding UTF8
  Write-Output 'READER RUNNING - VERIFIED. Phone USB communication still needs a connected phone test.'
  Write-Output $hint
  Write-Output 'Android: enable USB debugging, reconnect and Allow. If not detected, use the official driver link for the phone brand.'

@@ -1,0 +1,5 @@
+# Cable Reader startup repair
+Repairs only the installed Greenloop reader, launcher and supervisor. Preserves the exact existing iPhone/Android, dual-IMEI, battery/details and custom reader code except its fixed default port; recalculates matching reader pins and aligns all three files to the same available supported loopback port.
+Backs up original files; stops only exact installed Greenloop scripts with the expected Windows PowerShell executable, revalidating process identity before stop. Unrecognized processes and Windows port reservations are never changed. A healthy alternate reader is recognized; setup and Test connected phone now support both 51892 and 51893 without proxies or redirects.
+Live /health must confirm the expected read-only service before reporting startup verified. A connected phone test is separate. No SQL, Edge deployment, JWT, secrets or business record changes are needed for this repair.
+Run Fix-GreenLoop-Cable-Setup-Startup.ps1 on the cable-entry PC. CheckOnly only validates source syntax/pins and does not stop/start processes or change files.

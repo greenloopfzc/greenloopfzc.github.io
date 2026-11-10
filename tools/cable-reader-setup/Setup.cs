@@ -99,8 +99,18 @@ internal sealed class SetupForm : Form {
     Busy(true);Append("Checking one connected phone...");
     try {
       string result=await Task.Run(()=>{
-        var req=WebRequest.CreateHttp("http://127.0.0.1:51892/v1/device");req.Proxy=null;req.Timeout=25000;
-        using(var response=req.GetResponse()) using(var stream=response.GetResponseStream()) using(var reader=new StreamReader(stream)) return reader.ReadToEnd();
+        foreach(int port in new[]{51892,51893}) {
+          try {
+            var healthReq=WebRequest.CreateHttp("http://127.0.0.1:"+port+"/health");healthReq.Proxy=null;healthReq.AllowAutoRedirect=false;healthReq.Timeout=3000;healthReq.ReadWriteTimeout=3000;
+            string healthText;
+            using(var response=healthReq.GetResponse())using(var stream=response.GetResponseStream())using(var reader=new StreamReader(stream))healthText=reader.ReadToEnd();
+            var health=new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(healthText);
+            if(!health.ContainsKey("ok") || !Object.Equals(health["ok"],true) || !health.ContainsKey("service") || !Object.Equals(health["service"],"Greenloop Read-Only Device Reader") || !health.ContainsKey("mode") || !Object.Equals(health["mode"],"read-only"))continue;
+            var req=WebRequest.CreateHttp("http://127.0.0.1:"+port+"/v1/device");req.Proxy=null;req.AllowAutoRedirect=false;req.Timeout=25000;req.ReadWriteTimeout=25000;
+            using(var response=req.GetResponse())using(var stream=response.GetResponseStream())using(var reader=new StreamReader(stream))return reader.ReadToEnd();
+          }catch(WebException){continue;}
+        }
+        throw new Exception("No verified Cable Reader is responding on its supported local ports.");
       });
       var json=new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(result);
       object ok;object raw;
