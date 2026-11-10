@@ -41,3 +41,5 @@
 (function(root){root.GREENLOOP_RPC_CAPABILITIES.rpcs.get_content_permissions_version={read:true};})(typeof window!=="undefined"?window:globalThis);
 
 (function(root){Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,{cancel_parts_request_v1:{page:"parts",capability:"issue"},get_parts_cancel_version:{read:true}});})(typeof window!=="undefined"?window:globalThis);
+
+(function(root){Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,{"get_bulk_imei_grade_options_v1":{"page":"reports","capability":"bulk_imei_correction","read":true},"get_bulk_imei_grade_correction_v1":{"page":"reports","capability":"bulk_imei_correction","read":true},"save_bulk_imei_grade_correction_v1":{"page":"reports","capability":"bulk_imei_correction"}});})(window);
