@@ -39,3 +39,5 @@
 (function(root){root.GREENLOOP_RPC_CAPABILITIES.rpcs.get_dashboard_ready_counts_version={read:true};})(typeof window!=='undefined'?window:globalThis);
 
 (function(root){root.GREENLOOP_RPC_CAPABILITIES.rpcs.get_content_permissions_version={read:true};})(typeof window!=="undefined"?window:globalThis);
+
+(function(root){Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,{cancel_parts_request_v1:{page:"parts",capability:"issue"},get_parts_cancel_version:{read:true}});})(typeof window!=="undefined"?window:globalThis);

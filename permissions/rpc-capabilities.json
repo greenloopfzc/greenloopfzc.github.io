@@ -1387,6 +1387,13 @@
     },
     "get_imei_bulk_history_version": {
       "read": true
+    },
+    "cancel_parts_request_v1": {
+      "page": "parts",
+      "capability": "issue"
+    },
+    "get_parts_cancel_version": {
+      "read": true
     }
   },
   "get_box_status_v1": {

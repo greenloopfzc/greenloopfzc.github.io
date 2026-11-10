@@ -55,3 +55,6 @@
 @media (max-width: 960px) { .inventory-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .inventory-grid .secondary-button { width: 100%; } }
 @media (max-width: 960px) { .return-report-heading { align-items: flex-start; flex-direction: column; } .return-report-actions { width: 100%; margin-left: 0; } }
 @media (max-width: 650px) { .parts-summary, .manual-lab-parts-control { display: grid; align-items: start; } .parts-summary .queue-count { margin-left: 0; width: fit-content; } .parts-summary .secondary-button, .manual-lab-parts-toggle { width: 100%; } .inventory-grid { grid-template-columns: 1fr; } .return-report-actions { display: grid; grid-template-columns: 1fr; } }
+
+/* Pending requirements only; issued parts retain the return workflow. */
+.pf-cancel{margin-top:8px;min-width:150px}.pf-cancel summary{cursor:pointer;color:var(--danger,#b42318);font-weight:600}.pf-cancel label{display:block;margin:8px 0;font-size:.85rem}.pf-cancel input{display:block;width:100%;margin-top:4px}.pf-cancel button{white-space:normal}
