@@ -47,3 +47,4 @@ names or to delete, reset, or otherwise change business records.
 - Owner and Super Admin accounts default to both allowed until explicitly configured; other accounts remain restricted until granted. Preserve choices in atomic user creation, access saves and TV-only settings.
 - Every allowed viewer can select/copy visible IMEI and batch-number values, including the batch receipt quantity label, without a content-protection alert. This exception must not include the surrounding row, supplier/customer names or other protected text.
 - Allowed copy/capture actions do not create Suspicious Activity alerts. Browser-observed restricted attempts retain the existing bounded, self-attributed alert behavior. Screenshot completion/prevention by operating-system tools is not observable or guaranteed by a website.
+- Saved or disabled identifier fields stay locked. Expose their value for selection/copy without enabling an entry control or changing its value.
