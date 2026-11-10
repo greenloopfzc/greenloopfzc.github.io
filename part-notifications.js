@@ -156,6 +156,7 @@
       failures=0;
       if(requestEpoch!==epoch||stopped||document.hidden)return;
       renderCounts(updated);
+      document.dispatchEvent(new CustomEvent('greenloop:sidebar-counts-snapshot',{detail:{counts:{...updated}}}));
       const countsKey=JSON.stringify(updated);if(countsKey!==lastCountsKey||notifyAfterRead){lastCountsKey=countsKey;document.dispatchEvent(new CustomEvent("greenloop:workflow-notifications-refreshed",{detail:{counts:{...updated}}}));}
     } catch (_) {
       // A temporary connection failure must not make pending work disappear.

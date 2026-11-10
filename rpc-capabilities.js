@@ -35,3 +35,5 @@
 (function(root){Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,{get_lab_technician_visibility_v1:{page:'lab_glass',capability:'view',read:true},set_lab_technician_visibility_v1:{page:'lab_glass',capability:'manage_options'},get_lab_technician_visibility_version:{read:true}});})(typeof window!=='undefined'?window:globalThis);
 
 (function(root){const rule={dynamic:'filter_source',parameter:'p_page',read:true};for(const p of root.GREENLOOP_PERMISSION_CATALOG.pages)rule[p.key]={page:p.key,capability:'view'};Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,{log_content_protection_attempt_v1:rule,get_content_protection_version:{read:true}});})(typeof window!=='undefined'?window:globalThis);
+
+(function(root){root.GREENLOOP_RPC_CAPABILITIES.rpcs.get_dashboard_ready_counts_version={read:true};})(typeof window!=='undefined'?window:globalThis);

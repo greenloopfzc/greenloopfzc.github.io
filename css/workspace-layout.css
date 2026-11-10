@@ -1,0 +1,28 @@
+/* Screen workspace only: fill available space, retain every field, never clip columns. */
+@media screen {
+ html body.app-page .app-main > .page-content {box-sizing:border-box;width:100%;max-width:none!important;min-width:0;margin-inline:0!important;padding-inline:16px!important}
+ html body.app-page .app-main .page-content > section,html body.app-page .app-main .page-content > div {min-width:0}
+ html body.app-page .app-main .gl-fit-scroll {min-width:0!important;max-width:100%!important;overflow-x:visible!important}
+ html body.app-page .app-main table.gl-fit-table {box-sizing:border-box;width:100%!important;min-width:0!important;max-width:100%!important;table-layout:fixed!important}
+ html body.app-page .app-main table.gl-fit-table col {width:auto!important;min-width:0!important}
+ html body.app-page .app-main table.gl-fit-table tr > :is(th,td) {box-sizing:border-box;min-width:0!important;max-width:none!important;white-space:normal!important;overflow-wrap:anywhere!important;word-break:normal;overflow:visible!important;padding:8px 6px;line-height:1.4}
+ html body.app-page .app-main table.gl-fit-table thead th {width:var(--gl-fit-width,auto)!important;font-size:max(.65rem,10px);vertical-align:middle}
+ html body.app-page .app-main table.gl-fit-table td {width:auto!important}
+ html body.app-page .app-main table.gl-fit-table tr > .gl-serial {padding-inline:5px!important;text-align:center!important;white-space:nowrap!important}
+ html body.app-page .app-main table.gl-fit-table td :is(input,select,textarea,button,a,.secondary-button,.primary-button) {box-sizing:border-box;min-width:0!important;max-width:100%!important;white-space:normal!important;overflow-wrap:anywhere!important}
+ html body.app-page .app-main table.gl-fit-table td :is(input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),select,textarea) {width:100%!important}
+ html body.app-page .app-main table.gl-fit-table :is(.qc-save-route,.issuance-row-actions,.final-bulk-actions,.qc-bulk-multi,.final-bulk-multi) {min-width:0!important;max-width:100%!important;flex-wrap:wrap!important}
+ html body.app-page .app-main table.gl-fit-table .issuance-inline-group {min-width:0!important;grid-template-columns:minmax(0,1fr) 25px 25px}
+ html body.app-page .app-main table.gl-fit-table :is(.journey-current-stage,.journey-imei,.sa-entity,small,p) {white-space:normal!important;overflow-wrap:anywhere!important;max-width:100%}
+ html body.app-page .page-content:has(.gl-fit-table) :is(.qc-top-scroll,.final-top-scroll) {display:none!important}
+ /* When the columns cannot stay readable, each record wraps into labelled fields. */
+ html body.app-page .app-main table.gl-table-cards,html body.app-page .app-main table.gl-table-cards :is(thead,tbody,tfoot) {display:block;width:100%!important}
+ html body.app-page .app-main table.gl-table-cards thead tr {display:flex;flex-wrap:wrap;gap:6px;padding:10px;background:var(--nm-well,#e5edf2)}
+ html body.app-page .app-main table.gl-table-cards thead th {display:block;width:auto!important;flex:0 1 auto;max-width:100%!important;border:0;padding:3px 5px;font-size:11px}
+ html body.app-page .app-main table.gl-table-cards :is(tbody,tfoot) > tr {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));gap:0;width:100%;border-bottom:2px solid var(--nm-line,#cad6df);margin-bottom:12px}
+ html body.app-page .app-main table.gl-table-cards :is(tbody,tfoot) > tr > :is(td,th) {display:block;width:auto!important;min-width:0!important;padding:10px!important;text-align:left!important;border-bottom:1px solid var(--nm-line,#cad6df)}
+ html body.app-page .app-main table.gl-table-cards [data-gl-col-label]::before {content:attr(data-gl-col-label);display:block;margin-bottom:5px;color:var(--nm-muted,#536878);font-size:10px;font-weight:750;line-height:1.35;text-transform:uppercase;letter-spacing:.025em}
+ html body.app-page .app-main table.gl-table-cards [data-gl-full-row] {grid-column:1/-1}
+ html body.app-page .app-main table.gl-table-cards colgroup {display:none}
+ @media(max-width:600px) {html body.app-page .app-main > .page-content {padding-inline:10px!important}}
+}

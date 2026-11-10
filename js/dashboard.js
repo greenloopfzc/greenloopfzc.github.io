@@ -13,6 +13,28 @@
   let client;
   let toastTimer;
   let liveHeadlinesSignature = "";
+  let readyCount=null,readySignalEpoch=0,lastReadySignalAt=0,readyPollBusy=false,queueSummary=null;
+  function updateReadyCount(value){
+    if(!Number.isSafeInteger(value)||value<0)return false;
+    readyCount=value;
+    document.querySelectorAll('[data-dashboard-ready-count],.workflow-metric-grid .ready-stock > strong').forEach(el=>el.textContent=String(value));
+    if(queueSummary)renderQueues(queueSummary,value);
+    return true;
+  }
+  document.addEventListener('greenloop:sidebar-counts-snapshot',e=>{
+    if(window.GREENLOOP_CAN?.('view','overview')!==true)return;
+    const value=e.detail?.counts?.ready_stock;
+    if(Number.isSafeInteger(value)&&value>=0){readySignalEpoch++;lastReadySignalAt=Date.now();updateReadyCount(value);}
+  });
+  async function refreshReadyCount(){
+    if(readyPollBusy||document.hidden||Date.now()-lastReadySignalAt<15000)return;
+    readyPollBusy=true;const epoch=readySignalEpoch;
+    try{await window.GREENLOOP_ACCESS_READY;if(window.GREENLOOP_CAN?.('view','overview')!==true)return;
+      const r=await getClient().rpc('get_overview_workflow_counts');if(r.error)return;
+      const data=Array.isArray(r.data)?r.data[0]:r.data;
+      if(epoch===readySignalEpoch)updateReadyCount(data?.ready_stock);
+    }catch{}finally{readyPollBusy=false;}
+  }
 
   document.querySelector("#dashboard-date").textContent = new Intl.DateTimeFormat("en-US", {
     weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "Asia/Dubai"
@@ -198,7 +220,7 @@
     locationPanel.querySelector(".location-grid").innerHTML = [
       ["Ready Stock", readyTotal],
       ["Work in progress", (reportData.work_in_progress || []).length]
-    ].map(([label, value]) => `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("");
+    ].map(([label, value]) => `<div><span>${escapeHtml(label)}</span><strong${label==="Ready Stock"?' data-dashboard-ready-count':''}>${escapeHtml(value)}</strong></div>`).join("");
   }
 
   function renderActivity(reportData) {
@@ -221,31 +243,32 @@
       day.setUTCDate(start.getUTCDate() + index);
       return day.toISOString().slice(0, 10);
     });
-    const [reportsResult, readyResult, partsResult, workflowResult] = await Promise.all([
+    const epoch=readySignalEpoch;
+    const [reportsResult, partsResult, workflowResult] = await Promise.all([
       getClient().rpc("get_dashboard_report_v1", { p_date_from: days[0], p_date_to: days[6] }),
-      getClient().rpc("get_ready_stock_summary"),
       getClient().rpc("get_open_parts_pending_count"),
       getClient().rpc("get_overview_workflow_counts")
     ]);
     if (reportsResult.error) throw reportsResult.error;
     if (workflowResult.error) throw workflowResult.error;
-    if (readyResult.error) throw readyResult.error;
     const reportData = Array.isArray(reportsResult.data) ? reportsResult.data[0] : (reportsResult.data || {});
     if (!reportData?.summary) throw new Error("Live overview data is unavailable. Please refresh to retry.");
     const summary = reportData.summary || {};
     if (!partsResult.error && partsResult.data !== null && partsResult.data !== undefined && partsResult.data !== "" && Number.isFinite(Number(partsResult.data))) summary.parts_pending = Number(partsResult.data);
-    const readyData = Array.isArray(readyResult.data) ? readyResult.data[0] : readyResult.data || {};
-    const readyTotal = Number(readyData.total_qty) || 0;
 
     const workflow = Array.isArray(workflowResult.data) ? workflowResult.data[0] : (workflowResult.data || {});
+    const readyTotal=epoch!==readySignalEpoch&&readyCount!==null?readyCount:workflow.ready_stock;
+    if(!Number.isSafeInteger(readyTotal)||readyTotal<0)throw new Error('Ready Stock count is unavailable.');
+    readyCount=readyTotal;workflow.ready_stock=readyTotal;queueSummary=summary;
     try{const pf=await getClient().rpc('get_parts_flow_counts_v1');if(!pf.error)workflow.parts=pf.data;}catch(_){}
+    workflow.ready_stock=readyCount;
     renderMetrics(workflow);
     window.GREENLOOP_LAB_DELAY?.refreshDashboard();
     await refreshLiveHeadlines();
-    renderQueues(summary, readyTotal);
+    renderQueues(summary, readyCount);
     renderThroughput(reportData.final_qc || [], days);
     renderParts(reportData.parts_inventory || []);
-    renderLiveStatus(summary, readyTotal, reportData);
+    renderLiveStatus(summary, readyCount, reportData);
     renderActivity(reportData);
   }
 
@@ -290,5 +313,8 @@
   }, 60000);
 
   protectDashboard().catch(showDashboardUnavailable);
+  window.setInterval(refreshReadyCount,30000);
+  window.addEventListener('focus',()=>void refreshReadyCount());
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)void refreshReadyCount();});
   window.setInterval(() => refreshLiveHeadlines().catch(() => {}), 15000);
 })();

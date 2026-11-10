@@ -802,3 +802,6 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
 
 // Shared authenticated-page UI restrictions; business inputs and paste stay available.
 (() => { const script=document.createElement('script');script.src='js/content-protection.js?v=20261109-content-protection-1';script.defer=true;document.head.append(script); })();
+
+// Full-width screen workspaces and responsive records; print/TV layouts stay independent.
+(() => {const css=document.createElement('link');css.rel='stylesheet';css.href='css/workspace-layout.css?v=20261110-dashboard-ready-layout-1';css.addEventListener('load',()=>window.dispatchEvent(new Event('resize')));document.head.append(css);const script=document.createElement('script');script.src='js/workspace-layout.js?v=20261110-dashboard-ready-layout-1';script.defer=true;document.head.append(script);})();
