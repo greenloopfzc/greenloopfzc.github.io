@@ -262,3 +262,9 @@ body.app-page.frame-mode #frame-pending-panel table.technician-lines-table .line
 .technician-card.is-hidden-technician{border:1px dashed var(--muted,#637580);}
 .technician-hidden-label{font-size:.65rem;color:var(--muted,#637580);font-weight:700;}
 #show-hidden-technicians[aria-pressed="true"]{background:var(--green-light,#ddf0e6);border-color:var(--green,#007d59);}
+
+/* A current Final QC failure return is prominent beside its own IMEI. */
+.lab-card-imei{display:flex;align-items:baseline;flex-wrap:wrap;gap:5px 18px}
+.lab-card-imei .lab-final-qc-return{font-size:1.25rem;font-weight:850;line-height:1.35;color:#bd2924!important;overflow-wrap:normal}
+html[data-mode=dark] .lab-card-imei .lab-final-qc-return{color:#ff9b90!important}
+@media(max-width:650px){.lab-card-imei .lab-final-qc-return{font-size:1.1rem}}

@@ -285,7 +285,7 @@
   function rowData(rowElement) { return technicianRows.find(item=>String(item.step_id)===String(rowElement?.dataset.stepId)); }
   function phoneCardHeader(row,status,serial) {
     const active=String(row.step_id)===activePhoneStepId;
-    return `<header class="lab-card-header"><div class="lab-card-identity"><span class="lab-card-kicker">S.No ${serial} · IMEI</span><h3 id="lab-phone-${escapeHtml(row.step_id)}" class="lab-card-imei"><bdi>${escapeHtml(row.imei||"—")}</bdi></h3><p class="lab-card-model">${escapeHtml(row.model||"—")}</p></div><div class="lab-card-meta">${phoneTime(row)}<div class="lab-card-status"><span>${escapeHtml(status)}</span></div><span class="lab-active-indicator" ${active?'':'hidden'}>Active phone</span></div></header>`;
+    return `<header class="lab-card-header"><div class="lab-card-identity"><span class="lab-card-kicker">S.No ${serial} · IMEI</span><h3 id="lab-phone-${escapeHtml(row.step_id)}" class="lab-card-imei"><bdi>${escapeHtml(row.imei||"—")}</bdi>${row.returned_from_final_qc===true?'<strong class="lab-final-qc-return">Failed &amp; Returned from Final QC</strong>':''}</h3><p class="lab-card-model">${escapeHtml(row.model||"—")}</p></div><div class="lab-card-meta">${phoneTime(row)}<div class="lab-card-status"><span>${escapeHtml(status)}</span></div><span class="lab-active-indicator" ${active?'':'hidden'}>Active phone</span></div></header>`;
   }
   function activatePhoneCard(event) {
     if(isFrameMode||event.type==='pointerdown'&&event.button!==0)return;
@@ -457,7 +457,7 @@
   async function readWorkbench(args) {
     const key=JSON.stringify(args);
     if(!workbenchReads.has(key)){
-      const request=labRead(getClient().rpc('get_ranked_lab_workbench_v1',args)).then(({data,error})=>{if(error)throw error;if(!data||!Array.isArray(data.rows)||!Number.isFinite(Date.parse(data.server_now))||!Array.isArray(data.work_options?.parts)||!Array.isArray(data.work_options?.services)||![...data.work_options.parts,...data.work_options.services].every(o=>typeof o.name==='string'&&o.name.trim()))throw new Error('Phone lines could not be verified.');return data;}).finally(()=>workbenchReads.delete(key));
+      const request=labRead(getClient().rpc('get_lab_return_workbench_v1',args)).then(({data,error})=>{if(error)throw error;if(!data||!Array.isArray(data.rows)||!data.rows.every(row=>typeof row.returned_from_final_qc==='boolean')||!Number.isFinite(Date.parse(data.server_now))||!Array.isArray(data.work_options?.parts)||!Array.isArray(data.work_options?.services)||![...data.work_options.parts,...data.work_options.services].every(o=>typeof o.name==='string'&&o.name.trim()))throw new Error('Phone lines could not be verified.');return data;}).finally(()=>workbenchReads.delete(key));
       workbenchReads.set(key,request);
     }
     return workbenchReads.get(key);

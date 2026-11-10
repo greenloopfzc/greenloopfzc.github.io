@@ -1394,6 +1394,14 @@
     },
     "get_parts_cancel_version": {
       "read": true
+    },
+    "get_lab_return_workbench_v1": {
+      "page": "lab_glass",
+      "capability": "view",
+      "read": true
+    },
+    "get_lab_final_qc_return_version": {
+      "read": true
     }
   },
   "get_box_status_v1": {
