@@ -121,3 +121,5 @@
 .report-permission-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
 .report-permission-actions .permission-capability{font-size:.72rem}
 .report-tab[hidden]{display:none!important}
+
+.content-permission-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:16px 0}.content-permission-options .role-option{margin:0;min-width:0}@media(max-width:650px){.content-permission-options{grid-template-columns:1fr}}

@@ -37,3 +37,5 @@
 (function(root){const rule={dynamic:'filter_source',parameter:'p_page',read:true};for(const p of root.GREENLOOP_PERMISSION_CATALOG.pages)rule[p.key]={page:p.key,capability:'view'};Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,{log_content_protection_attempt_v1:rule,get_content_protection_version:{read:true}});})(typeof window!=='undefined'?window:globalThis);
 
 (function(root){root.GREENLOOP_RPC_CAPABILITIES.rpcs.get_dashboard_ready_counts_version={read:true};})(typeof window!=='undefined'?window:globalThis);
+
+(function(root){root.GREENLOOP_RPC_CAPABILITIES.rpcs.get_content_permissions_version={read:true};})(typeof window!=="undefined"?window:globalThis);

@@ -40,3 +40,10 @@ names or to delete, reset, or otherwise change business records.
 - Lab & Glass Issuance edits stay in the same IMEI row, in Parts Needed and Service Needed, with Initial QC style dropdowns and plus/minus controls. Do not open a separate editor panel.
 - Do not show a quantity input. Each newly selected part has one unit for that IMEI. A layout update must not reset existing saved quantities or business records.
 - Save / Cancel stay on the same row. Saving changes and transferring the phone remain separate actions.
+
+## Copying and screenshot choices
+
+- User Access provides independent Allow Copying and Allow Screenshots choices beside the Supplier & Customer Names options. These are virtual preferences and grant no page visibility, entry, download or other business action.
+- Owner and Super Admin accounts default to both allowed until explicitly configured; other accounts remain restricted until granted. Preserve choices in atomic user creation, access saves and TV-only settings.
+- Every allowed viewer can select/copy visible IMEI and batch-number values, including the batch receipt quantity label, without a content-protection alert. This exception must not include the surrounding row, supplier/customer names or other protected text.
+- Allowed copy/capture actions do not create Suspicious Activity alerts. Browser-observed restricted attempts retain the existing bounded, self-attributed alert behavior. Screenshot completion/prevention by operating-system tools is not observable or guaranteed by a website.

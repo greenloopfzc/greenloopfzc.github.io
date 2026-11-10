@@ -1281,6 +1281,30 @@
           "write": false
         }
       ]
+    },
+    {
+      "key": "content_access",
+      "label": "Copy / Screenshot Permissions",
+      "virtual": true,
+      "section": "preferences",
+      "description": "Independent content choices; no business edit access.",
+      "capabilities": [
+        {
+          "key": "view",
+          "label": "Content choices",
+          "write": false
+        },
+        {
+          "key": "copy",
+          "label": "Allow Copying",
+          "write": false
+        },
+        {
+          "key": "screenshots",
+          "label": "Allow Screenshots",
+          "write": false
+        }
+      ]
     }
   ],
   "reportSections": {

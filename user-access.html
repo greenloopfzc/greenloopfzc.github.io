@@ -15,10 +15,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css?v=20261016-strict-view-only-1">
-    <link rel="stylesheet" href="css/user-access.css?v=20261104-report-permissions-1">
+    <link rel="stylesheet" href="css/user-access.css?v=20261110-content-permissions-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script defer src="js/permission-catalog.js?v=20261109-stock-receipt-correction-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261110-dashboard-ready-layout-1"></script>
+  <script defer src="js/permission-catalog.js?v=20261110-content-permissions-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261110-content-permissions-1"></script>
 <script defer src="js/page-capabilities.js?v=20261104-report-permissions-1"></script>
 <script defer src="js/imei-scan.js?v=20261105-issuance-sidebar-1"></script>
 <script defer src="js/imei-stage-notice.js?v=20261102-imei-scan-location-1"></script>
@@ -29,14 +29,14 @@
 <script defer src="js/stock-consistency.js?v=20261107-batch-quantity-labels-1"></script>
 <script defer src="js/batch-quantity-display.js?v=20261107-batch-quantity-labels-1"></script>
 <script src="complete-lists.js?v=20261106-box-print-columns-1" defer></script>
-  <script defer src="js/config.js?v=20261110-dashboard-ready-layout-1"></script>
+  <script defer src="js/config.js?v=20261110-content-permissions-1"></script>
   <script defer src="js/login-activity.js?v=20261013-search-tv-1"></script>
   <link rel="stylesheet" href="css/record-search.css?v=20261017-find-record-popup-1">
   <script defer src="js/record-search.js?v=20261105-stock-consistency-1"></script>
     <script defer src="js/part-notifications.js?v=20261110-dashboard-ready-layout-1"></script>
     <script defer src="js/office-access-admin.js?v=20261024-office-access-1"></script>
 <script defer src="js/user-password.js?v=20261030-user-password-1"></script>
-<script defer src="js/user-access.js?v=20261107-refresh-fix-1"></script>
+<script defer src="js/user-access.js?v=20261110-content-permissions-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261017-settings-appearance-1">
     <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
   <link rel="stylesheet" href="css/sidebar-compact.css?v=20261009-sidebar-pdf-1">
@@ -145,6 +145,8 @@
                     <div id="role-options" class="role-options"></div>
                   </div>
 
+                  <div id="content-permissions" class="content-permission-options"></div>
+
                   <p id="access-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
                   <div class="form-actions"><button id="save-access" class="primary-button" type="submit">Save access</button></div>
                 </form>
@@ -179,6 +181,8 @@
                   <p class="permission-help">Tick View for a page, then select the actions this user may use. Unticked actions stay blocked. Protected actions also require the roles shown.</p>
                   <div id="new-role-options" class="role-options"></div>
                 </div>
+
+                <div id="new-content-permissions" class="content-permission-options"></div>
 
                 <p id="create-user-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
                 <div class="form-actions"><button id="create-user-button" class="primary-button" type="submit">Create user</button></div>

@@ -172,6 +172,13 @@
     </fieldset>`;
   }
 
+  function renderContentPermissions(container, selected = {}, isNew = false) {
+    const locked = !can(isNew ? "create_users" : "manage_access");
+    const values = Array.isArray(selected.content_access) ? selected.content_access : [];
+    const items = [{key:"copy",label:"Allow Copying",note:"Select and copy other page text. IMEI and Batch Numbers are always available."},{key:"screenshots",label:"Allow Screenshots",note:"Allow browser capture shortcuts without the software screen cover or attempt alert."}];
+    container.innerHTML = items.map(item => `<article class="role-option${values.includes(item.key) ? " is-selected" : ""}" data-content-option><div class="permission-page-heading"><label class="permission-check"><input type="checkbox" data-content-permission="${item.key}" data-capability="${isNew ? "create_users" : "manage_access"}" data-capability-page="user_access"${values.includes(item.key) ? " checked" : ""}${locked ? " disabled" : ""}><strong>${item.label}</strong></label><small>${item.note}</small></div></article>`).join("");
+  }
+
   function appearanceSelection(container) {
     const choices = [...container.querySelectorAll("[data-appearance-capability]:checked")].map(field => field.dataset.appearanceCapability);
     return choices.length ? ["view", ...choices] : [];
@@ -188,6 +195,9 @@
       capabilities[key] = selected;
       pagePermissions[key] = catalog.byPage[key].capabilities.some(item => item.write && selected.includes(item.key)) ? "edit" : "view";
     });
+    const contentContainer = document.getElementById(container === newRoleOptions ? "new-content-permissions" : "content-permissions");
+    const content = [...contentContainer.querySelectorAll("[data-content-permission]:checked")].map(field => field.dataset.contentPermission);
+    capabilities.content_access = content.length ? ["view", ...content] : [];
     return {capabilities, pagePermissions, partnerNamesAccess:container.querySelector("[data-partner-names]")?.checked ? "view" : "none"};
   }
 
@@ -230,6 +240,7 @@
   function renderNewUserPages() {
     newRoleOptions.innerHTML = pageCheckboxes({}, "none", true);
     renderAppearance(newAppearanceOptions, {}, true);
+    renderContentPermissions(document.getElementById("new-content-permissions"), {}, true);
     createUserForm.querySelectorAll(".create-user-fields input").forEach(field => { field.disabled = !can("create_users"); });
     createUserButton.disabled = creatingUser || !can("create_users");
   }
@@ -263,6 +274,7 @@
     window.GREENLOOP_OFFICE_ADMIN.renderUser(user.office_access);
     roleOptions.innerHTML = pageCheckboxes(user.capabilities, user.partner_names_access);
     renderAppearance(appearanceOptions, user.capabilities);
+    renderContentPermissions(document.getElementById("content-permissions"), user.capabilities);
     [fullName, username, active].forEach(field => { field.disabled = !can("manage_access"); });
     document.querySelector("#save-access").disabled = savingAccess || !can("manage_access");
     renderTvRotation(user.tv_rotation);
@@ -461,8 +473,10 @@
     const selected = collectSelection(roleOptions);
     if (tvOnly.checked) {
       const appearance = selected.capabilities.appearance;
+      const content = selected.capabilities.content_access;
       selected.capabilities = Object.fromEntries(capabilityGuideData.map(page => [page.key, []]));
       selected.capabilities.appearance = appearance;
+      selected.capabilities.content_access = content;
       selected.capabilities.damage_report = ["view", ...(rotation.show_overdue ? ["overdue_pending"] : []), ...(tvParts.checked ? ["parts_details"] : []), ...(tvOriginal.checked ? ["original_prices"] : []), ...(tvCopy.checked ? ["copy_prices"] : []), ...(tvOriginal.checked || tvCopy.checked ? ["payable"] : [])];
       selected.pagePermissions = {...Object.fromEntries(specialPages.map(key => [key, "none"])), damage_report:"view"};
       selected.partnerNamesAccess = "none";
@@ -503,6 +517,7 @@
       savedUser.partner_names_allowed = partnerNamesAccess !== "none";
     }
     await loadUsers(targetUserId);
+    if(String(targetUserId)===currentUserId){const own=users.find(u=>String(u.user_id)===currentUserId);window.GREENLOOP_CAPABILITIES=Object.freeze({...window.GREENLOOP_CAPABILITIES,content_access:Object.freeze([...own.capabilities.content_access])});window.dispatchEvent(new Event('greenloop:content-permissions-changed'));}
     setMessage(message, "User access was saved.", "success");
     } catch (error) {
       setMessage(message, `${pagesSaved ? "Access was saved, but the list could not be refreshed. " : ""}${error.message || "User access could not be saved."}`);
@@ -590,6 +605,11 @@
   roleOptions.addEventListener("change", (event) => {
     const checkbox = event.target.closest('input[type="checkbox"]');
     if (checkbox) { if (!can("manage_access")) { renderEditor(); return; } syncPermissionCard(checkbox); }
+  });
+  for (const [id,isNew] of [["content-permissions",false],["new-content-permissions",true]]) document.getElementById(id).addEventListener("change",event=>{
+    const input=event.target.closest("[data-content-permission]");if(!input)return;
+    if(!can(isNew?"create_users":"manage_access")){renderContentPermissions(document.getElementById(id),isNew?{}:users.find(u=>String(u.user_id)===String(selectedUserId))?.capabilities,isNew);return;}
+    input.closest("[data-content-option]").classList.toggle("is-selected",input.checked);
   });
   newAppearanceOptions.addEventListener("change", () => {
     if (!can("create_users")) renderAppearance(newAppearanceOptions, {}, true);

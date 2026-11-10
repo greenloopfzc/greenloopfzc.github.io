@@ -1,0 +1,13 @@
+# Independent Copying / Screenshot choices
+
+User Access has separate Allow Copying and Allow Screenshots ticks below Supplier & Customer Names, in both the existing-account editor and Add Greenloop User form. Owner / Super Admin defaults are both allowed until explicitly configured. Other accounts remain restricted by default. The settings are virtual preferences: they grant no page, business edit, download, confidential-name or navigation permission. The existing manager/create-only/view-only checks remain in force. TV-only mode retains these two choices independently.
+
+Visible 15-digit IMEI and batch-number text is always selectable/copyable by an allowed viewer, including displayed receipt quantity brackets. Only the identifier is selectable; surrounding protected text, company names and whole-row selections remain blocked. Dynamic tables are handled without replacing controls, canonical identifiers or saved data. Editable entry/search and bulk paste retain their existing behavior.
+
+Restricted browser-observed attempts retain bounded Suspicious Activity telemetry. Allowed actions and identifier copying create no attempt alerts. Screenshot permission controls the browser shortcut deterrent and cover only; websites cannot guarantee blocking or detecting every operating-system screenshot. No screenshot, clipboard data or selected text is collected. Existing alerts remain intact.
+
+Permission updates are rechecked for the signed-in account on focus and every 30 seconds while visible. A self-save updates these choices immediately. Old responses cannot override a newer permission event. Other page grants and business controls are not changed by this refresh.
+
+Run outputs/Publish-GreenLoop-Copy-Screenshot-Permissions.ps1. Previous verified updates are preserved and checked first. If requested, paste the copied additive SQL into a NEW Supabase query and run the entire query. Required result: installed_content_permissions_version = 20261110-content-permissions-1. Then press Enter in PowerShell. No Edge Function deployment, JWT change, secret or password change is needed: the existing user-creation service already forwards this supported virtual group to its atomic initializer.
+
+Preparation uses disposable PostgreSQL, the existing Edge source under mocks and native Chromium with fixture data. No live SQL, push or publication is performed. The publisher verifies pinned source/package hashes, database versions, Git history and live file content, and never force-pushes over newer changes.
