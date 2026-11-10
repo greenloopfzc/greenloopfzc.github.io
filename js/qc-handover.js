@@ -37,7 +37,7 @@
   function snapshot() {
     if(!allowed())throw new Error('Initial QC entry permission is required to generate this handover sheet.');
     if(busy())throw new Error('Wait for the Initial QC saves to finish before generating the sheet.');
-    const data={generatedAt:new Date().toISOString(),rows:[...rows.values()]};window.GREENLOOP_QC_HANDOVER_PDF.validate(data);return data;
+    const data={source:page,generatedAt:new Date().toISOString(),rows:[...rows.values()]};window.GREENLOOP_QC_HANDOVER_PDF.validate(data);return data;
   }
   function library() {
     if(window.PDFLib)return Promise.resolve();
