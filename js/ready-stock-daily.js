@@ -11,11 +11,14 @@
   function validate(data,kind){
     if(!data||!/^\d{4}-\d{2}-\d{2}$/.test(data.date)||data.timezone!=='Asia/Dubai'||![data.ready_count,data.export_count,data.total,data.offset].every(n=>Number.isSafeInteger(n)&&n>=0)||!Array.isArray(data.rows)||data.rows.length>50||data.kind!==kind)throw Error('Daily activity could not be verified. Refresh and try again.');
     if(data.rows.some(r=>!/^\d{15}$/.test(r.imei)||!r.occurred_at))throw Error('Phone details could not be verified. Refresh and try again.');
+    if(!kind){const a=data.average,shift=n=>{const d=new Date(data.date+'T00:00:00Z');d.setUTCDate(d.getUTCDate()-n);return d.toISOString().slice(0,10);};
+      if(!a||a.from!==shift(30)||a.to!==shift(1)||a.window_days!==30||a.exclude_sundays!==true||![25,26].includes(a.days)||![a.ready_total,a.export_total].every(n=>Number.isSafeInteger(n)&&n>=0)||![a.ready_daily,a.export_daily].every(n=>Number.isFinite(n)&&n>=0)||Math.abs(a.ready_daily-Math.round(a.ready_total/a.days*100)/100)>.001||Math.abs(a.export_daily-Math.round(a.export_total/a.days*100)/100)>.001)throw Error('Daily averages could not be verified. Refresh and try again.');
+    }
     return data;
   }
   async function read(kind=null,pageOffset=0,date=activeDate){
     if(!allowed())throw Error('Ready Stock view permission is required.');
-    const{data,error}=await GREENLOOP_GET_CLIENT().rpc('get_ready_stock_daily_activity_v1',{p_date:date,p_kind:kind,p_offset:pageOffset,p_limit:50});
+    const{data,error}=await GREENLOOP_GET_CLIENT().rpc(kind?'get_ready_stock_daily_activity_v1':'get_ready_stock_daily_metrics_v1',kind?{p_date:date,p_kind:kind,p_offset:pageOffset,p_limit:50}:{p_date:date});
     if(error)throw error;validate(data,kind);
     if(date&&data.date!==date||data.offset!==pageOffset||data.limit!==50||kind&&data.total!==data[kind+'_count']||data.rows.length!==(kind?Math.min(50,Math.max(0,data.total-pageOffset)):0))throw Error('Daily activity response changed. Refresh and try again.');
     return data;
@@ -29,8 +32,11 @@
     for(const kind of ['ready','export']){
       const count=data[kind+'_count'],button=panel.querySelector('[data-daily-kind="'+kind+'"]');
       button.querySelector('[data-daily-count]').textContent=count.toLocaleString('en-GB');button.disabled=false;
+      button.querySelector('[data-daily-average]').textContent=data.average[kind+'_daily'].toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
+      button.querySelector('[data-daily-day-label]').textContent=data.date===new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Dubai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(data.as_of))?'Today':'Selected day';
       button.setAttribute('aria-label',`View ${count} ${kind==='ready'?'phones made ready':'exported phones'} on ${dateText(data.date)}`);
     }
+    $('ready-daily-average-note').textContent='30-day average · Sundays excluded · '+data.average.days+' days · '+dateText(data.average.from)+' – '+dateText(data.average.to);
     $('ready-daily-note').textContent='10:00 AM – 9:00 PM · UAE (UTC+4)';
     $('ready-daily-updated').textContent='Updated '+timeText(data.as_of);
     $('ready-daily-error').hidden=true;
@@ -39,7 +45,7 @@
     if(!allowed()||document.hidden||$('ready-stock-view').hidden)return;
     const version=++summaryRequest,date=activeDate;
     try{const data=await read(null,0,date);if(version!==summaryRequest||!allowed()||date!==activeDate)return;cards(data);}
-    catch(e){if(version!==summaryRequest||!allowed())return;panel.querySelectorAll('[data-daily-count]').forEach(el=>el.textContent='—');panel.querySelectorAll('[data-daily-kind]').forEach(el=>el.disabled=true);$('ready-daily-error').textContent=e.message||'Daily activity is unavailable. Refresh to try again.';$('ready-daily-error').hidden=false;}
+    catch(e){if(version!==summaryRequest||!allowed())return;$('ready-daily-average-note').textContent='';panel.querySelectorAll('[data-daily-average]').forEach(el=>el.textContent='—');panel.querySelectorAll('[data-daily-count]').forEach(el=>el.textContent='—');panel.querySelectorAll('[data-daily-kind]').forEach(el=>el.disabled=true);$('ready-daily-error').textContent=e.message||'Daily activity is unavailable. Refresh to try again.';$('ready-daily-error').hidden=false;}
   }
   function schedule(){if(!initialized||!allowed())return;clearTimeout(timer);timer=setTimeout(()=>{void refresh();if(dialog.open)void loadPhones();},200);}
   function updateSelection(){panel.querySelectorAll('[data-daily-kind]').forEach(el=>{const on=dialog.open&&el.dataset.dailyKind===selectedKind;el.classList.toggle('is-selected',on);el.setAttribute('aria-expanded',String(on));});}

@@ -5,6 +5,7 @@
   const app = document.querySelector("#ready-stock-app");
   const permissionMessage = document.querySelector("#permission-message");
   const total = document.querySelector("#ready-stock-total");
+  const totalView = document.querySelector("#ready-stock-total-view");
   const gradeSummary = document.querySelector("#ready-stock-grades");
   const stockGrades = ["A", "B", "D", "BA", "BB", "RMA"];
   const tableHead = document.querySelector("#ready-stock-head");
@@ -224,7 +225,7 @@
     if (filters.toolbar && refresh.parentElement !== filters.toolbar) filters.toolbar.append(refresh);
     filters.refreshLayout?.();
     total.textContent = `${filteredTotal} phone${filteredTotal === 1 ? "" : "s"}`;
-    total.dataset.readyImeis=registerScope('Total Ready Stock',flatRows,filteredTotal);total.disabled=filteredTotal===0;total.title='View IMEIs';
+    totalView.dataset.readyImeis=registerScope('Total Ready Stock',flatRows,filteredTotal);totalView.disabled=filteredTotal===0;
     rangeLabel.textContent = appliedReadyRange.from && appliedReadyRange.to
       ? `Final QC pass: ${shortDate(appliedReadyRange.from)} – ${shortDate(appliedReadyRange.to)}`
       : "All current Ready Stock";

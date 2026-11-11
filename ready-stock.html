@@ -21,7 +21,7 @@
   <script defer src="js/imei-scan.js?v=20261105-issuance-sidebar-1"></script>
 <script defer src="js/imei-stage-notice.js?v=20261102-imei-scan-location-1"></script>
   <script defer src="js/permission-catalog.js?v=20261110-content-permissions-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261111-ready-stock-daily-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261111-ready-stock-averages-1"></script>
 <script defer src="js/page-capabilities.js?v=20261104-report-permissions-1"></script>
 <link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
 <script defer src="js/office-access.js?v=20261024-office-access-1"></script>
@@ -37,7 +37,7 @@
     <script defer src="js/part-notifications.js?v=20261110-dashboard-ready-layout-1"></script>
     <script defer src="js/employee-updates.js?v=20261105-stock-consistency-1"></script>
   <script defer src="js/storage-options.js?v=20261027-iphone-entry-options-1"></script>
-  <script defer src="js/ready-stock.js?v=20261111-grade-view-phones-1"></script>
+  <script defer src="js/ready-stock.js?v=20261111-ready-stock-averages-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261111-ruby-obsidian-1">
     <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261102-imei-scan-location-1">
   <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
@@ -46,8 +46,8 @@
   <link rel="stylesheet" href="css/clean-layout.css?v=20261017-clean-layout-1">
   <script defer src="js/clean-layout.js?v=20261030-supplier-progress-1"></script>
   <script defer src="js/suspicious-badge.js?v=20261109-content-protection-1"></script>
-  <link rel="stylesheet" href="css/ready-stock-daily.css?v=20261111-grade-view-phones-1">
-  <script defer src="js/ready-stock-daily.js?v=20261111-ready-stock-daily-1"></script>
+  <link rel="stylesheet" href="css/ready-stock-daily.css?v=20261111-ready-stock-averages-1">
+  <script defer src="js/ready-stock-daily.js?v=20261111-ready-stock-averages-1"></script>
 </head>
   <body class="app-page">
     <div class="app-shell">
@@ -76,20 +76,21 @@
           <div id="permission-message" class="access-message" hidden></div>
           <section id="ready-stock-app" hidden>
             <section class="page-heading ready-stock-heading">
-              <div class="ready-stock-heading-copy"><div class="ready-stock-title-row"><h1 id="ready-stock-title" tabindex="-1">Ready Stock</h1><span id="ready-stock-summary" class="ready-stock-inline-total"><button id="ready-stock-total" type="button" class="ready-stock-total-button" data-capability="view" data-capability-page="ready_stock" data-search-read-only disabled>0 phones</button></span></div><p id="ready-stock-subtitle" class="heading-subtitle"><span id="ready-stock-range-label">All current Ready Stock</span></p></div>
+              <div class="ready-stock-heading-copy"><div class="ready-stock-title-row"><h1 id="ready-stock-title" tabindex="-1">Ready Stock</h1></div><p id="ready-stock-subtitle" class="heading-subtitle"><span id="ready-stock-range-label">All current Ready Stock</span></p></div>
               <div class="ready-stock-heading-actions">
                 <a id="back-to-ready-stock" class="secondary-button ready-stock-view-switch" href="#stock" aria-controls="ready-stock-view" hidden><span aria-hidden="true">←</span> Ready Stock</a>
                 <div id="ready-stock-table-actions" class="ready-stock-heading-actions"><a class="primary-button" href="export-box.html">Box Entry <span aria-hidden="true">→</span></a><details class="ready-stock-actions-menu"><summary class="secondary-button">Actions <span aria-hidden="true">▾</span></summary><div class="ready-stock-action-options"><a id="open-ready-stock-rework" href="#rework" aria-controls="ready-stock-rework-view">Send for rework</a><a href="ready-stock-journey.html">View device journey</a></div></details></div>
               </div>
             </section>
             <section id="ready-stock-view" aria-label="Ready Stock data">
+              <section id="ready-stock-summary" class="rsd-total-card" aria-label="Current Ready Stock"><span class="rsd-total-label">Ready Stock</span><strong id="ready-stock-total">— phones</strong><button id="ready-stock-total-view" type="button" class="rsd-total-view" data-capability="view" data-capability-page="ready_stock" data-search-read-only disabled>View phones <span aria-hidden="true">→</span></button></section>
               <section id="ready-daily" class="rsd-section" aria-label="Daily Ready Stock and Export" hidden>
                 <div class="rsd-toolbar"><div class="rsd-heading"><h2>Daily activity</h2><span id="ready-daily-date-label" class="rsd-date">Today</span></div><div class="rsd-actions"><button id="ready-daily-filter-toggle" type="button" class="secondary-button" data-capability="search" data-capability-page="ready_stock" aria-expanded="false" aria-controls="ready-daily-filters">Date filter</button><button id="ready-daily-refresh" type="button" class="secondary-button" data-capability="view" data-capability-page="ready_stock" data-search-read-only>Refresh activity</button></div></div>
                 <div id="ready-daily-filters" class="rsd-filters" hidden><label>Activity date<input id="ready-daily-date" type="date" data-capability="search" data-capability-page="ready_stock"></label><button id="ready-daily-apply" type="button" class="primary-button" data-capability="search" data-capability-page="ready_stock">Apply date</button><button id="ready-daily-today" type="button" class="secondary-button" data-capability="search" data-capability-page="ready_stock">Today</button></div>
                 <div class="rsd-cards">
-                  <button type="button" class="rsd-card rsd-ready" data-daily-kind="ready" data-capability="view" data-capability-page="ready_stock" data-search-read-only aria-haspopup="dialog" aria-expanded="false" disabled><span class="rsd-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="m8.5 11 2.5 2.5 4.5-5M10 18h4"/></svg></span><span class="rsd-card-title">Daily Ready Stock</span><strong class="rsd-metric" data-daily-count>—</strong><span class="rsd-caption">Phones made ready</span><span class="rsd-open">View phones →</span></button>
-                  <button type="button" class="rsd-card rsd-export" data-daily-kind="export" data-capability="view" data-capability-page="ready_stock" data-search-read-only aria-haspopup="dialog" aria-expanded="false" disabled><span class="rsd-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 7 9-4 9 4-9 4-9-4Zm0 0v10l9 4 9-4V7M12 11v10M7 5l10 4"/></svg></span><span class="rsd-card-title">Daily Export</span><strong class="rsd-metric" data-daily-count>—</strong><span class="rsd-caption">Confirmed exported phones</span><span class="rsd-open">View phones →</span></button>
-                </div><div class="rsd-foot"><span id="ready-daily-note">10:00 AM – 9:00 PM · UAE (UTC+4)</span><span id="ready-daily-updated"></span></div><p id="ready-daily-error" class="rsd-error" role="status" hidden></p>
+                  <button type="button" class="rsd-card rsd-ready" data-daily-kind="ready" data-capability="view" data-capability-page="ready_stock" data-search-read-only aria-haspopup="dialog" aria-expanded="false" disabled><span class="rsd-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="m8.5 11 2.5 2.5 4.5-5M10 18h4"/></svg></span><span class="rsd-card-title">Daily Ready Stock</span><span class="rsd-stat-pair"><span class="rsd-current"><span class="rsd-today-label" data-daily-day-label>Today</span><strong class="rsd-metric" data-daily-count>—</strong><span class="rsd-caption">Phones made ready</span></span><span class="rsd-slash" aria-hidden="true">/</span><span class="rsd-average"><span>Average daily production</span><strong data-daily-average>—</strong><small>phones / day</small></span></span><span class="rsd-open">View phones →</span></button>
+                  <button type="button" class="rsd-card rsd-export" data-daily-kind="export" data-capability="view" data-capability-page="ready_stock" data-search-read-only aria-haspopup="dialog" aria-expanded="false" disabled><span class="rsd-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 7 9-4 9 4-9 4-9-4Zm0 0v10l9 4 9-4V7M12 11v10M7 5l10 4"/></svg></span><span class="rsd-card-title">Daily Export</span><span class="rsd-stat-pair"><span class="rsd-current"><span class="rsd-today-label" data-daily-day-label>Today</span><strong class="rsd-metric" data-daily-count>—</strong><span class="rsd-caption">Confirmed exported phones</span></span><span class="rsd-slash" aria-hidden="true">/</span><span class="rsd-average"><span>Average daily export</span><strong data-daily-average>—</strong><small>phones / day</small></span></span><span class="rsd-open">View phones →</span></button>
+                </div><div class="rsd-foot"><span id="ready-daily-note">10:00 AM – 9:00 PM · UAE (UTC+4)</span><span id="ready-daily-updated"></span></div><p id="ready-daily-average-note" class="rsd-average-note"></p><p id="ready-daily-error" class="rsd-error" role="status" hidden></p>
               </section>
                 <div id="ready-stock-grades" class="ready-stock-grades" role="group" aria-label="Ready Stock by grade"></div>
               <section class="ready-stock-panel"><div id="ready-stock-date-controls" class="ready-stock-filters table-filter-native" hidden><label>From<input id="ready-stock-from" type="date" title="Ready Stock date"></label><label>To<input id="ready-stock-to" type="date" title="Ready Stock date"></label><button id="apply-ready-stock-range" class="primary-button" type="button">Apply dates</button><button id="clear-ready-stock-range" class="secondary-button" type="button">All dates</button></div><button id="refresh-ready-stock" class="secondary-button ready-stock-refresh" type="button">Refresh</button><div class="ready-stock-table-wrap"><table class="ready-stock-table"><thead id="ready-stock-head"><tr><th>Model</th><th>RMA</th><th>Latest Ready Stock date</th><th>Total Qty</th></tr></thead><tbody id="ready-stock-body"><tr><td class="ready-stock-empty" colspan="4">Loading Ready Stock...</td></tr></tbody><tfoot id="ready-stock-foot"><tr><th>Total</th><th>0</th><th>-</th><th>0 pcs</th></tr></tfoot></table></div></section>
