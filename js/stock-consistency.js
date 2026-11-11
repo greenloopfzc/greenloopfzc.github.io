@@ -14,16 +14,21 @@
   pending=(async()=>{const{data,error}=await window.GREENLOOP_GET_CLIENT().rpc('get_stock_receipt_catalog_v1',{p_page:page});if(error)throw Error(error.message||'Stock balances unavailable.');if(!Array.isArray(data)||data.some(x=>!x.batch_id||x.received_quantity!==null&&!Number.isSafeInteger(Number(x.received_quantity))||x.balance_quantity!==null&&!Number.isSafeInteger(Number(x.balance_quantity))))throw Error('Stock balances could not be verified.');if(revision===generation){rows=data;stamp=Date.now();window.GREENLOOP_BATCH_DISPLAY?.refresh();}return rows;})().catch(e=>{if(revision===generation){rows=[];stamp=0;}window.dispatchEvent(new CustomEvent('greenloop:stock-unavailable',{detail:{message:e.message}}));return rows;}).finally(()=>{if(revision===generation)pending=null;});
   return pending;
  }
+ function rootReceipt(receipt){
+  const seen=new Set();let current=receipt;
+  while(current?.parent_batch_id){if(seen.has(current.batch_id))return null;seen.add(current.batch_id);const parent=rows.find(r=>r.batch_id===current.parent_batch_id);if(!parent)return null;current=parent;}
+  return current;
+ }
  function resolve(row){
   if(!row||typeof row!=='object')return null;const b=one(row.receiving_batch)||one(row.batch)||{},j=one(row.job)||one(row.work_order)?.job||{},id=row.batch_id||row.receiving_batch_id||b.id||b.batch_id||j.receiving_batch_id;
-  if(id){const found=rows.find(x=>String(x.batch_id)===String(id));if(found)return found;}
-  const bn=row.batch_number||b.batch_number;if(bn){const found=rows.find(x=>x.batch_number===bn);if(found)return found;}
+  if(id){const found=rows.find(x=>String(x.batch_id)===String(id));if(found)return rootReceipt(found);}
+  const bn=row.batch_number||b.batch_number;if(bn){const found=rows.find(x=>x.batch_number===bn);if(found)return rootReceipt(found);}
   const invoice=row.invoice_number||b.invoice_number,code=base(row.supplier_code||one(row.supplier)?.supplier_code);
-  const found=rows.filter(x=>(!code||x.supplier_code===code)&&(!invoice||x.invoice_number===invoice));return invoice&&found.length===1?found[0]:null;
+  const found=rows.filter(x=>(!code||x.supplier_code===code)&&(!invoice||x.invoice_number===invoice));return invoice&&found.length===1?rootReceipt(found[0]):null;
  }
  function summary(values){
   const chosen=[...new Map((values||[]).map(x=>typeof x==='string'?rows.find(r=>r.batch_id===x):resolve(x)).filter(Boolean).map(x=>[x.batch_id,x])).values()];
-  const roots=chosen.filter(x=>!chosen.some(p=>p.batch_id!==x.batch_id&&p.descendant_ids?.includes(x.batch_id)));
+  const roots=chosen.map(rootReceipt).filter(Boolean).filter((r,i,a)=>a.findIndex(x=>x.batch_id===r.batch_id)===i).filter(x=>!chosen.some(p=>p.batch_id!==x.batch_id&&p.descendant_ids?.includes(x.batch_id)));
   return roots.reduce((s,r)=>({received:s.received===null||r.received_quantity===null?null:s.received+Number(r.received_quantity),returned:s.returned+Number(r.returned_quantity),replacement_received:s.replacement_received+Number(r.replacement_quantity),balance:s.balance===null||r.balance_quantity===null?null:s.balance+Number(r.balance_quantity),return_pending:s.return_pending+Number(r.return_pending),receipts:s.receipts+1}),{received:0,returned:0,replacement_received:0,balance:0,return_pending:0,receipts:0});
  }
  function label(code,quantity,name,fallback='—'){
@@ -42,14 +47,20 @@
  }
  function summaryText(s){return s?`Received stock: ${num(s.received)} | Returned: ${num(s.returned)} | Replacement received: ${num(s.replacement_received)} | Stock balance: ${num(s.balance)}`:'';}
  function enrich(data,context={}){
-  window.GREENLOOP_BATCH_DISPLAY?.remember(data);
   const seen=new WeakSet();function visit(v){if(!v||typeof v!=='object'||seen.has(v))return;seen.add(v);if(Array.isArray(v)){v.forEach(visit);return;}const r=resolve(v);
-   if(r){v.receipt_metrics={received:r.received_quantity,returned:r.returned_quantity,replacement_received:r.replacement_quantity,balance:r.balance_quantity,return_pending:r.return_pending};v.receipt_quantity=r.received_quantity;if(v.supplier_code)v.supplier_code=label(r.supplier_code,r.received_quantity,null);}
+   if(r){
+    // Replacement intake keeps its private allocation ID; every business label
+    // resolves to the exact original receipt, including existing replacement phones.
+    if('batch_number'in v)v.batch_number=r.batch_number;
+    if('invoice_number'in v)v.invoice_number=r.invoice_number;
+    if('supplier_name'in v)v.supplier_name=names()?r.supplier_name:null;
+    v.original_stock_batch_id=r.batch_id;
+    v.receipt_metrics={received:r.received_quantity,returned:r.returned_quantity,replacement_received:r.replacement_quantity,balance:r.balance_quantity,return_pending:r.return_pending};v.receipt_quantity=r.received_quantity;if(v.supplier_code)v.supplier_code=label(r.supplier_code,r.received_quantity,null);}
    for(const[key,value]of Object.entries(v))if(key!=='receipt_metrics')visit(value);
   }visit(data);
   const stockReports=new Set(['get_accounts_imei_data_v1','export_accounts_imei_data_v1','get_stock_replacement_data_v1','get_stock_parts_cost_v1','get_stock_grade_analysis_v1','get_stock_batch_report_v1']);
   if(data&&typeof data==='object'&&!Array.isArray(data)&&stockReports.has(context.name)&&!data.receipt_summary){const scope=summary(scoped(context.args?.p_filters||data.filters,context.name==='get_stock_parts_cost_v1'?data.stocks:undefined));if(scope.receipts)data.receipt_summary=scope;}
-  return data;
+  window.GREENLOOP_BATCH_DISPLAY?.remember(data);return data;
  }
  function summaryHtml(value){
   const s=Array.isArray(value)?summary(value):value;if(!s||!Number.isFinite(Number(s.received)))return '';

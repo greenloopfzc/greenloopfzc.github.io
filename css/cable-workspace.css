@@ -1,0 +1,7 @@
+.cable-workspace[hidden]{display:none!important}
+.cable-workspace{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 18px;padding:12px 16px;border:1px solid var(--border,#ccd7de);border-radius:14px;background:var(--surface,#f5f8fb);box-shadow:3px 4px 8px rgba(34,64,78,.13),inset 0 1px 0 rgba(255,255,255,.55)}
+.cable-workspace-copy{display:flex;flex-wrap:wrap;align-items:center;gap:5px 14px;min-width:0;color:var(--text,#263d4a)}
+.cable-workspace-copy small{flex-basis:100%;color:var(--text-secondary,#536879);line-height:1.5}.cable-workspace-phone{overflow-wrap:anywhere;font-size:.86rem}.cable-workspace-actions{display:flex;gap:8px;flex-shrink:0}.cable-workspace-actions button{min-height:36px;padding:8px 12px;font-size:.8rem;white-space:nowrap}
+[data-mode="dark"] .cable-workspace,[data-theme="ruby-obsidian"] .cable-workspace{background:var(--surface,#1e3038);color:var(--text,#f5f3f4)}
+@media(max-width:700px){.cable-workspace{align-items:stretch;flex-direction:column}.cable-workspace-actions{flex-wrap:wrap}.cable-workspace-actions button{flex:1}}
+@media print{.cable-workspace{display:none!important}}

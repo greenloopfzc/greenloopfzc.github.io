@@ -261,6 +261,12 @@
       scanned.push(value); get("imei").value = ""; syncQuantity(); queueStockCheck(scanned); scanNotice(scanned.length + " IMEI(s) added.");
       return true;
     }
+    window.GREENLOOP_CABLE_WORKSPACE?.register({active:()=>form.isConnected&&!host.hidden&&!!form.getClientRects().length,key:()=>'return:'+selectedBatch,
+      apply:d=>{if(!canPrepare())return false;if(scanned.includes(d.imei))return true;
+        window.GREENLOOP_CABLE_WORKSPACE.field(get('model'),d.model);
+        window.GREENLOOP_CABLE_WORKSPACE.field(get('storage_gb'),d.storageGb);
+        get('imei').value=d.imei;return addImei();}
+    });
     function updateReceipt() {
       const receipt = batch(), changed = selectedBatch !== (receipt?.batch_id || "");
       selectedBatch = receipt?.batch_id || "";

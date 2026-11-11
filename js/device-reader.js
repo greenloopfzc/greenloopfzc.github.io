@@ -125,7 +125,7 @@
   }
 
   async function poll() {
-    if (stopped || document.hidden || polling) return;
+    if (stopped || document.hidden || polling || !['view','edit'].includes(window.GREENLOOP_PAGE_ACCESS?.accessLevel)) return;
     polling = true;
     try {
       let device = null;
@@ -157,6 +157,7 @@
         publishReaderState(readerResponded ? "waiting" : "offline", readerResponded ? readerMessage : "Cable reader unavailable. Start Greenloop Cable Reader; allow local-network access if your browser asks.");
         return;
       }
+      if(stopped||!['view','edit'].includes(window.GREENLOOP_PAGE_ACCESS?.accessLevel)){forgetConnection();return;}
       failedReads = 0;
       if (window.GREENLOOP_IMEI_STAGE_NOTICE?.checkPrimary && cableIdentityCheck?.imei !== device.imei) cableIdentityCheck={imei:device.imei,allowed:await window.GREENLOOP_IMEI_STAGE_NOTICE.checkPrimary(device.imei)};
       if (cableIdentityCheck?.allowed === false) {
@@ -177,6 +178,7 @@
     }
   }
 
+  for(const name of ['greenloop:office-locked','greenloop:signed-out'])window.addEventListener(name,()=>{stopped=true;forgetConnection();});
   window.addEventListener("beforeunload", () => { stopped = true; });
   window.addEventListener("focus", poll);
   window.addEventListener("greenloop:retry-device", () => { forceReaderRead = true; cableIdentityCheck = null; lastFingerprint = ""; window.GREENLOOP_CABLE_CONNECTION_ID = (window.GREENLOOP_CABLE_CONNECTION_ID || 0) + 1; poll(); });

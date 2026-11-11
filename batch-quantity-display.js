@@ -18,7 +18,8 @@
   pattern=keys.length?new RegExp('(^|[^A-Za-z0-9_-])('+keys.join('|')+')(?:-\\(\\d+\\))?(?![A-Za-z0-9_-])','g'):null;
  }
  function batchLabel(value,receipt=null,fallback='—'){
-  const number=raw(typeof value==='object'&&value?value.batch_number:value);
+  let number=raw(typeof value==='object'&&value?value.batch_number:value);
+  const canonical=window.GREENLOOP_STOCK?.resolve({batch_number:number});if(canonical)number=raw(canonical.batch_number);
   if(!number)return fallback;rebuild();
   let qty=index.get(number);
   // A caller may supply an explicit receipt quantity, never a model subgroup total.
