@@ -31,8 +31,25 @@
   let toastTimer;
   let scanning = false;
   let boxBusy = false;
+  let scannerLocked=false,scanFocusFrame=0;
   let canEdit = false;
   const can = capability => window.GREENLOOP_CAN?.(capability,"export_boxes") === true;
+
+  // Disabled identifier mirrors settle on the next animation frame. Restore
+  // scanner focus after that display update, without stealing it from a dialog.
+  function focusScanner() {
+    cancelAnimationFrame(scanFocusFrame);
+    const focus=()=>{
+      if(scannerLocked || document.hidden || !can("scan") || imeiInput.disabled || scanning || boxBusy ||
+        !currentBox || currentBox.box_status!=="open" || !imeiInput.getClientRects().length ||
+        document.querySelector('dialog[open],.office-access-lock'))return;
+      const active=document.activeElement;
+      if(active!==imeiInput && active?.matches('input,textarea,select,[contenteditable="true"]'))return;
+      imeiInput.focus({preventScroll:true});
+    };
+    focus();
+    scanFocusFrame=requestAnimationFrame(()=>{focus();scanFocusFrame=requestAnimationFrame(()=>{scanFocusFrame=0;focus();});});
+  }
 
   function getClient() {
     if (!client) client = window.GREENLOOP_GET_CLIENT();
@@ -84,7 +101,7 @@
   }
   function removeScanIssue(id) {
     if(!can('scan')||boxBusy||scanning)return;
-    scanIssues=scanIssues.filter(r=>r.id!==id);invalidatePrint();render();if(!imeiInput.disabled)imeiInput.focus();
+    scanIssues=scanIssues.filter(r=>r.id!==id);invalidatePrint();render();focusScanner();
   }
   function removableDraft() {
     return can("scan") && currentBox?.box_status === "open" && workflow?.state === "draft" && !workflow?.saved_at;
@@ -114,7 +131,7 @@
     startNextButton.textContent = isFinished ? "Start next box" : "Save Box";
     printButton.disabled = !can("print") || count+issueCount === 0 || scanning || boxBusy;
     confirmPrintButton.disabled = !can("print") || scanning || boxBusy || issueCount>0;
-    imeiInput.disabled = !can("scan") || boxBusy || isFinished || scanning;
+    imeiInput.disabled = scannerLocked || !can("scan") || boxBusy || isFinished || scanning;
     sheetTitle.textContent = `${currentBox.box_number || "Export Box"} - Export packing list`;
     sheetTotal.textContent = `${count} valid phone${count === 1 ? "" : "s"}`+(issueCount?` · ${issueCount} scan issue${issueCount===1?"":"s"}`:"");
 
@@ -136,7 +153,7 @@
     } catch(error) {
       setMessage(error.message||'The phone could not be removed.');
       try { await loadLines(); } catch (_) {}
-    } finally { boxBusy=false;render();if(!imeiInput.disabled)imeiInput.focus(); }
+    } finally { boxBusy=false;render();focusScanner(); }
   }
   async function loadLines() {
     if (!currentBox?.box_id) return;
@@ -171,7 +188,7 @@
     lines = nextLines;
     await loadWorkflow();
     render();
-    if (!imeiInput.disabled) imeiInput.focus();
+    focusScanner();
   }
 
   async function loadWorkflow() {
@@ -210,9 +227,10 @@
     finally{boxBusy=false;render();}
   }
   async function scanImei() {
+    clearTimeout(scanTimer);
     const imei = imeiInput.value.replace(/\D/g, "").slice(0, 15);
     imeiInput.value = imei;
-    if (!can("scan") || boxBusy || scanning || !currentBox?.box_id || currentBox.box_status!=="open") return;
+    if (scannerLocked || !can("scan") || boxBusy || scanning || !currentBox?.box_id || currentBox.box_status!=="open") return;
     if(imei.length!==15){if(imei){addScanIssue(imei,"Use a valid 15-digit IMEI.");imeiInput.value="";render();}return;}
 
     scanning = true;
@@ -242,13 +260,13 @@
     } finally {
       scanning = false;
       render();
-      if (!imeiInput.disabled) imeiInput.focus();
+      focusScanner();
     }
   }
 
   async function pasteImeis(imeis, options) {
     clearTimeout(scanTimer);
-    if (!can("scan") || boxBusy || scanning || !currentBox?.box_id || currentBox.box_status !== "open") throw new Error("This box is not available for scanning.");
+    if (scannerLocked || !can("scan") || boxBusy || scanning || !currentBox?.box_id || currentBox.box_status !== "open") throw new Error("This box is not available for scanning.");
     if (!options.isCurrent()) return {loaded:0,issues:[]};
     for(const rejected of options.rejected||[])addScanIssue(rejected.imei,rejected.message);
     if(!imeis.length){imeiInput.value="";render();return {loaded:0,issues:[]};}
@@ -273,7 +291,7 @@
         imeiInput.value="";setMessage();
       }
       return {loaded:imeis.filter(v=>lines.some(r=>r.imei===v)).length,issues:[]};
-    } finally {scanning=false;render();if(!imeiInput.disabled)imeiInput.focus();}
+    } finally {scanning=false;render();focusScanner();}
   }
 
   async function finishAndStartNext() {
@@ -294,7 +312,7 @@
       await loadCurrentBox();
       imeiInput.value = "";
       setMessage(savedNumber + " saved to Accounts." + (currentBox ? " " + currentBox.box_number + " is ready for scanning." : ""), "success");
-    } finally { boxBusy = false; render(); }
+    } finally { boxBusy = false; render(); focusScanner(); }
   }
 
   async function initialize() {
@@ -331,13 +349,14 @@
     if (imeiInput.value.length === 15) scanTimer = setTimeout(scanImei, 180);
   });
   imeiInput.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") { event.preventDefault(); scanImei(); }
+    if (event.key === "Enter" || event.key === "Tab" && /^\d{15}$/.test(imeiInput.value)) { event.preventDefault(); scanImei(); }
   });
   startNextButton.addEventListener("click", () => finishAndStartNext().catch((error) => setMessage(error.message || "The next export box could not be opened.")));
   printButton.addEventListener("click", printBox);
   confirmPrintButton.addEventListener("click", confirmPrint);
   tableBody.addEventListener('click',event=>{const button=event.target.closest('[data-draft-remove]');if(button)removeDraftLine(button.dataset.draftRemove);const issue=event.target.closest('[data-issue-remove]');if(issue)removeScanIssue(issue.dataset.issueRemove);});
-  for(const event of ['greenloop:office-locked','greenloop:signed-out'])window.addEventListener(event,()=>{scanIssues=[];invalidatePrint();render();});
+  for(const event of ['greenloop:office-locked','greenloop:signed-out'])window.addEventListener(event,()=>{scannerLocked=true;clearTimeout(scanTimer);cancelAnimationFrame(scanFocusFrame);scanIssues=[];invalidatePrint();render();});
+  window.addEventListener("pagehide",()=>{scannerLocked=true;clearTimeout(scanTimer);cancelAnimationFrame(scanFocusFrame);});
   initialize().catch((error) => {
     permissionMessage.textContent = error.message || "Export Boxes could not be loaded.";
     permissionMessage.hidden = false;
