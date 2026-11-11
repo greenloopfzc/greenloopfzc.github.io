@@ -151,6 +151,7 @@ window.GREENLOOP_CONFIG = Object.freeze({
         const stockRead=!bootstrap.has(name)&&!name.startsWith('get_my_')&&/^(get_|list_|export_)/.test(name)&&!/_version$/.test(name);
         if(stockRead){await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();}
         if(stockRead&&window.GREENLOOP_BATCH_DISPLAY)args[0]=window.GREENLOOP_BATCH_DISPLAY.readArgs(args[0]);
+        if(stockRead&&typeof window.GREENLOOP_STOCK?.readArgs==='function')args[0]=window.GREENLOOP_STOCK.readArgs(args[0]);
         const response = await rpc(name, ...args);
         if(stockRead&&response?.data)window.GREENLOOP_STOCK?.enrich(response.data,{name,args:args[0]||{}});
         if (response?.error?.code === '23505') {
