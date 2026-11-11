@@ -214,7 +214,9 @@
     gradeSummary.innerHTML = stockGrades.map(grade => {
       const gradeRows = flatRows.filter(row => stockGroup(row).g === normalize(grade));
       const quantity = gradeRows.reduce((sum, row) => sum + Number(row.quantity || 0), 0);
-      return `<div class="ready-stock-grade-card" data-ready-grade="${grade}"><span>${grade === "RMA" ? "RMA Stock" : "Grade " + grade}</span><strong>${quantityButton(quantity, grade + " · Ready Stock", gradeRows)}</strong><small>phones</small></div>`;
+      const label = grade === "RMA" ? "RMA Stock" : "Grade " + grade;
+      const scope = quantity ? registerScope(label + " · Ready Stock", gradeRows, quantity) : -1;
+      return `<div class="ready-stock-grade-card" data-ready-grade="${grade}"><span>${label}</span><strong class="ready-stock-grade-count${quantity ? "" : " ready-stock-zero"}">${escapeHtml(quantity)}</strong><small>phones</small><button class="ready-stock-grade-view" type="button" data-ready-imeis="${scope}" data-capability="view" data-capability-page="ready_stock" data-search-read-only aria-label="${escapeHtml('View phones: ' + label)}"${quantity ? "" : " disabled"}>View phones <span aria-hidden="true">→</span></button></div>`;
     }).join("");
 
     const filters = window.GREENLOOP_FILTERS.get('ready-stock-filters');
