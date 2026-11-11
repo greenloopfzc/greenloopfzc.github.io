@@ -344,21 +344,11 @@
   async function loadPastedRow(row, options) {
     const input = row.querySelector(".final-row-imei"), imei = input.value.trim();
     const current = () => options.isCurrent() && row.isConnected && input.value.trim() === imei;
-    const record = await window.GREENLOOP_IMEI_STAGE_NOTICE.lookup(imei);
-    if (!current()) return {loaded:false,message:"Loading stopped."};
-    let problem = "";
-    if (!record || record.found && !["primary","secondary"].includes(record.matched_type)) problem = "Phone identity could not be verified. Press Enter on this row to retry.";
-    else if (!record.found) problem = "IMEI not found in the software. Check its full 15 digits.";
-    else if (record.matched_type === "secondary") problem = `This is IMEI 2 of IMEI 1 ${record.primary_imei || "not recorded"}. Use IMEI 1 for this phone.`;
-    else {
-      const stage = window.GREENLOOP_IMEI_SCAN?.stageKey(record.current_stage);
-      if (stage && stage !== "final_qc") problem = `Current stage: ${window.GREENLOOP_DEPT_NAME(record.current_stage)}. This phone is not waiting in Final QC.`;
-    }
-    if (problem) { row.classList.add("is-error"); setRowState(row,problem,"is-error"); return {loaded:false,message:problem,record}; }
-    await loadScannedRow(row,{...options,primaryChecked:true});
+    const prepared = options.prepared?.get(imei);
+    await loadScannedRow(row,{...options,prepared});
     if (!current()) return {loaded:false,message:"Loading stopped."};
     if (rowSteps.has(row.dataset.rowId) && row.classList.contains("is-loaded")) return {loaded:true};
-    return {loaded:false,message:row.querySelector("[data-row-state]").textContent || "Could not load this phone. Press Enter on this row to retry.",record};
+    return {loaded:false,message:row.querySelector("[data-row-state]").textContent || "Could not load this phone. Press Enter on this row to retry.",record:prepared?.record};
   }
 
   async function loadScannedRow(row, options = {}) {
@@ -381,32 +371,16 @@
     row.dataset.loading = "yes";
     setRowState(row, "Loading...", "is-loading");
     try {
-    if (!options.primaryChecked && !await window.GREENLOOP_IMEI_STAGE_NOTICE.checkPrimary(imei,{isCurrent})) {if(isCurrent())setRowState(row,"Duplicate phone — use IMEI 1","is-error");return;}
-    let step = queueSteps.find((candidate) => String(getDevice(candidate)?.imei_1 || "") === imei);
-    if (!options.bulk && (!step || String(getDevice(step)?.imei_1 || "") !== row.querySelector(".final-row-imei").value.trim())) {
-      await loadQueue();
-      step = queueSteps.find((candidate) => String(getDevice(candidate)?.imei_1 || "") === imei);
-    }
-    if (!isCurrent()) return;
-    if (!step) {
-      row.classList.add("is-error");
-      setRowState(row, "Not waiting in Final QC", "is-error");
-      if (!options.bulk) void window.GREENLOOP_IMEI_STAGE_NOTICE?.show({ imei, title: "Phone unavailable here", message: "This phone is not waiting in Final QC (QC 2).", onlyIfFound: true, isCurrent });
-      if (!options.bulk) input.focus();
+    const snapshot=options.prepared || (await window.GREENLOOP_QC_FAST.load("final_qc",[imei],isCurrent)).get(imei);
+    if(!isCurrent())return;
+    if(!snapshot?.ok){
+      const message=snapshot?.message||"This phone could not be loaded. Scan again.";
+      row.classList.add("is-error");setRowState(row,message,"is-error");
+      if(!options.bulk)void window.GREENLOOP_IMEI_STAGE_NOTICE?.show({imei,title:"Phone unavailable here",message,knownRecord:snapshot?.record,isCurrent});
       return;
     }
-
-    if (!editable()) return;
-    const { error: receivedError } = await getClient().rpc("receive_final_qc_phone", { p_final_qc_step_id: step.id });
-    if (!isCurrent()) return;
-    if (receivedError) throw receivedError;
-    if (!options.bulk && !options.queueRefreshed) {
-      const {data:values,error}=await getClient().rpc('get_final_qc_battery_defaults_v1',{p_step_ids:[step.id]});
-      if (!isCurrent()) return;
-      if (error) throw error;
-      const checked=verifiedBatteryDefaults([step.id],values);
-      step={...step,batteryDefault:checked.get(step.id)};
-    }
+    const step=snapshot.item;
+    verifiedBatteryDefaults([step.id],[step.batteryDefault]);
     const job = getJob(step) || {};
     const device = getDevice(step) || {};
     const supplier = getSupplier(job) || {};
@@ -453,21 +427,8 @@
       .order("created_at", { ascending: true }).order("id"));
     if (error) throw error;
     const nextSteps = data || [];
-    await window.GREENLOOP_RECEIPTS.jobs("final_qc",nextSteps.map(s=>Array.isArray(s.work_order)?s.work_order[0]?.job:s.work_order?.job).filter(Boolean));
-    const defaults = new Map();
-    for (let offset = 0; offset < nextSteps.length; offset += 500) {
-      const ids = nextSteps.slice(offset, offset + 500).map(s => s.id);
-      const [batteryResponse,contextResponse]=await Promise.all([
-        getClient().rpc('get_final_qc_battery_defaults_v1',{p_step_ids:ids}),
-        getClient().rpc('get_final_qc_return_context_v1',{p_step_ids:ids})
-      ]);
-      const {data:values,error:defaultsError}=batteryResponse,{data:contexts,error:contextError}=contextResponse;
-      if(defaultsError)throw defaultsError;if(!Array.isArray(values))throw new Error('Final Battery Health defaults could not be verified. Refresh and try again.');
-      if(contextError)throw contextError;if(!Array.isArray(contexts))throw new Error('Return technician assignments could not be verified. Refresh Final QC.');
-      for(const step of nextSteps.slice(offset,offset+500))step.failureReturnContext=contexts.find(c=>c.step_id===step.id)||null;
-      for(const [id,value]of verifiedBatteryDefaults(ids,values))defaults.set(id,value);
-    }
-    nextSteps.forEach(step => { step.batteryDefault = defaults.get(step.id); });
+    // Queue summaries need only their joined phone/receipt fields. Fresh BH and
+    // return context arrive in the targeted receive snapshot when a row loads.
     queueSteps = nextSteps;
     queueCount.textContent = `${queueSteps.length} waiting`;
     queueCount.setAttribute("aria-label", `View ${queueSteps.length} phones waiting for Final QC`);
@@ -494,19 +455,21 @@
       if (trayHasData && !window.confirm(`Replace the current tray and load all ${pending.length} pending Final QC IMEIs? Unsaved tray entries will be cleared.`)) return;
 
       failurePanelResize?.disconnect();
+      excelPaste?.clear();
       tableBody.innerHTML = "";
       rowSteps.clear();
       rowSequence = 0;
       createRows(pending.length);
       const rows = [...tableBody.rows];
-      const batchSize = 20;
+      const batchSize = 100;
 
       for (let start = 0; start < pending.length; start += batchSize) {
         const end = Math.min(start + batchSize, pending.length);
+        const prepared=await window.GREENLOOP_QC_FAST.load("final_qc",pending.slice(start,end).map(item=>item.imei));
         await Promise.all(pending.slice(start, end).map((item, offset) => {
           const row = rows[start + offset];
           row.querySelector(".final-row-imei").value = item.imei;
-          return loadScannedRow(row,{queueRefreshed:true});
+          return loadScannedRow(row,{bulk:true,prepared:prepared.get(item.imei)});
         }));
         autoPickButton.textContent = `Loading ${end}/${pending.length}`;
       }
@@ -692,7 +655,7 @@
       setMessage(result.error);
       return;
     }
-    renderPendingJobs(pendingSearch.value);
+    if(!pendingModal.hidden)renderPendingJobs(pendingSearch.value);
     showToast(result.result === "pass"
       ? "Final QC passed. Phone sent to Ready Stock."
       : result.result === "frame"
@@ -718,20 +681,15 @@
     let framed = 0;
     let failed = 0;
     const errors = [];
-    for (let index = 0; index < rows.length; index += 1) {
-      const result = await saveOneRow(rows[index], `Saving ${index + 1}/${rows.length}...`);
-      if (!result.ok) {
-        errors.push(`Line ${[...tableBody.rows].indexOf(rows[index]) + 1}: ${result.error}`);
-      } else if (result.result === "pass") {
-        passed += 1;
-      } else if (result.result === "frame") {
-        framed += 1;
-      } else {
-        failed += 1;
-      }
-    }
+    const results=await window.GREENLOOP_QC_FAST.saveRows(app,rows,(row,index)=>saveOneRow(row,`Saving ${index+1}/${rows.length}...`));
+    results.forEach((result,index)=>{
+      if(!result.ok)errors.push(`Line ${[...tableBody.rows].indexOf(rows[index])+1}: ${result.error}`);
+      else if(result.result==='pass')passed++;
+      else if(result.result==='frame')framed++;
+      else failed++;
+    });
     setSubmitting(button, false);
-    renderPendingJobs(pendingSearch.value);
+    if(!pendingModal.hidden)renderPendingJobs(pendingSearch.value);
     if (passed + framed + failed) showToast(`${passed} ready, ${framed} sent to B-DEPT, and ${failed} failed.`);
     if (errors.length) setMessage(`${passed + framed + failed} completed. ${errors.length} row(s) need correction. ${errors[0]}`);
     else setMessage(`${passed + framed + failed} scanned Final QC row(s) completed successfully.`, true);
@@ -807,7 +765,7 @@
       return;
     }
     focusNextScan(row);
-    rowTimers.set(row, window.setTimeout(() => loadScannedRow(row).catch((error) => setRowState(row, error.message || "Could not load IMEI", "is-error")), 120));
+    void loadScannedRow(row).catch((error) => setRowState(row, error.message || "Could not load IMEI", "is-error"));
   });
 
   tableBody.addEventListener("keydown", (event) => {
@@ -876,7 +834,7 @@
   backdrop.addEventListener("click", () => setMenu(false));
   excelPaste = window.GREENLOOP_QC_EXCEL_PASTE.attach({
     app,tableBody,page:"final_qc",selector:".final-row-imei",client:getClient(),
-    createRows,clearRow:clearRowData,loadRow:loadPastedRow,prepare:async () => loadQueue(),onUnlock:() => [...tableBody.rows].forEach(row => { syncBatteryAvailability(row); syncFailureFields(row); })
+    createRows,clearRow:clearRowData,loadRow:loadPastedRow,prepare:(imeis,active) => window.GREENLOOP_QC_FAST.load("final_qc",imeis,active),onUnlock:() => [...tableBody.rows].forEach(row => { syncBatteryAvailability(row); syncFailureFields(row); })
   });
   initialize().catch((error) => {
     permissionMessage.textContent = error.message || "Final QC could not be loaded.";

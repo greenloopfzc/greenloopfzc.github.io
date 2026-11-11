@@ -57,11 +57,11 @@
       for(let i=0;i<accepted.length;i++){const row=blanks[i];if(!row){job.issues.push({...accepted[i],message:'This row could not be prepared. Paste again into an empty IMEI line.'});continue;}clearRow(row);row.querySelector(selector).value=accepted[i].value;if(accepted[i].duplicate){row.dataset.pasteDuplicate='yes';rowState(row,'Duplicate IMEI — this extra line cannot be saved.');}else{delete row.dataset.pasteDuplicate;rowState(row,'Waiting to load…',false);}job.rows.push({...accepted[i],row,started:false});}
       lock(job);update(job);
       try{
-        if(job.rows.length&&active())await prepare?.(job.rows.map(r=>r.value));
+        const prepared=job.rows.length&&active()?await prepare?.(job.rows.filter(r=>!r.duplicate).map(r=>r.value),()=>active()&&!job.cancel):null;
         let next=0;
         async function worker(){while(next<job.rows.length&&!job.cancel&&active()){
           const item=job.rows[next++];item.started=true;if(item.duplicate){job.settled++;update(job);continue;}
-          try{const result=await loadRow(item.row,{bulk:true,isCurrent:active});if(!active())return;
+          try{const result=await loadRow(item.row,{bulk:true,isCurrent:active,prepared});if(!active())return;
             if(result?.loaded)job.loaded++;else job.issues.push({...item,message:result?.message||'This phone could not be loaded. Press Enter on its row to retry.',record:result?.record});
           }catch(error){if(active()){const message=error.message||'Could not load this phone. Press Enter on its row to retry.';rowState(item.row,message);job.issues.push({...item,message});}}
           job.settled++;update(job);

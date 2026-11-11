@@ -337,21 +337,11 @@
   async function loadPastedRow(row, options) {
     const input = row.querySelector(".qc-bulk-imei"), imei = input.value.trim();
     const current = () => options.isCurrent() && row.isConnected && input.value.trim() === imei;
-    const record = await window.GREENLOOP_IMEI_STAGE_NOTICE.lookup(imei);
-    if (!current()) return {loaded:false,message:"Loading stopped."};
-    let problem = "";
-    if (!record || record.found && !["primary","secondary"].includes(record.matched_type)) problem = "Phone identity could not be verified. Press Enter on this row to retry.";
-    else if (!record.found) problem = "IMEI not found in the software. Check its full 15 digits.";
-    else if (record.matched_type === "secondary") problem = `This is IMEI 2 of IMEI 1 ${record.primary_imei || "not recorded"}. Use IMEI 1 for this phone.`;
-    else {
-      const stage = window.GREENLOOP_IMEI_SCAN?.stageKey(record.current_stage);
-      if (stage && stage !== "initial_qc") problem = `Current stage: ${window.GREENLOOP_DEPT_NAME(record.current_stage)}. This phone is not waiting in Initial QC.`;
-    }
-    if (problem) { row.classList.add("is-error"); setRowState(row,problem,"is-error"); return {loaded:false,message:problem,record}; }
-    await loadScannedRow(row,{...options,primaryChecked:true});
+    const prepared = options.prepared?.get(imei);
+    await loadScannedRow(row,{...options,prepared});
     if (!current()) return {loaded:false,message:"Loading stopped."};
     if (rowJobs.has(row.dataset.rowId) && row.classList.contains("is-loaded")) return {loaded:true};
-    return {loaded:false,message:row.querySelector("[data-row-state]").textContent || "Could not load this phone. Press Enter on this row to retry.",record};
+    return {loaded:false,message:row.querySelector("[data-row-state]").textContent || "Could not load this phone. Press Enter on this row to retry.",record:prepared?.record};
   }
 
   async function loadScannedRow(row, options = {}) {
@@ -373,39 +363,18 @@
     row.dataset.loading = "yes";
     setRowState(row, "Loading...", "is-loading");
     try {
-    if (!options.primaryChecked && !await window.GREENLOOP_IMEI_STAGE_NOTICE.checkPrimary(imei,{isCurrent})) {if(isCurrent())setRowState(row,"Duplicate phone — use IMEI 1","is-error");return;}
-    const { data, error } = await getClient().rpc("get_initial_qc_work_item_v1", { p_identifier: imei });
-    if (!isCurrent()) return;
-    if (error) {
-      row.classList.add("is-error");
-      setRowState(row, error.message || "Could not load IMEI", "is-error");
+    const snapshot=options.prepared || (await window.GREENLOOP_QC_FAST.load("initial_qc",[imei],isCurrent)).get(imei);
+    if(!isCurrent())return;
+    if(!snapshot?.ok){
+      const message=snapshot?.message||"This phone could not be loaded. Scan again.";
+      row.classList.add("is-error");setRowState(row,message,"is-error");
+      if(!options.bulk)void window.GREENLOOP_IMEI_STAGE_NOTICE?.show({imei,title:"Phone unavailable here",message,knownRecord:snapshot?.record,isCurrent});
       return;
     }
-    const result = Array.isArray(data) ? data[0] : data;
-    if (!result?.found) {
-      row.classList.add("is-error");
-      setRowState(row, result?.message || "Not waiting for inspection", "is-error");
-      if (!options.bulk) void window.GREENLOOP_IMEI_STAGE_NOTICE?.show({ imei, title: "Phone unavailable here", message: "This phone is not waiting in Initial QC (QC 1).", onlyIfFound: true, isCurrent });
-      if (!options.bulk) input.focus();
-      return;
-    }
-
-    const job = result.job || {};
-    const device = result.device || {};
-    const { data: batchJob } = await getClient()
-      .from("jobs")
-      .select("receiving_batch:receiving_batches(planned_quantity, invoice_number, batch_number), device:devices(device_platform, battery_health_unavailable)")
-      .eq("id", job.id)
-      .maybeSingle();
-    if (!isCurrent()) return;
-    const receivingBatch = Array.isArray(batchJob?.receiving_batch) ? batchJob.receiving_batch[0] : batchJob?.receiving_batch;
-    const deviceMetadata = Array.isArray(batchJob?.device) ? batchJob.device[0] : batchJob?.device;
-    if (deviceMetadata) Object.assign(device, deviceMetadata);
-    if (!options.bulk) await window.GREENLOOP_RECEIPTS.load("initial_qc",[imei]);
-    if (!isCurrent()) return;
+    const result=snapshot.item,job=result.job||{},device=result.device||{},receivingBatch=result.receiving_batch;
     const selectedJob = {
       ...job,
-      supplierDisplay: window.GREENLOOP_RECEIPTS.label("initial_qc",imei,job.supplier_code,receivingBatch?.planned_quantity,result.supplier),
+      supplierDisplay: window.GREENLOOP_SUPPLIER_RECEIPT_LABEL(job.supplier_code,receivingBatch?.planned_quantity,result.supplier),
       device
     };
     rowJobs.set(row.dataset.rowId, selectedJob);
@@ -517,10 +486,18 @@
     queueCount.focus();
   }
 
+  let pendingRefreshTimer;
+  function refreshPendingAfterSave(){
+    window.clearTimeout(pendingRefreshTimer);
+    pendingRefreshTimer=window.setTimeout(()=>{
+      void loadPendingCount().catch(()=>{if(!pendingModal.hidden)renderPendingJobs(pendingSearch.value);});
+    },250);
+  }
   async function loadPendingCount() {
     const { data, error } = await getClient().rpc("get_initial_qc_work_tray_v1");
     if (error) throw error;
-    pendingJobs = data?.pending || [];
+    const completed=new Set([...tableBody.rows].filter(row=>row.dataset.completed==="yes").map(row=>rowJobs.get(row.dataset.rowId)?.id));
+    pendingJobs = (data?.pending || []).filter(job=>!completed.has(job.id));
     queueCount.textContent = `${pendingJobs.length} QC pending`;
     queueCount.setAttribute("aria-label", `View ${pendingJobs.length} phones waiting for Initial QC`);
     if (!pendingModal.hidden) renderPendingJobs(pendingSearch.value);
@@ -546,19 +523,21 @@
       const trayHasData = rowJobs.size > 0 || [...tableBody.querySelectorAll(".qc-bulk-imei")].some((input) => input.value.trim());
       if (trayHasData && !window.confirm(`Replace the current tray and load all ${imeis.length} pending Initial QC IMEIs? Unsaved tray entries will be cleared.`)) return;
 
+      excelPaste?.clear();
       tableBody.innerHTML = "";
       rowJobs.clear();
       rowSequence = 0;
       createRows(imeis.length);
       const rows = [...tableBody.rows];
-      const batchSize = 6;
+      const batchSize = 100;
 
       for (let start = 0; start < imeis.length; start += batchSize) {
         const end = Math.min(start + batchSize, imeis.length);
+        const prepared=await window.GREENLOOP_QC_FAST.load("initial_qc",imeis.slice(start,end));
         await Promise.all(imeis.slice(start, end).map((imei, offset) => {
           const row = rows[start + offset];
           row.querySelector(".qc-bulk-imei").value = imei;
-          return loadScannedRow(row);
+          return loadScannedRow(row,{bulk:true,prepared:prepared.get(imei)});
         }));
         autoPickButton.textContent = `Loading ${end}/${imeis.length}`;
       }
@@ -685,6 +664,9 @@
     row.querySelectorAll("input, select, button").forEach((control) => { control.disabled = true; });
     rowButton.textContent = "Saved";
     setRowState(row, submission.directReady ? "Sent directly to Ready Stock" : "QC saved - Awaiting Issuance", "is-completed");
+    pendingJobs=pendingJobs.filter(job=>job.id!==selectedJob.id);
+    queueCount.textContent=`${pendingJobs.length} QC pending`;
+    queueCount.setAttribute("aria-label",`View ${pendingJobs.length} phones waiting for Initial QC`);
     window.dispatchEvent(new CustomEvent('greenloop:workflow-committed',{detail:{source:'initial-qc',imeis:[selectedJob.device.imei_1]}}));
     return { ok: true, route: submission.directReady ? "ready_stock" : "issuance" };
     } catch (error) {
@@ -707,7 +689,7 @@
       setMessage(result.error);
       return;
     }
-    await loadPendingCount();
+    refreshPendingAfterSave();
     showToast(result.route === "ready_stock" ? "Phone sent directly to Ready Stock." : "Inspection saved. Open Lab & Glass Issuance to assign and transfer this phone.");
     focusNextInspectionRow(row);
   }
@@ -730,18 +712,14 @@
     let completed = 0, directCount = 0;
     const errors = [];
 
-    for (let index = 0; index < rows.length; index += 1) {
-      const row = rows[index];
-      const result = await saveOneRow(row, `Saving ${index + 1}/${rows.length}...`);
-      if (!result.ok) {
-        errors.push(`Line ${[...tableBody.rows].indexOf(row) + 1}: ${result.error}`);
-        continue;
-      }
-      completed += 1; if(result.route === "ready_stock")directCount += 1;
-    }
+    const results=await window.GREENLOOP_QC_FAST.saveRows(app,rows,(row,index)=>saveOneRow(row,`Saving ${index+1}/${rows.length}...`));
+    results.forEach((result,index)=>{
+      if(!result.ok)errors.push(`Line ${[...tableBody.rows].indexOf(rows[index])+1}: ${result.error}`);
+      else{completed++;if(result.route==='ready_stock')directCount++;}
+    });
 
     setSubmitting(button, false);
-    await loadPendingCount();
+    refreshPendingAfterSave();
     if (completed) showToast(`${directCount} directly to Ready Stock; ${completed-directCount} saved for Issuance.`);
     if (errors.length) {
       setMessage(`${completed} completed. ${errors.length} row(s) need correction. ${errors[0]}`);
@@ -817,7 +795,7 @@
       return;
     }
     focusNextScan(row);
-    rowTimers.set(row, window.setTimeout(() => loadScannedRow(row).catch((error) => setRowState(row, error.message || "Could not load IMEI", "is-error")), 120));
+    void loadScannedRow(row).catch((error) => setRowState(row, error.message || "Could not load IMEI", "is-error"));
   });
 
   tableBody.addEventListener("keydown", (event) => {
@@ -909,7 +887,7 @@
   backdrop.addEventListener("click", () => setMenu(false));
   excelPaste = window.GREENLOOP_QC_EXCEL_PASTE.attach({
     app,tableBody,page:"initial_qc",selector:".qc-bulk-imei",client:getClient(),
-    createRows,clearRow:clearAutoData,loadRow:loadPastedRow,prepare:async imeis => window.GREENLOOP_RECEIPTS.load("initial_qc",imeis),onUnlock:() => [...tableBody.rows].forEach(applyGradeHousing)
+    createRows,clearRow:clearAutoData,loadRow:loadPastedRow,prepare:(imeis,active) => window.GREENLOOP_QC_FAST.load("initial_qc",imeis,active),onUnlock:() => [...tableBody.rows].forEach(applyGradeHousing)
   });
   initialize().catch((error) => {
     permissionMessage.textContent = error.message || "Initial QC could not be loaded.";

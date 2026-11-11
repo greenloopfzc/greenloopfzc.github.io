@@ -1424,6 +1424,18 @@
     },
     "get_replacement_auto_match_version": {
       "read": true
+    },
+    "get_initial_qc_fast_rows_v1": {
+      "page": "initial_qc",
+      "capability": "view",
+      "read": true
+    },
+    "receive_final_qc_fast_rows_v1": {
+      "page": "final_qc",
+      "capability": "entry"
+    },
+    "get_qc_fast_work_trays_version": {
+      "read": true
     }
   },
   "get_box_status_v1": {
