@@ -6,6 +6,7 @@
   let lastFingerprint = "";
   const nextThreeUToolsAttemptAt = new Map();
   let polling = false;
+  let forceReaderRead = false;
   let failedReads = 0;
   let readerState = "";
   let cableIdentityCheck = null;
@@ -48,7 +49,7 @@
       color: String(source.color || source.deviceColor || "").trim(),
       batteryHealth: batteryRaw === "" || batteryRaw === null || batteryRaw === undefined
         ? ""
-        : (Number.isInteger(Number(batteryRaw)) && Number(batteryRaw) >= 0 && Number(batteryRaw) <= 100 ? Number(batteryRaw) : ""),
+        : (Number.isInteger(Number(batteryRaw)) && Number(batteryRaw) >= 0 && Number.isFinite(Number(batteryRaw)) ? Math.min(100, Number(batteryRaw)) : ""),
       batteryHealthUnavailable: platform === "android" && source.batteryHealthUnavailable === true,
       batteryHealthSource: String(source.batteryHealthSource || "device"),
       serialNumber,
@@ -132,9 +133,10 @@
       let readerMessage = "";
       if (!window.GREENLOOP_LAST_DEVICE) publishReaderState("reading", "Reading connected phone...");
       try {
+        const readerPath=forceReaderRead?"/v1/device?refresh=1":"/v1/device";forceReaderRead=false;
         // USB startup + optional diagnostics are bounded by the helper. Do not
         // abort a healthy first read after only 2.5 seconds.
-        const response = await (window.GREENLOOP_READER_CONNECTION?.fetch || ((p, o) => fetch(endpoint, o)))("/v1/device", { cache: "no-store", signal: AbortSignal.timeout(20000) });
+        const response = await (window.GREENLOOP_READER_CONNECTION?.fetch || ((p, o) => fetch(new URL(p, endpoint).href, o)))(readerPath, { cache: "no-store", signal: AbortSignal.timeout(20000) });
         const payload = await response.json();
         readerResponded = true;
         readerMessage = payload?.message || "Connect one unlocked phone and accept Trust if asked.";
@@ -177,7 +179,7 @@
 
   window.addEventListener("beforeunload", () => { stopped = true; });
   window.addEventListener("focus", poll);
-  window.addEventListener("greenloop:retry-device", () => { cableIdentityCheck = null; lastFingerprint = ""; window.GREENLOOP_CABLE_CONNECTION_ID = (window.GREENLOOP_CABLE_CONNECTION_ID || 0) + 1; poll(); });
+  window.addEventListener("greenloop:retry-device", () => { forceReaderRead = true; cableIdentityCheck = null; lastFingerprint = ""; window.GREENLOOP_CABLE_CONNECTION_ID = (window.GREENLOOP_CABLE_CONNECTION_ID || 0) + 1; poll(); });
   document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
   window.setInterval(poll, 900);
   window.setTimeout(poll, 100);

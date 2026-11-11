@@ -60,6 +60,7 @@ for name in ['Install-Cable-Reader.ps1','Setup-Utilities.ps1','Reader-Startup.ps
     shutil.copyfile(here/name,payload/name)
 shutil.copyfile(here.parent/'dual-imei-reader/Update-Reader-Source.ps1',payload/'Update-Reader-Source.ps1')
 shutil.copytree(here/'reader',payload/'reader',dirs_exist_ok=True)
+shutil.copytree(here.parent/'reader-fast-bh',payload/'reader-fast-bh',dirs_exist_ok=True)
 apple=payload/'apple';apple.mkdir(exist_ok=True)
 for p in files.values():shutil.copyfile(p,apple/p.name)
 licenses=apple/'licenses';licenses.mkdir(exist_ok=True)

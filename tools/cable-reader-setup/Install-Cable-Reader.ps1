@@ -11,6 +11,7 @@ $powershell=Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.ex
 . (Join-Path $PSScriptRoot 'Setup-Utilities.ps1')
 . (Join-Path $PSScriptRoot 'Update-Reader-Source.ps1')
 . (Join-Path $PSScriptRoot 'Reader-Startup.ps1')
+. (Join-Path $PSScriptRoot 'reader-fast-bh/Update-Reader.ps1')
 $utf8=New-Object Text.UTF8Encoding($false)
 function Get-TextHash([string]$Text){
  $sha=[Security.Cryptography.SHA256]::Create()
@@ -38,7 +39,7 @@ try{
  $updates=@{}
  if($present.Count -eq 3){
   $previousHash=Get-Hash $readerScript
-  $updates[$names[0]]=ConvertTo-GreenloopDualIMEIReader ([IO.File]::ReadAllText($readerScript))
+  $updates[$names[0]]=ConvertTo-GreenloopFastBhReader (ConvertTo-GreenloopDualIMEIReader ([IO.File]::ReadAllText($readerScript)))
   $newHash=Get-TextHash $updates[$names[0]]
   foreach($name in $names[1..2]){$updates[$name]=ConvertTo-GreenloopReaderHash ([IO.File]::ReadAllText((Join-Path $readerRoot $name))) $previousHash $newHash}
  }else{

@@ -1,11 +1,11 @@
 {
   "version": "20261023-cable-setup-1",
-  "payloadSha256": "233bf6af106061e22ea0b90aa2e5fc443f924a423636327a06176bb96862f4db",
+  "payloadSha256": "e3cf2f31cb30af96e81e1ef2c8e5555902472dbde295e8314a1e74f95c09e540",
   "files": [
     {
       "path": "Greenloop-Cable-Reader-Setup.exe",
-      "sha256": "f581c0cc3d1409c969ad3399bffcd9fdbf628ae3e06470fda2272622218d0136",
-      "bytes": 2990080
+      "sha256": "a5887e1402fc71fd4252196263562067843e65b4026a5793258590acb0523f01",
+      "bytes": 2998272
     },
     {
       "path": "reader-sources.zip",
@@ -74,5 +74,6 @@
       ]
     }
   ],
-  "startupFixVersion": "20261110-cable-startup-1"
+  "startupFixVersion": "20261110-cable-startup-1",
+  "readerSpeedBhVersion": "20261111-fast-bh-1"
 }

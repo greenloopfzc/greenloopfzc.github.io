@@ -99,7 +99,7 @@
       row.dataset.available = available ? 'yes' : 'no';
       const label = row.querySelector('.cdd-badge');
       row.querySelector('.cdd-value').textContent = available
-        ? (key === 'region' && devicePlatform !== 'android' ? regionName(field.value) : String(field.value))
+        ? (key === 'region' && devicePlatform !== 'android' ? regionName(field.value) : key === 'batteryHealth' ? String(field.value).replace(/^(\d+(?:\.\d+)?)(?=\s*%|\s*$)/, value => String(Math.min(100, Number(value)))) : String(field.value))
         : (!connected ? 'Waiting for phone' : verificationKeys.has(key) ? 'Not verified' : 'Not available');
       label.textContent = available ? field.status === 'calculated' ? 'Calculated' : 'Read' : '—';
       row.querySelector('.cdd-source').textContent = available ? String(field.source || 'Connected reader') : String(field?.status === 'unavailable' && field.source ? field.source : (devicePlatform === 'android' ? unknown : note || unknown));
@@ -129,9 +129,10 @@
     if (!key) throw new Error('The reader did not return a phone identity.');
     const output = {};
     for (const [name, from] of Object.entries({ brand: 'brand', platform: 'platform', iosVersion: 'osVersion', phoneName: 'phoneName', model: 'model', storageGb: 'storageGb', color: 'color', serialNumber: 'serialNumber', region: 'phoneRegion', imei1: 'imei', imei2: 'imei2', batteryHealth: 'batteryHealth', batteryCycleCount: 'batteryCycleCount', chargingStatus: 'chargingStatus', rawCapacity: 'rawCapacity', designCapacity: 'designCapacity', bootFirmware: 'bootFirmware', baseband: 'baseband', appVersion: 'readerDetailsVersion' })) {
-      const value = source[from];
+      let value = source[from];
       if (value === null || value === undefined || String(value).trim() === '') continue;
       if (['batteryHealth', 'storageGb'].includes(name) && (!Number.isFinite(Number(value)) || Number(value) <= 0)) continue;
+      if (name === 'batteryHealth') value = Math.min(100, Number(value));
       const estimated = name === 'batteryHealth' && source.batteryHealthSource === 'capacity-estimate';
       output[name] = { value: `${value}${name === 'storageGb' ? ' GB' : name === 'batteryHealth' ? '%' : ['rawCapacity','designCapacity'].includes(name) ? ' mAh' : ''}${estimated ? ' (estimated)' : ''}`, status: estimated ? 'calculated' : 'read', source: estimated ? 'Raw maximum / design capacity estimate; may differ from iPhone Settings Maximum Capacity' : source.platform === 'android' ? 'Android cable reader: available device properties' : 'Cable reader (basic details only)' };
     }

@@ -132,23 +132,56 @@ function Convert-StorageGb {
   return ($sizes | Sort-Object { [math]::Abs($_ - $number) } | Select-Object -First 1)
 }
 
+function Get-ReportedBatteryHealth {
+ param([string]$BatteryXml)
+ if([string]::IsNullOrWhiteSpace($BatteryXml) -or $BatteryXml.Length -gt 524288){return $null}
+ $reader=$null
+ try{
+  $settings=[Xml.XmlReaderSettings]::new();$settings.DtdProcessing=[Xml.DtdProcessing]::Ignore;$settings.XmlResolver=$null;$settings.MaxCharactersInDocument=524288
+  $reader=[Xml.XmlReader]::Create([IO.StringReader]::new($BatteryXml),$settings)
+  $doc=[Xml.XmlDocument]::new();$doc.XmlResolver=$null;$doc.Load($reader)
+  $dict=$doc.SelectSingleNode('/plist/dict/key[.="IORegistry"]/following-sibling::*[1][self::dict]')
+  if(-not $dict){$dict=$doc.SelectSingleNode('/plist/dict/key[.="Diagnostics"]/following-sibling::*[1][self::dict]/key[.="IORegistry"]/following-sibling::*[1][self::dict]')}
+  if(-not $dict){$dict=$doc.SelectSingleNode('/plist/dict')}
+  # These direct AppleSmartBattery percentages are not LPEMData capacity in mAh,
+  # charging CurrentCapacity, or the unrelated BatteryHealthMetric.
+  $batteryData=$dict.SelectSingleNode('key[.="BatteryData"]/following-sibling::*[1][self::dict]')
+  foreach($scope in @($dict,$batteryData)){
+   if(-not $scope){continue}
+   foreach($key in @('MaximumCapacityPercent','MaximumCapacityPercentage','BatteryHealthPercentage','MaxCapacity')){
+    $node=$scope.SelectSingleNode('key[.="'+$key+'"]/following-sibling::*[1]')
+    if($node -and $node.Name -in @('integer','real') -and $node.InnerText -match '^[0-9]+(?:\.[0-9]+)?$'){
+     $value=[double]::Parse($node.InnerText,[Globalization.CultureInfo]::InvariantCulture)
+     if($value -ge 1 -and ($key -ne 'MaxCapacity' -or $value -le 200)){return [int][math]::Min(100,[math]::Round($value))}
+    }
+   }
+  }
+ }catch{}finally{if($reader){$reader.Dispose()}}
+ return $null
+}
 function Convert-BatteryHealth {
   param([hashtable[]]$Maps, [string]$BatteryXml = '')
   $script:batteryHealthSource = 'unavailable'
   $direct = Find-FirstValue $Maps @('BatteryHealth', 'BatteryHealthPercentage', 'MaximumCapacityPercent', 'MaximumCapacityPercentage', 'HealthPercentage')
   $directNumber = 0.0
   if ($direct -and [double]::TryParse(($direct -replace '[^0-9.]', ''), [ref]$directNumber)) {
-    if ($directNumber -ge 1 -and $directNumber -le 100) { $script:batteryHealthSource = 'device'; return [int][math]::Round($directNumber) }
+    if ($directNumber -ge 1) { $script:batteryHealthSource = 'device'; return [int][math]::Min(100,[math]::Round($directNumber)) }
   }
 
-  $currentXml = Get-PlistInteger $BatteryXml @('NominalChargeCapacity', 'AppleRawMaxCapacity', 'MaxCapacity')
+  $reportedDevice = Get-ReportedBatteryHealth $BatteryXml
+  if($null -ne $reportedDevice){$script:batteryHealthSource='device';return $reportedDevice}
+
+  # Explicit health percentages take precedence over capacity estimates.
+  $reported = Get-PlistInteger $BatteryXml @('MaximumCapacityPercent','MaximumCapacityPercentage','BatteryHealthPercentage')
+  if ($null -ne $reported -and $reported -ge 1) { $script:batteryHealthSource = 'device'; return [int][math]::Min(100,$reported) }
+  $currentXml = Get-PlistInteger $BatteryXml @('AppleRawMaxCapacity', 'NominalChargeCapacity')
   $designXml = Get-PlistInteger $BatteryXml @('DesignCapacity', 'BatteryDesignCapacity')
   if ($null -ne $currentXml -and $null -ne $designXml -and $designXml -gt 0) {
     $xmlPercentage = [math]::Round(($currentXml / $designXml) * 100)
-    if ($xmlPercentage -ge 1 -and $xmlPercentage -le 100) { $script:batteryHealthSource = 'capacity-estimate'; return [int]$xmlPercentage }
+    if ($xmlPercentage -ge 1) { $script:batteryHealthSource = 'capacity-estimate'; return [int][math]::Min(100,$xmlPercentage) }
   }
 
-  $current = Find-FirstValue $Maps @('NominalChargeCapacity', 'AppleRawMaxCapacity', 'MaxCapacity')
+  $current = Find-FirstValue $Maps @('AppleRawMaxCapacity', 'NominalChargeCapacity')
   $design = Find-FirstValue $Maps @('DesignCapacity', 'BatteryDesignCapacity')
   $currentNumber = 0.0
   $designNumber = 0.0
@@ -157,7 +190,7 @@ function Convert-BatteryHealth {
       [double]::TryParse(($design -replace '[^0-9.]', ''), [ref]$designNumber) -and
       $designNumber -gt 0) {
     $percentage = [math]::Round(($currentNumber / $designNumber) * 100)
-    if ($percentage -ge 1 -and $percentage -le 100) { $script:batteryHealthSource = 'capacity-estimate'; return [int]$percentage }
+    if ($percentage -ge 1) { $script:batteryHealthSource = 'capacity-estimate'; return [int][math]::Min(100,$percentage) }
   }
   return $null
 }
@@ -231,7 +264,10 @@ function Read-AppleDevice {
     return @{ ok = $false; error = $message; message = $message }
   }
 
-  $general = Convert-KeyValueText (Invoke-ReadOnlyTool 'ideviceinfo.exe' "-u $udid -s" 8)
+  # Cache only after fresh Apple/Android discovery has verified this UDID.
+  if($script:appleFastCache -and $script:appleFastCache.udid -ne $udid){$script:appleFastCache=$null}
+  if(-not $script:readerForceRefresh -and $script:appleFastCache -and ([datetime]::UtcNow-$script:appleFastCache.at).TotalMilliseconds -ge 0 -and ([datetime]::UtcNow-$script:appleFastCache.at).TotalMilliseconds -lt $script:appleFastCache.ttl){return $script:appleFastCache.payload}
+  $general = Convert-KeyValueText (Invoke-ReadOnlyTool 'ideviceinfo.exe' "-u $udid" 8)
   $identityMaps = @($general)
   $imei = (Find-FirstValue $identityMaps @('InternationalMobileEquipmentIdentity', 'IMEI')).Trim()
   if (-not $imei) { $imei = (Get-DeviceInfoValue 'InternationalMobileEquipmentIdentity' $udid).Trim() }
@@ -248,8 +284,10 @@ function Read-AppleDevice {
   if (-not $phoneRegion) { $phoneRegion = Find-FirstValue $identityMaps @('RegionCode') }
   $productType = Find-FirstValue $identityMaps @('ProductType')
   if (-not $productType) { $productType = Get-DeviceInfoValue 'ProductType' $udid }
+  $batteryXml = ''
+  try { $batteryXml = Invoke-ReadOnlyTool 'idevicediagnostics.exe' "-u $udid ioregentry AppleSmartBattery" 5 } catch {}
   $reportedName = Find-FirstValue $identityMaps @('MarketingName')
-  if (-not $reportedName) { $reportedName = Get-DeviceInfoValue 'MarketingName' $udid }
+  if (-not $reportedName -and (Convert-ModelName $productType '') -eq $productType) { $reportedName = Get-DeviceInfoValue 'MarketingName' $udid }
   if (-not $reportedName) { $reportedName = Find-FirstValue $identityMaps @('ProductName') }
   # DeviceColor is the front/bezel code. On iPhone 15 it is 1 for every
   # body color, so it must never substitute for a missing enclosure value.
@@ -257,19 +295,27 @@ function Read-AppleDevice {
   if (-not $colorRaw) { $colorRaw = Get-DeviceInfoValue 'DeviceEnclosureColor' $udid }
   $disk = @{}
   $battery = @{}
-  $batteryXml = ''
   try { $disk = Convert-KeyValueText (Invoke-ReadOnlyTool 'ideviceinfo.exe' "-u $udid -q com.apple.disk_usage" 6) } catch {}
-  try { $battery = Convert-KeyValueText (Invoke-ReadOnlyTool 'ideviceinfo.exe' "-u $udid -q com.apple.mobile.battery" 6) } catch {}
-  try { $batteryXml = Invoke-ReadOnlyTool 'idevicediagnostics.exe' "-u $udid ioregentry AppleSmartBattery" 8 } catch {}
+  if($null -eq (Convert-BatteryHealth @($general) $batteryXml)){try { $battery = Convert-KeyValueText (Invoke-ReadOnlyTool 'ideviceinfo.exe' "-u $udid -q com.apple.mobile.battery" 3) } catch {}}
   $maps = @($general, $disk, $battery)
 
   $storageRaw = Find-FirstValue $maps @('TotalDiskCapacity', 'TotalDataCapacity', 'DiskCapacity', 'StorageCapacity')
   if (-not $colorRaw) { $colorRaw = Find-FirstValue $maps @('DeviceEnclosureColor') }
   $batteryHealth = Convert-BatteryHealth $maps $batteryXml
 
-  return @{
+  $result = @{
     ok = $true
     device = @{
+      readerDetailsVersion = '20261106-battery-details-1'
+      readerSpeedBhVersion = '20261111-fast-bh-1'
+      phoneName = Find-FirstValue @($general) @('DeviceName')
+      osVersion = Find-FirstValue @($general) @('ProductVersion')
+      bootFirmware = Find-FirstValue @($general) @('FirmwareVersion')
+      baseband = Find-FirstValue @($general) @('BasebandVersion')
+      batteryCycleCount = Get-PlistInteger $batteryXml @('CycleCount')
+      rawCapacity = Get-PlistInteger $batteryXml @('AppleRawMaxCapacity')
+      designCapacity = Get-PlistInteger $batteryXml @('DesignCapacity','BatteryDesignCapacity')
+      chargingStatus = $(if ($batteryXml -match '(?s)<key>IsCharging</key>\s*<true\s*/>') {'Charging'} elseif ($batteryXml -match '(?s)<key>IsCharging</key>\s*<false\s*/>') {'Not charging'} else {''})
       udid = $udid
       connectionId = 'ios:' + $udid
       platform = 'ios'
@@ -288,6 +334,9 @@ function Read-AppleDevice {
       phoneRegion = ([string]$phoneRegion).Trim()
     }
   }
+  $ttl=if($null -ne $batteryHealth -and $imei -and $result.device.storageGb -and $result.device.color){5000}else{1000}
+  $script:appleFastCache=@{udid=$udid;at=[datetime]::UtcNow;ttl=$ttl;payload=$result}
+  return $result
 }
 
 function New-ReaderError {
@@ -459,12 +508,15 @@ function Read-ConnectedDevice {
 }
 
 function Get-ConnectedDevice {
-  # Keep a whole read below the website's 20-second request timeout. Optional
-  # fields can remain empty when unavailable; the next poll can enrich them.
-  $previousDeadline = $script:readerReadDeadline
-  $script:readerReadDeadline = [datetime]::UtcNow.AddSeconds(18)
-  try { return Read-ConnectedDevice }
-  finally { $script:readerReadDeadline = $previousDeadline }
+ param([switch]$ForceRefresh)
+ $previousDeadline=$script:readerReadDeadline;$previousForce=$script:readerForceRefresh
+ $script:readerReadDeadline=[datetime]::UtcNow.AddSeconds(18);$script:readerForceRefresh=[bool]$ForceRefresh
+ try{
+  $result=Read-ConnectedDevice
+  if(-not $result -or $result.ok -ne $true){$script:appleFastCache=$null}
+  return $result
+ }catch{$script:appleFastCache=$null;throw}
+ finally{$script:readerReadDeadline=$previousDeadline;$script:readerForceRefresh=$previousForce}
 }
 
 function Test-AllowedOrigin([string]$Origin) {
@@ -532,10 +584,10 @@ try {
       }
       $path = if ($requestLine -match '^GET\s+([^\s]+)') { $matches[1].Split('?')[0] } else { '' }
       if ($path -eq '/health') {
-        Write-HttpResponse $stream 200 'OK' (@{ ok = $true; service = 'Greenloop Read-Only Device Reader'; dualImeiVersion = '20261023-dual-imei-1'; mode = 'read-only'; version = '20261001-android-reader-2'; platforms = @('ios','android'); androidToolsReady = [bool](Get-AdbPath) } | ConvertTo-Json -Compress) $requestOrigin
+        Write-HttpResponse $stream 200 'OK' (@{ ok = $true; service = 'Greenloop Read-Only Device Reader'; readerSpeedBhVersion = '20261111-fast-bh-1'; dualImeiVersion = '20261023-dual-imei-1'; mode = 'read-only'; version = '20261001-android-reader-2'; platforms = @('ios','android'); androidToolsReady = [bool](Get-AdbPath) } | ConvertTo-Json -Compress) $requestOrigin
       } elseif ($path -eq '/v1/device') {
         try {
-          $payload = Get-ConnectedDevice
+          $payload = Get-ConnectedDevice -ForceRefresh:($requestLine -match '[?&]refresh=1(?:[&\s]|$)')
           Write-HttpResponse $stream 200 'OK' ($payload | ConvertTo-Json -Depth 5 -Compress) $requestOrigin
         } catch {
           Write-HttpResponse $stream 200 'OK' (@{ ok = $false; error = $_.Exception.Message; message = $_.Exception.Message } | ConvertTo-Json -Compress) $requestOrigin

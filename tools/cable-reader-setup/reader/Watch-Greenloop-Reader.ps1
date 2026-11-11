@@ -6,7 +6,7 @@ param()
 # It has no command, script-path, port, or test-injection parameters.
 $ErrorActionPreference = 'Stop'
 $supervisorVersion = '20261001-android-reader-2'
-$expectedReaderHash = '81CB25A4ADC0C48C8F72611E0463338462B4B4F875807B871825B591F0E4C0FA'
+$expectedReaderHash = '28BD5E8166FF15E9293121BABBB9313D82833D08D67237ECFA963960330E5154'
 $readerScript = Join-Path $PSScriptRoot 'Greenloop-Device-Reader.ps1'
 $powershell = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'
 $logPath = Join-Path $PSScriptRoot 'reader-supervisor.log'

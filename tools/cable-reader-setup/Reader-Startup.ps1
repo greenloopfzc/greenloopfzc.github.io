@@ -12,7 +12,7 @@ function Get-GreenloopLocalHealth([int]$Port,[int]$TimeoutMs=1500){
   $response=$request.GetResponse();$stream=[IO.StreamReader]::new($response.GetResponseStream());$text=$stream.ReadToEnd()
   if($text.Length -gt 8192){return $null}
   $h=$text|ConvertFrom-Json
-  if($h.ok -ceq $true -and $h.service -ceq 'Greenloop Read-Only Device Reader' -and $h.mode -ceq 'read-only' -and $h.version -ceq '20261001-android-reader-1' -and $h.dualImeiVersion -ceq '20261023-dual-imei-1'){return $h}
+  if($h.ok -ceq $true -and $h.service -ceq 'Greenloop Read-Only Device Reader' -and $h.mode -ceq 'read-only' -and $h.version -cin @('20261001-android-reader-1','20261001-android-reader-2') -and $h.dualImeiVersion -ceq '20261023-dual-imei-1'){return $h}
  }catch{return $null}finally{if($stream){$stream.Dispose()};if($response){$response.Dispose()}}
  return $null
 }

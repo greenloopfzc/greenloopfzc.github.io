@@ -2,7 +2,7 @@
   "use strict";
   const host = document.querySelector(".cable-reader-banner, .journey-cable-card");
   if (!host) return;
-  const version = "20261110-cable-startup-1";
+  const version = "20261111-fast-bh-1";
   const windows = /Windows NT/.test(navigator.userAgent);
   const toolbar = document.createElement("div");
   toolbar.className = "reader-setup-toolbar";
