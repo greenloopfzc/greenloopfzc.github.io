@@ -254,6 +254,7 @@
     if (error) throw error;
     appliedReadyRange = {from, to};
     render(Array.isArray(data) ? data[0] : data);
+    window.dispatchEvent(new CustomEvent('greenloop:ready-stock-refreshed'));
     } finally { if (generation === readyGeneration) { refresh.disabled = false; refresh.textContent = "Refresh"; } }
   }
 
