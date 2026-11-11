@@ -21,7 +21,7 @@
   <script defer src="js/imei-scan.js?v=20261105-issuance-sidebar-1"></script>
 <script defer src="js/imei-stage-notice.js?v=20261102-imei-scan-location-1"></script>
   <script defer src="js/permission-catalog.js?v=20261110-content-permissions-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261111-ready-stock-averages-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261111-ready-stock-groups-1"></script>
 <script defer src="js/page-capabilities.js?v=20261104-report-permissions-1"></script>
 <link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
 <script defer src="js/office-access.js?v=20261024-office-access-1"></script>
@@ -37,7 +37,7 @@
     <script defer src="js/part-notifications.js?v=20261110-dashboard-ready-layout-1"></script>
     <script defer src="js/employee-updates.js?v=20261105-stock-consistency-1"></script>
   <script defer src="js/storage-options.js?v=20261027-iphone-entry-options-1"></script>
-  <script defer src="js/ready-stock.js?v=20261111-ready-stock-averages-1"></script>
+  <script defer src="js/ready-stock.js?v=20261111-ready-stock-groups-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261111-ruby-obsidian-1">
     <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261102-imei-scan-location-1">
   <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
@@ -46,8 +46,9 @@
   <link rel="stylesheet" href="css/clean-layout.css?v=20261017-clean-layout-1">
   <script defer src="js/clean-layout.js?v=20261030-supplier-progress-1"></script>
   <script defer src="js/suspicious-badge.js?v=20261109-content-protection-1"></script>
-  <link rel="stylesheet" href="css/ready-stock-daily.css?v=20261111-ready-stock-averages-1">
-  <script defer src="js/ready-stock-daily.js?v=20261111-ready-stock-averages-1"></script>
+  <link rel="stylesheet" href="css/ready-stock-daily.css?v=20261111-ready-stock-groups-1">
+  <script defer src="js/ready-stock-daily.js?v=20261111-ready-stock-groups-1"></script>
+  <script defer src="js/ready-stock-groups.js?v=20261111-ready-stock-groups-1"></script>
 </head>
   <body class="app-page">
     <div class="app-shell">
@@ -129,6 +130,7 @@
       <footer class="ready-imeis-paging"><button id="ready-phones-previous" class="secondary-button" type="button" data-search-read-only disabled>Previous</button><span id="ready-phones-page"></span><button id="ready-phones-next" class="secondary-button" type="button" data-search-read-only disabled>Next</button></footer>
     </dialog>
     <dialog id="ready-daily-dialog" class="rsd-dialog" aria-labelledby="ready-daily-title"><header class="rsd-dialog-header"><div><p class="panel-kicker">Daily stock activity</p><h2 id="ready-daily-title">Daily Ready Stock</h2><p id="ready-daily-period"></p></div><button id="ready-daily-close" type="button" class="secondary-button" data-capability="view" data-capability-page="ready_stock" data-search-read-only>Close</button></header><div class="rsd-dialog-status"><p id="ready-daily-status" role="status" aria-live="polite"></p><button id="ready-daily-reload" type="button" class="secondary-button" data-capability="view" data-capability-page="ready_stock" data-search-read-only>Refresh list</button></div><div class="rsd-table-wrap"><table class="rsd-table"><thead id="ready-daily-head"></thead><tbody id="ready-daily-rows"></tbody></table></div><footer class="rsd-pagination"><button id="ready-daily-previous" type="button" class="secondary-button" data-capability="view" data-capability-page="ready_stock" data-search-read-only disabled>Previous</button><span id="ready-daily-page"></span><button id="ready-daily-next" type="button" class="secondary-button" data-capability="view" data-capability-page="ready_stock" data-search-read-only disabled>Next</button></footer></dialog>
+    <dialog id="ready-groups-dialog" class="rsd-dialog rsg-dialog" aria-labelledby="ready-groups-title"><header class="rsd-dialog-header"><div><p class="panel-kicker">Stock summary / Phone details</p><h2 id="ready-groups-title">Ready Stock</h2><p id="ready-groups-period"></p></div><button id="ready-groups-close" type="button" class="secondary-button" data-capability="view" data-capability-page="ready_stock" data-search-read-only>Close</button></header><div class="rsd-dialog-status"><p id="ready-groups-status" role="status" aria-live="polite"></p><div class="rsg-actions"><button id="ready-groups-back" type="button" class="secondary-button" data-capability="view" data-capability-page="ready_stock" data-search-read-only hidden>← Back to summary</button><button id="ready-groups-refresh" type="button" class="secondary-button" data-capability="view" data-capability-page="ready_stock" data-search-read-only>Refresh list</button></div></div><div class="rsd-table-wrap"><table class="rsd-table"><thead id="ready-groups-head"></thead><tbody id="ready-groups-rows"></tbody></table></div><p id="ready-groups-total" class="rsg-total" role="status"></p><footer class="rsd-pagination"><button id="ready-groups-previous" type="button" class="secondary-button" data-capability="view" data-capability-page="ready_stock" data-search-read-only disabled>Previous</button><span id="ready-groups-page"></span><button id="ready-groups-next" type="button" class="secondary-button" data-capability="view" data-capability-page="ready_stock" data-search-read-only disabled>Next</button></footer></dialog>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   </body>
 </html>

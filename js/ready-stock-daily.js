@@ -24,7 +24,7 @@
     return data;
   }
   function cards(data){
-    if(reportedDate&&reportedDate!==data.date&&dialog.open)close();
+    if(reportedDate&&reportedDate!==data.date)close();
     reportedDate=data.date;
     $('ready-daily-date-label').textContent=dateText(data.date);
     if($('ready-daily-filters').hidden&&document.activeElement!==$('ready-daily-date'))$('ready-daily-date').value=data.date;
@@ -50,7 +50,7 @@
   function schedule(){if(!initialized||!allowed())return;clearTimeout(timer);timer=setTimeout(()=>{void refresh();if(dialog.open)void loadPhones();},200);}
   function updateSelection(){panel.querySelectorAll('[data-daily-kind]').forEach(el=>{const on=dialog.open&&el.dataset.dailyKind===selectedKind;el.classList.toggle('is-selected',on);el.setAttribute('aria-expanded',String(on));});}
   function stop(){live=false;request++;summaryRequest++;clearTimeout(timer);clearInterval(pending);if(dialog.open)dialog.close();$('ready-daily-rows').replaceChildren();panel.hidden=true;}
-  function close(){request++;selectedKind=null;if(dialog.open)dialog.close();$('ready-daily-rows').replaceChildren();updateSelection();}
+  function close(){window.GREENLOOP_READY_GROUPS?.close();request++;selectedKind=null;if(dialog.open)dialog.close();$('ready-daily-rows').replaceChildren();updateSelection();}
   function rows(data){
     const history=GREENLOOP_CAN?.('view','imei_search')&&GREENLOOP_CAN?.('search','imei_search'),fields=['S.No','IMEI','Model','GB','Grade','Color','Supplier code','Stock / Batch','Time'];if(selectedKind==='export')fields.push('Box');
     $('ready-daily-head').innerHTML='<tr>'+fields.map(label=>'<th scope="col">'+esc(label)+'</th>').join('')+'</tr>';
@@ -76,6 +76,7 @@
   }
   function open(kind){
     if(!allowed()||!reportedDate)return;
+    if(window.GREENLOOP_READY_GROUPS){GREENLOOP_READY_GROUPS.open({mode:kind,date:reportedDate,label:kind==='ready'?'Daily Ready Stock':'Daily Export',source:panel.querySelector('[data-daily-kind="'+kind+'"]')});return;}
     request++;selectedKind=kind;offset=0;
     $('ready-daily-title').textContent=kind==='ready'?'Daily Ready Stock':'Daily Export';
     $('ready-daily-period').textContent=dateText(reportedDate)+' · 10:00 AM – 9:00 PM · UAE';

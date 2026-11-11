@@ -498,7 +498,7 @@
     syncReworkTechnician();
   }
 
-  document.addEventListener('click',event=>{const button=event.target.closest('[data-ready-imeis]');if(button&&!button.disabled)openPhoneList(quantityScopes[Number(button.dataset.readyImeis)]);});
+  document.addEventListener('click',event=>{const button=event.target.closest('[data-ready-imeis]');if(button&&!button.disabled){const scope=quantityScopes[Number(button.dataset.readyImeis)];if(button.matches('.ready-stock-grade-view,#ready-stock-total-view')){if(scope)window.GREENLOOP_READY_GROUPS?.open({...scope,mode:'current',source:button});}else openPhoneList(scope);}});
   document.querySelector('#ready-phones-close').addEventListener('click',closePhoneList);
   document.querySelector('#ready-phones-refresh').addEventListener('click',()=>loadPhoneList());
   phonePrevious.addEventListener('click',()=>{phoneOffset=Math.max(0,phoneOffset-phonePageSize);loadPhoneList();});

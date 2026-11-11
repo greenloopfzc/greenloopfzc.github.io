@@ -96,3 +96,12 @@ html[data-theme="ruby-obsidian"] #ready-stock-view{--rsd-green:#efb0bd;--rsd-blu
 @media(max-width:700px){#ready-daily .rsd-card{min-height:210px;padding-inline:8px}.rsd-stat-pair{gap:5px}.rsd-average strong,.rsd-current .rsd-metric{font-size:1.6rem}.rsd-current .rsd-today-label,.rsd-average>span{font-size:.62rem;min-height:3.6em}.rsd-slash{font-size:1.7rem}.rsd-current .rsd-caption,.rsd-average small{font-size:.6rem;min-height:3.6em}}
 
 @media(max-width:700px){.rsd-cards{grid-template-columns:1fr}.rsd-stat-pair{gap:12px}.rsd-average strong,.rsd-current .rsd-metric{font-size:2rem}.rsd-current .rsd-today-label,.rsd-average>span{font-size:.72rem;min-height:2.4em}.rsd-current .rsd-caption,.rsd-average small{font-size:.66rem;min-height:2.4em}}
+
+/* Summary drill-down keeps one receipt/supplier per group. */
+.rsg-actions{display:flex;gap:8px;flex-wrap:wrap}.rsg-total{margin:0;padding:13px 24px;background:var(--nm-green-bg,#deeee8);color:var(--nm-ink,#203540);text-align:right;font-weight:800;border-bottom:1px solid var(--nm-line,#d3e1e5)}
+.rsg-dialog .rsg-model{padding:4px 6px;border:0;border-radius:6px;background:transparent;color:var(--nm-accent,#087451);box-shadow:none;font-family:inherit;font-size:inherit;font-weight:800;text-align:left;text-decoration:underline;text-underline-offset:3px;cursor:pointer}.rsg-model:focus-visible{outline:2px solid var(--nm-accent,#087451)}
+.rsg-dialog .rsd-table td:nth-child(2){white-space:normal}.rsg-dialog .rsd-table th:last-child,.rsg-dialog .rsd-table td:last-child{text-align:center}.rsg-dialog .rsd-table td:nth-child(6),.rsg-dialog .rsd-table td:nth-child(7){overflow-wrap:anywhere}
+.rsg-dialog .rsd-dialog-status{align-items:flex-start}.rsg-actions .secondary-button{width:auto;flex:0 0 auto}
+#ready-stock-view .rsd-total-label{font-size:1.2rem;font-weight:850}#ready-daily .rsd-card-title{font-size:1.12rem;font-weight:850}#ready-stock-view .ready-stock-grade-card>span{font-size:1rem;font-weight:850}
+#ready-stock-view .ready-stock-grade-view.is-selected{outline:2px solid var(--rsd-green);outline-offset:2px}
+@media(max-width:700px){#ready-daily .rsd-card-title{font-size:1.02rem}#ready-stock-view .ready-stock-grade-card>span{font-size:.94rem}.rsg-dialog .rsd-dialog-status{flex-wrap:wrap}.rsg-total{padding:12px;text-align:center}}
