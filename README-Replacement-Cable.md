@@ -28,6 +28,8 @@ Repeated enrichment of the same connected phone does not add duplicate rows. Rea
 
 ## Install
 
+The original-stock installer uses one atomic SQL statement so temporary review data cannot be lost between SQL-editor statements. A failure rolls back the complete installation and repair.
+
 Run outputs/Publish-GreenLoop-Replacement-Cable.ps1 using the supplied PowerShell command. It verifies pinned files and earlier installed versions, copies the complete additive SQL when needed, and waits for the exact version result before publishing. Run the clipboard SQL in a NEW Supabase SQL query. Required result: installed_replacement_original_stock_version = 20261111-replacement-original-stock-1.
 
 No Edge Function deployment, JWT change, secret or new permission tick is needed. No force push. Only after LIVE - VERIFIED, press Ctrl+F5. Reader setup is still required separately on each cable-entry PC.

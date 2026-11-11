@@ -1,6 +1,9 @@
 -- Replacement intake belongs to its original stock. Internal allocation receipts
 -- remain permanent so old returns, one-to-one matches, capacities and audit do not change.
-begin;
+-- One outer statement also remains atomic in SQL clients that execute statements separately.
+DO $sro_atomic$
+BEGIN
+ EXECUTE $sro_body$
 set local statement_timeout='120s';
 do $$begin
  if public.get_replacement_auto_match_version()is distinct from '20261111-replacement-auto-match-1'then raise exception 'Verify Replacement Auto Match before installing original-stock references.';end if;
@@ -834,5 +837,7 @@ grant execute on function public.get_replacement_original_stock_version()to anon
 insert into greenloop_private.sro_installation select id,md5(pg_get_functiondef(to_regprocedure(id)))from unnest(array['greenloop_private.sga_report(jsonb,boolean,text)','greenloop_private.accounts_supplier_rows()','greenloop_private.sro_entered_count(uuid)','greenloop_private.supplier_return_batch(uuid)','greenloop_private.supplier_return_intake_guard()','greenloop_private.simple_stock_return_model_intake_guard()','greenloop_private.receive_mobile_stock_imei(uuid,text,text,integer,text,smallint,text,text,boolean)','greenloop_private.cap_impl_d78999e342aebe309d9b22270fe6e18c(uuid,text,text,integer,text,smallint)','greenloop_private.src_receipt(uuid)','greenloop_private.cl_allocate_replacement(uuid)','greenloop_private.srp_rows()','greenloop_private.sbn_counts()','greenloop_private.sro_rehome(uuid)','greenloop_private.sro_arrival()','greenloop_private.srma_plan(uuid,uuid,jsonb)','greenloop_private.srma_intake()','greenloop_private.srma_save(uuid,uuid,jsonb,text,uuid,text)','public.get_replacement_original_stock_version()'])id on conflict(identity)do update set hash=excluded.hash;
 insert into greenloop_private.sro_installation select implementation,md5(pg_get_functiondef(to_regprocedure(implementation)))from greenloop_private.office_routines where to_regprocedure(identity)='public.get_overview_workflow_counts()'::regprocedure on conflict(identity)do update set hash=excluded.hash;
 do $$begin if public.get_replacement_original_stock_version()is distinct from '20261111-replacement-original-stock-1'then raise exception 'Original stock installation not verified. Rolled back.';end if;end;$$;
-commit;
+$sro_body$;
+END;
+$sro_atomic$;
 select public.get_replacement_original_stock_version()as installed_replacement_original_stock_version;
