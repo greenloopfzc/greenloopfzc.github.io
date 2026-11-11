@@ -1460,6 +1460,14 @@
     },
     "get_ready_stock_groups_version": {
       "read": true
+    },
+    "get_ready_stock_color_groups_v1": {
+      "page": "ready_stock",
+      "capability": "view",
+      "read": true
+    },
+    "get_ready_stock_color_groups_version": {
+      "read": true
     }
   },
   "get_box_status_v1": {
