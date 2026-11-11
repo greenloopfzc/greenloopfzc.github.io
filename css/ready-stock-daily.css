@@ -105,3 +105,7 @@ html[data-theme="ruby-obsidian"] #ready-stock-view{--rsd-green:#efb0bd;--rsd-blu
 #ready-stock-view .rsd-total-label{font-size:1.2rem;font-weight:850}#ready-daily .rsd-card-title{font-size:1.12rem;font-weight:850}#ready-stock-view .ready-stock-grade-card>span{font-size:1rem;font-weight:850}
 #ready-stock-view .ready-stock-grade-view.is-selected{outline:2px solid var(--rsd-green);outline-offset:2px}
 @media(max-width:700px){#ready-daily .rsd-card-title{font-size:1.02rem}#ready-stock-view .ready-stock-grade-card>span{font-size:.94rem}.rsg-dialog .rsd-dialog-status{flex-wrap:wrap}.rsg-total{padding:12px;text-align:center}}
+
+/* Readable headings on the main Ready Stock matrix. */
+#ready-stock-view .ready-stock-table thead th{font-size:1rem;font-weight:800;line-height:1.35;letter-spacing:.015em;padding-block:14px}
+#ready-stock-view .ready-stock-table thead th:first-child{white-space:nowrap}
