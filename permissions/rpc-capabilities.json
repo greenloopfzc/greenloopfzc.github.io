@@ -1402,6 +1402,28 @@
     },
     "get_lab_final_qc_return_version": {
       "read": true
+    },
+    "get_replacement_match_options_v1": {
+      "page": "supplier_returns",
+      "capability": "replacement_entry",
+      "read": true
+    },
+    "preview_matched_replacements_v1": {
+      "page": "supplier_returns",
+      "capability": "replacement_entry",
+      "read": true
+    },
+    "receive_matched_replacements_v1": {
+      "page": "supplier_returns",
+      "capability": "replacement_entry"
+    },
+    "get_stock_replacement_data_v2": {
+      "page": "supplier_returns",
+      "capability": "replacement_view",
+      "read": true
+    },
+    "get_replacement_auto_match_version": {
+      "read": true
     }
   },
   "get_box_status_v1": {
