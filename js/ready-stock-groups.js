@@ -27,6 +27,8 @@
     if(!scope||!allowed()||!dialog.open)return;const id=++ticket,selected=scope,key=group,page=offset;
     dialog.setAttribute('aria-busy','true');$('ready-groups-previous').disabled=$('ready-groups-next').disabled=true;$('ready-groups-status').textContent='Loading '+(group?'phones':'stock summary')+'…';$('ready-groups-rows').replaceChildren();$('ready-groups-total').textContent='';$('ready-groups-page').textContent='';
     try{
+      // An empty grade card still opens a useful empty popup, without sending invalid empty groups.
+      if(selected.mode==='current'&&Array.isArray(selected.groups)&&!selected.groups.length){render({rows:[],total:0,phone_total:0});return;}
       const{data,error}=await GREENLOOP_GET_CLIENT().rpc('get_ready_stock_grouped_v1',{p_mode:selected.mode,p_date:selected.date||null,p_groups:selected.groups||null,p_date_from:selected.from||null,p_date_to:selected.to||null,p_group:key,p_offset:page,p_limit:50});if(error)throw error;
       if(id!==ticket||!allowed()||!dialog.open||selected!==scope)return;
       if(!data||data.mode!==selected.mode||data.view!==(key?'phones':'groups')||data.offset!==page||data.limit!==50||![data.total,data.phone_total].every(n=>Number.isSafeInteger(n)&&n>=0)||!Array.isArray(data.rows)||data.rows.length!==Math.min(50,Math.max(0,data.total-page))||selected.mode!=='current'&&data.date!==selected.date)throw Error('Stock summary could not be verified. Refresh and try again.');

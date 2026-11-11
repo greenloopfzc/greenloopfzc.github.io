@@ -8,11 +8,6 @@
   const totalView = document.querySelector("#ready-stock-total-view");
   const gradeSummary = document.querySelector("#ready-stock-grades");
   const stockGrades = ["A", "B", "D", "BA", "BB", "RMA"];
-  const tableHead = document.querySelector("#ready-stock-head");
-  const tableBody = document.querySelector("#ready-stock-body");
-  const tableFoot = document.querySelector("#ready-stock-foot");
-  const rangeFrom = document.querySelector("#ready-stock-from");
-  const rangeTo = document.querySelector("#ready-stock-to");
   const rangeLabel = document.querySelector("#ready-stock-range-label");
   const sidebar = document.querySelector("#sidebar");
   const backdrop = document.querySelector("#menu-backdrop");
@@ -28,7 +23,6 @@
   const reworkView = document.querySelector("#ready-stock-rework-view");
   const pageTitle = document.querySelector("#ready-stock-title");
   const pageSubtitle = document.querySelector("#ready-stock-subtitle");
-  let appliedReadyRange = {from: null, to: null};
   const singleModeButton = document.querySelector("#ready-rework-single-mode");
   const bulkModeButton = document.querySelector("#ready-rework-bulk-mode");
   const bulkInput = document.querySelector("#ready-rework-imeis");
@@ -49,45 +43,9 @@
   let toastTimer;
   let sendingForRework = false;
   let readyGeneration = 0;
-  let quantityScopes=[],phoneScope=null,phoneOffset=0,phoneTotal=0,phoneTicket=0,phoneUser=null;
-  const phoneDialog=document.querySelector('#ready-stock-phones'),phoneRows=document.querySelector('#ready-phones-rows'),phoneStatus=document.querySelector('#ready-phones-status'),phonePage=document.querySelector('#ready-phones-page'),phonePrevious=document.querySelector('#ready-phones-previous'),phoneNext=document.querySelector('#ready-phones-next');
-  const phonePageSize=50;
+  let quantityScopes=[],phoneUser=null;
   function stockGroup(row){return {m:String(row.model||'Unknown model').trim()||'Unknown model',g:normalize(row.final_grade||'Unspecified')};}
-  function registerScope(label,rows,quantity){const groups=[...new Map(rows.map(row=>{const g=stockGroup(row);return[JSON.stringify(g),g];})).values()];return quantityScopes.push({label,groups,quantity,from:appliedReadyRange.from,to:appliedReadyRange.to})-1;}
-  function quantityButton(quantity,label,rows,suffix=''){
-    if(!quantity)return '<span class="ready-stock-zero">0'+suffix+'</span>';
-    const index=registerScope(label,rows,quantity);
-    return `<button class="ready-stock-quantity" type="button" data-ready-imeis="${index}" data-capability="view" data-capability-page="ready_stock" data-search-read-only aria-label="${escapeHtml('View '+quantity+' IMEIs: '+label)}" title="View IMEIs">${escapeHtml(quantity)}${suffix}</button>`;
-  }
-  function clearPhoneList(){++phoneTicket;phoneScope=null;phoneRows.textContent='';phoneStatus.textContent='';phonePage.textContent='';}
-  function closePhoneList(){clearPhoneList();if(phoneDialog.open)phoneDialog.close();}
-  async function loadPhoneList(){
-    if(!phoneScope||!phoneDialog.open)return;
-    const ticket=++phoneTicket,scope=phoneScope,offset=phoneOffset;
-    phonePrevious.disabled=phoneNext.disabled=true;phoneDialog.setAttribute('aria-busy','true');phoneStatus.textContent='Loading IMEIs…';
-    phoneRows.innerHTML='<tr><td colspan="8">Loading phones…</td></tr>';
-    try{
-      const {data,error}=await getClient().rpc('get_ready_stock_imeis_v1',{p_groups:scope.groups,p_date_from:scope.from,p_date_to:scope.to,p_offset:offset,p_limit:phonePageSize});
-      if(ticket!==phoneTicket||scope!==phoneScope||!phoneDialog.open)return;
-      if(error)throw error;if(!data||!Array.isArray(data.rows)||!Number.isSafeInteger(Number(data.total))||Number(data.total)<0)throw new Error('The complete phone list could not be read. Refresh and try again.');
-      await GREENLOOP_RECEIPTS.load('ready_stock',data.rows.map(r=>r.imei));
-      if(ticket!==phoneTicket||scope!==phoneScope||!phoneDialog.open)return;
-      phoneTotal=Number(data.total);if(offset&&offset>=phoneTotal){phoneOffset=Math.max(0,Math.floor((phoneTotal-1)/phonePageSize)*phonePageSize);return await loadPhoneList();}
-      phoneStatus.textContent=phoneTotal+' phone'+(phoneTotal===1?'':'s')+(phoneTotal!==scope.quantity?' · Stock changed since the summary was loaded. Refresh Ready Stock for updated totals.':'');
-      const canOpen=window.GREENLOOP_CAN?.('view','imei_search')&&window.GREENLOOP_CAN?.('search','imei_search');
-      phoneRows.innerHTML=data.rows.length?data.rows.map(row=>`<tr><td class="ready-phone-imei">${canOpen&&row.imei?`<a href="imei-search.html?q=${encodeURIComponent(row.imei)}" title="View phone history">${escapeHtml(row.imei)}</a>`:escapeHtml(row.imei||row.device_number||'—')}</td><td>${escapeHtml(row.model||'Unknown model')}</td><td>${escapeHtml(row.storage_gb==null?'—':GREENLOOP_STORAGE.label(row.storage_gb))}</td><td>${escapeHtml(row.color||'—')}</td><td>${escapeHtml(row.final_grade||'Unspecified')}</td><td>${escapeHtml(GREENLOOP_RECEIPTS.label('ready_stock',row.imei,row.supplier_code,row.planned_quantity,row.supplier_name))}</td><td>${escapeHtml(row.batch_number||'—')}</td><td>${escapeHtml(formatDateTime(row.latest_passed_at))}</td></tr>`).join(''):'<tr><td colspan="8">No phones currently match this selection.</td></tr>';
-      phonePage.textContent=phoneTotal?`${offset+1}–${Math.min(offset+data.rows.length,phoneTotal)} of ${phoneTotal}`:'0 phones';
-      phonePrevious.disabled=offset===0;phoneNext.disabled=offset+data.rows.length>=phoneTotal;
-    }catch(error){if(ticket===phoneTicket&&scope===phoneScope&&phoneDialog.open){phoneStatus.textContent=error.message||'IMEIs could not load. Please refresh.';phoneRows.innerHTML='<tr><td colspan="8">Phone list unavailable.</td></tr>';phonePage.textContent='';}}
-    finally{if(ticket===phoneTicket)phoneDialog.removeAttribute('aria-busy');}
-  }
-  function openPhoneList(scope){
-    if(!scope||!scope.groups.length||!window.GREENLOOP_CAN?.('view','ready_stock'))return;
-    phoneScope={...scope};phoneOffset=0;phoneTotal=0;
-    document.querySelector('#ready-phones-title').textContent=scope.label;
-    document.querySelector('#ready-phones-range').textContent=scope.from?`Final QC pass: ${shortDate(scope.from)} – ${shortDate(scope.to)}`:'All current Ready Stock';
-    if(!phoneDialog.open)phoneDialog.showModal();loadPhoneList();
-  }
+  function registerScope(label,rows,quantity){const groups=[...new Map(rows.map(row=>{const g=stockGroup(row);return[JSON.stringify(g),g];})).values()];return quantityScopes.push({label,groups,quantity})-1;}
 
   function getClient() {
     if (!client) client = window.GREENLOOP_GET_CLIENT();
@@ -128,33 +86,6 @@
     return String(value || "").trim().replace(/\s+/g, " ").toLocaleLowerCase("en");
   }
 
-  function shortDate(value) {
-    if (!value) return "";
-    return new Date(value + "T00:00:00Z").toLocaleDateString("en-GB", {timeZone:"UTC",day:"2-digit",month:"short",year:"numeric"});
-  }
-
-  function readyRangeFilters() {
-    return appliedReadyRange.from && appliedReadyRange.to
-      ? [{label:"Ready Stock date", value:`${shortDate(appliedReadyRange.from)} – ${shortDate(appliedReadyRange.to)}`, clear:clearReadyRange}]
-      : [];
-  }
-
-  async function clearReadyRange() {
-    rangeFrom.value = "";
-    rangeTo.value = "";
-    return loadReadyStock();
-  }
-
-  function formatDateTime(value) {
-    if (!value) return "-";
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "-";
-    return date.toLocaleString("en-GB", {
-      timeZone: "Asia/Dubai", day: "2-digit", month: "short", year: "numeric",
-      hour: "2-digit", minute: "2-digit", hour12: true
-    });
-  }
-
   function setMenu(isOpen) {
     sidebar.classList.toggle("is-open", isOpen);
     backdrop.hidden = !isOpen;
@@ -172,93 +103,39 @@
     }, 3200);
   }
 
-  function buildGradeList(data, rows) {
-    const labels = new Map(stockGrades.map(grade => [normalize(grade), grade]));
-    (data?.grade_options || []).forEach((grade) => {
-      const label = String(grade || "").trim();
-      if (label) labels.set(normalize(label), label);
-    });
-    rows.forEach((row) => {
-      const label = String(row.final_grade || "Unspecified").trim() || "Unspecified";
-      if (!labels.has(normalize(label))) labels.set(normalize(label), label);
-    });
-    return [...labels.entries()].map(([key, label]) => ({ key, label }));
-  }
-
-  function pivotRows(rows, grades) {
-    const models = new Map();
-    rows.forEach((row) => {
-      const quantity = Number(row.quantity || 0);
-      const model = String(row.model || "Unknown model").trim() || "Unknown model";
-      if (!models.has(model)) models.set(model, { model, grades: new Map(), total: 0, latest: null });
-      const target = models.get(model);
-      const gradeKey = normalize(row.final_grade || "Unspecified");
-      target.grades.set(gradeKey, Number(target.grades.get(gradeKey) || 0) + quantity);
-      target.total += quantity;
-      if (!target.latest || String(row.latest_passed_at || "") > String(target.latest || "")) target.latest = row.latest_passed_at;
-    });
-
-    return [...models.values()].sort((a, b) => a.model.localeCompare(b.model, undefined, { numeric: true }));
-  }
-
   function render(data) {
     quantityScopes=[];
-    const flatRows = window.GREENLOOP_FILTERS.use('ready-stock-filters', Array.isArray(data?.rows) ? data.rows : [], {before:tableBody.closest('.ready-stock-table-wrap'),nativeControls:'#ready-stock-date-controls',externalFilters:readyRangeFilters,sortAfterGroup:true,sortFields:[['model','Model'],['latest','Latest Ready Stock date','date'],['total','Total Qty','number']],fields:[['model','Model'],['final_grade','Grade']],onChange:()=>render(data),searchFields:['model','final_grade']});
-    const filteredTotal = flatRows.reduce((sum,row)=>sum+Number(row.quantity||0),0);
-    const grades = buildGradeList(data, flatRows);
-    const rows = window.GREENLOOP_FILTERS.get('ready-stock-filters').sortRows(pivotRows(flatRows, grades));
-    const gradeTotals = new Map(grades.map((grade) => [grade.key, 0]));
-    rows.forEach((row) => {
-      grades.forEach((grade) => gradeTotals.set(grade.key, Number(gradeTotals.get(grade.key) || 0) + Number(row.grades.get(grade.key) || 0)));
-    });
-    // Canonical grades remain separate here; packing-sheet aliases apply only at print time.
-    gradeSummary.innerHTML = stockGrades.map(grade => {
-      const gradeRows = flatRows.filter(row => stockGroup(row).g === normalize(grade));
-      const quantity = gradeRows.reduce((sum, row) => sum + Number(row.quantity || 0), 0);
-      const label = grade === "RMA" ? "RMA Stock" : "Grade " + grade;
-      const scope = quantity ? registerScope(label + " · Ready Stock", gradeRows, quantity) : -1;
-      return `<div class="ready-stock-grade-card" data-ready-grade="${grade}"><span>${label}</span><strong class="ready-stock-grade-count${quantity ? "" : " ready-stock-zero"}">${escapeHtml(quantity)}</strong><small>phones</small><button class="ready-stock-grade-view" type="button" data-ready-imeis="${scope}" data-capability="view" data-capability-page="ready_stock" data-search-read-only aria-label="${escapeHtml('View phones: ' + label)}"${quantity ? "" : " disabled"}>View phones <span aria-hidden="true">→</span></button></div>`;
-    }).join("");
-
-    const filters = window.GREENLOOP_FILTERS.get('ready-stock-filters');
-    const refresh = document.querySelector('#refresh-ready-stock');
-    if (filters.toolbar && refresh.parentElement !== filters.toolbar) filters.toolbar.append(refresh);
-    filters.refreshLayout?.();
-    total.textContent = `${filteredTotal} phone${filteredTotal === 1 ? "" : "s"}`;
-    totalView.dataset.readyImeis=registerScope('Total Ready Stock',flatRows,filteredTotal);totalView.disabled=filteredTotal===0;
-    rangeLabel.textContent = appliedReadyRange.from && appliedReadyRange.to
-      ? `Final QC pass: ${shortDate(appliedReadyRange.from)} – ${shortDate(appliedReadyRange.to)}`
-      : "All current Ready Stock";
-    tableHead.innerHTML = `<tr><th>Model</th>${grades.map((grade) => `<th>${escapeHtml(grade.label)}</th>`).join("")}<th>Latest Ready Stock date</th><th>Total Qty</th></tr>`;
-    tableBody.innerHTML = rows.length
-      ? rows.map((row) => `<tr><td>${escapeHtml(row.model)}</td>${grades.map((grade) => `<td>${quantityButton(row.grades.get(grade.key)||0,row.model+' · Grade '+grade.label,flatRows.filter(r=>stockGroup(r).m===row.model&&stockGroup(r).g===grade.key))}</td>`).join("")}<td>${escapeHtml(formatDateTime(row.latest))}</td><td>${quantityButton(row.total||0,row.model+' · All shown grades',flatRows.filter(r=>stockGroup(r).m===row.model))}</td></tr>`).join("")
-      : `<tr><td class="ready-stock-empty" colspan="${grades.length + 3}">No Ready Stock matches these filters.</td></tr>`;
-    tableFoot.innerHTML = `<tr><th>Total</th>${grades.map((grade) => `<th>${quantityButton(gradeTotals.get(grade.key)||0,'Grade '+grade.label+' · All shown models',flatRows.filter(r=>stockGroup(r).g===grade.key))}</th>`).join("")}<th>-</th><th>${quantityButton(filteredTotal,'Total Ready Stock',flatRows,' pcs')}</th></tr>`;
+    // Cards use the complete aggregate response; phone rows are fetched only in the popup.
+    const flatRows=Array.isArray(data?.rows)?data.rows:[];
+    const totalQty=flatRows.reduce((sum,row)=>sum+Number(row.quantity||0),0);
+    gradeSummary.innerHTML=stockGrades.map(grade=>{
+      const gradeRows=flatRows.filter(row=>stockGroup(row).g===normalize(grade));
+      const quantity=gradeRows.reduce((sum,row)=>sum+Number(row.quantity||0),0);
+      const label=grade==='RMA'?'RMA Stock':'Grade '+grade;
+      const scope=registerScope(label+' · Ready Stock',gradeRows,quantity);
+      return `<button class="ready-stock-grade-card" type="button" data-ready-grade="${grade}" data-ready-imeis="${scope}" data-capability="view" data-capability-page="ready_stock" data-search-read-only aria-haspopup="dialog" aria-expanded="false" aria-label="${escapeHtml('View phones: '+label)}"><span>${label}</span><strong class="ready-stock-grade-count${quantity?'':' ready-stock-zero'}">${escapeHtml(quantity)}</strong><small>phones</small><span class="ready-stock-grade-view">View phones <span aria-hidden="true">→</span></span></button>`;
+    }).join('');
+    total.textContent=`${totalQty} phone${totalQty===1?'':'s'}`;
+    totalView.dataset.readyImeis=registerScope('Total Ready Stock',flatRows,totalQty);
+    totalView.disabled=false;
+    rangeLabel.textContent='All current Ready Stock';
   }
 
   async function loadReadyStock() {
     const refresh = document.querySelector("#refresh-ready-stock");
     refresh.disabled = true;
     refresh.textContent = "Loading...";
-    const from = rangeFrom.value || null;
-    const to = rangeTo.value || null;
-    if ((from && !to) || (!from && to) || (from && to && from > to)) {
-      refresh.disabled = false;
-      refresh.textContent = "Refresh";
-      throw new Error("Select a valid From date and To date, or clear both dates.");
-    }
     const generation = ++readyGeneration;
     try {
     const { data, error } = await getClient().rpc("get_ready_stock_final_grade_table", {
-      p_date_from: from,
-      p_date_to: to
+      p_date_from: null,
+      p_date_to: null
     });
     if (generation !== readyGeneration) return;
     if (error) throw error;
-    appliedReadyRange = {from, to};
     render(Array.isArray(data) ? data[0] : data);
     window.dispatchEvent(new CustomEvent('greenloop:ready-stock-refreshed'));
-    } finally { if (generation === readyGeneration) { refresh.disabled = false; refresh.textContent = "Refresh"; } }
+    } finally { if (generation === readyGeneration) { refresh.disabled = false; refresh.textContent = "Refresh stock"; } }
   }
 
   function renderUnconfirmedPhones() {
@@ -474,7 +351,7 @@
       return;
     }
     phoneUser=sessionData.session.user.id;
-    getClient().auth.onAuthStateChange?.((event,session)=>{if(event==='SIGNED_OUT'||session?.user?.id&&session.user.id!==phoneUser){closePhoneList();quantityScopes=[];}});
+    getClient().auth.onAuthStateChange?.((event,session)=>{if(event==='SIGNED_OUT'||session?.user?.id&&session.user.id!==phoneUser){quantityScopes=[];}});
     unconfirmedStorageKey = `greenloop-rework-unconfirmed:${sessionData.session.user.id}`;
     try {
       const saved = JSON.parse(sessionStorage.getItem(unconfirmedStorageKey) || "[]");
@@ -492,27 +369,20 @@
     }
     app.hidden = false;
     showReadyStockView();
-    rangeFrom.value = "";
-    rangeTo.value = "";
     await Promise.all([loadReadyStock(), loadReworkTechnicians()]);
     syncReworkTechnician();
   }
 
-  document.addEventListener('click',event=>{const button=event.target.closest('[data-ready-imeis]');if(button&&!button.disabled){const scope=quantityScopes[Number(button.dataset.readyImeis)];if(button.matches('.ready-stock-grade-view,#ready-stock-total-view')){if(scope)window.GREENLOOP_READY_GROUPS?.open({...scope,mode:'current',source:button});}else openPhoneList(scope);}});
-  document.querySelector('#ready-phones-close').addEventListener('click',closePhoneList);
-  document.querySelector('#ready-phones-refresh').addEventListener('click',()=>loadPhoneList());
-  phonePrevious.addEventListener('click',()=>{phoneOffset=Math.max(0,phoneOffset-phonePageSize);loadPhoneList();});
-  phoneNext.addEventListener('click',()=>{phoneOffset+=phonePageSize;loadPhoneList();});
-  phoneDialog.addEventListener('cancel',clearPhoneList);
-  phoneDialog.addEventListener('close',()=>{if(!phoneDialog.open)clearPhoneList();});
-  window.addEventListener('pagehide',closePhoneList);
-  window.addEventListener('greenloop:office-locked',closePhoneList);
+  document.addEventListener('click',event=>{
+    const button=event.target.closest('button[data-ready-imeis]');
+    if(!button||button.disabled)return;
+    const scope=quantityScopes[Number(button.dataset.readyImeis)];
+    if(scope)window.GREENLOOP_READY_GROUPS?.open({...scope,mode:'current',source:button});
+  });
   document.querySelector("#open-menu").addEventListener("click", () => setMenu(true));
   document.querySelector("#close-menu").addEventListener("click", () => setMenu(false));
   backdrop.addEventListener("click", () => setMenu(false));
   document.querySelector("#refresh-ready-stock").addEventListener("click", () => loadReadyStock().catch((error) => showToast(error.message || "Ready Stock could not be loaded.")));
-  document.querySelector("#apply-ready-stock-range").addEventListener("click", () => loadReadyStock().catch((error) => showToast(error.message || "Ready Stock could not be loaded.")));
-  document.querySelector("#clear-ready-stock-range").addEventListener("click", () => clearReadyRange().catch((error) => showToast(error.message || "Ready Stock could not be loaded.")));
   reworkImei.addEventListener("input", () => { reworkImei.value = reworkImei.value.replace(/\D/g, "").slice(0, 15); });
   reworkDepartment.addEventListener("change", syncReworkTechnician);
   singleModeButton.addEventListener("click", () => setReworkMode("single"));

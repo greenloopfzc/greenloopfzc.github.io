@@ -109,3 +109,12 @@ html[data-theme="ruby-obsidian"] #ready-stock-view{--rsd-green:#efb0bd;--rsd-blu
 /* Readable headings on the main Ready Stock matrix. */
 #ready-stock-view .ready-stock-table thead th{font-size:1rem;font-weight:800;line-height:1.35;letter-spacing:.015em;padding-block:14px}
 #ready-stock-view .ready-stock-table thead th:first-child{white-space:nowrap}
+
+/* Each stock tile is one accessible button, including its title, count and empty space. */
+#ready-stock-view button.ready-stock-grade-card{font-family:inherit;text-align:center;cursor:pointer;width:100%;border:1px solid var(--nm-line,#ccdce3);border-top:2px solid var(--rsd-green)}
+#ready-stock-view button.ready-stock-grade-card:focus-visible,#ready-stock-view button.rsd-total-card:focus-visible{outline:3px solid var(--nm-accent,#087451);outline-offset:3px}
+#ready-stock-view button.ready-stock-grade-card:hover{filter:brightness(.98)}
+#ready-stock-view button.ready-stock-grade-card.is-selected{outline:2px solid var(--rsd-green);outline-offset:2px}
+#ready-stock-view button.rsd-total-card{font-family:inherit;cursor:pointer}
+#ready-stock-view button.rsd-total-card.is-selected{outline:2px solid #a52d29;outline-offset:3px}
+#ready-stock-view button.rsd-total-card:hover:not(:disabled){filter:brightness(1.05)}
