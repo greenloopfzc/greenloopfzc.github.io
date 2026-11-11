@@ -62,7 +62,9 @@ html[data-mode="dark"] .sr-imei-list .sr-imei-error{background:var(--nm-red-bg);
  .sr-simple-form .sr-imei-list td{width:auto!important;min-width:0;border:0;font-size:12px;line-height:1.4;text-align:left}
  .sr-simple-form .sr-imei-list td:first-child{grid-column:1;grid-row:1;text-align:center}
  .sr-simple-form .sr-imei-list td:nth-child(2){grid-column:2/4;grid-row:1;font-weight:700}
- .sr-simple-form .sr-imei-list td:nth-child(3),.sr-simple-form .sr-imei-list td:nth-child(4){grid-column:1/-1;overflow-wrap:anywhere}
+ .sr-simple-form .sr-imei-list td:nth-child(3),.sr-simple-form .sr-imei-list td:nth-child(4),.sr-simple-form .sr-imei-list td:nth-child(5){grid-column:1/-1;overflow-wrap:anywhere}
  .sr-simple-form .sr-imei-list td:nth-child(3)::before{content:'Stock / Batch: ';font-weight:600}
  .sr-simple-form .sr-imei-list td:last-child{grid-column:1/-1;text-align:right}
 }
+
+@media(max-width:600px){.sr-simple-form .sr-imei-list td:nth-child(4)::before{content:'Current Stage: ';font-weight:600}}
