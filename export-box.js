@@ -31,7 +31,7 @@
   let toastTimer;
   let scanning = false;
   let boxBusy = false;
-  let scannerLocked=false,scanFocusFrame=0,scanErrorDialog;
+  let scannerLocked=false,scanFocusFrame=0,scanErrorDialog,lastScanFinishedAt=0;
   let canEdit = false;
   const can = capability => window.GREENLOOP_CAN?.(capability,"export_boxes") === true;
 
@@ -280,7 +280,7 @@
         if(verified&&!unresolved.length)setMessage("The saved phones were confirmed in the box. Ready to scan.","success");
       }
       return {loaded:verified?imeis.filter(v=>lines.some(r=>r.imei===v)).length:0,issues:[]};
-    }finally{scanning=false;render();focusScanner();}
+    }finally{scanning=false;lastScanFinishedAt=performance.now();render();focusScanner();}
   }
 
   async function finishAndStartNext() {
@@ -337,6 +337,8 @@
     if (imeiInput.value.length === 15) void scanImei();
   });
   imeiInput.addEventListener("keydown", (event) => {
+    // Very fast replies may clear the field before the scanner's Tab arrives.
+    if(event.key==="Tab" && !imeiInput.value && lastScanFinishedAt>0 && performance.now()-lastScanFinishedAt<250){event.preventDefault();return;}
     if (event.key === "Enter" || event.key === "Tab" && /^\d{15}$/.test(imeiInput.value)) { event.preventDefault(); scanImei(); }
   });
   startNextButton.addEventListener("click", () => finishAndStartNext().catch((error) => setMessage(error.message || "The next export box could not be opened.")));
