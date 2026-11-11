@@ -1,0 +1,103 @@
+/* Ruby Obsidian Glass — account-gated appearance only. No work-tray geometry. */
+@media screen {
+  html[data-theme="ruby-obsidian"][data-mode="dark"] {
+    color-scheme: dark;
+    --bg:#080608; --text:#f5f3f4; --text-secondary:#bdb5b9; --accent:#b52240; --border:rgba(255,255,255,.12);
+    --nm-canvas:#080608; --nm-card:#151014; --nm-well:#100c0f; --nm-ink:#f5f3f4; --nm-muted:#bdb5b9; --nm-line:rgba(255,255,255,.12);
+    --nm-accent:#ec93a3; --nm-on-accent:#fff; --nm-accent-soft:rgba(110,16,37,.28);
+    --nm-high:rgba(255,255,255,.06); --nm-low:#030203;
+    --nm-raised:linear-gradient(135deg,rgba(110,16,37,.24),rgba(16,12,15,.88) 45%,rgba(16,12,15,.92) 75%,rgba(110,16,37,.2));
+    --nm-control:linear-gradient(135deg,rgba(255,255,255,.08),rgba(25,15,20,.94));
+    --nm-shadow:0 12px 32px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.06);
+    --nm-shadow-sm:0 5px 14px #0006,inset 0 1px 0 #ffffff0f; --nm-shadow-xs:0 3px 8px #0005,inset 0 1px 0 #ffffff0f;
+    --nm-inset:inset 0 1px 5px #0005,inset 0 1px 0 #ffffff06;
+    --nm-green:#afe0c5; --nm-green-bg:#152820; --nm-amber:#ebc68e; --nm-amber-bg:#33261c;
+    --nm-red:#f1a1b0; --nm-red-bg:#39141f; --nm-blue:#b0cce7; --nm-blue-bg:#182432; --nm-purple:#d7c0e5; --nm-purple-bg:#291f32;
+    --nm-nav-active-bg:linear-gradient(130deg,rgba(110,16,37,.72),rgba(31,17,23,.88) 60%,rgba(110,16,37,.5)); --nm-nav-active-ink:#fff;
+    --ink:#f5f3f4; --muted:#bdb5b9; --surface:#151014; --canvas:#080608; --line:rgba(255,255,255,.12);
+    --green-950:#f5f3f4; --green-800:#ec93a3; --green-700:#ec93a3; --green-100:#31151f; --danger:#f1a1b0;
+    --ruby-panel:radial-gradient(ellipse at top right,rgba(181,34,64,.17),transparent 60%),linear-gradient(135deg,rgba(110,16,37,.24),rgba(16,12,15,.88) 45%,rgba(16,12,15,.92) 75%,rgba(110,16,37,.2));
+    --ruby-font:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+    background:#080608;
+  }
+  html[data-theme="ruby-obsidian"][data-mode="dark"] body {
+    color:var(--text);font-family:var(--ruby-font);
+    background:radial-gradient(ellipse at 5% 85%,rgba(110,16,37,.3),transparent 45%),radial-gradient(ellipse at 90% 10%,rgba(110,16,37,.22),transparent 40%),url('../assets/ruby-obsidian-ribbons.svg') center top/cover fixed,#080608;
+  }
+  html[data-theme="ruby-obsidian"][data-mode="dark"] :is(h1,h2,h3,h4,h5,button,input,select,textarea,.gl-appearance-dialog) {font-family:var(--ruby-font);}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] :is(.app-main,.app-shell,.page-content,.dashboard-grid,.preview-bar,.technician-lines-panel,.lab-live-panel) {background:transparent;}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] .sidebar {
+    background:radial-gradient(ellipse at 0 80%,rgba(110,16,37,.24),transparent 56%),linear-gradient(155deg,#100a0de8,#0b080be8 60%,#271019d9);
+    border-right:1px solid var(--border);box-shadow:10px 0 30px #0005;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  }
+  html[data-theme="ruby-obsidian"][data-mode="dark"] .topbar {background:rgba(10,7,10,.65);border-color:#ffffff0d;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] .sidebar .nav-item {color:#d9d1d5;background:transparent;box-shadow:none;border:1px solid transparent;}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] .sidebar .nav-item:hover {background:#6e10252e;border-color:#ffffff12;color:#fff;}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] .sidebar .nav-item:is(.active,[aria-current="page"],[aria-pressed="true"],[aria-expanded="true"]) {
+    background:var(--nm-nav-active-bg);border-color:#dba4b544;color:#fff;box-shadow:inset 0 1px 0 #ffffff18,0 6px 18px #0005;
+  }
+  html[data-theme="ruby-obsidian"][data-mode="dark"] .sidebar .nav-item:is(.active,[aria-current="page"]) .nav-icon {color:#ec8298;}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] :is(.nav-label,.sidebar-user small) {color:#b5a7af;}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] .sidebar-user {border-color:var(--border);}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] :is(.app-brand,.mobile-brand) {background:transparent;border-color:transparent;box-shadow:none;}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] :is(.app-brand,.mobile-brand) .gl-wordmark {background:transparent;}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] :is(.app-brand,.mobile-brand) .gl-wordmark>img {filter:grayscale(1) invert(1);mix-blend-mode:screen;}
+
+  html[data-theme="ruby-obsidian"][data-mode="dark"] :is(.glass-panel,.panel,.metric-card,.form-panel,.side-card,.technician-board,.ready-stock-panel,.ready-stock-total,.ready-stock-rework,.qc-bulk-panel,.qc-bulk-toolbar,.final-bulk-panel,.final-bulk-toolbar,.frame-panel,.gl-appearance-dialog,.accounts-panel,.account-stock-panel,.export-box-panel,.box-panel,.box-sheet,.lab-live-hero,.lab-live-summary article,.lab-rule-card,.lab-phone-card,.technician-card,.technician-live-card,.user-list-item,.permission-row,.report-card,.report-panel,.report-section,.stock-cost-card,.dp-card,.dp-report-card,.dp-entry-card,.dp-panel,.contact-dialog,.reader-setup-dialog,.sr-panel,.sr-card,.cdd-card) {
+    background:var(--ruby-panel);border:1px solid var(--border);border-radius:16px;box-shadow:var(--nm-shadow);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  }
+  html[data-theme="ruby-obsidian"][data-mode="dark"] :is(.accounts-section-card,.access-panel,.user-access-section,.dp-stock-card,.dp-entry-tile,.scp-summary>div,.box-queue-card,.box-queue-filter,.parts-flow-card,.parts-summary,.parts-sheet-wrap,.pt-report,.pt-filters,.ppp-report,.receiving-optional,.today-stock-card,.ready-grade-card,.ready-imeis-dialog,.exported-box-detail,.sr-detail) {
+    background:var(--ruby-panel);border-color:var(--border);box-shadow:var(--nm-shadow-sm);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  }
+  html[data-theme="ruby-obsidian"][data-mode="dark"] :is(.accounts-card-icon,.dp-card-icon) {background:#6e102540;color:#f4d5dd;}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] :is(.accounts-section-card.is-active,.parts-flow-card.is-active,.dp-card-selected) {background:linear-gradient(135deg,#6e10255c,#151014e8);border-color:#d4778d80;color:#fff;}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] .parts-pending .lab-phone-card {border-color:#9c3a50;}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] .parts-issued .lab-phone-card {border-color:#567967;}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] :is(.metric-card,.panel,.technician-card,.technician-live-card) {animation:none;}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] .metric-card::after {opacity:.12;background:linear-gradient(135deg,transparent,#b52240);}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] :is(.metric-card p,.metric-card small,.heading-subtitle,.panel-kicker,.breadcrumb,.chart-legend,.activity-list small,.activity-list time,.gl-settings-heading p) {color:var(--text-secondary);}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] :is(.metric-card>strong,.page-heading h1,.panel-heading h2,.queue-name,.stock-list strong,.location-grid strong,.activity-list strong) {color:var(--text);}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] :is(.metric-icon,.part-icon,.section-number,.side-icon,.user-avatar,.technician-avatar,.technician-live-avatar) {color:#f4d5dd;background:linear-gradient(135deg,#ffffff19,#6e102540);border:1px solid #ffffff18;box-shadow:var(--nm-shadow-xs);}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] :is(.queue-insight,.location-grid>div,.technician-live-stats>div,.technician-live-quality>div,.lab-static-grid,.lab-edit-grid,.lab-card-status,.lab-line-actions,.technician-lines-heading,.lab-live-panel-heading,.cdd-toolbar,.report-description,.form-panel-heading,.today-stock-heading) {background:rgba(17,12,16,.45);border-color:var(--border);}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] :is(.table-filters,.table-filter-panel,.table-filter-toolbar,.ready-stock-filters,.qc-stock-scope,.stock-scope-bar,.search-panel,.global-imei-search,.technician-imei-scan,.lab-live-filters,.permission-group,.role-option) {background:rgba(21,16,20,.72);border-color:var(--border);box-shadow:inset 0 1px 0 #ffffff08;}
+
+  html[data-theme="ruby-obsidian"][data-mode="dark"] :is(input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),select,textarea) {
+    color:var(--text);background:linear-gradient(135deg,rgba(255,255,255,.045),rgba(17,11,15,.92));border-color:rgba(255,255,255,.16);box-shadow:var(--nm-inset);color-scheme:dark;
+  }
+  html[data-theme="ruby-obsidian"][data-mode="dark"] select option {color:#f5f3f4;background:#1c1219;}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] input::placeholder,html[data-theme="ruby-obsidian"][data-mode="dark"] textarea::placeholder {color:#a2979e;opacity:1;}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] :is(input[type="checkbox"],input[type="radio"]) {accent-color:#b52240;}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] :is(button,.secondary-button,.primary-button,.receive-button,.logout-button,.outline-button,.report-tab,.return-report-tab,.gl-work-tab,.frame-view-tab) {
+    color:var(--text);background:linear-gradient(140deg,rgba(255,255,255,.08),rgba(26,15,21,.92) 65%,rgba(110,16,37,.2));border-color:rgba(255,255,255,.16);border-radius:10px;box-shadow:var(--nm-shadow-sm);text-shadow:none;
+  }
+  html[data-theme="ruby-obsidian"][data-mode="dark"] :is(.primary-button,.receive-button,.qc-row-save,.final-row-save,.batch-save-button,.line-save,.gl-settings-done) {background:linear-gradient(125deg,#8b1932,#481221);color:#fff;border-color:#d2546e66;}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] :is(button,.primary-button,.secondary-button):not(:disabled):hover {border-color:#da839680;box-shadow:0 5px 16px #0008,inset 0 1px 0 #ffffff1a;}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] :is(button,.primary-button,.secondary-button):disabled {color:#9d8f97;background:#1a1318;border-color:#ffffff0c;box-shadow:none;}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] :is(.report-tab.active,.return-report-tab.is-active,.frame-view-tab.is-active,.gl-work-tab.is-active,.technician-card.is-active,.user-list-item.active) {background:linear-gradient(125deg,#6e102573,#191015);border-color:#d7748c77;color:#fff;}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] :is(.panel-link,.breadcrumb a,.line-imei,.stock-link,.imei-link) {color:#edb4c1;}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] :is(a,button,input,select,textarea):focus-visible {outline:2px solid #e491a5;outline-offset:2px;}
+
+  html[data-theme="ruby-obsidian"][data-mode="dark"] :is(table,.table-wrap,.qc-bulk-table,.final-bulk-table,.batch-entry-table,.ready-stock-table) {color:var(--text);border-color:var(--border);background:transparent;}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] table :is(th,td) {border-color:rgba(255,255,255,.08);}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] table thead th {color:#e8dce2;background:linear-gradient(135deg,rgba(110,16,37,.42),rgba(32,20,27,.88));}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] table tbody :is(tr,td) {background:transparent;color:var(--text);}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] table tbody tr:hover>td {background:rgba(110,16,37,.12);}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] table :is(tfoot tr,tfoot td,.table-total,.total-row) {background:rgba(24,44,34,.72);color:#d9efdf;}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] table tr:is(.is-error,.is-invalid,.returned,.is-returned,.box-issue-row)>td {background:rgba(110,16,37,.3);color:#f4b4c1;}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] table tr:is(.is-completed,.is-saved)>td {background:rgba(31,68,48,.28);}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] :is(.parts-pending .lab-phone-card,.parts-issued .lab-phone-card) {background:var(--ruby-panel);}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] :is(.final-result-cell.pass label,.frame-pass-check,.status-chip.success,.live-chip,.preview-chip,.trend.up) {background:#183025;color:#bde5ce;border-color:#bde5ce33;}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] :is(.final-result-cell.fail label,.frame-fail-check,.status-chip.danger,.danger-button,.master-remove,.required-mark) {background:#39141f;color:#f4b4c1;border-color:#d36e8555;}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] :is(.workflow-notification-badge,.parts-notification-badge,.technician-card-count:not(.is-zero)) {background:#a51e39;color:#fff;border-color:#edbac840;box-shadow:0 2px 7px #0008;}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] .bar-chart {border-color:var(--border);background:repeating-linear-gradient(to bottom,transparent 0 42px,#ffffff08 43px 44px);}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] .bar-column i {background:linear-gradient(to top,#5a1528,#d26a80);box-shadow:inset 1px 0 0 #ffffff24;}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] .bar-value {color:#e8cbd4;}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] :is(.live-headlines,.access-message,.toast,.office-access-lock .office-access-card) {background:linear-gradient(115deg,#35131dc9,#151014ed);color:#edd2d9;border-color:#cf6d8255;}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] .live-headlines-label {background:#6e10252b;color:#efb1c0;}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] :is(.live-headline-item,.live-headline-item strong,.live-headline-item b,.live-headline-item em) {color:#e6bbc6;}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] .gl-appearance-dialog::backdrop {background:#05020499;backdrop-filter:blur(10px);}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] :is(.gl-theme-option,.gl-mode-options label) {background:#151014;border-color:var(--border);}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] .gl-theme-option:has(input:checked) {background:linear-gradient(135deg,#4b1526,#171015);outline-color:#d5788f;}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] .gl-settings-close {background:#21131a;}
+  html[data-theme="ruby-obsidian"][data-mode="dark"] [data-gl-copy-identifier] {color:inherit;}
+}

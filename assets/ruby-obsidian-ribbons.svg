@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1680 1080" preserveAspectRatio="xMidYMid slice">
+ <defs>
+  <linearGradient id="r" x1="0" y1="0" x2=".8" y2="1"><stop stop-color="#6e1025" stop-opacity="0"/><stop offset=".55" stop-color="#6e1025" stop-opacity=".16"/><stop offset=".86" stop-color="#b52240" stop-opacity=".32"/><stop offset="1" stop-color="#080608" stop-opacity=".04"/></linearGradient>
+  <linearGradient id="e"><stop stop-color="#b52240" stop-opacity="0"/><stop offset=".65" stop-color="#b52240" stop-opacity=".45"/><stop offset="1" stop-color="#d93652" stop-opacity=".12"/></linearGradient>
+ </defs>
+ <path d="M220 0H850C655 194 424 92 235 306S25 550 0 619V332C132 186 241 188 220 0Z" fill="url(#r)"/>
+ <path d="M1680 50C1417 241 1354 66 1135 228S802 451 634 438C1108 502 1310 220 1680 174Z" fill="url(#r)"/>
+ <path d="M0 986C176 684 282 878 443 646S768 416 904 339C600 655 498 645 387 840S142 942 0 1080Z" fill="url(#r)"/>
+ <path d="M491 1080C734 922 1188 1092 1390 848S1531 722 1680 631V858C1484 927 1468 1066 1392 1080Z" fill="url(#r)"/>
+ <path d="M0 986C176 684 282 878 443 646S768 416 904 339M1680 50C1417 241 1354 66 1135 228M491 1080C734 922 1188 1092 1390 848" fill="none" stroke="url(#e)" stroke-width="1"/>
+</svg>

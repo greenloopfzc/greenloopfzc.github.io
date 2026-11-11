@@ -1217,3 +1217,8 @@ html:is([data-design="neumorphism"],[data-mode="dark"]) :is(.journey-empty,.fina
 .gl-appearance-dialog label:has(input:disabled) {cursor:default;opacity:.65;}
 .gl-settings-access-note {margin:10px 0 0;font-size:12px;line-height:1.5;color:var(--nm-muted);}
 .gl-appearance-nav:disabled,.gl-appearance-floating:disabled,.gl-appearance-tv:disabled {cursor:default;opacity:.6;}
+
+.gl-theme-options:has([data-ruby-option]:not([hidden])){grid-template-columns:repeat(3,minmax(0,1fr));}
+.gl-ruby-swatch{background:linear-gradient(135deg,#080608,#451020 70%,#100a0d);border:1px solid #76505c;}
+.gl-ruby-swatch i{background:linear-gradient(135deg,#7b293c88,#151014cc);border-color:#ffffff33;box-shadow:inset 0 1px 0 #ffffff18;}
+@media(max-width:480px){.gl-theme-options:has([data-ruby-option]:not([hidden])){grid-template-columns:1fr;}.gl-theme-options:has([data-ruby-option]:not([hidden])) .gl-theme-swatch{height:52px;padding:8px;}}
