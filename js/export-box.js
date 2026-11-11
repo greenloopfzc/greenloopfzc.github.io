@@ -356,7 +356,7 @@
   confirmPrintButton.addEventListener("click", confirmPrint);
   tableBody.addEventListener('click',event=>{const button=event.target.closest('[data-draft-remove]');if(button)removeDraftLine(button.dataset.draftRemove);const issue=event.target.closest('[data-issue-remove]');if(issue)removeScanIssue(issue.dataset.issueRemove);});
   for(const event of ['greenloop:office-locked','greenloop:signed-out'])window.addEventListener(event,()=>{scannerLocked=true;clearTimeout(scanTimer);cancelAnimationFrame(scanFocusFrame);scanIssues=[];invalidatePrint();render();});
-  window.addEventListener("pagehide",()=>{scannerLocked=true;clearTimeout(scanTimer);cancelAnimationFrame(scanFocusFrame);});
+  window.addEventListener("pagehide",()=>{clearTimeout(scanTimer);cancelAnimationFrame(scanFocusFrame);});
   initialize().catch((error) => {
     permissionMessage.textContent = error.message || "Export Boxes could not be loaded.";
     permissionMessage.hidden = false;
