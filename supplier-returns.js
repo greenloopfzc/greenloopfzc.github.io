@@ -6,6 +6,8 @@
   const statusLabel = r => r.archived_at ? `Archived audit · ${label(r.status)}` : label(r.status);
   const date = v => v ? new Date(v).toLocaleString("en-GB", { hour12: true }) : "—";
   const supplier = r => [r.supplier_code, window.GREENLOOP_CAN_VIEW_PARTNER_NAMES ? r.supplier_name : ""].filter(Boolean).join(" · ") || "—";
+  const supplierIdentity = r => [String(r.supplier_code || '').trim().replace(/-\(\d+\)$/,''), window.GREENLOOP_CAN_VIEW_PARTNER_NAMES ? r.supplier_name : ''].filter(Boolean).join(' · ') || '—';
+  const receiptCode = r => {const code=String(r.supplier_code || '').trim().replace(/-\(\d+\)$/,'');const qty=r.received_quantity;return code+(qty!==null&&qty!==undefined&&qty!==''&&Number.isSafeInteger(Number(qty))&&Number(qty)>=0?'-('+Number(qty)+')':'');};
   const rid = r => r.id || r.return_id;
   const imei = r => r.imei_1 || r.imei || "Without IMEI";
   const button = (text, attrs = "") => `<button type="button" class="secondary-button sr-button" ${attrs}>${escape(text)}</button>`;
@@ -120,7 +122,7 @@
     }, 80);
   }
   const showDate = value => value ? new Date(value).toLocaleDateString([], {day:"2-digit",month:"short",year:"numeric"}) : "—";
-  const receiptLabel = r => [r.invoice_number || r.batch_number, showDate(r.received_at), r.received_quantity + " received"].filter(Boolean).join(" · ");
+  const receiptLabel = r => {const qty=r.received_quantity;const batch=String(r.batch_number || '').replace(/-\(\d+\)$/,'')+(r.batch_number&&qty!==null&&qty!==undefined&&qty!==''&&Number.isSafeInteger(Number(qty))&&Number(qty)>=0?'-('+Number(qty)+')':'');return [r.invoice_number,batch,showDate(r.received_at)].filter(Boolean).join(' · ');};
   function simpleMessage(message, error = false) {
     const el = reportRoot?.querySelector("[data-sr-simple-message]");
     if (el) { el.textContent = message; el.classList.toggle("sr-error", error); }
@@ -146,7 +148,7 @@
         simpleContext = null; simpleRows = [];
         root.querySelector("[data-sr-simple-form]").innerHTML = "";
         root.querySelector("[data-sr-simple-table]").innerHTML = "";
-        window.GREENLOOP_STOCK?.mount(root,rows);
+        window.GREENLOOP_STOCK?.mount(root,[]);
     root.querySelector("[data-sr-total]").textContent = "";
         const legacy = root.querySelector("[data-sr-legacy]");
         legacy.hidden = true; legacy.innerHTML = "";
@@ -181,27 +183,48 @@
     }
   }
   function renderSimpleForm(host) {
-    let scanned = [], selectedBatch = "";
+    let scanned = [], selectedBatch = "", pasteIssues = [], lastAutoQuantity = "";
+    const imeiErrors = new Map();
     host.innerHTML = '<form class="sr-form sr-simple-form">' +
       '<div class="sr-request-start"><label>Supplier / supplier code<select name="supplier" required><option value="">Select supplier</option></select></label><label>Received stock<select name="batch" required disabled><option value="">Select received stock</option></select></label></div>' +
       '<dl class="sr-receipt-summary" data-sr-receipt hidden></dl>' +
       '<fieldset data-sr-inputs disabled><div class="sr-request-start"><label>Return quantity<input name="quantity" type="number" min="1" max="1000" step="1" required placeholder="Enter return quantity"></label><label>Reason<select name="reason" required><option value="">Select reason</option><option>Dead phone</option><option>iCloud locked</option><option>Other</option></select></label></div>' +
       '<label data-sr-other hidden>Return reason<input name="other_reason" maxlength="500" disabled placeholder="Describe the issue"></label>' +
-      '<div class="sr-optional-fields"><label>Model <span class="sr-optional">Optional</span><input name="model" list="sr-model-options" maxlength="100" placeholder="e.g. 15 Pro"><datalist id="sr-model-options"></datalist></label><label>GB <span class="sr-optional">Optional</span><input name="storage_gb" type="number" min="1" max="16384" step="1" placeholder="e.g. 128"></label><label>Scan IMEI <span class="sr-optional">Optional</span><span class="sr-scan-line"><input name="imei" inputmode="numeric" maxlength="15" autocomplete="off" placeholder="Scan or enter IMEI">' + button("Add", 'data-sr-add-imei') + '</span></label></div>' +
+      '<div class="sr-optional-fields"><label>Model <span class="sr-optional">Optional</span><input name="model" list="sr-model-options" maxlength="100" placeholder="e.g. 15 Pro"><datalist id="sr-model-options"></datalist></label><label>GB <span class="sr-optional">Optional</span><input name="storage_gb" type="number" min="1" max="16384" step="1" placeholder="e.g. 128"></label><label>Scan IMEI <span class="sr-optional">Optional</span><span class="sr-scan-line" data-multiple-imeis><input name="imei" inputmode="numeric" maxlength="15" autocomplete="off" placeholder="Scan or enter IMEI">' + button("Add", 'data-sr-add-imei') + '</span></label></div>' +
+      '<div class="sr-bulk-toolbar">' + button('Bulk IMEIs','data-sr-bulk-toggle aria-expanded="false" aria-controls="sr-bulk-imei-panel"') + '<span class="sr-hint">Paste an IMEI column from Excel, or keep scanning one phone at a time.</span></div>' +
+      '<section id="sr-bulk-imei-panel" class="sr-bulk-panel" data-sr-bulk-panel hidden><label>Bulk IMEIs<textarea name="bulk_imeis" rows="4" spellcheck="false" autocomplete="off" placeholder="Paste IMEIs here, one per line"></textarea></label><div class="sr-bulk-toolbar">' + button('Add IMEIs','data-sr-add-bulk') + button('Clear text','data-sr-clear-bulk') + '</div></section>' +
       '<div class="sr-scanned" data-sr-scanned hidden></div><p class="sr-hint" data-sr-scan-message role="status" hidden></p>' +
       '<button type="submit" class="primary-button">Stock Return</button></fieldset></form>';
     const form = host.querySelector("form"), get = name => form.elements.namedItem(name), q = selector => host.querySelector(selector);
     const batch = () => simpleContext?.receipts.find(r => r.batch_id === get("batch").value && r.supplier_id === get("supplier").value);
+    const canPrepare = () => form.isConnected && !modalBusy && window.GREENLOOP_PAGE_ACCESS?.canEdit === true && simpleContext?.permissions?.can_return === true && Boolean(batch()) && (typeof window.GREENLOOP_CAN!=='function'||window.GREENLOOP_CAN('entry','supplier_returns'));
+    function syncQuantity(){const control=get('quantity');if(control.value===''||control.value===lastAutoQuantity){control.value=scanned.length?String(scanned.length):'';lastAutoQuantity=control.value;}}
     function showScanned() {
-      q("[data-sr-scanned]").hidden = !scanned.length;
-      q("[data-sr-scanned]").innerHTML = scanned.map((v,i) => '<span class="sr-imei-chip">' + escape(v) + button("×", 'data-sr-remove-imei="' + i + '" aria-label="Remove IMEI ' + escape(v) + '"') + '</span>').join("");
-      host.querySelectorAll("[data-sr-remove-imei]").forEach(el => { el.onclick = () => { scanned.splice(Number(el.dataset.srRemoveImei),1); showScanned(); }; });
+      q('[data-sr-scanned]').hidden = !scanned.length && !pasteIssues.length;
+      const rows=scanned.map((v,i)=>'<tr data-sr-scan-row="'+escape(v)+'"'+(imeiErrors.has(v)?' class="sr-imei-error"':'')+'><td class="gl-serial">'+(i+1)+'</td><td>'+escape(v)+'</td><td>'+escape(imeiErrors.get(v)||'Added')+'</td><td>'+button('Remove','data-sr-remove-imei="'+i+'" aria-label="Remove IMEI '+escape(v)+'"')+'</td></tr>');
+      rows.push(...pasteIssues.map((issue,i)=>'<tr class="sr-imei-error" data-sr-paste-issue><td class="gl-serial">'+(scanned.length+i+1)+'</td><td>'+escape(issue.value)+'</td><td>'+escape(issue.message)+'</td><td>'+button('Remove','data-sr-remove-issue="'+i+'" aria-label="Remove issue"')+'</td></tr>'));
+      q('[data-sr-scanned]').innerHTML='<table class="sr-imei-list" data-no-table-filters><thead><tr><th class="gl-serial">S.No</th><th>IMEI</th><th>Status / reason</th><th>Remove</th></tr></thead><tbody>'+rows.join('')+'</tbody></table>';
+      host.querySelectorAll('[data-sr-remove-imei]').forEach(el=>{el.onclick=()=>{if(!canPrepare())return;imeiErrors.delete(scanned[Number(el.dataset.srRemoveImei)]);scanned.splice(Number(el.dataset.srRemoveImei),1);syncQuantity();showScanned();scanNotice(scanned.length+' IMEI(s) added.');};});
+      host.querySelectorAll('[data-sr-remove-issue]').forEach(el=>{el.onclick=()=>{if(!canPrepare())return;pasteIssues.splice(Number(el.dataset.srRemoveIssue),1);showScanned();};});
+    }
+    function addBulk(text){
+      if(!canPrepare())return false;
+      const values=String(text||'').split(/[\s,;]+/).map(v=>v.replace(/^["']|["']$/g,'').replace(/[\u0660-\u0669\u06f0-\u06f9]/g,c=>String(c.charCodeAt(0)-(c.charCodeAt(0)>=0x6f0?0x6f0:0x660)))).filter(v=>v&&!/^imei(?:[ _-]?1)?$/i.test(v));
+      if(!values.length){scanNotice('Paste the IMEIs to add.',true);return false;}
+      const seen=new Set(scanned),added=[],issues=[];
+      for(const value of values){if(!/^\d{15}$/.test(value)){issues.push({value,message:'Use a complete 15-digit IMEI.',blocking:true});continue;}if(seen.has(value)){issues.push({value,message:'Duplicate IMEI — already added; ignored.',blocking:false});continue;}seen.add(value);added.push(value);}
+      // Preserve the complete input rather than silently truncating the existing atomic return limit.
+      if(scanned.length+added.length>1000){get('bulk_imeis').value=text;q('[data-sr-bulk-panel]').hidden=false;q('[data-sr-bulk-toggle]').setAttribute('aria-expanded','true');scanNotice('A return supports up to 1000 phones. The complete list is still in Bulk IMEIs; split it before adding.',true);return false;}
+      scanned.push(...added);pasteIssues.push(...issues);get('bulk_imeis').value='';syncQuantity();showScanned();
+      scanNotice(added.length+' new IMEI(s) added · '+scanned.length+' total'+(issues.length?' · '+issues.length+' need checking.':'.'),issues.length>0);
+      return true;
     }
     function scanNotice(message, error = false) {
       const el = q("[data-sr-scan-message]"); el.textContent = message; el.hidden = !message; el.classList.toggle("sr-error",error);
     }
     function addImei() {
-      const value = get("imei").value.trim();
+      if(!canPrepare())return false;
+      const value = get("imei").value.trim().replace(/[\u0660-\u0669\u06f0-\u06f9]/g,c=>String(c.charCodeAt(0)-(c.charCodeAt(0)>=0x6f0?0x6f0:0x660)));
       if (!/^\d{15}$/.test(value)) { scanNotice("Enter a complete 15-digit IMEI.",true); return false; }
       if (scanned.includes(value)) {
         get("imei").value = ""; scanNotice("This IMEI has already been added.",true);
@@ -213,7 +236,7 @@
         return false;
       }
       if (scanned.length >= 1000) { scanNotice("A return can contain up to 1000 phones.",true); return false; }
-      scanned.push(value); get("imei").value = ""; showScanned(); scanNotice(scanned.length + " IMEI(s) added.");
+      scanned.push(value); get("imei").value = ""; syncQuantity(); showScanned(); scanNotice(scanned.length + " IMEI(s) added.");
       return true;
     }
     function updateReceipt() {
@@ -221,9 +244,9 @@
       selectedBatch = receipt?.batch_id || "";
       q("[data-sr-inputs]").disabled = !receipt;
       q("[data-sr-receipt]").hidden = !receipt;
-      if (changed) { scanned = []; showScanned(); scanNotice(""); get("imei").value = ""; get("quantity").value = ""; get("model").value = ""; get("storage_gb").value = ""; get("reason").value = ""; get("other_reason").value = ""; updateReason(); }
+      if (changed) { scanned = []; pasteIssues=[];imeiErrors.clear();lastAutoQuantity="";get("bulk_imeis").value=""; showScanned(); scanNotice(""); get("imei").value = ""; get("quantity").value = ""; get("model").value = ""; get("storage_gb").value = ""; get("reason").value = ""; get("other_reason").value = ""; updateReason(); }
       if (!receipt) return;
-      q("[data-sr-receipt]").innerHTML = [["Received",showDate(receipt.received_at)],["Supplier code",receipt.supplier_code],["Quantity received",receipt.received_quantity],["Return Stock",receipt.returned_quantity]].map(([k,v]) => '<div><dt>' + escape(k) + '</dt><dd>' + escape(v) + '</dd></div>').join("");
+      q("[data-sr-receipt]").innerHTML = [["Received",showDate(receipt.received_at)],["Supplier code",receiptCode(receipt)],["Quantity received",receipt.received_quantity],["Return Stock",receipt.returned_quantity]].map(([k,v]) => '<div><dt>' + escape(k) + '</dt><dd>' + escape(v) + '</dd></div>').join("");
       get("quantity").max = String(Math.min(1000, Math.max(0, Number(receipt.received_quantity)-Number(receipt.returned_quantity))));
       q("#sr-model-options").innerHTML = [...new Set((receipt.model_options || []).map(p => p.model).filter(Boolean))].map(v => '<option value="' + escape(v) + '"></option>').join("");
     }
@@ -237,7 +260,7 @@
     function updateSuppliers() {
       const chosen = get("supplier").value, receiptId = get("batch").value;
       const suppliers = [...new Map((simpleContext?.receipts || []).map(r => [r.supplier_id,r])).values()];
-      get("supplier").innerHTML = '<option value="">Select supplier</option>' + suppliers.map(r => '<option value="' + escape(r.supplier_id) + '">' + escape(supplier(r)) + '</option>').join("");
+      get("supplier").innerHTML = '<option value="">Select supplier</option>' + suppliers.map(r => '<option value="' + escape(r.supplier_id) + '">' + escape(supplierIdentity(r)) + '</option>').join("");
       get("supplier").value = suppliers.some(r => r.supplier_id === chosen) ? chosen : "";
       updateSupplier(receiptId);
     }
@@ -251,11 +274,20 @@
     get("batch").onchange = () => { lastSaved = ""; simpleMessage(""); updateReceipt(); };
     get("reason").onchange = updateReason;
     q("[data-sr-add-imei]").onclick = () => { if (addImei()) get("imei").focus(); };
+    get('quantity').addEventListener('input',()=>{lastAutoQuantity=null;});
+    q('[data-sr-bulk-toggle]').onclick=()=>{if(!canPrepare())return;const panel=q('[data-sr-bulk-panel]');panel.hidden=!panel.hidden;q('[data-sr-bulk-toggle]').setAttribute('aria-expanded',String(!panel.hidden));if(!panel.hidden)get('bulk_imeis').focus();};
+    q('[data-sr-add-bulk]').onclick=()=>{addBulk(get('bulk_imeis').value);};
+    q('[data-sr-clear-bulk]').onclick=()=>{if(canPrepare())get('bulk_imeis').value='';};
+    get('imei').addEventListener('paste',event=>{const text=event.clipboardData?.getData('text/plain')||event.clipboardData?.getData('text')||'';if(!text)return;event.preventDefault();if(!canPrepare())return;if(/[\r\n\t ,;]/.test(text.trim())){addBulk(text);get('imei').value='';}else{get('imei').value=text.trim();addImei();}});
+
     get("imei").oninput = () => { get("imei").value = get("imei").value.replace(/\D/g,""); if (get("imei").value.length === 15) addImei(); };
     get("imei").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); if (get("imei").value) addImei(); } };
     form.onsubmit = async e => {
       e.preventDefault();
       if (modalBusy || !window.GREENLOOP_PAGE_ACCESS?.canEdit || !simpleContext?.permissions?.can_return) return;
+      if(typeof window.GREENLOOP_CAN==='function'&&!window.GREENLOOP_CAN('entry','supplier_returns'))return;
+      if(get('bulk_imeis').value.trim()){simpleMessage('Click Add IMEIs to add the pasted list before saving.',true);return;}
+      if(pasteIssues.some(issue=>issue.blocking)){simpleMessage('Remove or correct the invalid IMEI lines before saving.',true);return;}
       if (get("imei").value.trim() && !addImei()) return;
       const receipt = batch(), quantity = Number(get("quantity").value), storage = get("storage_gb").value.trim();
       if (!receipt || !Number.isInteger(quantity) || quantity < 1 || quantity > Number(get("quantity").max)) { simpleMessage("Select the received stock and enter a valid return quantity.",true); return; }
@@ -267,7 +299,7 @@
       if (storage) payload.storage_gb = Number(storage);
       const signature = JSON.stringify(["record_simple_stock_return",payload]);
       if (!retries.has(signature)) retries.set(signature,crypto.randomUUID());
-      const controls = [...form.querySelectorAll("button,input,select")].map(el => [el,el.disabled]);
+      const controls = [...form.querySelectorAll("button,input,select,textarea")].map(el => [el,el.disabled]);
       modalBusy = true; simpleGeneration += 1; controls.forEach(([el]) => { el.disabled = true; }); reportRoot.querySelector("[data-sr-refresh]").disabled = true;
       simpleMessage("Saving stock return…");
       try {
@@ -275,7 +307,7 @@
         retries.delete(signature);
         lastSaved = "Stock return saved: " + (result.return_reference || "") + " · " + quantity + " phone(s).";
         const selectedSupplier = get("supplier").value, selectedReceipt = get("batch").value;
-        scanned = []; showScanned(); scanNotice(""); get("quantity").value = ""; get("imei").value = ""; get("model").value = ""; get("storage_gb").value = ""; get("reason").value = ""; get("other_reason").value = ""; updateReason();
+        scanned = []; pasteIssues=[];imeiErrors.clear();lastAutoQuantity="";get("bulk_imeis").value=""; showScanned(); scanNotice(""); get("quantity").value = ""; get("imei").value = ""; get("model").value = ""; get("storage_gb").value = ""; get("reason").value = ""; get("other_reason").value = ""; updateReason();
         // A completed return must never leave a filled form available to repeat.
         simpleContext = null;
         await refreshReport();
@@ -286,6 +318,7 @@
         simpleMessage(e.message + " If the connection was interrupted, retry the same details to check the saved result.",true);
         const rejectedImei = String(e.message || "").match(/\bIMEI\s+(\d{15})\b/i)?.[1];
         if (["22023", "55000", "23505"].includes(e.code) && rejectedImei && payload.imeis.includes(rejectedImei)) {
+          imeiErrors.set(rejectedImei,e.message);showScanned();
           const generation = simpleGeneration;
           window.GREENLOOP_IMEI_STAGE_NOTICE?.show({
             imei: rejectedImei, title: "Phone unavailable here", message: e.message, onlyIfFound: true,
