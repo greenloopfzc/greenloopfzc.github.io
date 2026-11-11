@@ -98,3 +98,21 @@ html:is([data-design="neumorphism"],[data-mode="dark"]) .history-content { --his
 .imei-history-dialog{width:min(1280px,94vw);max-width:94vw;max-height:92vh;margin:auto;padding:0;border:1px solid var(--history-line);border-radius:22px;background:var(--history-surface,var(--nm-card,#f7fafb));color:var(--history-ink,var(--nm-ink,#24363d));box-shadow:0 18px 60px #142d3a55;overflow:auto}.imei-history-dialog::backdrop{background:#142d3a88;backdrop-filter:blur(3px)}.history-dialog-heading{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:15px;padding:18px 22px;background:var(--history-surface,var(--nm-card,#f7fafb));border-bottom:1px solid var(--history-line)}.history-dialog-heading h2{font-size:1.1rem;overflow-wrap:anywhere;margin:0}.history-dialog-heading button{flex:none}.history-dialog-status{padding:0 22px;font-size:.9rem}.history-dialog-status:empty{display:none}.history-dialog-body{padding:0 18px 18px}.history-dialog-body .history-result{margin:16px 0 0}.history-dialog-open{overflow:hidden}@media(max-width:600px){.history-dialog-heading{padding:14px}.history-dialog-heading h2{font-size:.95rem}.history-dialog-body{padding:0 8px 8px}.imei-history-dialog{width:96vw;max-width:96vw}}
 
 #imei-history-dialog .history-dialog-heading h2{flex:1;min-width:0}#imei-history-dialog .history-dialog-heading button{width:auto!important;min-width:68px;min-height:38px;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center}
+
+/* Exact returned/replacement links, also inside the bulk Open history dialog. */
+.history-replacements{margin:18px 0;padding:18px;border:1px solid var(--history-line);border-radius:16px;background:var(--history-surface);box-shadow:var(--nm-shadow,0 3px 10px #203b3020)}
+.history-replacements h3{margin:0 0 12px;font-size:1.1rem;font-weight:800}
+.history-replacement-pair+.history-replacement-pair{border-top:1px solid var(--history-line);margin-top:16px;padding-top:16px}
+.history-replacement-explanation{margin:0 0 10px;font-weight:650}
+.history-replacement-identities{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:12px;align-items:center}
+.history-replacement-identities>div{padding:12px 16px;border:1px solid currentColor;border-radius:12px;min-width:0}
+.history-replacement-identities span,.history-replacement-identities strong{display:block}
+.history-replacement-identities strong{color:inherit!important;font-size:clamp(1rem,1.4vw,1.3rem);font-weight:800;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.history-replacement-old{color:#9c252b!important;background:#fcebec!important}
+.history-replacement-new{color:#086347!important;background:#e2f4e9!important}
+.history-replacement-arrow{font-size:1.5rem;font-weight:800}
+.history-replacement-meta{margin:10px 0 0;font-size:.82rem;color:var(--history-muted);overflow-wrap:anywhere}
+.history-replacement-warning{padding:12px;border:1px solid var(--history-amber);color:var(--history-amber);border-radius:10px}
+html[data-mode="dark"] .history-replacement-old{color:#ffb6bc!important;background:#48212a!important}
+html[data-mode="dark"] .history-replacement-new{color:#a0e7c0!important;background:#193d31!important}
+@media(max-width:600px){.history-replacements{padding:12px}.history-replacement-identities{grid-template-columns:minmax(0,1fr);gap:6px}.history-replacement-arrow{transform:rotate(90deg);justify-self:center}.history-replacement-identities>div{padding:10px 12px}}

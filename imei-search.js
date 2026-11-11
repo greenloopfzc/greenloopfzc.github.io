@@ -398,6 +398,17 @@ function buildStageSections(sortedRows) {
     const cells=values.map(([name,value],index)=>`<th scope="row">${escapeHtml(name)}</th><td${index===values.length-1 && values.length%2 ? ' colspan="3"' : ""}>${safe(value)}</td>`);
     header.innerHTML=`<div class="history-basic-heading"><h2 id="history-device-name">Device details</h2>${badge(currentStage(device))}</div><table class="history-basic-table"><caption class="history-sr-only">Basic phone and supplier details</caption><tbody>${cells.reduce((html,cell,index)=>html+(index%2===0 ? "<tr>" : "")+cell+(index%2===1 || index===cells.length-1 ? "</tr>" : ""),"")}</tbody></table>`;
   }
+  function renderReplacementHistory(data) {
+    if(data.replacement_history_unavailable)return '<p class="history-replacement-warning" role="status">Replacement history could not be loaded. Refresh to check the old/new IMEI link.</p>';
+    const links=data.replacement_history?.rows;
+    if(!Array.isArray(links)||!links.length)return '';
+    return `<section class="history-replacements" aria-label="Replacement history"><h3>Return / Replacement History</h3>${links.map(link=>{
+      const old=scalar(link.old_imei),incoming=scalar(link.new_imei);
+      const batch=window.GREENLOOP_BATCH_LABEL?.(link.batch_number,{batch_number:link.batch_number,receipt_quantity:link.receipt_quantity})||scalar(link.batch_number);
+      const message=scalar(data.device?.imei_1)===incoming?'This phone was received as a replacement for the returned IMEI below.':'This returned phone was replaced by the new IMEI below.';
+      return `<article class="history-replacement-pair"><p class="history-replacement-explanation">${escapeHtml(message)}</p><div class="history-replacement-identities"><div class="history-replacement-old"><span>Returned IMEI</span><strong${old?' data-gl-copy-identifier':''}>${escapeHtml(old||missing)}</strong></div><span class="history-replacement-arrow" aria-label="replaced by">→</span><div class="history-replacement-new"><span>Replacement IMEI</span><strong data-gl-copy-identifier>${escapeHtml(incoming)}</strong></div></div><p class="history-replacement-meta">${[batch,scalar(link.invoice_number),scalar(link.supplier_code)].filter(Boolean).map(escapeHtml).join(' · ')}</p><p class="history-replacement-meta">${escapeHtml([scalar(link.model),link.storage_gb?link.storage_gb+' GB':'',scalar(link.color)].filter(Boolean).join(' · '))} · Received: ${escapeHtml(journeyMoment(link.received_at))} · ${link.entered?'Entered in IMEI Entry':'Awaiting IMEI Entry'}</p></article>`;
+    }).join('')}</section>`;
+  }
   function renderHistory(data) {
     const rows=window.GREENLOOP_STOCK_JOURNEY.activity(data.rows);
     renderBasicTable(data.device || {},rows);
@@ -406,7 +417,7 @@ function buildStageSections(sortedRows) {
       escape:escapeHtml,date:journeyMoment,currentStage:currentStage(data.device || {}),
       money:value=>number(value)===null ? missing : number(value).toLocaleString("en-GB",{minimumFractionDigits:2,maximumFractionDigits:2})
     });
-    body.innerHTML=rows.length ? compact+`<details class="history-full-activity"><summary>Full activity (${rows.length} records)</summary><ol class="history-activity-list">${renderActivityList(visibleRows)}</ol></details>` : '<p class="history-missing">No history has been recorded for this phone.</p>';
+    body.innerHTML=renderReplacementHistory(data)+(rows.length ? compact+`<details class="history-full-activity"><summary>Full activity (${rows.length} records)</summary><ol class="history-activity-list">${renderActivityList(visibleRows)}</ol></details>` : '<p class="history-missing">No history has been recorded for this phone.</p>');
     count.textContent="Journey by recorded time · Same-time actions follow workflow order · UAE time";
     const totals=data.summary || {};
     const unpriced=number(totals.unpriced_manual_part_quantity) || 0;
@@ -458,8 +469,15 @@ function buildStageSections(sortedRows) {
       const raw=response.data;
       const history=Array.isArray(raw)?raw[0]?.get_imei_activity_journey_v1 || raw[0]:raw;
       if(!history?.found){report("This device is no longer available. Search again.");return;}
-      await GREENLOOP_RECEIPTS.load("imei_search",[history.device?.imei_1]);
+      const [receipt,replacement]=await Promise.allSettled([
+        GREENLOOP_RECEIPTS.load("imei_search",[history.device?.imei_1]),
+        withTimeout(getClient().rpc('get_imei_replacement_history_v1',{p_imei:history.device?.imei_1}))
+      ]);
       if(!current())return;
+      if(receipt.status==='rejected')throw receipt.reason;
+      const pairing=replacement.status==='fulfilled'&&!replacement.value.error?replacement.value.data:null;
+      if(pairing?.found===true&&pairing.imei===history.device?.imei_1&&Array.isArray(pairing.rows)&&pairing.rows.every(link=>/^\d{15}$/.test(link.new_imei)&&(!link.old_imei||/^\d{15}$/.test(link.old_imei))))history.replacement_history=pairing;
+      else history.replacement_history_unavailable=true;
       renderHistory(history);
       if(popup){status.textContent='';const full=body.querySelector('.history-full-activity');if(full)full.open=true;}
       else window.history.replaceState(null,"",`?q=${encodeURIComponent(identifier)}`);
