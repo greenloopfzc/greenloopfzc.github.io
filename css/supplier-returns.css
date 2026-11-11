@@ -68,3 +68,8 @@ html[data-mode="dark"] .sr-imei-list .sr-imei-error{background:var(--nm-red-bg);
 }
 
 @media(max-width:600px){.sr-simple-form .sr-imei-list td:nth-child(4)::before{content:'Current Stage: ';font-weight:600}}
+
+.sr-simple-form .sr-return-quantity{width:min(100%,260px)}
+.sr-simple-form .sr-bulk-reason{margin:4px 0}
+.sr-simple-form .sr-bulk-reason .sr-optional{margin-left:8px;font-weight:400}
+.sr-simple-form .sr-bulk-reason .sr-hint{font-weight:400}

@@ -6,6 +6,8 @@ The Return Stock bulk/scanner list now shows S.No, IMEI, Stock / Batch No, Curre
 
 The existing bulk preflight returns stages in the same request. No extra per-IMEI browser requests, automatic saves or workflow transitions are introduced. Wrong-stock rows remain red and block Save. Optional reasons, batch original quantities, aliases, permission checks and the existing atomic save are preserved.
 
+Return stock entry now precedes Stock Return report in the document. Bulk preparation has one optional, single-line Return reason text field applying to the whole return group. The prior preset/Other dropdown is replaced by free text. A blank reason still records Not specified. Entered text is preserved; literal Other is repeated into the existing API's notes field for compatibility. A successful save clears the field for the next return, and the report retains the shared group reason.
+
 The additive stage endpoint reuses the previous private stock check and leaves its implementation, version marker and public endpoint byte-identical. No business data is changed by installation or the stage read. Only the existing Return Stock entry permission and Office Only rules are used. No supplier/customer names or unrelated private fields are added.
 
 Run outputs/Publish-GreenLoop-Return-Current-Stage.ps1. If needed, it first installs the previous stock check and then copies the Current Stage SQL. Paste each copied query directly into a NEW Supabase SQL Editor query and RUN it. Required last result: installed_return_imei_stage_version = 20261111-return-imei-stage-1. Press Enter in PowerShell after that result. No Edge Function, JWT, secret or permission tick is required. After LIVE - VERIFIED, Ctrl+F5.
