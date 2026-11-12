@@ -251,6 +251,7 @@ document.addEventListener("click", (event) => {
     item("B-DEPT", "laboratory.html#frame", "□", (page === "laboratory.html" && window.location.hash === "#frame") || page === "b-dept-report.html"),
     item("Ready Stock", "ready-stock.html", "▤", page === "ready-stock.html"),
     '<p class="nav-label">Control</p>',
+    item("Chaman Shop", "chaman-shop.html", "⇄", page === "chaman-shop.html"),
     item("Reports", "reports.html", "▤", page === "reports.html"),
     item("Suspicious Activity", "suspicious-activity.html", "◇", page === "suspicious-activity.html"),
     item("User Access", "user-access.html", "☷", page === "user-access.html")
@@ -398,6 +399,7 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     ready_stock: "ready-stock.html",
     export_boxes: "export-box.html",
     accounts: "accounts.html",
+    chaman_shop: "chaman-shop.html",
     stock_exported: "stock-exported.html",
     ready_stock_journey: "ready-stock-journey.html",
     reports: "reports.html",
@@ -431,6 +433,7 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     "ready-stock.html": "ready_stock",
     "export-box.html": "export_boxes",
     "accounts.html": "accounts",
+    "chaman-shop.html": "chaman_shop",
     "stock-exported.html": "stock_exported",
     "packing.html": "export_boxes",
     "stock-out.html": "export_boxes",

@@ -1,0 +1,13 @@
+# Chaman Shop
+
+Admin-only company/shop transfers. Owner and Super Admin receive this new page; all RPCs independently enforce active Admin role and office access. Other users cannot read or mutate it, even if page permission is manually assigned. No sales or customer-account features are included.
+
+Six cards: Send to Chaman, Receive at Chaman, Return to Greenloop, Receive at Greenloop, Chaman Balance, Transfer History. Dispatch/return cards show date/reference and Sent/Received/Pending quantities. Each has IMEI, model, GB, color, grade, original supplier/batch and receipt quantity. Explicit scan/paste plus Confirm supports partial receiving. Chaman Balance excludes outward and return transit. Read-only views refresh every 30 seconds while no entry is in progress.
+
+Stock effects: send immediately removes phones from company stock; shop receipt confirms its own physical balance; return dispatch remains outside Greenloop stock; only scanned Greenloop receipt restores each phone's saved workflow status. Original receipt quantities remain unchanged. Supplier Stock, IMEI In-company/Ready, receipt balance and Supplier Progress separate Chaman/transit phones. A phone cannot be sent twice or inserted into another company job/export box while off-site. Active work/box reservations block dispatch. Original batch/job records are preserved through multiple trips.
+
+Tables and transfer cards use 50-record pages. Explicit pasted/scanned trays preserve all supplied IMEIs. PDF View/PDF/Excel downloads include the complete filtered result and reject changed snapshots. Dates display without time. Names retain the existing partner-name permission.
+
+Required SQL: supabase/migrations/20261112_294_chaman_shop.sql (after existing 270/292/293 support). The migration adds private RLS-protected transfer/receipt/idempotency records, updates only reviewed existing stock-calculation routines and their matching integrity seals, and verifies Admin access and guards. No live database or website deployment was performed by Codex.
+
+Validation: isolated PGlite proves 100→90 on send, remains90 on return dispatch, then92 after two Greenloop receipts; separate shop/pending balances, partial/full receipts, stale exports, exact batch quantity, duplicate/retry handling, invalid-list rollback, status/batch/new-job guards, manually granted non-admin denial, private ACL, 50+2/full52 exports and repeat migration. Chrome checks six cards, scan preview, explicit dispatch, date-wise history, all views, complete exports, page51 numbering, responsive layout and office-lock cleanup. Publish script verifies SQL version before a normal fast-forward push and checks live file hashes.

@@ -58,3 +58,9 @@ names or to delete, reset, or otherwise change business records.
 ## Glass part naming in grading reports
 
 - User requirement (12 November 2026): `Glass`, `Glass (Glass Damage)` and `Glass (Damaged Glass)` mean the same required part. Include both under Glass in Stock Grade & Work Analysis counts, percentages and PDF output. Count each phone once even if both aliases occur. Preserve unrelated parts such as Back Glass and preserve stored historical part names.
+
+## Chaman Shop transfers
+
+- Chaman Shop has no sales/customer-account process. Six cards: Send to Chaman, Receive at Chaman, Return to Greenloop, Receive at Greenloop, Chaman Balance and Transfer History. Initially only Owner / Super Admin can access it, with server enforcement.
+- Dispatch immediately removes scanned phones from Greenloop available stock. Chaman receipt is separately confirmed by IMEI. Chaman return dispatch never adds to Greenloop stock; only Greenloop confirmed receiving adds the scanned units back. Partial receiving and separate pending-transit counts are required. Chaman Balance is physically received stock minus return dispatches.
+- Preserve original phone/job, supplier, receipt quantity and batch. Each delivery/return has its own date/reference/IMEI history. Never count the same phone in both company and shop availability.

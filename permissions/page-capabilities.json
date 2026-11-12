@@ -1305,6 +1305,33 @@
           "write": false
         }
       ]
+    },
+    {
+      "key": "chaman_shop",
+      "label": "Chaman Shop",
+      "description": "Admin: dispatch, receiving, returns and balance.",
+      "capabilities": [
+        {
+          "key": "view",
+          "label": "View Chaman Shop",
+          "write": false
+        },
+        {
+          "key": "search",
+          "label": "Search and filters",
+          "write": false
+        },
+        {
+          "key": "entry",
+          "label": "Dispatch and confirm receiving",
+          "write": true
+        },
+        {
+          "key": "download",
+          "label": "PDF and Excel",
+          "write": false
+        }
+      ]
     }
   ],
   "reportSections": {
