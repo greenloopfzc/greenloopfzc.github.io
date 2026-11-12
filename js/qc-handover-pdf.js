@@ -1,12 +1,12 @@
 (function (root) {
   'use strict';
-  const labels = ['S.No', 'IMEI', 'Model', 'GB', 'Color', 'Required parts', 'Services / work required'];
-  const pageWidth = 595.276, margin = 28, columnWidths = [32,94,64,42,52,112,143.276];
+  const labels = ['S.No', 'IMEI', 'Model', 'GB', 'Color', 'Grade', 'Stock / Batch', 'Required parts', 'Services / work required'];
+  const pageWidth = 841.89, margin = 32, columnWidths = [28,92,62,36,50,40,135,150,184.89];
   const heading = report => report.issuance ? 'Lab & Glass Issuance' : 'Initial QC Handover';
-  const date = value => new Intl.DateTimeFormat('en-GB', {timeZone:'Asia/Dubai', day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', hour12:false}).format(new Date(value)) + ' UAE';
+  const date = value => new Intl.DateTimeFormat('en-GB', {timeZone:'Asia/Dubai', day:'2-digit', month:'short', year:'numeric'}).format(new Date(value)) + ' UAE';
   const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   function validate(input) {
-    if (!input?.rows?.length) throw new Error('No phones have been saved in this page session. Save Initial QC entries before generating the sheet.');
+    if (!input?.rows?.length) throw new Error('Load saved inspections and choose a technician before generating the sheet.');
     const groups = new Map(), seen = new Set();
     for (const row of input.rows) {
       if (!row.jobId || seen.has(row.jobId) || !/^\d{15}$/.test(row.imei) || !Array.isArray(row.parts) || !Array.isArray(row.services)) throw new Error('The saved handover entries could not be verified. No sheet was generated.');
@@ -16,22 +16,22 @@
     }
     if (groups.size > 1) throw new Error('This list contains different technicians: ' + [...groups.values()].map(g => `${g.name} - ${g.count} ${g.count === 1 ? 'phone' : 'phones'}`).join(', ') + '. Please check the technician assignments before generating the sheet.');
     if (groups.has('')) throw new Error('This list contains phones without an assigned technician. Please check the technician assignments before generating the sheet.');
-    return {issuance:input.source === 'qc_issuance', technician:[...groups.values()][0].name, total:input.rows.length, generatedAt:input.generatedAt || new Date().toISOString(), rows:input.rows};
+    return {phase:input.rows.every(r=>r.issued)?'Issued':input.rows.some(r=>r.issued)?'Prepared and issued phones':'Before issuance',issuance:input.source === 'qc_issuance', technician:[...groups.values()][0].name, total:input.rows.length, generatedAt:input.generatedAt || new Date().toISOString(), rows:input.rows};
   }
-  const values = (row, i) => [String(i + 1), row.imei, row.model || '-', row.storage || '-', row.color || '-', row.parts.length ? row.parts.map(p => `${p.name} x ${p.quantity}`).join('\n') : 'None', row.services.length ? row.services.join('\n') : 'None'];
+  const values = (row, i) => [String(i + 1), row.imei, row.model || '-', row.storage || '-', row.color || '-', row.grade || '-', row.batch || 'Not recorded', row.parts.length ? row.parts.map(p => `${p.name} x ${p.quantity}`).join('\n') : 'None', row.services.length ? row.services.join('\n') : 'None'];
   function printHtml(input, options = {}) {
     const report = validate(input), logoUrl = options.logoUrl || 'assets/greenloop-fzc-logo.jpg';
     return '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>' + escape(heading(report)) + ' - ' + escape(report.technician) + '</title><style>' +
-      '@page{size:A4 portrait;margin:9.878mm}*{box-sizing:border-box}body{font:8.5pt Arial,sans-serif;color:#142d34;margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}html,body{width:100%;max-width:100%}table{border-collapse:collapse;width:100%;table-layout:fixed}thead{display:table-header-group}th,td{border:0.5pt solid #beced2;padding:4.5pt;text-align:left;vertical-align:top;overflow-wrap:anywhere;white-space:pre-line;line-height:1.25}tbody tr{break-inside:avoid;page-break-inside:avoid}thead .heading th{border:0;padding:0 0 10pt;background:white;font-weight:normal;white-space:normal}.brand-row{display:flex;align-items:center;justify-content:space-between;gap:16pt}.brand{flex:none;position:relative;overflow:hidden;width:160pt;height:34.074pt}.brand img{position:absolute;width:189.63pt;height:63.259pt;max-width:none;left:-16.296pt;top:-14.815pt}.document-type{min-width:0;text-align:right;overflow-wrap:anywhere;font-size:8pt;font-weight:bold;letter-spacing:1pt;color:#006d50}.title-row{display:flex;justify-content:space-between;align-items:baseline;gap:16pt;margin:13pt 0 10pt;padding-bottom:10pt;border-bottom:1pt solid #bacdce}.title{min-width:0;overflow-wrap:anywhere;font-size:16pt;font-weight:bold;margin:0}.meta{flex:none;max-width:45%;overflow-wrap:anywhere;font-size:8pt;color:#50666b;text-align:right}.summary{display:flex;gap:8pt}.summary-card{border:0.5pt solid #c0d0d4;background:#f7faf9;padding:9pt 11pt}.technician{flex:1;min-width:0}.summary-label{display:block;font-size:8pt;font-weight:bold;color:#50666b;letter-spacing:.4pt;margin-bottom:6pt}.technician-name{font-size:11pt;font-weight:bold;color:#173d35;overflow-wrap:anywhere}.phone-total{width:30%;background:#e6f2eb}.phone-total strong{font-size:18pt;color:#006d50}.columns th{background:#e5f1eb;color:#173d35;font-size:8pt;font-weight:bold;vertical-align:middle;border-bottom:1pt solid #087451}tbody tr:nth-child(even){background:#f3f7f7}.total td{font-weight:bold;background:#e5f1eb;padding:9pt}.total td:last-child{text-align:right;color:#006d50}tfoot td{border:0;padding:10pt 0 0;font-size:7.5pt;color:#50666b}</style></head><body>' +
-      '<table><colgroup>' + columnWidths.map(width => '<col style="width:' + (100*width/(pageWidth-2*margin)).toFixed(6) + '%">').join('') + '</colgroup><thead><tr class="heading"><th colspan="7"><div class="brand-row"><div class="brand"><img src="' + escape(logoUrl) + '" alt="Greenloop FZC"></div><span class="document-type">' + (report.issuance ? 'LAB &amp; GLASS / HANDOVER' : 'INITIAL QC / HANDOVER') + '</span></div><div class="title-row"><h1 class="title">' + escape(heading(report)) + '</h1><span class="meta">Prepared: ' + escape(date(report.generatedAt)) + '</span></div><div class="summary"><div class="summary-card technician"><span class="summary-label">TECHNICIAN</span><span class="technician-name">' + escape(report.technician) + '</span></div><div class="summary-card phone-total"><span class="summary-label">TOTAL PHONES</span><strong>' + report.total + '</strong></div></div></th></tr><tr class="columns">' + labels.map(l => '<th>' + escape(l) + '</th>').join('') + '</tr></thead><tbody>' +
-      report.rows.map((r, i) => '<tr>' + values(r, i).map(v => '<td>' + escape(v) + '</td>').join('') + '</tr>').join('') + '<tr class="total"><td colspan="6">TOTAL PHONES</td><td>' + report.total + '</td></tr></tbody><tfoot><tr><td colspan="7">Greenloop FZC - ' + escape(heading(report)) + ' technician handover. Successfully saved entries from this page session.</td></tr></tfoot></table></body></html>';
+      '@page{size:A4 landscape;margin:11.289mm}*{box-sizing:border-box}body{font:8.5pt Arial,sans-serif;color:#142d34;margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}html,body{width:100%;max-width:100%}table{border-collapse:collapse;width:100%;table-layout:fixed}thead{display:table-header-group}th,td{border:0.5pt solid #beced2;padding:4.5pt;text-align:center;vertical-align:middle;overflow-wrap:anywhere;white-space:pre-line;line-height:1.25}tbody tr{break-inside:avoid;page-break-inside:avoid}thead .heading th{border:0;padding:0 0 10pt;background:white;font-weight:normal;white-space:normal}.brand-row{display:flex;align-items:center;justify-content:space-between;gap:16pt}.brand{flex:none;position:relative;overflow:hidden;width:160pt;height:34.074pt}.brand img{position:absolute;width:189.63pt;height:63.259pt;max-width:none;left:-16.296pt;top:-14.815pt}.document-type{min-width:0;text-align:right;overflow-wrap:anywhere;font-size:8pt;font-weight:bold;letter-spacing:1pt;color:#006d50}.title-row{display:flex;justify-content:space-between;align-items:baseline;gap:16pt;margin:13pt 0 10pt;padding-bottom:10pt;border-bottom:1pt solid #bacdce}.title{min-width:0;overflow-wrap:anywhere;font-size:16pt;font-weight:bold;margin:0}.meta{flex:none;max-width:45%;overflow-wrap:anywhere;font-size:8pt;color:#50666b;text-align:right}.summary{display:flex;gap:8pt}.summary-card{border:0.5pt solid #c0d0d4;background:#f7faf9;padding:9pt 11pt}.technician{flex:1;min-width:0}.summary-label{display:block;font-size:8pt;font-weight:bold;color:#50666b;letter-spacing:.4pt;margin-bottom:6pt}.technician-name{font-size:11pt;font-weight:bold;color:#173d35;overflow-wrap:anywhere}.phone-total{width:30%;background:#e6f2eb}.phone-total strong{font-size:18pt;color:#006d50}.columns th{background:#e5f1eb;color:#173d35;font-size:8pt;font-weight:bold;vertical-align:middle;border-bottom:1pt solid #087451}tbody tr:nth-child(even){background:#f3f7f7}.total td{font-weight:bold;background:#e5f1eb;padding:9pt}.total td:last-child{text-align:right;color:#006d50}tfoot td{border:0;padding:10pt 0 0;font-size:7.5pt;color:#50666b}</style></head><body>' +
+      '<table><colgroup>' + columnWidths.map(width => '<col style="width:' + (100*width/(pageWidth-2*margin)).toFixed(6) + '%">').join('') + '</colgroup><thead><tr class="heading"><th colspan="9"><div class="brand-row"><div class="brand"><img src="' + escape(logoUrl) + '" alt="Greenloop FZC"></div><span class="document-type">' + (report.issuance ? 'LAB &amp; GLASS / HANDOVER' : 'INITIAL QC / HANDOVER') + '</span></div><div class="title-row"><h1 class="title">' + escape(heading(report)) + '</h1><span class="meta">Prepared: ' + escape(date(report.generatedAt)) + '</span></div><div class="summary"><div class="summary-card technician"><span class="summary-label">TECHNICIAN</span><span class="technician-name">' + escape(report.technician) + '</span></div><div class="summary-card phone-total"><span class="summary-label">TOTAL PHONES</span><strong>' + report.total + '</strong></div></div></th></tr><tr class="columns">' + labels.map(l => '<th>' + escape(l) + '</th>').join('') + '</tr></thead><tbody>' +
+      report.rows.map((r, i) => '<tr>' + values(r, i).map(v => '<td>' + escape(v) + '</td>').join('') + '</tr>').join('') + '<tr class="total"><td colspan="8">TOTAL PHONES</td><td>' + report.total + '</td></tr></tbody><tfoot><tr><td colspan="9">Greenloop FZC - ' + escape(heading(report)) + ' technician handover. Prepared from saved inspections and confirmed transfers in this page session.</td></tr></tfoot></table></body></html>';
   }
   async function create(input, options = {}) {
     const report = validate(input), lib = options.PDFLib || root.PDFLib;
     if (!lib) throw new Error('PDF tools could not load. Please try again.');
     const pdf = await lib.PDFDocument.create(), regular = await pdf.embedFont(lib.StandardFonts.Helvetica), bold = await pdf.embedFont(lib.StandardFonts.HelveticaBold);
     pdf.setTitle(heading(report) + ' - ' + report.technician); pdf.setAuthor('Greenloop FZC');
-    const W = pageWidth, H = 841.89, M = margin, widths = columnWidths, size = 8.5, leading = 11, bottom = 44;
+    const W = pageWidth, H = 595.276, M = margin, widths = columnWidths, size = 8.5, leading = 11, bottom = 44;
     const ink = lib.rgb(.08,.18,.20), green = lib.rgb(0,.40,.29), muted = lib.rgb(.30,.40,.43), line = lib.rgb(.73,.80,.81), pale = lib.rgb(.95,.97,.96), white = lib.rgb(1,1,1);
     function text(value) {
       const s = String(value ?? '').replace(/[\u2010-\u2015]/g, '-').replace(/\r/g, '').replace(/\t/g, ' ');
@@ -76,13 +76,13 @@
       draw('TOTAL PHONES',countX+11,top-15,8,bold,muted);draw(String(report.total),countX+11,top-37,18,bold,green);
       page.drawRectangle({x:M,y:tableTop-24,width:W-2*M,height:24,color:lib.rgb(.90,.95,.92),borderColor:line,borderWidth:.5});
       page.drawLine({start:{x:M,y:tableTop-24},end:{x:W-M,y:tableTop-24},thickness:.8,color:green});
-      let x = M; labels.forEach((label,i) => { draw(label,x+6,tableTop-15,8,bold,ink); x += widths[i]; }); y = tableTop-24;
+      let x = M; labels.forEach((label,i) => { draw(label,x+(widths[i]-bold.widthOfTextAtSize(label,8))/2,tableTop-15,8,bold,ink); x += widths[i]; }); y = tableTop-24;
     }
     function row(cells, index, continued = false) {
       const height = Math.max(28, Math.max(...cells.map(a => a.length))*leading+12);
       page.drawRectangle({x:M,y:y-height,width:W-2*M,height,color:index%2 ? pale:white,borderColor:line,borderWidth:.5});
       let x = M;
-      cells.forEach((lines,col) => { if(col)page.drawLine({start:{x,y},end:{x,y:y-height},thickness:.4,color:line});lines.forEach((s,i)=>draw(s,x+6,y-12-i*leading,size,col===1?bold:regular));x += widths[col]; });
+      cells.forEach((lines,col) => { if(col)page.drawLine({start:{x,y},end:{x,y:y-height},thickness:.4,color:line});lines.forEach((s,i)=>draw(s,x+(widths[col]-(col===1?bold:regular).widthOfTextAtSize(s,size))/2,y-(height-lines.length*leading)/2-size-i*leading,size,col===1?bold:regular));x += widths[col]; });
       y -= height;
     }
     newPage();
@@ -102,9 +102,9 @@
     }
     if(y-28<bottom)newPage();
     page.drawRectangle({x:M,y:y-28,width:W-2*M,height:28,color:lib.rgb(.88,.94,.90)});draw('TOTAL PHONES',M+8,y-18,9,bold,green);const totalText=String(report.total);draw(totalText,W-M-8-bold.widthOfTextAtSize(totalText,12),y-19,12,bold,green);
-    const pages = pdf.getPages();pages.forEach((p,i)=>{page=p;draw((options.sample?'SAMPLE - FICTIONAL DATA | ':'')+heading(report),M,23,8,regular,muted);const s=`Page ${i+1} of ${pages.length}`;draw(s,W-M-regular.widthOfTextAtSize(s,8),23,8,regular,muted);});
+    const pages = pdf.getPages();pages.forEach((p,i)=>{page=p;draw((options.sample?'SAMPLE - FICTIONAL DATA | ':'')+heading(report)+(report.issuance?' - '+report.phase:''),M,23,8,regular,muted);const s=`Page ${i+1} of ${pages.length}`;draw(s,W-M-regular.widthOfTextAtSize(s,8),23,8,regular,muted);});
     const day = new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Dubai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(report.generatedAt)).replace(/[^0-9-]/g,'-');
     return {bytes:await pdf.save(), pages:pages.length, filename:'Greenloop-'+(report.issuance?'Lab-Glass-Issuance':'Initial-QC-Handover')+'-'+report.technician.replace(/[^a-z0-9]+/gi,'-')+'-'+day+'.pdf'};
   }
-  root.GREENLOOP_QC_HANDOVER_PDF = {version:'20261110-issuance-print-fit-1',validate, create, printHtml};
+  root.GREENLOOP_QC_HANDOVER_PDF = {version:'20261112-issuance-sheet-2',validate, create, printHtml};
 })(typeof window !== 'undefined' ? window : globalThis);

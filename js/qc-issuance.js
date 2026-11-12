@@ -13,7 +13,10 @@
   function message(text='',success=false){const e=$('#issuance-message');e.textContent=text;e.hidden=!text;e.classList.toggle('is-visible',Boolean(text));e.classList.toggle('is-success',success);}
   function state(row,text='',error=false){const e=row.querySelector('[data-row-state]');e.textContent=text;e.hidden=!text;row.classList.toggle('is-error',error);}
   function options(value=''){return '<option value="">Choose technician</option>'+technicians.map(t=>`<option value="${esc(t.id)}" ${t.id===value?'selected':''}>${esc(t.name)}</option>`).join('');}
+  function handoverData(row,r){const tech=row.querySelector('[data-technician]');return {jobId:r.job_id,imei:r.imei,model:r.model,storage:storage(r.storage_gb),color:r.color,grade:r.gl_grade||'Not recorded',batch:window.GREENLOOP_BATCH_LABEL?.(r.batch_number,{...r,receipt_quantity:r.stock_quantity??r.receipt_quantity})||r.batch_number||'Not recorded',technicianId:tech.value,technician:tech.selectedOptions[0]?.textContent||'Unassigned',parts:r.parts,services:r.services};}
+  window.GREENLOOP_QC_HANDOVER?.setProvider(()=>stopped?[]:[...records].filter(([row,r])=>row.isConnected&&row.dataset.completed!=='yes'&&row.querySelector('.qc-issuance-imei').value.trim()===r.imei&&row.querySelector('[data-destination]').value==='lab_glass').map(([row,r])=>handoverData(row,r)));
   function sync(row){
+    window.GREENLOOP_QC_HANDOVER?.refresh();
     if(row.dataset.completed==='yes'){row.querySelectorAll('input,select,button').forEach(e=>e.disabled=true);return;}
     const r=records.get(row),destination=row.querySelector('[data-destination]');
     row.querySelectorAll('input,select,button').forEach(e=>e.disabled=busy||paste?.busy||!can()||Boolean(editing));
@@ -22,7 +25,7 @@
     row.querySelector('[data-edit-work]').disabled=busy||paste?.busy||!can()||Boolean(editing)||!r;
     row.querySelector('[data-reload]').disabled=busy||paste?.busy||!can()||Boolean(editing)||!row.querySelector('.qc-issuance-imei').value;
   }
-  function syncAll(){for(const row of body.rows)sync(row);syncWorkEditor();window.GREENLOOP_LOCK_VIEW_ONLY_CONTROLS?.(app);}
+  function syncAll(){for(const row of body.rows)sync(row);syncWorkEditor();window.GREENLOOP_QC_HANDOVER?.setBusy('work-editor',Boolean(editing)||Boolean(paste?.busy));window.GREENLOOP_LOCK_VIEW_ONLY_CONTROLS?.(app);}
   function carrySelection(row,field){
     const selector=field==='technician'?'[data-technician]':'[data-destination]',flag=field==='technician'?'manualTechnician':'manualDestination';
     if(row!==body.firstElementChild){row.dataset[flag]='yes';return;}
@@ -175,7 +178,7 @@
     try{
       const result=await rpc('issue_initial_qc_inspection_v1',{p_job_id:r.job_id,p_revision:r.revision,p_destination:dest,p_technician_roster_id:technician||null,p_request_id:row.dataset.issueRequest});
       row.dataset.completed='yes';row.classList.add('is-completed');row.querySelector('[data-transfer]').textContent='Done';state(row,`Transferred to ${dest==='b_dept'?'B-DEPT':result.technician_name+' · Lab & Glass'}`);
-      if(dest==='lab_glass')window.GREENLOOP_QC_HANDOVER?.record({jobId:r.job_id,imei:r.imei,model:r.model,storage:storage(r.storage_gb),color:r.color,technicianId:technician,technician:result.technician_name,parts:r.parts,services:r.services});
+      if(dest==='lab_glass')window.GREENLOOP_QC_HANDOVER?.record({...handoverData(row,r),technician:result.technician_name});
       window.dispatchEvent(new CustomEvent('greenloop:workflow-committed',{detail:{source:'qc-issuance',imeis:[r.imei]}}));return{ok:true};
     }catch(e){state(row,e.message||'Transfer failed. Your choices are preserved.',true);return{ok:false,error:e.message};}
     finally{row.dataset.saving='';sync(row);}

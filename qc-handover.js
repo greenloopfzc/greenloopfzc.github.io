@@ -4,6 +4,8 @@
   const $ = selector => elements.get(selector) || document.querySelector(selector), panel = $('#qc-handover');
   if (!panel) return;
   const rows = new Map(), pending = new Set();
+  let provider=null,lastRows='';
+  function sheetRows(){if(stopped)return [];const all=new Map(rows);if(provider)for(const r of provider())all.set(String(r.jobId),r);return [...all.values()];}
   let revision = 0, exporting = false, stopped = false, pdfUrl = '', libraryPromise, logoPromise;
   const page=location.pathname.endsWith('/qc-issuance.html')?'qc_issuance':'initial_qc';
   const allowed = () => !stopped && window.GREENLOOP_CAN?.('entry',page) === true;
@@ -17,17 +19,18 @@
     if(pdfUrl)URL.revokeObjectURL(pdfUrl);pdfUrl='';
   }
   function update() {
-    panel.hidden = !allowed();
-    const groups = new Set([...rows.values()].map(r => r.technicianId || ''));
-    $('#qc-handover-count').textContent = `${rows.size} saved ${rows.size === 1 ? 'phone' : 'phones'}`;
-    $('#qc-handover-technician').textContent = groups.size===1 ? ([...rows.values()][0]?.technician || 'Unassigned') : groups.size>1 ? `${groups.size} technicians - check assignments` : 'Save entries, then generate the sheet.';
-    panel.querySelectorAll('[data-qc-handover]').forEach(button => button.disabled = !allowed() || busy() || exporting || rows.size===0);
+    panel.hidden = !allowed();if(!allowed())closePdf();
+    const current=sheetRows(),fingerprint=JSON.stringify(current);if(fingerprint!==lastRows){lastRows=fingerprint;revision++;closePdf();}
+    const groups = new Set(current.map(r => r.technicianId || ''));
+    $('#qc-handover-count').textContent = `${current.length} ${page==='qc_issuance'?'ready / issued':'saved'} ${current.length === 1 ? 'phone' : 'phones'}`;
+    $('#qc-handover-technician').textContent = groups.size===1 ? (current[0]?.technician || 'Unassigned') : groups.size>1 ? `${groups.size} technicians - check assignments` : 'Load inspections and choose a technician; print before or after issuance.';
+    panel.querySelectorAll('[data-qc-handover]').forEach(button => button.disabled = !allowed() || busy() || exporting || current.length===0);
   }
   function changed() { revision++;closePdf();status();update(); }
   function setBusy(key, value) { value ? pending.add(key) : pending.delete(key);if(value){revision++;closePdf();}update(); }
   function record(value) {
     if(stopped)return;
-    rows.set(String(value.jobId),{jobId:String(value.jobId),imei:String(value.imei),technicianId:value.technicianId || '',technician:value.technician || 'Unassigned',model:value.model || '',storage:value.storage || '',color:value.color || '',parts:value.parts.map(p=>({name:p.name,quantity:p.quantity})),services:[...value.services]});
+    rows.set(String(value.jobId),{jobId:String(value.jobId),imei:String(value.imei),technicianId:value.technicianId || '',technician:value.technician || 'Unassigned',model:value.model || '',storage:value.storage || '',color:value.color || '',issued:true,grade:value.grade||'',batch:value.batch||'',parts:value.parts.map(p=>({name:p.name,quantity:p.quantity})),services:[...value.services]});
     changed();
   }
   function warning(text) {
@@ -37,7 +40,7 @@
   function snapshot() {
     if(!allowed())throw new Error('Initial QC entry permission is required to generate this handover sheet.');
     if(busy())throw new Error('Wait for the Initial QC saves to finish before generating the sheet.');
-    const data={source:page,generatedAt:new Date().toISOString(),rows:[...rows.values()]};window.GREENLOOP_QC_HANDOVER_PDF.validate(data);return data;
+    const data={source:page,generatedAt:new Date().toISOString(),rows:sheetRows()};window.GREENLOOP_QC_HANDOVER_PDF.validate(data);return data;
   }
   function library() {
     if(window.PDFLib)return Promise.resolve();
@@ -84,7 +87,8 @@
   $('#qc-handover-preview').addEventListener('cancel',event=>{event.preventDefault();closePdf();});
   $('#qc-handover-warning-close').addEventListener('click',()=>$('#qc-handover-warning').close());
   window.addEventListener('greenloop:office-locked',()=>{stopped=true;revision++;rows.clear();pending.clear();closePdf();$('#qc-handover-warning').close();update();});
+  window.addEventListener('greenloop:signed-out',()=>{stopped=true;provider=null;rows.clear();closePdf();update();});
   window.addEventListener('pagehide',closePdf);
-  window.GREENLOOP_QC_HANDOVER={record,setBusy,refresh:update};
+  window.GREENLOOP_QC_HANDOVER={record,setBusy,refresh:update,setProvider:fn=>{provider=fn;changed();}};
   Promise.resolve(window.GREENLOOP_ACCESS_READY).then(update);
 })();
