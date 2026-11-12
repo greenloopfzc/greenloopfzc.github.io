@@ -5,3 +5,7 @@ html[data-mode=dark] .sga-selectors select{background:var(--nm-card,#2c3742);box
 /* Let only the tables scroll; keep report controls inside narrow screens. */
 .sga-report{grid-template-columns:minmax(0,1fr)}.sga-report>*{min-width:0}.sga-toolbar,.sga-selectors,#sga-output{min-width:0;box-sizing:border-box}.sga-selectors label{min-width:0}
 @media(max-width:600px){.sga-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}.sga-actions button{width:100%;min-width:0}.sga-scope{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Leave breathing room inside the grade report panel on both sides. */
+.sga-report{box-sizing:border-box;padding:18px 20px 20px}
+@media(max-width:600px){.sga-report{padding:12px}}
