@@ -44,7 +44,6 @@
   <link rel="stylesheet" href="css/qc-excel-paste.css?v=20261104-qc-excel-paste-1">
   <script defer src="js/qc-excel-paste.js?v=20261105-complete-stock-lists-1"></script>
   <script defer src="js/qc-stock-scope.js?v=20261109-issuance-access-1"></script>
-  <script defer src="js/qc-issuance.js?v=20261112-issuance-sheet-2"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261111-ruby-obsidian-1">
     <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261102-imei-scan-location-1">
   <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
@@ -56,7 +55,8 @@
 <link rel="stylesheet" href="css/qc-issuance.css?v=20261106-issuance-auto-width-1">
 <link rel="stylesheet" href="css/qc-handover.css?v=20261030-qc-handover-1">
 <script defer src="js/qc-handover-pdf.js?v=20261112-issuance-sheet-2"></script>
-<script defer src="js/qc-handover.js?v=20261112-issuance-sheet-2"></script>
+<script defer src="js/qc-handover.js?v=20261112-pre-issuance-ready-1"></script>
+  <script defer src="js/qc-issuance.js?v=20261112-pre-issuance-ready-1"></script>
   <link rel="stylesheet" href="css/qc-stock-scope.css?v=20261105-qc-direct-ready-1">
 </head>
   <body class="app-page">
@@ -95,7 +95,7 @@
             <div class="issuance-table-wrap"><table class="issuance-table"><thead><tr><th scope="col">IMEI</th><th scope="col">Model</th><th scope="col">GB</th><th scope="col">Color</th><th scope="col">BH</th><th scope="col">Supplier code</th><th scope="col">Supplier grade</th><th scope="col">GL grade</th><th scope="col">Parts needed</th><th scope="col">Service needed</th><th scope="col">Assign technician</th><th scope="col">Destination</th><th scope="col">Edit / Transfer</th></tr></thead><tbody id="issuance-body"></tbody></table></div>
             <div class="qc-bulk-actions"><span>Review each line, then transfer. The Lab clock starts when the phone is transferred.</span><button id="issuance-transfer-all" type="button" class="primary-button" data-capability="entry">Transfer all loaded phones →</button></div>
             <section id="qc-handover" class="qc-handover" hidden>
-              <div><h3>Technician Handover Sheet</h3><div class="qc-handover-summary"><strong id="qc-handover-count">0 saved phones</strong><p id="qc-handover-technician">Choose a technician, then print before or after issuance.</p></div><p>Includes successful transfers since this page was opened or refreshed.</p></div>
+              <div><h3>Technician Handover Sheet</h3><div class="qc-handover-summary"><strong id="qc-handover-count">0 saved phones</strong><p id="qc-handover-technician">Choose a technician, then print before or after issuance.</p></div><p>Includes loaded saved inspections before issuance and successful transfers from this page session.</p></div>
               <div class="qc-handover-actions"><button type="button" class="secondary-button" data-qc-handover="print" data-capability="entry" data-capability-page="qc_issuance" disabled>Print</button><button type="button" class="secondary-button" data-qc-handover="view" data-capability="entry" data-capability-page="qc_issuance" disabled>PDF View</button><button type="button" class="primary-button" data-qc-handover="download" data-capability="entry" data-capability-page="qc_issuance" disabled>Download PDF</button></div>
               <p id="qc-handover-message" class="qc-handover-message" role="status" aria-live="polite" hidden></p>
             </section>

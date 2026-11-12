@@ -14,7 +14,8 @@
   function state(row,text='',error=false){const e=row.querySelector('[data-row-state]');e.textContent=text;e.hidden=!text;row.classList.toggle('is-error',error);}
   function options(value=''){return '<option value="">Choose technician</option>'+technicians.map(t=>`<option value="${esc(t.id)}" ${t.id===value?'selected':''}>${esc(t.name)}</option>`).join('');}
   function handoverData(row,r){const tech=row.querySelector('[data-technician]');return {jobId:r.job_id,imei:r.imei,model:r.model,storage:storage(r.storage_gb),color:r.color,grade:r.gl_grade||'Not recorded',batch:window.GREENLOOP_BATCH_LABEL?.(r.batch_number,{...r,receipt_quantity:r.stock_quantity??r.receipt_quantity})||r.batch_number||'Not recorded',technicianId:tech.value,technician:tech.selectedOptions[0]?.textContent||'Unassigned',parts:r.parts,services:r.services};}
-  window.GREENLOOP_QC_HANDOVER?.setProvider(()=>stopped?[]:[...records].filter(([row,r])=>row.isConnected&&row.dataset.completed!=='yes'&&row.querySelector('.qc-issuance-imei').value.trim()===r.imei&&row.querySelector('[data-destination]').value==='lab_glass').map(([row,r])=>handoverData(row,r)));
+  function connectHandover(){window.GREENLOOP_QC_HANDOVER?.setProvider(()=>stopped?[]:[...records].filter(([row,r])=>row.isConnected&&row.dataset.completed!=='yes'&&row.querySelector('.qc-issuance-imei').value.trim()===r.imei&&row.querySelector('[data-destination]').value==='lab_glass').map(([row,r])=>handoverData(row,r)));}
+  window.addEventListener('greenloop:qc-handover-ready',connectHandover);connectHandover();
   function sync(row){
     window.GREENLOOP_QC_HANDOVER?.refresh();
     if(row.dataset.completed==='yes'){row.querySelectorAll('input,select,button').forEach(e=>e.disabled=true);return;}

@@ -90,5 +90,6 @@
   window.addEventListener('greenloop:signed-out',()=>{stopped=true;provider=null;rows.clear();closePdf();update();});
   window.addEventListener('pagehide',closePdf);
   window.GREENLOOP_QC_HANDOVER={record,setBusy,refresh:update,setProvider:fn=>{provider=fn;changed();}};
+  window.dispatchEvent(new Event('greenloop:qc-handover-ready'));
   Promise.resolve(window.GREENLOOP_ACCESS_READY).then(update);
 })();
