@@ -36,6 +36,7 @@
  panel.addEventListener('input',e=>{if(e.target.id!=='br-imei')return;clearTimeout(timer);const input=e.target;input.value=input.value.replace(/\D/g,'').slice(0,15);if(input.value.length===15)timer=setTimeout(()=>{if(!panel.hidden&&input.isConnected&&!busy&&can('scan'))change('add_box_recheck_imei_v1',{p_imei:input.value});},200);});
  $('#box-status-prev').onclick=()=>{if(!busy&&offset>0){offset-=50;load();}};$('#box-status-next').onclick=()=>{if(!busy&&offset+50<total){offset+=50;load();}};
  document.querySelectorAll('[data-box-entry-view]').forEach(button=>button.addEventListener('click',()=>{if(busy)return;const review=button.dataset.boxEntryView==='status';clearTimeout(timer);panel.hidden=!review;$('#box-entry-workspace').hidden=review;document.querySelectorAll('[data-box-entry-view]').forEach(b=>{const active=b===button;b.classList.toggle('is-active',active);b.setAttribute('aria-selected',String(active));});if(review)load();}));
+ for(const event of ['greenloop:office-locked','greenloop:signed-out','greenloop:permissions-changed'])window.addEventListener(event,()=>{selected=null;printed=null;detail.hidden=true;});
  async function init(){await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();if(window.GREENLOOP_PAGE_ACCESS?.pageKey!=='export_boxes')return;client=window.GREENLOOP_GET_CLIENT();window.addEventListener('focus',()=>{if(!panel.hidden&&!busy)load();});setInterval(()=>{if(!panel.hidden&&!busy&&!document.hidden&&!detail.querySelector('input:focus'))load();},15000);}
  init().catch(e=>notice(e.message,true));
 })();
