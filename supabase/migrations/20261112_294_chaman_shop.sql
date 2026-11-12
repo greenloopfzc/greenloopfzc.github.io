@@ -1,5 +1,6 @@
+-- Atomic installer: one SQL statement; no temporary-table/session dependency.
+DO $chaman_install$ BEGIN EXECUTE $chaman_ddl$
 -- Chaman Shop: audited, admin-only dispatch/receipt/return. No sales.
-begin;
 create sequence if not exists greenloop_private.chaman_document_seq;
 create table if not exists greenloop_private.chaman_documents(id uuid primary key default gen_random_uuid(),reference text not null unique,direction text not null check(direction in('out','return')),created_at timestamptz not null default now(),created_by uuid not null references auth.users(id),notes text not null default '');
 create table if not exists greenloop_private.chaman_lines(id uuid primary key default gen_random_uuid(),out_document uuid not null references greenloop_private.chaman_documents(id),return_document uuid references greenloop_private.chaman_documents(id),device_id uuid not null references public.devices(id),job_id uuid not null references public.jobs(id),imei text not null,details jsonb not null,original_job_status public.job_status not null,original_device_status public.job_status not null,phase text not null check(phase in('out_pending','shop','return_pending','company')),shop_received_at timestamptz,company_received_at timestamptz,shop_received_by uuid references auth.users(id),company_received_by uuid references auth.users(id));
@@ -142,8 +143,7 @@ insert into greenloop_private.office_routines values
 ('public.get_chaman_shop_v1(text,uuid,text,date,date,integer,boolean,text,jsonb)','greenloop_private.chaman_read(text,uuid,text,date,date,integer,boolean,text,jsonb)',md5(pg_get_functiondef('greenloop_private.chaman_read(text,uuid,text,date,date,integer,boolean,text,jsonb)'::regprocedure)),md5(pg_get_functiondef('public.get_chaman_shop_v1(text,uuid,text,date,date,integer,boolean,text,jsonb)'::regprocedure)))on conflict(identity)do update set implementation=excluded.implementation,original_hash=excluded.original_hash,wrapped_hash=excluded.wrapped_hash;
 
 -- Keep historical receipt quantities while excluding off-site phones from company availability.
-create temporary table chaman_review(identity text primary key,before_hash text)on commit drop;
-do $$declare sig text;old text;updated text;begin
+do $$declare sig text;old text;updated text;reviews jsonb:='[]';t record;r record;c record;begin
  foreach sig in array array['greenloop_private.sc_receipts()','greenloop_private.accounts_supplier_rows()','greenloop_private.aid_rows(jsonb)','greenloop_private.aid_report(jsonb,integer,integer,text,text,boolean,text)','greenloop_private.acard_report(text,jsonb,text,integer,integer,text,text,boolean,boolean,text)']loop
   old:=pg_get_functiondef(sig::regprocedure);updated:=old;
   if sig like '%sc_receipts%'then
@@ -156,12 +156,10 @@ do $$declare sig text;old text;updated text;begin
    updated:=replace(updated,'not in(''returned'',''exported'',''ready'')','not in(''returned'',''exported'',''ready'',''chaman'')');
    updated:=replace(updated,'not in(''returned'',''exported'')','not in(''returned'',''exported'',''chaman'')');
   end if;
-  if updated<>old then insert into chaman_review values(sig,md5(old));execute updated;end if;
+  if updated<>old then reviews:=reviews||jsonb_build_array(jsonb_build_object('identity',sig,'before_hash',md5(old)));execute updated;end if;
  end loop;
  if strpos(pg_get_functiondef('greenloop_private.accounts_supplier_rows()'::regprocedure),'then ''offsite''')=0 or strpos(pg_get_functiondef('greenloop_private.aid_rows(jsonb)'::regprocedure),'then ''chaman''')=0 then raise exception 'Stock report definitions changed. Nothing installed.';end if;
-end;$$;
 -- Supplier progress shows off-site stock separately from pending company work.
-do $$declare sig text;old text;updated text;begin
  select implementation into sig from greenloop_private.office_routines where to_regprocedure(identity)='public.get_supplier_progress_v2(date,date)'::regprocedure;
  if sig is not null then
   old:=pg_get_functiondef(sig::regprocedure);updated:=old;
@@ -170,19 +168,17 @@ do $$declare sig text;old text;updated text;begin
    updated:=replace(updated,'::integer other_quantity,false receipt_balance','::integer other_quantity,count(*)filter(where stage=''chaman'')::integer chaman_quantity,false receipt_balance');
    updated:=replace(updated,'returned,reserved,0,true','returned,reserved,0,0,true');
    if strpos(updated,'chaman_quantity')=0 then raise exception 'Supplier progress definition changed. Review before installing.';end if;
-   insert into chaman_review values(sig,md5(old));execute updated;
+   reviews:=reviews||jsonb_build_array(jsonb_build_object('identity',sig,'before_hash',md5(old)));execute updated;
   end if;
  end if;
-end;$$;
 -- Update only seals whose existing hash matches the reviewed before-definition.
-do $$declare t record;r record;c record;begin
  for c in select *from(values('identity','hash'),('identity','before_hash'),('identity','definition_hash'),('object_identity','definition_hash'),('function_identity','definition_hash'))x(idcol,hashcol)loop
   for t in select cls.oid::regclass::text name from pg_class cls where cls.relnamespace='greenloop_private'::regnamespace and cls.relkind='r'and cls.relname like '%_installation'
   and exists(select 1 from pg_attribute where attrelid=cls.oid and attname=c.idcol and atttypid='text'::regtype)and exists(select 1 from pg_attribute where attrelid=cls.oid and attname=c.hashcol and atttypid='text'::regtype)loop
-   for r in select *from chaman_review loop execute format('update %s set %I=md5(pg_get_functiondef(to_regprocedure($1)))where replace(%I,'' '','''')=replace($1,'' '','''')and %I=$2',t.name,c.hashcol,c.idcol,c.hashcol)using r.identity,r.before_hash;end loop;
+   for r in select *from jsonb_to_recordset(reviews)as reviewed(identity text,before_hash text) loop execute format('update %s set %I=md5(pg_get_functiondef(to_regprocedure($1)))where replace(%I,'' '','''')=replace($1,'' '','''')and %I=$2',t.name,c.hashcol,c.idcol,c.hashcol)using r.identity,r.before_hash;end loop;
   end loop;
  end loop;
- for r in select *from chaman_review loop
+ for r in select *from jsonb_to_recordset(reviews)as reviewed(identity text,before_hash text) loop
   update greenloop_private.office_routines set original_hash=md5(pg_get_functiondef(to_regprocedure(r.identity)))where to_regprocedure(implementation)=to_regprocedure(r.identity)and original_hash=r.before_hash;
   update greenloop_private.capability_routines set original_hash=md5(pg_get_functiondef(to_regprocedure(r.identity)))where to_regprocedure(implementation)=to_regprocedure(r.identity)and original_hash=r.before_hash;
  end loop;
@@ -199,5 +195,7 @@ create or replace function public.get_chaman_shop_version()returns text language
 revoke all on function public.get_chaman_shop_version()from public;grant execute on function public.get_chaman_shop_version()to anon,authenticated;
 insert into greenloop_private.chaman_installation select sig,md5(pg_get_functiondef(sig::regprocedure))from unnest(array['greenloop_private.chaman_access(boolean)','greenloop_private.chaman_phone(text)','greenloop_private.chaman_move(text,jsonb,uuid,text,uuid)','greenloop_private.chaman_read(text,uuid,text,date,date,integer,boolean,text,jsonb)','greenloop_private.chaman_guard()','public.chaman_shop_move_v1(text,jsonb,uuid,text,uuid)','public.get_chaman_shop_v1(text,uuid,text,date,date,integer,boolean,text,jsonb)','public.get_chaman_shop_version()'])sig on conflict(identity)do update set hash=excluded.hash;
 do $$begin if public.get_chaman_shop_version()is distinct from '20261112-chaman-shop-1'or public.get_page_capabilities_version()is distinct from '20261016-page-capabilities-1'then raise exception 'Chaman Shop verification failed: component %, capabilities %.',public.get_chaman_shop_version(),public.get_page_capabilities_version();end if;end;$$;
-notify pgrst,'reload schema';commit;
+notify pgrst,'reload schema';
+
+$chaman_ddl$;END;$chaman_install$;
 select public.get_chaman_shop_version()as installed_chaman_shop_version;
