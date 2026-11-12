@@ -2,6 +2,7 @@
   'use strict';
   const $=s=>document.querySelector(s),app=$('#box-queue-app'),page=app.dataset.boxPage;
   const filter=$('#box-queue-filter'),list=$('#box-queue-list'),detail=$('#box-queue-detail'),message=$('#box-queue-message');
+  let queueReveal=page!=='accounts',queueCard=false;
   let client,offset=0,total=0,busy=false,generation=0,selected=null,printed=null,canEdit=false;
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const dt=v=>v?new Date(v).toLocaleString('en-GB',{timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric'}):'Not recorded';
@@ -13,14 +14,20 @@
   function lock(value){busy=value;queueFilters.setBusy(value);app.setAttribute('aria-busy',String(value));app.querySelectorAll('button').forEach(b=>b.disabled=value);$('#box-queue-prev').disabled=value||offset===0;$('#box-queue-next').disabled=value||offset+50>=total;detail.querySelectorAll('[data-entry-only]').forEach(b=>b.disabled=value||!canEdit);if(page==='stock_exported'){const print=detail.querySelector('[data-print-box]');if(print)print.disabled=value||!exportedPrintAllowed();}}
   const queueFilters=window.GREENLOOP_FILTERS.get('box-record-filters',{
     before:filter,sortTarget:list,dateKey:'filter_date',dateLabel:page==='accounts'?'Saved':'Exported',fields:[['state','Status'],['customer_code','Customer code'],['saved_by_name','Saved by'],['verified_by_name','Verified by']],
-    onChange:()=>{offset=0;return load();}
+    onChange:()=>{offset=0;if(page==='accounts')queueReveal=queueCard||Object.values(queueFilters.query()).some(Boolean);return load();}
   });
   filter.hidden=true;
+  const queueSummary=document.createElement('div');queueSummary.id='accounts-verify-summary';if(page==='accounts')list.parentElement.before(queueSummary);
+  function revealQueue(){if(page!=='accounts')return;list.parentElement.hidden=!queueReveal;if(!queueReveal)list.replaceChildren();}
+  queueSummary.addEventListener('click',e=>{if(busy||!e.target.closest('[data-show-account-boxes]'))return;queueCard=true;queueReveal=true;load();});
+  document.addEventListener('greenloop:accounts-section',e=>{if(page!=='accounts')return;queueCard=false;queueReveal=false;detail.hidden=true;selected=null;printed=null;revealQueue();if(e.detail.view==='verify'&&!busy){queueFilters.clear();}});
+  revealQueue();
   async function load(){
     if(busy)return;const token=++generation;notice();lock(true);selected=null;printed=null;detail.hidden=true;
     try {
       const data=await rpc('get_sorted_filter_records_v1',{...queueFilters.sortArgs(),p_source:page,p_filters:queueFilters.query(),p_offset:offset,p_limit:50});if(token!==generation)return;
       queueFilters.result(data);total=data.total;list.innerHTML=data.rows.length?'<div class="box-table-wrap"><table class="box-table"><thead><tr><th>Box</th><th>Phones</th><th>Saved · UAE</th><th>Saved by</th><th>Status</th><th>Verified · UAE</th><th>Verified by</th><th>Customer</th></tr></thead><tbody>'+data.rows.map(b=>`<tr><td><button type="button" class="quiet-link" data-search-read-only data-open-box="${esc(b.id)}">${cell(b.box_number)}</button></td><td>${cell(b.quantity)}</td><td>${cell(dt(b.saved_at))}</td><td>${cell(b.saved_by_name)}</td><td>${cell(state(b.state))}</td><td>${cell(dt(b.verified_at))}</td><td>${cell(b.verified_by_name)}</td><td>${cell(b.customer_name||b.customer_code)}</td></tr>`).join('')+'</tbody></table></div>':'<p class="box-empty">No boxes found for these dates.</p>';
+      if(page==='accounts'){queueFilters.externalFilters([{label:'Card',value:queueCard?'Boxes to review':'',clear:()=>{queueCard=false;queueReveal=false;return load();}}]);queueSummary.innerHTML='<button type="button" class="accounts-summary-card" data-show-account-boxes data-search-read-only aria-pressed="'+queueReveal+'"><span>Boxes to review</span><strong>'+total+'</strong></button>';revealQueue();}
       $('#box-queue-count').textContent=total?`${offset+1}–${Math.min(offset+50,total)} of ${total} boxes`:'0 boxes';
     }catch(e){list.innerHTML='';total=0;notice(e.message||'Boxes could not be loaded.',true);}finally{if(token===generation)lock(false);}
   }
@@ -97,7 +104,7 @@
     if(done){offset=0;await load();notice('Box returned to Box Entry for Recheck. It can be verified after it is corrected and sent back.');}
   }
   filter.addEventListener('submit',e=>{e.preventDefault();if(!busy){offset=0;load();}});
-  $('#clear-box-dates').addEventListener('click',()=>{if(busy)return;filter.reset();offset=0;queueFilters.clear();});
+  $('#clear-box-dates').addEventListener('click',()=>{if(busy)return;filter.reset();offset=0;queueCard=false;queueReveal=page!=='accounts';queueFilters.clear();});
   $('#box-queue-prev').addEventListener('click',()=>{if(!busy&&offset>0){offset-=50;load();}});
   $('#box-queue-next').addEventListener('click',()=>{if(!busy&&offset+50<total){offset+=50;load();}});
   app.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||busy)return;if(b.hasAttribute('data-export-box-report'))exportData(b.dataset.exportBoxReport);else if(b.dataset.openBox)open(b.dataset.openBox);else if(b.hasAttribute('data-print-box'))printBox();else if(b.hasAttribute('data-confirm-print'))confirmPrint();else if(b.hasAttribute('data-verify-box'))verify();else if(b.hasAttribute('data-request-box-recheck'))requestRecheck();else if(b.hasAttribute('data-close-box')){if(page==='stock_exported')window.GREENLOOP_BOX_PRINT?.clear();detail.hidden=true;selected=null;printed=null;}});

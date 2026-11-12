@@ -21,7 +21,7 @@
   <script defer src="js/imei-scan.js?v=20261105-issuance-sidebar-1"></script>
 <script defer src="js/imei-stage-notice.js?v=20261102-imei-scan-location-1"></script>
   <script defer src="js/permission-catalog.js?v=20261110-content-permissions-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261110-bulk-final-grade-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261112-summary-cards-1"></script>
 <script defer src="js/page-capabilities.js?v=20261104-report-permissions-1"></script>
 <link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
 <script defer src="js/office-access.js?v=20261024-office-access-1"></script>
@@ -40,12 +40,14 @@
   <link rel="stylesheet" href="css/record-search.css?v=20261017-find-record-popup-1">
   <script defer src="js/record-search.js?v=20261105-stock-consistency-1"></script>
     <script defer src="js/part-notifications.js?v=20261110-dashboard-ready-layout-1"></script>
-    <link rel="stylesheet" href="css/accounts-imei-data.css?v=20261105-complete-stock-lists-1">
+    <link rel="stylesheet" href="css/accounts-imei-data.css?v=20261112-summary-cards-1">
     <script defer src="js/report-downloads.js?v=20261112-report-downloads-1"></script>
     <script defer src="js/accounts-imei-exports.js?v=20261112-report-downloads-1"></script>
-    <script defer src="js/accounts-imei-data.js?v=20261112-report-downloads-1"></script>
-    <script defer src="js/accounts-stock.js?v=20261112-report-downloads-1"></script>
-    <script defer src="js/box-workflow.js?v=20261112-report-downloads-1"></script>
+    <script defer src="js/accounts-cards.js?v=20261112-summary-cards-1"></script>
+    <script defer src="js/accounts-imei-data.js?v=20261112-summary-cards-1"></script>
+
+    <script defer src="js/accounts-stock.js?v=20261112-summary-cards-1"></script>
+    <script defer src="js/box-workflow.js?v=20261112-summary-cards-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261111-ruby-obsidian-1">
     <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261102-imei-scan-location-1">
   <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
@@ -97,7 +99,8 @@
               <p id="accounts-stock-note" class="box-review-note"></p>
               <p id="accounts-stock-message" class="form-message" role="status"></p>
               <div id="accounts-stock-totals" class="accounts-stock-totals"></div>
-              <section class="box-queue-card"><div id="accounts-stock-list"></div><div class="box-queue-pagination"><button id="accounts-stock-prev" class="secondary-button" type="button" data-search-read-only>Previous</button><span id="accounts-stock-count"></span><button id="accounts-stock-next" class="secondary-button" type="button" data-search-read-only>Next</button></div></section>
+              <div id="accounts-stock-receipts"></div>
+              <section id="accounts-stock-details" class="box-queue-card" hidden><h3 id="accounts-stock-selection"></h3><div id="accounts-stock-list"></div><div class="box-queue-pagination"><button id="accounts-stock-prev" class="secondary-button" type="button" data-search-read-only>Previous</button><span id="accounts-stock-count"></span><button id="accounts-stock-next" class="secondary-button" type="button" data-search-read-only>Next</button></div></section>
             </section>
           </section>
         </div>
