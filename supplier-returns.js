@@ -105,6 +105,7 @@
       });
     };
   }
+  let simpleOffset=0,simpleTotal=0;
   let simpleContext = null, simpleRows = [], simpleGeneration = 0, lastSaved = "";
   let externalRefreshPending = false, externalRefreshTimer, closeStaleDetails = false;
   function queueCurrentRefresh(deletion = false) {
@@ -132,10 +133,10 @@
     const generation = ++simpleGeneration;
     root.querySelector("[data-sr-refresh]").disabled = true;
     try {
-      const [next, rows] = await Promise.all([rpc("get_simple_stock_return_context"), rpc("list_active_stock_returns", {p_from:null,p_to:null})]);
+      const [next, rows] = await Promise.all([rpc("get_simple_stock_return_context"), rpc("get_stock_return_phone_history_v1", {p_query:root.querySelector("[data-sr-report-search]").value,p_offset:simpleOffset})]);
       if (root !== reportRoot || generation !== simpleGeneration) return;
-      if (!Array.isArray(next?.receipts) || !Array.isArray(rows)) throw new Error("Stock Return data could not be loaded. Try Refresh.");
-      simpleContext = next; simpleRows = rows;
+      if (!Array.isArray(next?.receipts) || !Array.isArray(rows?.rows)) throw new Error("Stock Return data could not be loaded. Try Refresh.");
+      simpleContext = next; simpleRows = rows.rows; simpleTotal=rows.total;
       const canReturn = Boolean(window.GREENLOOP_PAGE_ACCESS?.canEdit && next.permissions?.can_return);
       const host = root.querySelector("[data-sr-simple-form]");
       root.querySelector("[data-sr-create]").hidden = !canReturn;
@@ -158,13 +159,12 @@
   }
   function returnSearchItems(){return simpleRows.map(row=>({...row,kind:"return",id:row.return_reference,identifier:row.return_reference,title:row.return_reference,imei_1:(row.imeis || []).join(" · "),search_values:[row.reason,...(row.imeis || [])]}));}
   function renderSimpleReport() {
-    const root = reportRoot, value = root.querySelector("[data-sr-report-search]").value.trim().toLowerCase();
-    const rows = window.GREENLOOP_FILTERS.use('stock-return-filters', value ? window.GREENLOOP_RECORD_SEARCH.localLookup(returnSearchItems(),value).items : simpleRows, {before:root.querySelector('[data-sr-simple-table]'),fields:[['supplier_code','Supplier code'],['model','Model'],['reason','Reason']],onChange:()=>renderSimpleReport(),search:false,highlightQuery:()=>root.querySelector('[data-sr-report-search]').value,dateKey:'returned_at',dateLabel:'Returned'});
-    window.GREENLOOP_STOCK?.mount(root,rows);
-    root.querySelector("[data-sr-total]").textContent = rows.length + " returns · " + rows.reduce((n,r) => n + Number(r.returned_quantity || 0),0) + " phones";
-    root.querySelector("[data-sr-simple-table]").innerHTML = rows.length ? '<table class="sr-table sr-simple-table"><thead><tr><th>Stock received</th><th>Supplier / code</th><th>Received qty</th><th>Return Stock</th><th>Returned</th><th>Reason</th><th>Model / GB</th><th>IMEIs</th><th>Recorded by</th></tr></thead><tbody>' +
-      rows.map(r => '<tr><td>' + escape(showDate(r.received_at)) + '<small>' + escape(r.invoice_number || r.batch_number || "—") + '</small></td><td>' + escape(supplier(r)) + '</td><td>' + escape(r.received_quantity ?? "—") + '</td><td><strong>' + escape(r.returned_quantity) + '</strong></td><td>' + escape(date(r.returned_at)) + '<small>' + escape(r.return_reference || "—") + '</small>' + (r.archived ? '<small>Archived history</small>' : "") + '</td><td>' + escape(r.reason || "—") + (r.notes ? '<small>' + escape(r.notes) + '</small>' : "") + '</td><td>' + escape([r.model, r.storage_gb ? r.storage_gb + " GB" : ""].filter(Boolean).join(" · ") || "—") + '</td><td>' + ((r.imeis || []).length ? '<details><summary>' + escape(r.imeis.length) + ' IMEI(s)</summary>' + (r.imeis || []).map(v => '<small>' + escape(v) + '</small>').join("") + '</details>' : "—") + '</td><td>' + escape(r.returned_by_name || "—") + '</td></tr>').join("") + '</tbody></table>' : '<p class="sr-empty">No stock returns to show.</p>';
-  }
+ const root=reportRoot,rows=simpleRows;
+ root.querySelector('[data-sr-total]').textContent=(simpleTotal?simpleOffset+1:0)+'–'+(simpleOffset+rows.length)+' of '+simpleTotal+' returned phones';
+ root.querySelector('[data-sr-simple-table]').innerHTML='<table class="sr-table sr-simple-table"><thead><tr><th>S.No</th><th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>Supplier</th><th>Original Stock / Batch</th><th>Reason</th></tr></thead><tbody>'+rows.map(r=>'<tr class="rp-history-returned"><td>'+r.serial+'</td><td>'+escape(r.imei||'Not recorded')+'</td><td>'+escape(r.phone_model||'—')+'</td><td>'+escape(r.gb||'—')+'</td><td>'+escape(r.color||'—')+'</td><td>'+escape([receiptCode(r),window.GREENLOOP_CAN_VIEW_PARTNER_NAMES?r.supplier_name:null].filter(Boolean).join(' · '))+'</td><td>'+escape(receiptLabel(r))+'</td><td>'+escape(r.reason||'—')+'</td></tr>').join('')+'</tbody></table><div class="sr-simple-toolbar">'+button('Previous','data-sr-prev')+button('Next','data-sr-next')+'</div>';
+ root.querySelector('[data-sr-prev]').disabled=simpleOffset===0;root.querySelector('[data-sr-next]').disabled=simpleOffset+rows.length>=simpleTotal;
+ root.querySelector('[data-sr-prev]').onclick=()=>{simpleOffset=Math.max(0,simpleOffset-50);refreshReport();};root.querySelector('[data-sr-next]').onclick=()=>{simpleOffset+=50;refreshReport();};
+ }
   async function refreshLegacy(generation) {
     const root = reportRoot;
     try {
@@ -184,10 +184,10 @@
   }
   function renderSimpleForm(host) {
     let scanned = [], selectedBatch = "", pasteIssues = [], lastAutoQuantity = "";
-    const imeiErrors = new Map(), stockChecks = new Map();
+    const imeiErrors = new Map(), stockChecks = new Map(), captures = new Map();
     let checkEpoch=0, checkRevision=0, checkRunning=false, checkTimer;
     host.innerHTML = '<form class="sr-form sr-simple-form">' +
-      '<div class="sr-request-start"><label>Supplier / supplier code<select name="supplier" required><option value="">Select supplier</option></select></label><label>Received stock<select name="batch" required disabled><option value="">Select received stock</option></select></label></div>' +
+      '<div class="sr-request-start"><label>Supplier / supplier code<select name="supplier" required><option value="">Select supplier</option></select></label><label>Original Stock / Batch<select name="batch" required disabled><option value="">Select received stock</option></select></label></div>' +
       '<dl class="sr-receipt-summary" data-sr-receipt hidden></dl>' +
       '<fieldset data-sr-inputs disabled><label class="sr-return-quantity">Return quantity<input name="quantity" type="number" min="1" max="1000" step="1" required placeholder="Enter return quantity"></label>' +
       '<div class="sr-optional-fields"><label>Model <span class="sr-optional">Optional</span><input name="model" list="sr-model-options" maxlength="100" placeholder="e.g. 15 Pro"><datalist id="sr-model-options"></datalist></label><label>GB <span class="sr-optional">Optional</span><input name="storage_gb" type="number" min="1" max="16384" step="1" placeholder="e.g. 128"></label><label>Scan IMEI <span class="sr-optional">Optional</span><span class="sr-scan-line" data-multiple-imeis><input name="imei" inputmode="numeric" maxlength="15" autocomplete="off" placeholder="Scan or enter IMEI">' + button("Add", 'data-sr-add-imei') + '</span></label></div>' +
@@ -203,9 +203,9 @@
     function showScanned() {
       q('[data-sr-scanned]').hidden = !scanned.length && !pasteIssues.length;
       const rows=scanned.map((v,i)=>{const check=stockChecks.get(v);const failed=imeiErrors.has(v)||check?.allowed===false;const receipt=check?.batch_number?{batch_number:check.batch_number,received_quantity:check.received_quantity}:null;
-        return '<tr data-sr-scan-row="'+escape(v)+'"'+(failed?' class="sr-imei-error"':check?.status==='unrecorded'?' class="sr-imei-warning"':'')+'><td class="gl-serial">'+(i+1)+'</td><td>'+escape(v)+'</td><td>'+escape(receipt?receiptLabel(receipt).replace(/ · —$/,''):check?.status==='checking'?'Checking…':'Not recorded')+'</td><td>'+escape(check?.current_stage||(check?.status==='error'?'Check unavailable':check?.status==='checking'?'Checking…':'Not recorded'))+'</td><td>'+escape(imeiErrors.get(v)||check?.reason||'Checking stock…')+'</td><td>'+button('Remove','data-sr-remove-imei="'+i+'" aria-label="Remove IMEI '+escape(v)+'"')+'</td></tr>';});
+        return '<tr data-sr-scan-row="'+escape(v)+'"'+(failed?' class="sr-imei-error"':check?.status==='unrecorded'?' class="sr-imei-warning"':'')+'><td class="gl-serial">'+(i+1)+'</td><td>'+escape(v)+'</td><td>'+escape([captures.get(v)?.model,captures.get(v)?.storageGb,captures.get(v)?.color].filter(Boolean).join(' · ')||'—')+'</td><td>'+escape(receipt?receiptLabel(receipt).replace(/ · —$/,''):check?.status==='checking'?'Checking…':'Not recorded')+'</td><td>'+escape(check?.current_stage||(check?.status==='error'?'Check unavailable':check?.status==='checking'?'Checking…':'Not recorded'))+'</td><td>'+escape(imeiErrors.get(v)||check?.reason||'Checking stock…')+'</td><td>'+button('Remove','data-sr-remove-imei="'+i+'" aria-label="Remove IMEI '+escape(v)+'"')+'</td></tr>';});
       rows.push(...pasteIssues.map((issue,i)=>'<tr class="sr-imei-error" data-sr-paste-issue><td class="gl-serial">'+(scanned.length+i+1)+'</td><td>'+escape(issue.value)+'</td><td>—</td><td>—</td><td>'+escape(issue.message)+'</td><td>'+button('Remove','data-sr-remove-issue="'+i+'" aria-label="Remove issue"')+'</td></tr>'));
-      q('[data-sr-scanned]').innerHTML='<table class="sr-imei-list" data-no-table-filters><thead><tr><th class="gl-serial">S.No</th><th>IMEI</th><th>Stock / Batch No</th><th>Current Stage</th><th>Status / reason</th><th>Remove</th></tr></thead><tbody>'+rows.join('')+'</tbody></table>';
+      q('[data-sr-scanned]').innerHTML='<table class="sr-imei-list" data-no-table-filters><thead><tr><th class="gl-serial">S.No</th><th>IMEI</th><th>Model / GB / Color</th><th>Stock / Batch No</th><th>Current Stage</th><th>Status / reason</th><th>Remove</th></tr></thead><tbody>'+rows.join('')+'</tbody></table>';
       q('[data-sr-recheck]').hidden=!scanned.length;
       host.querySelectorAll('[data-sr-remove-imei]').forEach(el=>{el.onclick=()=>{if(!canPrepare())return;imeiErrors.delete(scanned[Number(el.dataset.srRemoveImei)]);stockChecks.delete(scanned[Number(el.dataset.srRemoveImei)]);scanned.splice(Number(el.dataset.srRemoveImei),1);syncQuantity();showScanned();queueStockCheck(scanned);scanNotice(scanned.length+' IMEI(s) added.');};});
       host.querySelectorAll('[data-sr-remove-issue]').forEach(el=>{el.onclick=()=>{if(!canPrepare())return;pasteIssues.splice(Number(el.dataset.srRemoveIssue),1);showScanned();};});
@@ -262,9 +262,9 @@
       return true;
     }
     window.GREENLOOP_CABLE_WORKSPACE?.register({active:()=>form.isConnected&&!host.hidden&&!!form.getClientRects().length,key:()=>'return:'+selectedBatch,
-      apply:d=>{if(!canPrepare())return false;if(scanned.includes(d.imei))return true;
-        window.GREENLOOP_CABLE_WORKSPACE.field(get('model'),d.model);
-        window.GREENLOOP_CABLE_WORKSPACE.field(get('storage_gb'),d.storageGb);
+      enrich:d=>{if(canPrepare()&&scanned.includes(d.imei)){captures.set(d.imei,d);showScanned();}},
+      apply:d=>{if(!canPrepare())return false;if((d.platform||'ios')==='ios'&&d.identitySchemaVersion!==2){scanNotice('Update the cable reader for dual IMEI support, then reconnect.',true);return false;}captures.set(d.imei,d);if(scanned.includes(d.imei)){showScanned();return true;}
+
         get('imei').value=d.imei;return addImei();}
     });
     function updateReceipt() {
@@ -272,7 +272,7 @@
       selectedBatch = receipt?.batch_id || "";
       q("[data-sr-inputs]").disabled = !receipt;
       q("[data-sr-receipt]").hidden = !receipt;
-      if (changed) { checkEpoch++;clearTimeout(checkTimer);checkRunning=false;stockChecks.clear();scanned = []; pasteIssues=[];imeiErrors.clear();lastAutoQuantity="";get("bulk_imeis").value=""; showScanned(); scanNotice(""); get("imei").value = ""; get("quantity").value = ""; get("model").value = ""; get("storage_gb").value = ""; get("reason").value = ""; }
+      if (changed) { checkEpoch++;clearTimeout(checkTimer);checkRunning=false;stockChecks.clear();captures.clear();scanned = []; pasteIssues=[];imeiErrors.clear();lastAutoQuantity="";get("bulk_imeis").value=""; showScanned(); scanNotice(""); get("imei").value = ""; get("quantity").value = ""; get("model").value = ""; get("storage_gb").value = ""; get("reason").value = ""; }
       if (!receipt) return;
       q("[data-sr-receipt]").innerHTML = [["Received",showDate(receipt.received_at)],["Supplier code",receiptCode(receipt)],["Quantity received",receipt.received_quantity],["Return Stock",receipt.returned_quantity]].map(([k,v]) => '<div><dt>' + escape(k) + '</dt><dd>' + escape(v) + '</dd></div>').join("");
       get("quantity").max = String(Math.min(1000, Math.max(0, Number(receipt.received_quantity)-Number(receipt.returned_quantity))));
@@ -321,20 +321,21 @@
       const reason = get("reason").value.trim() || "Not specified";
       if (storage && (!Number.isInteger(Number(storage)) || Number(storage)<1)) { simpleMessage("Enter a valid GB value, or leave GB blank.",true); return; }
       const payload = {batch_id:receipt.batch_id,quantity,reason,imeis:[...scanned]};
+      const captureDetails=scanned.filter(v=>captures.has(v)).map(v=>{const d=captures.get(v);return {imei:v,imei_2:d.imei2||null,serial_number:d.serialNumber||null,specification_region:d.phoneRegion||null,model:d.model||null,storage_gb:d.storageGb||null,color:d.color||null,battery_health:d.batteryHealth??null};});
       if(reason.toLowerCase()==="other")payload.notes=reason;
       if (get("model").value.trim()) payload.model = get("model").value.trim();
       if (storage) payload.storage_gb = Number(storage);
-      const signature = JSON.stringify(["record_simple_stock_return",payload]);
+      const signature = JSON.stringify(["record_simple_stock_return",payload,captureDetails]);
       if (!retries.has(signature)) retries.set(signature,crypto.randomUUID());
       const controls = [...form.querySelectorAll("button,input,select,textarea")].map(el => [el,el.disabled]);
       modalBusy = true; simpleGeneration += 1; controls.forEach(([el]) => { el.disabled = true; }); reportRoot.querySelector("[data-sr-refresh]").disabled = true;
       simpleMessage("Saving stock return…");
       try {
-        const result = await rpc("record_simple_stock_return",{p_payload:payload,p_idempotency_key:retries.get(signature)});
+        const result = await rpc("record_stock_return_with_capture_v1",{p_payload:payload,p_idempotency_key:retries.get(signature),p_phone_details:captureDetails});
         retries.delete(signature);
         lastSaved = "Stock return saved: " + (result.return_reference || "") + " · " + quantity + " phone(s).";
         const selectedSupplier = get("supplier").value, selectedReceipt = get("batch").value;
-        checkEpoch++;clearTimeout(checkTimer);checkRunning=false;stockChecks.clear();scanned = []; pasteIssues=[];imeiErrors.clear();lastAutoQuantity="";get("bulk_imeis").value=""; showScanned(); scanNotice(""); get("quantity").value = ""; get("imei").value = ""; get("model").value = ""; get("storage_gb").value = ""; get("reason").value = "";
+        checkEpoch++;clearTimeout(checkTimer);checkRunning=false;stockChecks.clear();captures.clear();scanned = []; pasteIssues=[];imeiErrors.clear();lastAutoQuantity="";get("bulk_imeis").value=""; showScanned(); scanNotice(""); get("quantity").value = ""; get("imei").value = ""; get("model").value = ""; get("storage_gb").value = ""; get("reason").value = "";
         // A completed return must never leave a filled form available to repeat.
         simpleContext = null;
         await refreshReport();
@@ -371,11 +372,11 @@
       '<section class="sr-card sr-report"><header class="sr-heading"><div><h2>Stock Return report</h2><p data-sr-total></p></div><a class="secondary-button sr-report-link" href="reports.html?report=stock_returns">Open in Reports</a></header><label class="sr-report-search">Find return<input data-sr-report-search type="search" placeholder="Supplier, receipt, model or IMEI"></label><div class="sr-table-wrap" data-sr-simple-table></div></section>' +
       '<details class="sr-card sr-report sr-legacy" data-sr-legacy hidden></details>';
     root.querySelector("[data-sr-refresh]").onclick = () => { if (!modalBusy) refreshReport(); };
-    root.querySelector("[data-sr-report-search]").oninput = renderSimpleReport;
+    root.querySelector("[data-sr-report-search]").oninput = ()=>{simpleOffset=0;refreshReport();};
     const input=root.querySelector("[data-sr-report-search]");
     returnSearchWidget=window.GREENLOOP_RECORD_SEARCH.attach(input,{
       lookup:term=>window.GREENLOOP_RECORD_SEARCH.localLookup(returnSearchItems(),term),
-      onSelect:item=>{input.value=item.identifier;renderSimpleReport();root.querySelectorAll('[data-sr-simple-table] details').forEach(detail=>{detail.open=true;});}
+      onSelect:item=>{input.value=item.identifier;simpleOffset=0;refreshReport();root.querySelectorAll('[data-sr-simple-table] details').forEach(detail=>{detail.open=true;});}
     });
     refreshReport();
   }
