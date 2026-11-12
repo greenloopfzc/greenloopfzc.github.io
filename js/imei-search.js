@@ -343,7 +343,7 @@ function buildStageSections(sortedRows) {
   }
   function journeyMoment(value) {
     const stamp=timestamp(value);
-    return stamp===null ? missing : new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Dubai",day:"2-digit",month:"short",year:"numeric",hour:"numeric",minute:"2-digit",second:"2-digit",hour12:true}).format(new Date(stamp));
+    return stamp===null ? missing : new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Dubai",day:"2-digit",month:"short",year:"numeric"}).format(new Date(stamp));
   }
   function currentStage(device) {
     // Match the workflow status names used by Stock Journey. Do not infer the
@@ -384,8 +384,7 @@ function buildStageSections(sortedRows) {
       ["GB",number(device.storage_gb)===null ? "" : `${device.storage_gb} GB`],["Supplier",supplierName || supplierCode],
       ["IMEI 1",device.imei_1],["IMEI 2",device.imei_2],
       ["Serial number",device.serial_number],["Supplier code",supplierCode],
-      ["Stock/Batch No",field(receipt,"Receipt","Batch")],["Invoice No",field(receipt,"Invoice")],["Stock received",receipt.occurred_at ? moment(receipt.occurred_at) : ""],
-      ["Device number",device.device_number]
+      ["Stock/Batch No",field(receipt,"Receipt","Batch")],["Invoice No",field(receipt,"Invoice")],["Stock received",receipt.occurred_at ? moment(receipt.occurred_at) : ""]
     ];
     const stage = currentStage(device);
     const currentLocation = scalar(device.current_status).toLowerCase() === "returned_to_supplier"

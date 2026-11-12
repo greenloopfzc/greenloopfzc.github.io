@@ -14,7 +14,7 @@ const filters=[
 const selection=()=>Object.fromEntries(filters.map(f=>[f.id,f.element.value]));
 const matches=(r,chosen,except='')=>filters.every(f=>f.id===except||!chosen[f.id]||String(r[f.column])===chosen[f.id]);
 const uniquePhones=rows=>new Set(rows.flatMap(r=>r.phone_keys)).size;
-const date=s=>new Date(s).toLocaleString('en-GB',{timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true});
+const date=s=>new Date(s).toLocaleString('en-GB',{timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric'});
 let active=false,base=null,report=null,epoch=0,detailEpoch=0,exporting=false,issuing=false,preparing=false,sortKey='',sortDirection=1,pdfUrl='',pdfFile='',pendingRefresh=false,inFlight=null,stopped=false,review=[],selected=new Set();
 const busy=()=>exporting||issuing||preparing,signature=()=>JSON.stringify(selection());
 function message(s='',bad=false){$('#pt-message').textContent=s;$('#pt-message').classList.toggle('is-error',bad);}

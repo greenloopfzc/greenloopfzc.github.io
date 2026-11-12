@@ -5,7 +5,7 @@
   if (!root) return;
   const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const num = n => Number(n || 0).toLocaleString('en-GB');
-  const when = v => v ? new Date(v).toLocaleString('en-GB', {timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true}) : 'Not recorded';
+  const when = v => v ? new Date(v).toLocaleString('en-GB', {timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric'}) : 'Not recorded';
   const receivedDate = v => v ? new Date(v).toLocaleDateString('en-GB',{timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric'}) : 'Not recorded';
   const storage = n => n == null ? '—' : Number(n) >= 1024 && Number(n) % 1024 === 0 ? Number(n)/1024+' TB' : n+' GB';
   const can = c => window.GREENLOOP_CAN?.(c,'accounts') === true;

@@ -4,7 +4,7 @@
   const labels = { requested: "Requested", approved: "Return Pending", returned: "Returned to Supplier", rejected: "Rejected", cancelled: "Cancelled", dead: "Dead phone", icloud_locked: "iCloud locked", other: "Other" };
   const label = v => labels[v] || String(v || "—").replaceAll("_", " ");
   const statusLabel = r => r.archived_at ? `Archived audit · ${label(r.status)}` : label(r.status);
-  const date = v => v ? new Date(v).toLocaleString("en-GB", { hour12: true }) : "—";
+  const date = v => v ? new Date(v).toLocaleDateString("en-GB", { timeZone: "Asia/Dubai", day: "2-digit", month: "short", year: "numeric" }) : "—";
   const supplier = r => [r.supplier_code, window.GREENLOOP_CAN_VIEW_PARTNER_NAMES ? r.supplier_name : ""].filter(Boolean).join(" · ") || "—";
   const supplierIdentity = r => [String(r.supplier_code || '').trim().replace(/-\(\d+\)$/,''), window.GREENLOOP_CAN_VIEW_PARTNER_NAMES ? r.supplier_name : ''].filter(Boolean).join(' · ') || '—';
   const receiptCode = r => {const code=String(r.supplier_code || '').trim().replace(/-\(\d+\)$/,'');const qty=r.received_quantity;return code+(qty!==null&&qty!==undefined&&qty!==''&&Number.isSafeInteger(Number(qty))&&Number(qty)>=0?'-('+Number(qty)+')':'');};

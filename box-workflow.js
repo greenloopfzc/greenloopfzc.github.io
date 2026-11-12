@@ -4,7 +4,7 @@
   const filter=$('#box-queue-filter'),list=$('#box-queue-list'),detail=$('#box-queue-detail'),message=$('#box-queue-message');
   let client,offset=0,total=0,busy=false,generation=0,selected=null,printed=null,canEdit=false;
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const dt=v=>v?new Date(v).toLocaleString('en-GB',{timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric',hour:'numeric',minute:'2-digit',hour12:true}):'Not recorded';
+  const dt=v=>v?new Date(v).toLocaleString('en-GB',{timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric'}):'Not recorded';
   const cell=v=>esc(v===null||v===undefined||v===''?'—':v);
   const state=v=>({accounts:'Awaiting verification',exported:'Verified',legacy:'Historical box · prior workflow',draft:'Box Entry',recheck:'Recheck'}[v]||v);
   const exportedPrintAllowed=()=>page==='stock_exported'&&window.GREENLOOP_PAGE_ACCESS?.pageKey===page&&window.GREENLOOP_CAN?.('view',page)===true&&window.GREENLOOP_CAN?.('print',page)===true;
@@ -27,13 +27,44 @@
   function renderDetail(data,keepCustomer=false){
     const customerChoice=keepCustomer?detail.querySelector("#box-customer")?.value:null;
     selected=data;printed=null;const b=data.box;
-    const columns=[['S.No','serial_no'],['IMEI','imei'],['Device','device_number'],['Model','model'],['GB','storage_gb'],['Grade','final_grade'],['Color','color'],['Supplier','supplier_name'],['Supplier code','supplier_code'],['Stock received · UAE','received_at'],['Invoice','invoice_number'],['Stock/Batch No','batch_number']];
-    detail.innerHTML=`<div class="box-detail-heading"><div><span class="gl-wordmark gl-wordmark-small"><img src="assets/greenloop-fzc-logo.jpg" alt="Greenloop FZC"></span><h2>${cell(b.box_number)}</h2><p>${cell(state(b.state))} · ${data.lines.length} phones</p>${b.customer_code?`<p>Customer: ${cell(b.customer_name||b.customer_code)}</p>`:""}</div><div class="box-actions"><button class="secondary-button" type="button" data-print-box data-search-read-only ${page==='stock_exported'?'data-capability="print" data-capability-page="stock_exported"':''}>Print Box</button>${b.state==='accounts'&&page==='accounts'&&canEdit?'<button class="secondary-button" type="button" data-confirm-print data-entry-only hidden>Printing completed</button><button class="primary-button" type="button" data-verify-box data-entry-only>Verify Box</button>':''}<button class="secondary-button" type="button" data-close-box data-search-read-only>Close</button></div></div><p class="box-review-note">${b.state==='accounts'?'Review every phone and its source details. Choose Verify Box, or send it back for Recheck with a reason.':b.state==='legacy'?'Historical box from before Accounts verification was introduced.':'Verified by '+cell(b.verified_by_name)+' · '+cell(dt(b.verified_at))}</p>${b.recheck_count&&b.recheck_reason?`<div class="br-reason"><strong>Resubmitted after Recheck · ${cell(dt(b.last_sent_at))}</strong><p>${cell(b.recheck_reason)}</p></div>`:''}${b.state==='accounts'&&page==='accounts'&&window.GREENLOOP_CAN?.('verify','accounts')?'<section class="box-recheck-return" data-capability="verify" data-capability-page="accounts"><label>Reason for Recheck<textarea id="box-recheck-reason" rows="2" minlength="2" maxlength="1000" placeholder="Explain what needs to be checked or corrected"></textarea></label><button type="button" class="secondary-button" data-request-box-recheck>Send for Recheck</button></section>':''}${page==='accounts'?window.GREENLOOP_ACCOUNTS?.picker(b)||'':''}<div class="box-table-wrap"><table class="box-table"><thead><tr>${columns.map(([label])=>'<th>'+esc(label)+'</th>').join('')}</tr></thead><tbody>${data.lines.map(row=>'<tr>'+columns.map(([,key])=>'<td>'+cell(key==='received_at'?dt(row[key]):row[key])+'</td>').join('')+'</tr>').join('')}</tbody></table></div>`;
+    const columns=[['S.No','serial_no'],['IMEI','imei'],['Model','model'],['GB','storage_gb'],['Grade','final_grade'],['Color','color'],['Supplier','supplier_name'],['Supplier code','supplier_code'],['Stock received · UAE','received_at'],['Invoice','invoice_number'],['Stock/Batch No','batch_number']];
+    detail.innerHTML=`<div class="box-detail-heading"><div><span class="gl-wordmark gl-wordmark-small"><img src="assets/greenloop-fzc-logo.jpg" alt="Greenloop FZC"></span><h2>${cell(b.box_number)}</h2><p>${cell(state(b.state))} · ${data.lines.length} phones</p>${b.customer_code?`<p>Customer: ${cell(b.customer_name||b.customer_code)}</p>`:""}</div><div class="box-actions">${downloads.buttons('data-export-box-report',page,'print')}<button class="secondary-button" type="button" data-print-box data-search-read-only ${page==='stock_exported'?'data-capability="print" data-capability-page="stock_exported"':''}>Print Box</button>${b.state==='accounts'&&page==='accounts'&&canEdit?'<button class="secondary-button" type="button" data-confirm-print data-entry-only hidden>Printing completed</button><button class="primary-button" type="button" data-verify-box data-entry-only>Verify Box</button>':''}<button class="secondary-button" type="button" data-close-box data-search-read-only>Close</button></div></div><p class="box-review-note">${b.state==='accounts'?'Review every phone and its source details. Choose Verify Box, or send it back for Recheck with a reason.':b.state==='legacy'?'Historical box from before Accounts verification was introduced.':'Verified by '+cell(b.verified_by_name)+' · '+cell(dt(b.verified_at))}</p>${b.recheck_count&&b.recheck_reason?`<div class="br-reason"><strong>Resubmitted after Recheck · ${cell(dt(b.last_sent_at))}</strong><p>${cell(b.recheck_reason)}</p></div>`:''}${b.state==='accounts'&&page==='accounts'&&window.GREENLOOP_CAN?.('verify','accounts')?'<section class="box-recheck-return" data-capability="verify" data-capability-page="accounts"><label>Reason for Recheck<textarea id="box-recheck-reason" rows="2" minlength="2" maxlength="1000" placeholder="Explain what needs to be checked or corrected"></textarea></label><button type="button" class="secondary-button" data-request-box-recheck>Send for Recheck</button></section>':''}${page==='accounts'?window.GREENLOOP_ACCOUNTS?.picker(b)||'':''}<div class="box-table-wrap"><table class="box-table"><thead><tr>${columns.map(([label])=>'<th>'+esc(label)+'</th>').join('')}</tr></thead><tbody>${data.lines.map(row=>'<tr>'+columns.map(([,key])=>'<td>'+cell(key==='received_at'?dt(row[key]):row[key])+'</td>').join('')+'</tr>').join('')}</tbody></table></div>`;
     window.GREENLOOP_SORTING.table('box-detail-lines',detail.querySelector('table'),data.lines,columns.map(([label,key])=>[key,label,key==='serial_no'?'number':undefined]));
     if(customerChoice && detail.querySelector("#box-customer"))detail.querySelector("#box-customer").value=customerChoice;
     detail.hidden=false;
   }
   async function open(id){if(busy)return;lock(true);notice();detail.hidden=true;selected=null;try{if(page==='accounts'&&canEdit)await window.GREENLOOP_ACCOUNTS.reloadCustomers();renderDetail(await rpc('get_box_workflow_v1',{p_box_id:id}));detail.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){notice(e.message,true);}finally{lock(false);}}
+
+  const downloads=window.GREENLOOP_REPORT_DOWNLOADS;
+  async function exportData(kind,whole=false){
+    if(busy||!window.GREENLOOP_CAN?.('print',page))return;
+    const token=generation,id=selected?.box.box_id;
+    const allowed=()=>token===generation&&window.GREENLOOP_CAN?.('view',page)===true&&window.GREENLOOP_CAN?.('print',page)===true&&(whole||selected?.box.box_id===id);
+    lock(true);notice();
+    try{
+      let report;
+      if(whole){
+        const args={...queueFilters.sortArgs(),p_source:page,p_filters:queueFilters.query(),p_limit:50};
+        const data=await downloads.collect(p_offset=>rpc('get_sorted_filter_records_v1',{...args,p_offset}),allowed);
+        report=null;
+        for(const box of data.rows){
+          if(!allowed())throw Error('Report access changed.');
+          const detail=await rpc('get_box_workflow_v1',{p_box_id:box.id});
+          if(box.revision!=null&&detail.box.revision!==box.revision)throw Error('Box changed during download. Retry.');
+          const part=downloads.boxReport(detail);
+          if(!report)report={title:'Export Data',subtitle:'All phones in matching export boxes',headers:['S.No','Box',...part.headers.slice(1)],rows:[]};
+          for(const row of part.rows)report.rows.push([report.rows.length+1,box.box_number,...row.slice(1)]);
+        }
+        if(!report)throw Error('No export data matches these filters.');
+      }else report=downloads.boxReport(await rpc('get_box_workflow_v1',{p_box_id:id}));
+      await downloads.output(kind,report,allowed,page,'print');
+    }catch(e){notice(e.message,true);}finally{lock(false);}
+  }
+  if(page==='stock_exported'){
+    const actions=document.createElement('div');actions.className='box-actions';list.before(actions);
+    Promise.resolve(window.GREENLOOP_ACCESS_READY).then(()=>{actions.innerHTML=downloads.buttons('data-export-all',page,'print');});
+    actions.addEventListener('click',e=>{const b=e.target.closest('[data-export-all]');if(b)exportData(b.dataset.exportAll,true);});
+  }
   async function printBox(){if(busy||!selected)return;lock(true);notice();try{
     if(page==='stock_exported'&&!exportedPrintAllowed())throw Error('Stock Exported print permission is required.');
     renderDetail(await rpc('get_box_workflow_v1',{p_box_id:selected.box.box_id}),true);
@@ -69,7 +100,7 @@
   $('#clear-box-dates').addEventListener('click',()=>{if(busy)return;filter.reset();offset=0;queueFilters.clear();});
   $('#box-queue-prev').addEventListener('click',()=>{if(!busy&&offset>0){offset-=50;load();}});
   $('#box-queue-next').addEventListener('click',()=>{if(!busy&&offset+50<total){offset+=50;load();}});
-  app.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||busy)return;if(b.dataset.openBox)open(b.dataset.openBox);else if(b.hasAttribute('data-print-box'))printBox();else if(b.hasAttribute('data-confirm-print'))confirmPrint();else if(b.hasAttribute('data-verify-box'))verify();else if(b.hasAttribute('data-request-box-recheck'))requestRecheck();else if(b.hasAttribute('data-close-box')){if(page==='stock_exported')window.GREENLOOP_BOX_PRINT?.clear();detail.hidden=true;selected=null;printed=null;}});
+  app.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||busy)return;if(b.hasAttribute('data-export-box-report'))exportData(b.dataset.exportBoxReport);else if(b.dataset.openBox)open(b.dataset.openBox);else if(b.hasAttribute('data-print-box'))printBox();else if(b.hasAttribute('data-confirm-print'))confirmPrint();else if(b.hasAttribute('data-verify-box'))verify();else if(b.hasAttribute('data-request-box-recheck'))requestRecheck();else if(b.hasAttribute('data-close-box')){if(page==='stock_exported')window.GREENLOOP_BOX_PRINT?.clear();detail.hidden=true;selected=null;printed=null;}});
   async function init(){client=window.GREENLOOP_GET_CLIENT();const {data,error}=await client.auth.getSession();if(error)throw error;if(!data.session){location.replace('index.html');return;}await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();if(window.GREENLOOP_PAGE_ACCESS?.pageKey!==page)throw Error('You do not have permission to view this page.');canEdit=window.GREENLOOP_PAGE_ACCESS.canEdit===true;if(page==='accounts')await window.GREENLOOP_ACCOUNTS.init({client,canEdit,lock,notice,isBusy:()=>busy});app.hidden=false;await load();}
   init().catch(e=>{const n=$('#permission-message');n.textContent=e.message;n.hidden=false;});
 })();

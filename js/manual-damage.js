@@ -59,7 +59,7 @@
   const api = () => (client ||= window.GREENLOOP_GET_CLIENT());
   const editable = () => canEdit && !accessDenied && window.GREENLOOP_PAGE_ACCESS?.canEdit === true;
   const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
-  const dateFormatter = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Dubai", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true });
+  const dateFormatter = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Dubai", day: "2-digit", month: "short", year: "numeric" });
   function dateLabel(value) {
     const date = new Date(value);
     return value && Number.isFinite(date.getTime()) ? dateFormatter.format(date) : "Time unavailable";

@@ -21,7 +21,7 @@
     'report-stock-returns': ['received_at','returned_at','received_quantity','returned_quantity','returned_by_name'],
     'report-supplier-progress': ['supplier_code','storage_label','batch_numbers','stock_channels','planned_quantity','received_quantity','imei_entry_pending','initial_qc_pending','lab_glass_pending','parts_pending','final_qc_pending','ready_quantity','exported_quantity','other_quantity'],
     'audit-deletion-filters': ['deleted_at','record_label','deletion_method'],
-    'audit-change-filters': ['changed_at','device_number','imei_before','imei_after','job_number'],
+    'audit-change-filters': ['changed_at','imei_before','imei_after','job_number'],
     'report-box-filters': ['boxNumber','opened_at','quantity']
   };
   const labels = {full_name:'Name',login_username:'Username',price_amount:'Original / part',copy_price_amount:'Copy / part',copy_total_value:'Copy total',total_value:'Total value',date_entered:'Date entered',created_at:'Recorded date',filter_date:'Date',quantity:'Quantity',storage_gb:'GB',storage:'GB',boxNumber:'Box number',latest:'Latest Final QC pass',total:'Total Qty'};

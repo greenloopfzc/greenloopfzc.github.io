@@ -192,7 +192,7 @@
   function setMessage(text = "", type = "error") { message.textContent = text; message.classList.toggle("is-visible", Boolean(text)); message.classList.toggle("is-success", type === "success"); }
   function localDate(value) { const date = new Date(value); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
   function dateLabel(value) { return value ? new Date(`${value}T00:00:00`).toLocaleDateString([], { day: "2-digit", month: "short", year: "numeric" }) : "—"; }
-  function dateTime(value) { return value ? new Date(value).toLocaleString([], { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true }) : "—"; }
+  function dateTime(value) { return value ? new Date(value).toLocaleDateString("en-GB", { timeZone: "Asia/Dubai", day: "2-digit", month: "short", year: "numeric" }) : "—"; }
   function money(value) { return `AED ${Number(value || 0).toFixed(2)}`; }
   function title(value) { return window.GREENLOOP_DEPT_NAME(String(value || "—").replaceAll("_", " ")); }
   function partnerLabel(code, name, fallback = "—") {
@@ -287,7 +287,7 @@
     rows = window.GREENLOOP_FILTERS.use('report-stock-returns', rows, {before:reportContent,fields:[['supplier_code','Supplier code'],['model','Model'],['reason','Reason']],onChange:()=>renderStockReturns(),searchFields:['invoice_number','batch_number','supplier_code','model','reason','return_reference','imeis','returned_by_name']});
     const returnDate = value => {
       const parsed = new Date(value);
-      return value && Number.isFinite(parsed.getTime()) ? new Intl.DateTimeFormat([], {day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit", hour12: true,timeZone:"Asia/Dubai"}).format(parsed) : "—";
+      return value && Number.isFinite(parsed.getTime()) ? new Intl.DateTimeFormat([], {day:"2-digit",month:"short",year:"numeric",timeZone:"Asia/Dubai"}).format(parsed) : "—";
     };
     rowCount.textContent = `${supplierTotal(rows, "returned_quantity")} returned · ${rows.length} record${rows.length === 1 ? "" : "s"}`;
     const body = rows.length ? rows.map(row => `<tr>
@@ -708,7 +708,7 @@
       <div class="correction-workspace">
         ${search}
         <section class="correction-record-head">
-          <div><span>Device</span><strong>${escapeHtml(record.device_number)}</strong></div>
+
           <div><span>Job</span><strong>${escapeHtml(record.job_number || "-")}</strong></div>
           <div><span>Status</span><strong>${escapeHtml(title(record.current_status))}</strong></div>
           <div><span>Supplier</span><strong>${escapeHtml(confidentialPartnerText(record.supplier_label))}</strong></div>
@@ -782,11 +782,11 @@
     if (auditView === "changes") {
       const body = changeRows.length ? changeRows.map((row) => `<tr>
         <td>${formatCell(row.changed_at, "date")}</td><td>${escapeHtml(row.changed_by || "System")}</td>
-        <td>${escapeHtml(row.device_number || "-")}</td><td>${escapeHtml(row.imei_before || "-")}<br><span class="audit-arrow">→ ${escapeHtml(row.imei_after || "-")}</span></td>
+        <td>${escapeHtml(row.imei_before || "-")}<br><span class="audit-arrow">→ ${escapeHtml(row.imei_after || "-")}</span></td>
         <td>${escapeHtml(row.job_number || "-")}</td><td class="audit-reason">${escapeHtml(row.change_reason || "-")}</td>
-        <td><details class="report-deletion-details"><summary>View old / new values</summary><div class="change-fields">${renderChangedFields(row.changed_fields)}</div>${window.GREENLOOP_CAN_VIEW_PARTNER_NAMES ? `<details><summary>Full snapshots</summary><pre>${escapeHtml(JSON.stringify({ before: row.before_data, after: row.after_data }, null, 2))}</pre></details>` : ""}</details></td>
-      </tr>`).join("") : '<tr><td class="report-empty" colspan="7">No data corrections were found for this date range.</td></tr>';
-      table = `<div class="report-table-wrap"><table class="report-table audit-table"><thead><tr><th>Changed at</th><th>Changed by</th><th>Device</th><th>IMEI old → new</th><th>Job</th><th>Reason</th><th>Changes</th></tr></thead><tbody>${body}</tbody></table></div>`;
+        <td><details class="report-deletion-details"><summary>View old / new values</summary><div class="change-fields">${renderChangedFields(row.changed_fields)}</div>${window.GREENLOOP_CAN_VIEW_PARTNER_NAMES ? `<details><summary>Full snapshots</summary><pre>${escapeHtml(JSON.stringify({ before: row.before_data, after: row.after_data }, (key,value)=>key==="device_number"?undefined:value, 2))}</pre></details>` : ""}</details></td>
+      </tr>`).join("") : '<tr><td class="report-empty" colspan="6">No data corrections were found for this date range.</td></tr>';
+      table = `<div class="report-table-wrap"><table class="report-table audit-table"><thead><tr><th>Changed at</th><th>Changed by</th><th>IMEI old → new</th><th>Job</th><th>Reason</th><th>Changes</th></tr></thead><tbody>${body}</tbody></table></div>`;
     } else {
       const report = reports.deleted_history;
       const headers = report.columns.map(([label]) => `<th>${escapeHtml(label)}</th>`).join("");

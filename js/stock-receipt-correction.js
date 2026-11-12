@@ -6,7 +6,7 @@
  const writeCap='data-capability="receipt_quantity_correction" data-capability-page="reports"';
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const num=v=>Number(v||0).toLocaleString('en-GB');
- const date=v=>new Date(v).toLocaleString('en-GB',{timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true});
+ const date=v=>new Date(v).toLocaleString('en-GB',{timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric'});
  let root=null,epoch=0,busy=false,saving=false,receipt=null,list=null,offset=0,historyOffset=0,historyTotal=0,timer,requests=new Map();
  const $=s=>root?.querySelector(s);
  const batch=r=>window.GREENLOOP_BATCH_LABEL?.(r.batch_number,{batch_number:r.batch_number,receipt_quantity:r.quantity},'Not recorded')||`${r.batch_number}-(${r.quantity})`;

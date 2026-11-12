@@ -66,7 +66,7 @@
 
   function formatDateTime(value) {
     return new Date(value || Date.now()).toLocaleString("en-GB", {
-      timeZone: "Asia/Dubai", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true
+      timeZone: "Asia/Dubai", day: "2-digit", month: "short", year: "numeric"
     });
   }
 
@@ -213,6 +213,16 @@
     lines=data.lines || [];
     currentBox={...currentBox,...data.box};
   }
+
+  async function downloadCurrentBox(kind){
+    if(!can('view')||!can('print')||boxBusy||scanning||!lines.length)return;
+    const id=currentBox.box_id;boxBusy=true;render();
+    const allowed=()=>can('view')&&can('print')&&currentBox?.box_id===id&&!scannerLocked;
+    try{const {data,error}=await getClient().rpc('get_box_workflow_v1',{p_box_id:id});if(error)throw error;await window.GREENLOOP_REPORT_DOWNLOADS.output(kind,window.GREENLOOP_REPORT_DOWNLOADS.boxReport(data),allowed,'export_boxes','print');}catch(e){setMessage(e.message);}finally{boxBusy=false;render();}
+  }
+  const downloadActions=document.createElement('span');downloadActions.className='box-actions';printButton.before(downloadActions);
+  Promise.resolve(window.GREENLOOP_ACCESS_READY).then(()=>{downloadActions.innerHTML=window.GREENLOOP_REPORT_DOWNLOADS.buttons('data-export-current','export_boxes','print');});
+  downloadActions.addEventListener('click',e=>{const b=e.target.closest('[data-export-current]');if(b)downloadCurrentBox(b.dataset.exportCurrent);});
   async function printBox() {
     if(!can("print") || boxBusy || scanning || !lines.length)return;
     boxBusy=true;render();setMessage();

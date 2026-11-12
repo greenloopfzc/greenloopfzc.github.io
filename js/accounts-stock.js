@@ -3,7 +3,7 @@
   const $ = s => document.querySelector(s);
   const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const value = v => esc(v === null || v === undefined || v === '' ? '—' : v);
-  const date = v => v ? new Date(v).toLocaleString('en-GB', {timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric',hour:'numeric',minute:'2-digit',hour12:true}) : 'Not recorded';
+  const date = v => v ? new Date(v).toLocaleString('en-GB', {timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric'}) : 'Not recorded';
   let context, customers = [], namesAllowed = false, view = 'verify', offset = 0, total = 0;
   let query = {from:null,to:null,search:null},stockGeneration=0;
   const mayReadStock=kind=>window.GREENLOOP_CAN?.('view','accounts')===true&&window.GREENLOOP_CAN?.(kind+'_stock','accounts')===true;
@@ -59,6 +59,25 @@
       return `<td>${content}</td>`;
     }).join('')+'</tr>').join('');
     return `<div class="box-table-wrap"><table class="box-table accounts-stock-table"><thead><tr><th scope="col">S.No</th>${columns.map(([label])=>`<th scope="col">${esc(label)}</th>`).join('')}</tr></thead><tbody>${rows||`<tr><td colspan="${columns.length+1}" class="box-empty">No stock found for these filters.</td></tr>`}</tbody>${footer}</table></div>`;
+  }
+
+  const downloads=window.GREENLOOP_REPORT_DOWNLOADS;
+  async function exportStock(kind){
+    const selected=view,token=stockGeneration;
+    const allowed=()=>stockGeneration===token&&view===selected&&mayReadStock(selected)&&window.GREENLOOP_CAN?.('print','accounts')===true;
+    if(context.isBusy()||!allowed()||!total)return;
+    const args={...stockFilters.sortArgs(),p_kind:selected,p_filters:stockFilters.query(),p_limit:50};
+    context.lock(true);stockFilters.setBusy(true);
+    try{
+      const data=await downloads.collect(p_offset=>rpc('get_accounts_stock_report_v2',{...args,p_offset}),allowed);
+      window.GREENLOOP_BATCH_DISPLAY?.remember(data);
+      const columns=columnsFor({...data,names_allowed:data.names_allowed&&window.GREENLOOP_CAN_VIEW_PARTNER_NAMES===true});
+      const report={title:selected==='supplier'?'Supplier Stock':'Customer Stock',subtitle:Object.entries(args.p_filters).filter(([,v])=>v).map(([k,v])=>k.replace(/^_/,'')+': '+v).join(' | ')||'All matching stock',headers:['S.No',...columns.map(([h])=>h)],rows:data.rows.map((r,i)=>[i+1,...columns.map(([,k])=>k.endsWith('_at')?date(r[k]):k==='batch_number'?window.GREENLOOP_BATCH_LABEL?.(r.batch_number,r)||r.batch_number:k==='invoice_number'?r.invoice_number||r.batch_number:r[k])])};
+      const numeric=selected==='supplier'?['received','in_company','ready','in_process','exported','returned']:['quantity'];
+      report.subtitle+=' | '+numeric.map(k=>k.replace(/_/g,' ')+': '+Number(data.totals[k]||0)).join(' | ');
+      await downloads.output(kind,report,allowed,'accounts','print');
+    }catch(e){const msg=$('#accounts-stock-message');msg.textContent=e.message;msg.classList.add('is-visible');}
+    finally{context.lock(false);stockFilters.setBusy(false);pagination();}
   }
   function pagination() {
     $('#accounts-stock-prev').disabled = context.isBusy() || offset === 0;
@@ -118,6 +137,7 @@
     stockFilters.controls.get('customer_code').closest('label').hidden=supplier;
     stockFilters.controls.get('final_grade').closest('label').hidden=supplier;
     $('#accounts-stock-title').textContent = supplier ? 'Supplier Stock' : 'Customer Stock';
+    $('#accounts-stock-downloads').innerHTML=downloads.buttons('data-stock-download','accounts','print');
     $('#accounts-date-from-label').firstChild.textContent = 'From date';
     $('#accounts-date-to-label').firstChild.textContent = 'To date';
     $('#accounts-stock-filter').elements.search.placeholder = supplier ? 'Supplier, batch, invoice, model, color…' : 'Customer, supplier, batch, box, invoice, model…';
@@ -126,6 +146,7 @@
   }
   async function init(settings) {
     context = settings;
+    $('#accounts-stock-downloads').addEventListener('click',e=>{const b=e.target.closest('[data-stock-download]');if(b)exportStock(b.dataset.stockDownload);});
     await window.GREENLOOP_ACCOUNTS_IMEI.init(settings);
     if (context.canEdit) {
       namesAllowed = await rpc('get_my_partner_name_access') === true;

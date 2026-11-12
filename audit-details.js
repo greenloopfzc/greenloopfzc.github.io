@@ -46,8 +46,8 @@
     restricted_data_deletion: "Restricted Data deletion", hard_delete: "Hard delete",
     soft_delete: "Soft delete", old_values: "Previous values", new_values: "Updated values"
   });
-  const identityKeys = ["return_reference", "return_number", "box_number", "imei", "imei_1", "device_number", "job_number", "work_order_number", "batch_number", "part_name", "technician_name", "assigned_technician_name", "full_name", "name", "sku"];
-  const fieldPriority = ["return_reference", "return_number", "imei", "imei_1", "imei_2", "device_number", "job_number", "box_number", "batch_number", "part_name", "technician_name", "assigned_technician_name", "full_name", "name", "model", "serial_number", "status", "current_status", "box_status", "department", "stage", "quantity_requested", "quantity_issued", "quantity_installed", "quantity_returned"];
+  const identityKeys = ["return_reference", "return_number", "box_number", "imei", "imei_1", "job_number", "work_order_number", "batch_number", "part_name", "technician_name", "assigned_technician_name", "full_name", "name", "sku"];
+  const fieldPriority = ["return_reference", "return_number", "imei", "imei_1", "imei_2", "job_number", "box_number", "batch_number", "part_name", "technician_name", "assigned_technician_name", "full_name", "name", "model", "serial_number", "status", "current_status", "box_status", "department", "stage", "quantity_requested", "quantity_issued", "quantity_installed", "quantity_returned"];
   const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const own = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
   const object = value => value !== null && typeof value === "object" && !Array.isArray(value);
@@ -77,7 +77,7 @@
       || Number(value.slice(11, 13)) > 23 || Number(value.slice(14, 16)) > 59) return null;
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return null;
-    return `${new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Dubai", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true }).format(date)} (Dubai)`;
+    return `${new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Dubai", day: "2-digit", month: "short", year: "numeric" }).format(date)} (Dubai)`;
   }
 
   function primitive(value, key = "") {
@@ -162,7 +162,7 @@
     }
 
     function objectHtml(value) {
-      const entries = Object.entries(value);
+      const entries = Object.entries(value).filter(([key])=>key!=="device_number");
       if (!entries.length) return '<p class="audit-snapshot-empty">No saved details</p>';
       const regular = [], refs = [], groups = [];
       entries.sort(([a], [b]) => {

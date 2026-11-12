@@ -97,3 +97,13 @@
     body.app-page.gl-clean-layout .journey-summary small { width:100%; margin:0; }
   }
 }
+
+/* Report and work-table text is centered without changing row dimensions. */
+body.app-page table > :is(thead, tbody, tfoot) > tr > :is(th, td),
+html body.app-page :is(#accounts-stock-panel, #accounts-imei-panel, #stock-return-app, #stock-replacement-app, #box-queue-app, #export-box-app, #reports-app) table > :is(thead, tbody, tfoot) > tr > :is(th, td) {
+  text-align: center !important;
+  vertical-align: middle !important;
+}
+body.app-page table :is(th, td) :is(input, select, textarea) {
+  text-align: center;
+}

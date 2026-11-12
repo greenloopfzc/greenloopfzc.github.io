@@ -5,7 +5,7 @@
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const num=v=>Number(v||0).toLocaleString('en-GB');
   const fmtDate=v=>v?new Intl.DateTimeFormat('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'}).format(new Date(v+'T12:00:00Z')):'';
-  const fmt=v=>v?new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric',hour:'numeric',minute:'2-digit',hour12:true}).format(new Date(v)):'';
+  const fmt=v=>v?new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric'}).format(new Date(v)):'';
   const uaeToday=()=>{const p=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Dubai',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).map(x=>[x.type,x.value]));return `${p.year}-${p.month}-${p.day}`;};
   const rpc=async(name,args)=>{const r=await window.GREENLOOP_GET_CLIENT().rpc(name,args);if(r.error)throw Object.assign(new Error(r.error.message||'Request failed.'),{code:r.error.code});return r.data;};
   const msg=(text='',ok=false)=>{if(!root)return;const e=root.querySelector('#pc-message');e.textContent=text;e.hidden=!text;e.dataset.state=ok?'success':'error';};

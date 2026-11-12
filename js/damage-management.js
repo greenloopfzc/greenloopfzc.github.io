@@ -3,7 +3,7 @@
 
   const limit = 10;
   const escape = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
-  const formatDate = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Dubai", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true });
+  const formatDate = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Dubai", day: "2-digit", month: "short", year: "numeric" });
   const dateLabel = value => value && Number.isFinite(new Date(value).getTime()) ? formatDate.format(new Date(value)) : "Time unavailable";
   // Keep money as a decimal string: reject excess precision before any rounding.
   function priceValue(value) {

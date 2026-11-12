@@ -4,10 +4,10 @@
  const W=595.276,H=841.89,M=22,BODY=W-2*M;
  const clean=v=>String(v??'').replace(/[\u0000-\u001f\u007f]/g,' ').replace(/[–—‑]/g,'-').replace(/\s+/g,' ').trim();
  const label=v=>clean(v)||'-';
- const columns=[['S.NO','serial_no',22],['IMEI','imei',64],['DEVICE','device_number',42],['MODEL','model',40],['GB','storage_gb',24],['GRADE','final_grade',30],['COLOR','color',45],['SUPPLIER','supplier_name',36],['SUPPLIER CODE','supplier_code',46],['STOCK RECEIVED · UAE','received_at',64],['INVOICE','invoice_number',54],['STOCK/BATCH NO','batch_number',84]];
+ const columns=[['S.NO','serial_no',22],['IMEI','imei',64],['MODEL','model',40],['GB','storage_gb',24],['GRADE','final_grade',30],['COLOR','color',45],['SUPPLIER','supplier_name',36],['SUPPLIER CODE','supplier_code',46],['STOCK RECEIVED · UAE','received_at',64],['INVOICE','invoice_number',54],['STOCK/BATCH NO','batch_number',84]];
  let libraryPromise;
  function library(){if(root.PDFLib)return Promise.resolve(root.PDFLib);if(!root.document)return Promise.reject(Error('PDF tools are unavailable.'));if(!libraryPromise)libraryPromise=new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='js/vendor/pdf-lib-1.17.1.min.js';s.onload=()=>root.PDFLib?resolve(root.PDFLib):(libraryPromise=null,reject(Error('PDF tools did not load. Retry printing.')));s.onerror=()=>{libraryPromise=null;s.remove();reject(Error('PDF tools could not load. Retry printing.'));};document.head.append(s);});return libraryPromise;}
- function date(value){if(!value)return '-';const d=new Date(value);if(!Number.isFinite(d.getTime()))return label(value);return d.toLocaleString('en-GB',{timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true});}
+ function date(value){if(!value)return '-';const d=new Date(value);if(!Number.isFinite(d.getTime()))return label(value);return d.toLocaleString('en-GB',{timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric'});}
  function prepare(data,{namesAllowed=root.GREENLOOP_CAN_VIEW_PARTNER_NAMES===true}={}){
   if(!data?.box||!clean(data.box.box_number)||!Array.isArray(data.lines)||!data.lines.length)throw Error('A non-empty box is required for printing.');
   const seen=new Set(),serials=new Set();const rows=data.lines.map((row,i)=>{

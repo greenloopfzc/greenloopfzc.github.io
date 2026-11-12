@@ -2,7 +2,7 @@
  'use strict';
  const $=s=>document.querySelector(s),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const can=c=>window.GREENLOOP_CAN?.(c,'frame_department')===true,fmt=n=>Number(n||0).toLocaleString('en-GB');
- const when=v=>v?new Date(v).toLocaleString('en-GB',{timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true}):'Not recorded';
+ const when=v=>v?new Date(v).toLocaleString('en-GB',{timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric'}):'Not recorded';
  const duration=n=>{if(n===null||n===undefined)return 'Time not recorded';const m=Math.floor(Number(n)/60);return m<1?'Less than 1 min':[Math.floor(m/1440)?Math.floor(m/1440)+'d':'',Math.floor(m%1440/60)?Math.floor(m%1440/60)+'h':'',m%60?m%60+'m':''].filter(Boolean).join(' ');};
  let report=null,offset=0,sort='arrived_at',desc=true,epoch=0,busy=false,timer,pdfUrl='',stopped=false;
  const filters=()=>{if(!can('search'))return{};const f={};for(const e of document.querySelectorAll('[data-filter]'))if(e.value&&!(e.dataset.filter==='date_basis'&&e.value==='arrival'))f[e.dataset.filter]=e.value;const search=$('#bdr-search').value.trim();if(search)f.search=search;return f;};
