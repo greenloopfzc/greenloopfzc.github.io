@@ -2,8 +2,8 @@
 [CmdletBinding()]
 param([switch]$CheckOnly)
 $ErrorActionPreference='Stop'
-$version='20261023-cable-setup-1'
-$readerRoot=Join-Path $env:LOCALAPPDATA 'Greenloop\ReadOnlyDeviceReader'
+$version='20261112-stable-cable-setup-1'
+$readerRoot=Join-Path ([Environment]::GetFolderPath('UserProfile')) 'AppData\Local\Greenloop\ReadOnlyDeviceReader'
 $readerScript=Join-Path $readerRoot 'Greenloop-Device-Reader.ps1'
 $launcherScript=Join-Path $readerRoot 'Start-Greenloop.ps1'
 $watchScript=Join-Path $readerRoot 'Watch-Greenloop-Reader.ps1'
@@ -12,6 +12,7 @@ $powershell=Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.ex
 . (Join-Path $PSScriptRoot 'Update-Reader-Source.ps1')
 . (Join-Path $PSScriptRoot 'Reader-Startup.ps1')
 . (Join-Path $PSScriptRoot 'reader-fast-bh/Update-Reader.ps1')
+. (Join-Path $PSScriptRoot 'reader-health-fix/Update-Reader.ps1')
 $utf8=New-Object Text.UTF8Encoding($false)
 function Get-TextHash([string]$Text){
  $sha=[Security.Cryptography.SHA256]::Create()
@@ -39,7 +40,7 @@ try{
  $updates=@{}
  if($present.Count -eq 3){
   $previousHash=Get-Hash $readerScript
-  $updates[$names[0]]=ConvertTo-GreenloopFastBhReader (ConvertTo-GreenloopDualIMEIReader ([IO.File]::ReadAllText($readerScript)))
+  $updates[$names[0]]=ConvertTo-GreenloopHealthReader (ConvertTo-GreenloopFastBhReader (ConvertTo-GreenloopDualIMEIReader ([IO.File]::ReadAllText($readerScript))))
   $newHash=Get-TextHash $updates[$names[0]]
   foreach($name in $names[1..2]){$updates[$name]=ConvertTo-GreenloopReaderHash ([IO.File]::ReadAllText((Join-Path $readerRoot $name))) $previousHash $newHash}
  }else{
@@ -111,7 +112,7 @@ try{
  & $powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File $launcherScript
  if($LASTEXITCODE -ne 0){throw 'Files installed; reader startup is pending. Rerun setup and send the log if this repeats.'}
  $health=Get-GreenloopLocalHealth $selectedPort 10000
- if(-not $health -or -not $health.ok -or $health.service -cne 'Greenloop Read-Only Device Reader' -or $health.mode -cne 'read-only' -or $health.dualImeiVersion -cne '20261023-dual-imei-1' -or -not $health.androidToolsReady){throw 'Reader running version could not be verified. Setup is incomplete.'}
+ if(-not $health -or -not $health.ok -or $health.service -cne 'Greenloop Read-Only Device Reader' -or $health.mode -cne 'read-only' -or $health.dualImeiVersion -cne '20261023-dual-imei-1' -or -not $health.androidToolsReady -or $health.readerBatteryHealthVersion -cne '20261112-bh-capacity-1'){throw 'Reader running version could not be verified. Setup is incomplete.'}
  $hint=Get-AppleDriverHint
  @{version=$version;readerVerified=$true;phoneVerified=$false;readerPort=$selectedPort;installedAt=[datetime]::UtcNow.ToString('o');backup=$backupRoot;appleDriverHint=$hint} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $readerRoot 'cable-setup.json') -Encoding UTF8
  Write-Output 'READER RUNNING - VERIFIED. Phone USB communication still needs a connected phone test.'

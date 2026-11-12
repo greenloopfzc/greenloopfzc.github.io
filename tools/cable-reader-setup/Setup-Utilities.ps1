@@ -26,7 +26,32 @@ function Test-PlatformTools {
   }
   return (Test-Path -LiteralPath (Join-Path $folder 'adb.exe') -PathType Leaf)
 }
+function Get-StableWindowsPlatformArchive([Xml.XmlDocument]$Document) {
+  # Stable and preview packages coexist in Google's repository.
+  $candidates=@()
+  foreach($package in @($Document.SelectNodes("//*[local-name()='remotePackage' and @path='platform-tools']"))){
+    $channel=$package.SelectSingleNode("*[local-name()='channelRef']")
+    if(-not $channel -or $channel.GetAttribute('ref') -cne 'channel-0'){continue}
+    if($package.GetAttribute('obsolete') -eq 'true' -or $package.SelectSingleNode("*[local-name()='obsolete']")){continue}
+    $revision=$package.SelectSingleNode("*[local-name()='revision']")
+    if(-not $revision -or $revision.SelectSingleNode("*[local-name()='preview']")){continue}
+    $parts=@()
+    foreach($part in @('major','minor','micro')){
+      $node=$revision.SelectSingleNode("*[local-name()='"+$part+"']")
+      if(-not $node -or $node.InnerText -cnotmatch '^[0-9]{1,5}$'){throw 'Stable Android revision metadata is invalid.'}
+      $parts += [int]$node.InnerText
+    }
+    $windows=@($package.SelectNodes("*[local-name()='archives']/*[local-name()='archive'][*[local-name()='host-os']='windows']/*[local-name()='complete']"))
+    if($windows.Count -ne 1){throw 'Stable Android metadata must contain exactly one Windows archive.'}
+    $candidates += [pscustomobject]@{Revision=[version]::new($parts[0],$parts[1],$parts[2]);Archive=$windows[0]}
+  }
+  if(-not $candidates.Count){throw 'Google SDK metadata contains no supported stable Windows Platform Tools release.'}
+  $ordered=@($candidates|Sort-Object Revision -Descending)
+  if(@($ordered|Where-Object {$_.Revision -eq $ordered[0].Revision}).Count -ne 1){throw 'Google SDK stable release metadata is ambiguous. Nothing was installed.'}
+  return $ordered[0].Archive
+}
 function Get-OfficialPlatformTools([string]$Stage) {
+  $Stage = [IO.Path]::GetFullPath($Stage)
   # Download only official Google SDK metadata and the matching checked archive.
   # Network activity occurs once during installation, never while reading phones.
   [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
@@ -36,13 +61,12 @@ function Get-OfficialPlatformTools([string]$Stage) {
   $settings = New-Object Xml.XmlReaderSettings
   $settings.DtdProcessing = [Xml.DtdProcessing]::Prohibit
   $settings.XmlResolver = $null
+  $settings.MaxCharactersInDocument = 32MB
   $xmlReader = [Xml.XmlReader]::Create($metadataPath, $settings)
   $document = New-Object Xml.XmlDocument
   $document.XmlResolver = $null
   try { $document.Load($xmlReader) } finally { $xmlReader.Dispose() }
-  $archives = @($document.SelectNodes("//*[local-name()='remotePackage' and @path='platform-tools']/*[local-name()='archives']/*[local-name()='archive'][*[local-name()='host-os']='windows']/*[local-name()='complete']"))
-  if ($archives.Count -ne 1) { throw 'Google SDK metadata did not identify one Windows Platform Tools archive.' }
-  $archive = $archives[0]
+  $archive = Get-StableWindowsPlatformArchive $document
   $name = [string]$archive.SelectSingleNode("*[local-name()='url']").InnerText
   $checksumNode = $archive.SelectSingleNode("*[local-name()='checksum']")
   $expectedSha1 = [string]$checksumNode.InnerText

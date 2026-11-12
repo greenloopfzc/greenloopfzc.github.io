@@ -61,6 +61,7 @@ for name in ['Install-Cable-Reader.ps1','Setup-Utilities.ps1','Reader-Startup.ps
 shutil.copyfile(here.parent/'dual-imei-reader/Update-Reader-Source.ps1',payload/'Update-Reader-Source.ps1')
 shutil.copytree(here/'reader',payload/'reader',dirs_exist_ok=True)
 shutil.copytree(here.parent/'reader-fast-bh',payload/'reader-fast-bh',dirs_exist_ok=True)
+shutil.copytree(here.parent/'reader-health-fix',payload/'reader-health-fix',dirs_exist_ok=True)
 apple=payload/'apple';apple.mkdir(exist_ok=True)
 for p in files.values():shutil.copyfile(p,apple/p.name)
 licenses=apple/'licenses';licenses.mkdir(exist_ok=True)
@@ -99,7 +100,7 @@ with zipfile.ZipFile(sourcezip,'w',zipfile.ZIP_STORED) as z:
     z.writestr('tool-provenance.json',json.dumps(source_records,indent=2))
     for p in sorted(licenses.iterdir()):z.write(p,'licenses/'+p.name)
 
-manifest={'version':'20261023-cable-setup-1','files':[{'path':p.relative_to(payload).as_posix(),'sha256':sha(p).upper()} for p in sorted(payload.rglob('*')) if p.is_file() and p.name!='payload.json']}
+manifest={'version':'20261112-stable-cable-setup-1','files':[{'path':p.relative_to(payload).as_posix(),'sha256':sha(p).upper()} for p in sorted(payload.rglob('*')) if p.is_file() and p.name!='payload.json']}
 (payload/'payload.json').write_bytes((json.dumps(manifest,indent=2)+'\n').encode())
 zip_path=stage/'payload.zip'
 with zipfile.ZipFile(zip_path,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as z:

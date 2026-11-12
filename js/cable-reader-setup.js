@@ -2,7 +2,7 @@
   "use strict";
   const host = document.querySelector(".cable-reader-banner, .journey-cable-card");
   if (!host) return;
-  const version = "20261111-fast-bh-1";
+  const version = "20261112-stable-cable-setup-1";
   const windows = /Windows NT/.test(navigator.userAgent);
   const toolbar = document.createElement("div");
   toolbar.className = "reader-setup-toolbar";
@@ -13,9 +13,9 @@
   dialog.setAttribute("aria-labelledby", "reader-setup-title");
   dialog.innerHTML = `<header><div><p class="panel-kicker">iPhone + Android · Windows 10/11 x64</p><h2 id="reader-setup-title">Cable Reader setup</h2></div><button type="button" class="secondary-button reader-setup-close" aria-label="Close cable reader setup">Close</button></header>
     <p class="reader-setup-state" role="status" aria-live="polite">Checking this computer...</p>
-    <ol><li><strong>Download and run setup</strong><span>Run the downloaded EXE on the computer where phones connect. Install once per Windows user.</span></li><li><strong>Finish the phone driver steps</strong><span>Setup includes iPhone reader tools and downloads official Android tools. Open Apple Devices if needed; Android USB drivers depend on the phone brand. Approve any Windows installation prompt yourself.</span></li><li><strong>Connect one unlocked phone</strong><span>iPhone: tap Trust. Android: enable USB debugging and tap Allow. Allow this website's local-network access if your browser asks. Then check again.</span></li></ol>
+    <ol><li><strong>Download and run setup</strong><span>Download the ZIP, right-click it and choose Extract All, then open Install-Greenloop.cmd in the extracted folder. Do this on each computer where phones connect.</span></li><li><strong>Finish the phone driver steps</strong><span>Setup includes iPhone reader tools and downloads official Android tools. Open Apple Devices if needed; Android USB drivers depend on the phone brand. Approve any Windows installation prompt yourself.</span></li><li><strong>Connect one unlocked phone</strong><span>iPhone: tap Trust. Android: enable USB debugging and tap Allow. Allow this website's local-network access if your browser asks. Then check again.</span></li></ol>
     <p class="reader-setup-note">Reader starts automatically at Windows sign-in. Only details supplied by the phone can be filled; review them before saving.</p>
-    <div class="reader-setup-actions"><a class="primary-button reader-setup-download" href="downloads/Greenloop-Cable-Reader-Setup.exe?v=${version}" download="Greenloop-Cable-Reader-Setup.exe">Download Windows setup</a><button type="button" class="secondary-button reader-setup-check">Check again</button></div>
+    <div class="reader-setup-actions"><a class="primary-button reader-setup-download" href="downloads/Greenloop-Cable-Reader-Setup.zip?v=${version}" download="Greenloop-Cable-Reader-Setup.zip">Download Windows setup ZIP</a><button type="button" class="secondary-button reader-setup-check">Check again</button></div>
     <p class="reader-setup-platform" hidden>Download and run setup on a Windows 10/11 x64 computer. This installer does not run on this device.</p>
     <footer><a href="downloads/reader-sources.zip" download>Reader tool sources &amp; licenses</a></footer>`;
   document.body.append(dialog);
@@ -37,7 +37,7 @@
       const health = await response.json();
       if (!response.ok || health.ok !== true || health.service !== "Greenloop Read-Only Device Reader" || health.mode !== "read-only") throw new Error("unrecognized");
       if (request !== sequence) return;
-      const current = health.dualImeiVersion === "20261023-dual-imei-1" && health.androidToolsReady === true;
+      const current = health.dualImeiVersion === "20261023-dual-imei-1" && health.androidToolsReady === true && health.readerBatteryHealthVersion === "20261112-bh-capacity-1";
       open.textContent = current ? "Cable Reader · Ready" : "Update Cable Reader";
       toolbar.dataset.state = current ? "ready" : "update";
       state.dataset.state = current ? "ready" : "update";
