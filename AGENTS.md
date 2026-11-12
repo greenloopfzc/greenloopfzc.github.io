@@ -54,3 +54,7 @@ names or to delete, reset, or otherwise change business records.
 - Initial QC, Lab & Glass Issuance, Final QC and B-DEPT use compact desktop rows with small controls and content-aware column widths. Generic report layout changes must not expand these work trays into desktop cards. Retain the raised design, same-row editing and all workflow behavior.
 - S.No is always the leftmost column in tables, PDF/print and spreadsheet exports. Keep the matching values, widths, totals and formulas aligned; never add a duplicate serial column.
 - Stock Journey is removed from sidebar navigation. IMEI Search history and existing stock records remain available.
+
+## Glass part naming in grading reports
+
+- User requirement (12 November 2026): `Glass`, `Glass (Glass Damage)` and `Glass (Damaged Glass)` mean the same required part. Include both under Glass in Stock Grade & Work Analysis counts, percentages and PDF output. Count each phone once even if both aliases occur. Preserve unrelated parts such as Back Glass and preserve stored historical part names.
