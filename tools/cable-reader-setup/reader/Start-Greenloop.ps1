@@ -5,7 +5,7 @@ param([switch]$OpenWebsite)
 $ErrorActionPreference = 'Stop'
 $supervisorVersion = '20261001-android-reader-2'
 $expectedVersion = '20261001-android-reader-2'
-$expectedReaderHash = '28BD5E8166FF15E9293121BABBB9313D82833D08D67237ECFA963960330E5154'
+$expectedReaderHash = '9AA916FEE79125C5BFD1FCF2FD7AD397E2639F2B441830C5AA74FBF4039F3C11'
 $readerScript = Join-Path $PSScriptRoot 'Greenloop-Device-Reader.ps1'
 $watchScript = Join-Path $PSScriptRoot 'Watch-Greenloop-Reader.ps1'
 $powershell = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'

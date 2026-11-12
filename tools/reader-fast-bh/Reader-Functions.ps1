@@ -14,11 +14,11 @@ function Get-ReportedBatteryHealth {
   $batteryData=$dict.SelectSingleNode('key[.="BatteryData"]/following-sibling::*[1][self::dict]')
   foreach($scope in @($dict,$batteryData)){
    if(-not $scope){continue}
-   foreach($key in @('MaximumCapacityPercent','MaximumCapacityPercentage','BatteryHealthPercentage','MaxCapacity')){
+   foreach($key in @('MaximumCapacityPercent','MaximumCapacityPercentage','BatteryHealthPercentage')){
     $node=$scope.SelectSingleNode('key[.="'+$key+'"]/following-sibling::*[1]')
     if($node -and $node.Name -in @('integer','real') -and $node.InnerText -match '^[0-9]+(?:\.[0-9]+)?$'){
      $value=[double]::Parse($node.InnerText,[Globalization.CultureInfo]::InvariantCulture)
-     if($value -ge 1 -and ($key -ne 'MaxCapacity' -or $value -le 200)){return [int][math]::Min(100,[math]::Round($value))}
+     if($value -ge 1 -and $value -le 100){return [int][math]::Round($value)}
     }
    }
   }
@@ -32,23 +32,26 @@ function Convert-BatteryHealth {
   $direct = Find-FirstValue $Maps @('BatteryHealth', 'BatteryHealthPercentage', 'MaximumCapacityPercent', 'MaximumCapacityPercentage', 'HealthPercentage')
   $directNumber = 0.0
   if ($direct -and [double]::TryParse(($direct -replace '[^0-9.]', ''), [ref]$directNumber)) {
-    if ($directNumber -ge 1) { $script:batteryHealthSource = 'device'; return [int][math]::Min(100,[math]::Round($directNumber)) }
+    if ($directNumber -ge 1 -and $directNumber -le 100) { $script:batteryHealthSource = 'device'; return [int][math]::Round($directNumber) }
   }
 
   $reportedDevice = Get-ReportedBatteryHealth $BatteryXml
   if($null -ne $reportedDevice){$script:batteryHealthSource='device';return $reportedDevice}
 
+  # MaxCapacity=100 is a normalized charge scale, NOT Settings battery health.
+  # Prefer calibrated nominal capacity over fluctuating raw capacity for estimates.
+  # Estimates remain explicitly labeled and must not be described as Settings health.
   # Explicit health percentages take precedence over capacity estimates.
   $reported = Get-PlistInteger $BatteryXml @('MaximumCapacityPercent','MaximumCapacityPercentage','BatteryHealthPercentage')
-  if ($null -ne $reported -and $reported -ge 1) { $script:batteryHealthSource = 'device'; return [int][math]::Min(100,$reported) }
-  $currentXml = Get-PlistInteger $BatteryXml @('AppleRawMaxCapacity', 'NominalChargeCapacity')
+  if ($null -ne $reported -and $reported -ge 1 -and $reported -le 100) { $script:batteryHealthSource = 'device'; return [int]$reported }
+  $currentXml = Get-PlistInteger $BatteryXml @('NominalChargeCapacity', 'AppleRawMaxCapacity')
   $designXml = Get-PlistInteger $BatteryXml @('DesignCapacity', 'BatteryDesignCapacity')
   if ($null -ne $currentXml -and $null -ne $designXml -and $designXml -gt 0) {
     $xmlPercentage = [math]::Round(($currentXml / $designXml) * 100)
     if ($xmlPercentage -ge 1) { $script:batteryHealthSource = 'capacity-estimate'; return [int][math]::Min(100,$xmlPercentage) }
   }
 
-  $current = Find-FirstValue $Maps @('AppleRawMaxCapacity', 'NominalChargeCapacity')
+  $current = Find-FirstValue $Maps @('NominalChargeCapacity', 'AppleRawMaxCapacity')
   $design = Find-FirstValue $Maps @('DesignCapacity', 'BatteryDesignCapacity')
   $currentNumber = 0.0
   $designNumber = 0.0

@@ -1,0 +1,9 @@
+# Battery Health source correction — 12 November 2026
+
+The connected phone reproduced 100% from normalized AppleSmartBattery MaxCapacity=100. This field is a charge-scale maximum, not iOS Settings battery health. The phone also exposed NominalChargeCapacity=2847 and DesignCapacity=3259, yielding 87% when rounded. AppleRawMaxCapacity=2873 would yield 88%, so the calibrated nominal value takes precedence for the explicitly estimated fallback.
+
+Only explicit health-percentage keys are accepted as device-reported health. Values outside 1–100 are rejected, not clamped into an invented 100% reading. Bare MaxCapacity is ignored at every scope. Exact percentages still take precedence; missing health/capacity remains unavailable. Estimated results remain labeled capacity-estimate; they are not claimed to be Settings Maximum Capacity.
+
+The targeted updater replaces only Get-ReportedBatteryHealth and Convert-BatteryHealth and adds a health-version marker. It preserves all identity, Android, device discovery, extension and read-only functions. It validates and updates launcher/supervisor pins, creates a backup, restarts only owned reader processes and verifies loopback health. Existing business records and Supabase are not changed. No EXE installer is built, restored or allowed; no Defender changes.
+
+Validation: actual connected diagnostic XML reproduced old 100/device -> new 87/capacity-estimate. Synthetic tests cover root/nested normalized 100, explicit precedence, nominal/raw priority, raw-only fallback and invalid percent rejection. AST comparison confirms unrelated functions unchanged; repeat conversion and unknown-source rejection pass. Install -CheckOnly passes against the actual installed reader and pins without writing or restarting it. The user runs the provided PowerShell script to apply the repair.
