@@ -17,7 +17,7 @@
   function summary(r){const s=r.summary;return (r.receipt_summary?window.GREENLOOP_STOCK.summaryText(r.receipt_summary)+" | ":"")+`Total: ${s.total_records} | In company: ${s.in_company} | Ready: ${s.ready} | In process: ${s.in_process} | Exported: ${s.exported} | Returned: ${s.returned}`;}
 
   async function pdf(r) {
-    verify(r);
+    verify(r);r={...r,rows:r.rows.map((p,i)=>({...p,serial_no:i+1}))};
     const lib=await library('PDFLib','js/vendor/pdf-lib-1.17.1.min.js'),doc=await lib.PDFDocument.create(),regular=await doc.embedFont(lib.StandardFonts.Helvetica),bold=await doc.embedFont(lib.StandardFonts.HelveticaBold);
     doc.setTitle('IMEI DATA');doc.setAuthor('Greenloop FZC');doc.setSubject('Selected stock IMEIs and supplier returns');
     let logo;try{const response=await fetch('assets/greenloop-fzc-logo.jpg');if(response.ok)logo=await doc.embedJpg(await response.arrayBuffer());}catch(_){}
@@ -41,7 +41,7 @@
     start();
     r.rows.forEach((p,i)=>row([String(p.serial_no||i+1),p.imei||'Not recorded',p.model||'Not recorded',gb(p.storage_gb),p.color||'Not recorded',supplier(p,r),root.GREENLOOP_BATCH_LABEL(p.batch_number,p,'Not recorded'),p.invoice_number||'Not recorded',receivedDate(p.received_at)],p));
     if(!r.rows.length)row(['No records','','','','','','','',''],{});
-    pages.forEach((ops,i)=>{page=ops;text('Red rows: supplier returns. Green rows: entered replacements under the same S.No.',M,36,7,false,muted);const label='Page '+(i+1)+' of '+pages.length;text(label,W-M-width(label,7),23,7,false,muted);});
+    pages.forEach((ops,i)=>{page=ops;text('Red rows: supplier returns. Green rows: entered replacements. S.No follows this report.',M,36,7,false,muted);const label='Page '+(i+1)+' of '+pages.length;text(label,W-M-width(label,7),23,7,false,muted);});
     const rgb=hex=>lib.rgb(...hex.match(/[\da-f]{2}/gi).map(v=>parseInt(v,16)/255));
     for(const ops of pages){const p=doc.addPage([W,H]);let unicode=false;try{for(const op of ops)if(op.kind==='text')(op.b?bold:regular).encodeText(op.text);}catch(_){unicode=true;}
       if(!unicode){for(const op of ops){if(op.kind==='text')p.drawText(op.text,{x:op.x,y:op.top-op.n,size:op.n,font:op.b?bold:regular,color:rgb(op.color)});else if(op.kind==='logo')p.drawImage(logo,{x:op.x,y:op.top-op.h,width:op.w,height:op.h});else p.drawRectangle({x:op.x,y:op.top-op.h,width:op.w,height:op.h,color:rgb(op.fill),borderColor:rgb(border),borderWidth:.4});}}
@@ -52,7 +52,7 @@
   }
 
   async function excel(r){
-    verify(r);const JSZip=await library('JSZip','js/vendor/jszip-3.10.1.min.js'),zip=new JSZip();
+    verify(r);r={...r,rows:r.rows.map((p,i)=>({...p,serial_no:i+1}))};const JSZip=await library('JSZip','js/vendor/jszip-3.10.1.min.js'),zip=new JSZip();
     const headers=['S.No','IMEI','Model','GB','Color','Supplier','Stock / Batch No.','Invoice No.','Date Received'];
     const letter=n=>{let v='';for(n++;n;n=Math.floor((n-1)/26))v=String.fromCharCode(65+(n-1)%26)+v;return v;},last=letter(headers.length-1),lastRow=7+r.total;
     const str=(ref,value,style=0)=>`<c r="${ref}" t="inlineStr" s="${style}"><is><t xml:space="preserve">${xml(value)}</t></is></c>`;
@@ -60,7 +60,7 @@
     let rows=merged(1,'GREENLOOP FZC',1,30)+merged(2,'IMEI DATA',1,28)+merged(3,scope(r),0,42)+merged(4,'Generated '+date(r.generated_at)+' | UAE (UTC+4)',0,24)+merged(5,summary(r),0,30)+`<row r="7" ht="36" customHeight="1">${headers.map((h,i)=>str(letter(i)+'7',h,2)).join('')}</row>`;
     r.rows.forEach((p,i)=>{const n=i+8,style=p.returned?3:p.is_replacement?5:p.return_pending?4:0,values=[String(p.serial_no||i+1),p.imei||'Not recorded',p.model||'Not recorded',gb(p.storage_gb),p.color||'Not recorded',supplier(p,r),root.GREENLOOP_BATCH_LABEL(p.batch_number,p,'Not recorded'),p.invoice_number||'Not recorded',receivedDate(p.received_at)];
       const height=Math.min(409,Math.max(32,Math.max(Math.ceil(String(values[1]).length/24),Math.ceil(String(values[3]).length/24),Math.ceil(String(values[4]).length/36),Math.ceil(String(values[5]).length/23))*14+12));rows+=`<row r="${n}" ht="${height}" customHeight="1">${values.map((v,j)=>str(letter(j)+n,v,style)).join('')}</row>`;});
-    rows+=merged(lastRow+2,'Total records: '+r.total+' | Recorded IMEIs: '+r.summary.imeis+' | Returned: '+r.summary.returned+'\nRed rows: supplier returns. Green rows: entered replacements under the same S.No.',1,45);
+    rows+=merged(lastRow+2,'Total records: '+r.total+' | Recorded IMEIs: '+r.summary.imeis+' | Returned: '+r.summary.returned+'\nRed rows: supplier returns. Green rows: entered replacements. S.No follows this report.',1,45);
     const ns='http://schemas.openxmlformats.org/';
     zip.file('[Content_Types].xml',`<?xml version="1.0" encoding="UTF-8"?><Types xmlns="${ns}package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`);
     zip.file('_rels/.rels',`<?xml version="1.0"?><Relationships xmlns="${ns}package/2006/relationships"><Relationship Id="rId1" Type="${ns}officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`);
