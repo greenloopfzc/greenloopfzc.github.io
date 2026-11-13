@@ -9,6 +9,7 @@
   const names=r=>r.names_allowed===true&&root.GREENLOOP_CAN_VIEW_PARTNER_NAMES===true;
   const supplier=(row,r)=>root.GREENLOOP_STOCK?.labelRow(row)||root.GREENLOOP_SUPPLIER_RECEIPT_LABEL(row.supplier_code,row.receipt_quantity,names(r)?row.supplier_name:null,'Not recorded');
   const file=(r,ext)=>'Greenloop-IMEI-DATA-'+(r.selection?.batch_number||'Selected-Stock').replace(/[^A-Za-z0-9_-]+/g,'-').slice(0,65)+'-'+new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Dubai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(r.generated_at))+'.'+ext;
+  const linkedStage=p=>[p.stage||'Not recorded',(p.linked_replacements||[]).length?'Replacement: '+p.linked_replacements.map(x=>x.new_imei+(x.entered?'':' (entry pending)')).join(', '):p.replacement_details?'Returned: '+(p.replacement_details.old_imei||'Not recorded'):p.returned?'No linked replacement':''].filter(Boolean).join(' | ');
   function verify(r) {
     if(!r||!Array.isArray(r.rows)||!Number.isSafeInteger(r.total)||r.rows.length!==r.total||r.summary?.total_records!==r.total||new Set(r.rows.map(x=>x.record_key)).size!==r.total||!Number.isFinite(Date.parse(r.generated_at))||r.rows.filter(x=>x.returned).length!==r.summary.returned)throw Error('The complete selected stock is required. No partial file was created.');
   }
@@ -40,7 +41,7 @@
     }
     function row(values,r){const lines=values.map((v,i)=>wrap(v,cols[i]-10));const n=Math.max(...lines.map(v=>v.length));let at=0;if(n*line+12<=tableTop-54&&n*line+12>y-54)start();while(at<n){let fit=Math.floor((y-54-12)/line);if(fit<1){start();fit=Math.floor((y-54-12)/line);}const take=Math.min(fit,n-at),part=lines.map(v=>v.slice(at,at+take));if(at>0){part[0]=wrap(String(r.serial_no||'')+' (cont.)',cols[0]-10).slice(0,take);}cells(part,{returned:r.returned,pending:r.return_pending&&!r.returned,replacement:r.is_replacement&&!r.returned});at+=take;if(at<n)start();}}
     start();
-    r.rows.forEach((p,i)=>row([String(p.serial_no||i+1),p.imei||'Not recorded',p.model||'Not recorded',gb(p.storage_gb),p.color||'Not recorded',supplier(p,r),root.GREENLOOP_BATCH_LABEL(p.batch_number,p,'Not recorded'),p.invoice_number||'Not recorded',receivedDate(p.received_at),p.stage||'Not recorded'],p));
+    r.rows.forEach((p,i)=>row([String(p.serial_no||i+1),p.imei||'Not recorded',p.model||'Not recorded',gb(p.storage_gb),p.color||'Not recorded',supplier(p,r),root.GREENLOOP_BATCH_LABEL(p.batch_number,p,'Not recorded'),p.invoice_number||'Not recorded',receivedDate(p.received_at),linkedStage(p)],p));
     if(!r.rows.length)row(['No records','','','','','','','','',''],{});
     pages.forEach((ops,i)=>{page=ops;text('Red rows: supplier returns. Green rows: entered replacements. S.No follows this report.',M,36,7,false,muted);const label='Page '+(i+1)+' of '+pages.length;text(label,W-M-width(label,7),23,7,false,muted);});
     const rgb=hex=>lib.rgb(...hex.match(/[\da-f]{2}/gi).map(v=>parseInt(v,16)/255));
@@ -59,7 +60,7 @@
     const str=(ref,value,style=0)=>`<c r="${ref}" t="inlineStr" s="${style}"><is><t xml:space="preserve">${xml(value)}</t></is></c>`;
     const merged=(n,value,style,height)=>`<row r="${n}" ht="${height}" customHeight="1">${str('A'+n,value,style)}</row>`;
     let rows=merged(1,'GREENLOOP FZC',1,30)+merged(2,'IMEI DATA',1,28)+merged(3,scope(r),0,42)+merged(4,'Generated '+date(r.generated_at)+' | UAE (UTC+4)',0,24)+merged(5,summary(r),0,30)+`<row r="7" ht="36" customHeight="1">${headers.map((h,i)=>str(letter(i)+'7',h,2)).join('')}</row>`;
-    r.rows.forEach((p,i)=>{const n=i+8,style=p.returned?3:p.is_replacement?5:p.return_pending?4:0,values=[String(p.serial_no||i+1),p.imei||'Not recorded',p.model||'Not recorded',gb(p.storage_gb),p.color||'Not recorded',supplier(p,r),root.GREENLOOP_BATCH_LABEL(p.batch_number,p,'Not recorded'),p.invoice_number||'Not recorded',receivedDate(p.received_at),p.stage||'Not recorded'];
+    r.rows.forEach((p,i)=>{const n=i+8,style=p.returned?3:p.is_replacement?5:p.return_pending?4:0,values=[String(p.serial_no||i+1),p.imei||'Not recorded',p.model||'Not recorded',gb(p.storage_gb),p.color||'Not recorded',supplier(p,r),root.GREENLOOP_BATCH_LABEL(p.batch_number,p,'Not recorded'),p.invoice_number||'Not recorded',receivedDate(p.received_at),linkedStage(p)];
       const height=Math.min(409,Math.max(32,Math.max(Math.ceil(String(values[1]).length/24),Math.ceil(String(values[3]).length/24),Math.ceil(String(values[4]).length/36),Math.ceil(String(values[5]).length/23))*14+12));rows+=`<row r="${n}" ht="${height}" customHeight="1">${values.map((v,j)=>str(letter(j)+n,v,style)).join('')}</row>`;});
     rows+=merged(lastRow+2,'Total records: '+r.total+' | Recorded IMEIs: '+r.summary.imeis+' | Returned: '+r.summary.returned+'\nRed rows: supplier returns. Green rows: entered replacements. S.No follows this report.',1,45);
     const ns='http://schemas.openxmlformats.org/';
