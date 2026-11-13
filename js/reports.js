@@ -21,7 +21,8 @@
   let activeReport = "";
   let loadedReport = "";
   const reportSections = window.GREENLOOP_PERMISSION_CATALOG?.reportSections || {};
-  const allowedReport = key => key==="chaman_correction" ? Boolean(canResetData&&window.GREENLOOP_CAN?.("report_chaman_correction","reports")) : key==="bulk_imei_correction" ? Boolean(window.GREENLOOP_CAN?.("report_imei_correction","reports")&&window.GREENLOOP_CAN?.("workflow_correction","reports")&&window.GREENLOOP_CAN?.("bulk_imei_correction","reports")) : Boolean(reportSections[key] && window.GREENLOOP_CAN?.(reportSections[key].view,"reports"));
+  const removedReportKeys = new Set(["overview", "stock_received", "work_in_progress", "parts_requests", "parts_inventory", "technicians", "final_qc", "costs"]);
+  const allowedReport = key => !removedReportKeys.has(key) && (key==="chaman_correction" ? Boolean(canResetData&&window.GREENLOOP_CAN?.("report_chaman_correction","reports")) : key==="bulk_imei_correction" ? Boolean(window.GREENLOOP_CAN?.("report_imei_correction","reports")&&window.GREENLOOP_CAN?.("workflow_correction","reports")&&window.GREENLOOP_CAN?.("bulk_imei_correction","reports")) : Boolean(reportSections[key] && window.GREENLOOP_CAN?.(reportSections[key].view,"reports")));
   const selfLoadedReports = new Set(["chaman_correction","stock_receipt_correction","bulk_imei_correction","supplier_progress","stock_grade_analysis","stock_parts_cost","manual_damage","production_correction","complete_device_details","data_correction","restricted_data"]);
   let selectedExportBox = "";
   let exportBoxImeiFilter = "";
@@ -1058,8 +1059,8 @@
     document.querySelectorAll('.report-tab[data-report]').forEach(tab=>{tab.hidden=!allowedReport(tab.dataset.report);});
     const query=new URLSearchParams(window.location.search).get('report'),requested=query==='supplier_returns'?'stock_returns':query;
     const first=[...document.querySelectorAll('.report-tab[data-report]')].find(tab=>!tab.hidden)?.dataset.report||'';
-    activeReport=requested?(allowedReport(requested)?requested:''):first;
-    if(requested&&!allowedReport(requested))setMessage('You do not have permission to view this report.');
+    activeReport=requested?(removedReportKeys.has(requested)?first:allowedReport(requested)?requested:''):first;
+    if(requested&&!removedReportKeys.has(requested)&&!allowedReport(requested))setMessage('You do not have permission to view this report.');
     const now = new Date();
     dateFrom.value = localDate(new Date(now.getFullYear(), now.getMonth(), 1));
     dateTo.value = localDate(now);

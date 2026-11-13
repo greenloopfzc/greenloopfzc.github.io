@@ -56,7 +56,7 @@
     <script defer src="js/stock-receipt-correction.js?v=20261112-report-downloads-1"></script>
     <link rel="stylesheet" href="css/chaman-correction.css?v=20261113-chaman-workspaces-1">
     <script defer src="js/chaman-correction.js?v=20261113-chaman-workspaces-1"></script>
-    <script defer src="js/reports.js?v=20261113-chaman-flow-1"></script>
+    <script defer src="js/reports.js?v=20261113-report-menu-cleanup-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261111-ruby-obsidian-1">
     <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
   <link rel="stylesheet" href="css/sidebar-compact.css?v=20261009-sidebar-pdf-1">
@@ -101,16 +101,8 @@
           <div id="permission-message" class="access-message" hidden></div>
           <section id="reports-app" hidden>
             <nav id="report-tabs" class="report-tabs" aria-label="Report categories">
-              <button class="report-tab active" type="button" data-report="overview" aria-pressed="true" hidden data-capability="report_overview" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">⌘</span><span class="report-tab-label">Overview</span></button>
               <button class="report-tab" type="button" data-report="complete_device_details" aria-pressed="false" hidden data-capability="report_device_details" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">▣</span><span class="report-tab-label">Complete Device Details</span></button>
-              <button class="report-tab" type="button" data-report="stock_received" aria-pressed="false" hidden data-capability="report_stock_received" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">◫</span><span class="report-tab-label">Stock Received</span></button>
               <button class="report-tab" type="button" data-report="supplier_progress" aria-pressed="false" hidden data-capability="report_supplier_progress" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">⇄</span><span class="report-tab-label">Supplier Progress</span></button>
-              <button class="report-tab" type="button" data-report="work_in_progress" aria-pressed="false" hidden data-capability="report_work_in_progress" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">⌁</span><span class="report-tab-label">Work in Progress</span></button>
-              <button class="report-tab" type="button" data-report="parts_requests" aria-pressed="false" hidden data-capability="report_parts_required" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">▦</span><span class="report-tab-label">Parts Required</span></button>
-              <button class="report-tab" type="button" data-report="parts_inventory" aria-pressed="false" hidden data-capability="report_parts_inventory" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">▧</span><span class="report-tab-label">Parts Inventory</span></button>
-              <button class="report-tab" type="button" data-report="technicians" aria-pressed="false" hidden data-capability="report_technicians" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">⚒</span><span class="report-tab-label">Technicians</span></button>
-              <button class="report-tab" type="button" data-report="final_qc" aria-pressed="false" hidden data-capability="report_final_qc" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">◉</span><span class="report-tab-label">Final QC</span></button>
-              <button class="report-tab" type="button" data-report="costs" aria-pressed="false" hidden data-capability="report_device_cost" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">$</span><span class="report-tab-label">Device Cost</span></button>
               <button class="report-tab" type="button" data-report="stock_receipt_correction" aria-pressed="false" hidden data-capability="report_receipt_correction" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">&#9998;</span><span class="report-tab-label">Stock Receipt Correction</span></button>
               <button class="report-tab" type="button" data-report="stock_grade_analysis" aria-pressed="false" hidden data-capability="stock_grade_analysis" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">▥</span><span class="report-tab-label">Stock Grade Analysis</span></button>
               <button class="report-tab" type="button" data-report="stock_parts_cost" aria-pressed="false" hidden data-capability="stock_parts_cost" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">$</span><span class="report-tab-label">Stock Parts Cost</span></button>
@@ -131,7 +123,7 @@
             </form>
             <p id="report-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
             <section class="report-panel">
-              <div class="report-panel-heading"><div><p id="report-panel-kicker" class="panel-kicker">Overview</p><h2 id="report-panel-title">Live workflow overview</h2><p id="report-panel-description" class="report-panel-description"></p></div><span id="report-row-count" class="queue-count">0 records</span></div>
+              <div class="report-panel-heading"><div><p id="report-panel-kicker" class="panel-kicker">Reports</p><h2 id="report-panel-title">Reports</h2><p id="report-panel-description" class="report-panel-description"></p></div><span id="report-row-count" class="queue-count">0 records</span></div>
               <div id="report-content" class="report-content"></div>
             </section>
           </section>
