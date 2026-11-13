@@ -14,7 +14,7 @@
   let client, catalogue = null, report = null, visible = false, stopped = false, loading = false, exporting = false;
   const cards=window.GREENLOOP_ACCOUNTS_CARDS;
   let detailOpen=false,metric='all';
-  let offset = 0, sortKey = 'imei', direction = 'asc', generation = 0, searchTimer, pdfUrl = '', pdfFilename = '';
+  let offset = 0, sortKey = 'imei', direction = 'asc', generation = 0, searchTimer, pdfUrl = '', pdfFilename = '', readController=null;
 
   root.innerHTML = `<div class="aid-header"><div><p class="panel-kicker">STOCK RECORDS</p><h2>IMEI DATA</h2><p>Choose a supplier, stock/batch or invoice to view its complete phone list.</p></div><span id="aid-updated"></span></div>
     <div class="aid-primary">
@@ -55,7 +55,7 @@
     return result;
   }
   const signature = () => JSON.stringify([filters(),metric,detailOpen,sortKey,direction,offset]);
-  async function rpc(name,args = {}) { const r = await client.rpc(name,args); if (r.error) throw r.error; return r.data; }
+  async function rpc(name,args = {},signal) { let request=client.rpc(name,args,signal?{signal}:undefined);if(signal&&typeof request.abortSignal==='function')request=request.abortSignal(signal);const r = await request; if (r.error) throw r.error; return r.data; }
   function closePdf() {
     if ($('#aid-pdf-dialog').open) $('#aid-pdf-dialog').close();
     $('#aid-pdf-frame').removeAttribute('src'); $('#aid-pdf-open').removeAttribute('href');
@@ -125,10 +125,11 @@
   async function load() {
     if (!visible || stopped || !allowed() || exporting) return;window.GREENLOOP_STOCK_RETURN_DETAILS?.close();
     if(!detailOpen){root.querySelector('.aid-table-wrap').hidden=true;root.querySelector('.aid-footer').hidden=true;root.querySelector('.aid-note').hidden=true;$('#aid-selection').hidden=true;$('#aid-receipt-detail').hidden=true;}
+    readController?.abort();readController=new AbortController();const signal=readController.signal;
     const ticket = ++generation, sig = signature(); loading = true; report = null; controls(); message('Loading IMEI DATA…');
     $('#aid-rows').innerHTML='<tr><td colspan="11" class="aid-empty">Loading records…</td></tr>';$('#aid-summary').replaceChildren();$('#aid-count').textContent='Loading…';
     try {
-      const data = await rpc('get_accounts_card_report_v1',{p_kind:'imei',p_filters:filters(),p_metric:metric,p_summary_only:!detailOpen,p_offset:offset,p_limit:50,p_sort_key:sortKey,p_sort_direction:direction});
+      const data = await rpc('get_accounts_card_report_v1',{p_kind:'imei',p_filters:filters(),p_metric:metric,p_summary_only:!detailOpen,p_offset:offset,p_limit:50,p_sort_key:sortKey,p_sort_direction:direction},signal);
       if (ticket !== generation || sig !== signature() || !visible || stopped || !allowed()) return;
       if (!valid(data)||metric==='returned'&&!window.GREENLOOP_EXCHANGE_PAIRS.valid(data)) throw Error('The complete report totals could not be verified. Refresh and retry.');
       if (offset && offset >= data.total) { offset=0;return load(); }
@@ -157,7 +158,7 @@
     finally { exporting=false;controls(); }
   }
   async function activate(next) {
-    detailOpen=false;metric='all';offset=0;for(const e of root.querySelectorAll('input,select'))e.value='';clearTimeout(searchTimer);
+    readController?.abort();readController=null;detailOpen=false;metric='all';offset=0;for(const e of root.querySelectorAll('input,select'))e.value='';clearTimeout(searchTimer);
     root.querySelector('.aid-table-wrap').hidden=true;root.querySelector('.aid-footer').hidden=true;root.querySelector('.aid-note').hidden=true;$('#aid-selection').hidden=true;$('#aid-receipt-detail').hidden=true;
     visible=next==='imei';root.hidden=!visible;
     if (!visible) { generation++;loading=false;closePdf();return; }
@@ -166,7 +167,7 @@
     try { await loadCatalogue();if (visible && !stopped) await load(); } catch(e) {message(e.message || 'Stock choices could not load.',true);}
   }
   function clearSensitive() {
-    stopped=true;visible=false;generation++;loading=false;clearTimeout(searchTimer);closePdf();report=null;catalogue=null;root.hidden=true;
+    readController?.abort();readController=null;stopped=true;visible=false;generation++;loading=false;clearTimeout(searchTimer);closePdf();report=null;catalogue=null;root.hidden=true;
     $('#aid-rows').replaceChildren();$('#aid-summary').replaceChildren();$('#aid-chaman').replaceChildren();$('#aid-scope').textContent='';$('#aid-updated').textContent='';
     for(const e of root.querySelectorAll('input,select')) { if(e.tagName==='SELECT')e.replaceChildren(new Option('',''));else e.value=''; }
   }

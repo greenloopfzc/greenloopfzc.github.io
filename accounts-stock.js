@@ -5,13 +5,15 @@
   const value = v => esc(v === null || v === undefined || v === '' ? '—' : v);
   const date = v => v ? new Date(v).toLocaleString('en-GB', {timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric'}) : 'Not recorded';
   let context, customers = [], namesAllowed = false, view = 'verify', offset = 0, total = 0;
-  let query = {from:null,to:null,search:null},stockGeneration=0,detailOpen=false,metric='all',snapshot=null;
+  let query = {from:null,to:null,search:null},stockGeneration=0,detailOpen=false,metric='all',snapshot=null,loadingStock=false,readController=null,stockStopped=false;
   const cards=window.GREENLOOP_ACCOUNTS_CARDS;
   function stockArgs(){const sort=stockFilters.sortArgs();return {p_kind:view,p_filters:stockFilters.query(),p_metric:metric,p_sort_key:sort.p_sort_by||null,p_sort_direction:sort.p_sort_direction||'asc',p_limit:50};}
   function hideDetails(){detailOpen=false;metric='all';offset=0;$('#accounts-stock-details').hidden=true;downloads.close();}
   const mayReadStock=kind=>window.GREENLOOP_CAN?.('view','accounts')===true&&window.GREENLOOP_CAN?.(kind+'_stock','accounts')===true;
-  async function rpc(name, args = {}) {
-    const {data,error} = await context.client.rpc(name,args);
+  async function rpc(name, args = {}, signal) {
+    let request=context.client.rpc(name,args,signal?{signal}:undefined);
+    if(signal&&typeof request.abortSignal==='function')request=request.abortSignal(signal);
+    const {data,error} = await request;
     if (error) throw error;
     return data;
   }
@@ -68,7 +70,7 @@
   async function exportStock(kind){
     const selected=view,token=stockGeneration;
     const allowed=()=>stockGeneration===token&&view===selected&&mayReadStock(selected)&&window.GREENLOOP_CAN?.('print','accounts')===true;
-    if(context.isBusy()||!allowed()||!total||!detailOpen)return;
+    if(context.isBusy()||loadingStock||!allowed()||!total||!detailOpen)return;
     const args=stockArgs();
     context.lock(true);stockFilters.setBusy(true);
     try{
@@ -87,9 +89,9 @@
     finally{context.lock(false);stockFilters.setBusy(false);pagination();}
   }
   function pagination() {
-    $('#accounts-stock-downloads').querySelectorAll('button').forEach(b=>b.disabled=context.isBusy()||!detailOpen||!total);
-    $('#accounts-stock-prev').disabled = context.isBusy() || offset === 0;
-    $('#accounts-stock-next').disabled = context.isBusy() || offset + 50 >= total;
+    $('#accounts-stock-downloads').querySelectorAll('button').forEach(b=>b.disabled=context.isBusy()||loadingStock||!detailOpen||!total);
+    $('#accounts-stock-prev').disabled = context.isBusy() || loadingStock || offset === 0;
+    $('#accounts-stock-next').disabled = context.isBusy() || loadingStock || offset + 50 >= total;
   }
   const stockFilters=window.GREENLOOP_FILTERS.get('accounts-record-filters',{
     before:$('#accounts-stock-filter'),sortTarget:'#accounts-stock-list',dateKey:'received_at',dateLabel:'Received / exported',
@@ -100,14 +102,15 @@
   $('#accounts-stock-filter').hidden=true;
   stockFilters.bar.querySelector('.table-filter-actions').append($('#accounts-stock-refresh'));
   async function loadStock() {
-    if (!context || view === 'verify' || view === 'imei' || context.isBusy() || !mayReadStock(view)) return;
-    const token=++stockGeneration,requestedView=view;
+    if (stockStopped || !context || view === 'verify' || view === 'imei' || context.isBusy() || !mayReadStock(view)) return;
+    readController?.abort();readController=new AbortController();const signal=readController.signal;
+    const token=++stockGeneration,requestedView=view;loadingStock=true;snapshot=null;
     $('#accounts-stock-details').hidden=!detailOpen;
-    context.lock(true); stockFilters.setBusy(true);
+    stockFilters.setBusy(true);pagination();
     const msg = $('#accounts-stock-message');
     msg.textContent = ''; msg.classList.remove('is-visible');
     try {
-      const data = await rpc('get_accounts_card_report_v1',{...stockArgs(),p_offset:offset,p_summary_only:!detailOpen});
+      const data = await rpc('get_accounts_card_report_v1',{...stockArgs(),p_offset:offset,p_summary_only:!detailOpen},signal);
       if(token!==stockGeneration||requestedView!==view||!mayReadStock(requestedView))return;
       if(!Array.isArray(data.rows)||!data.totals||!Number.isSafeInteger(Number(data.total)))throw new Error('Stock report could not be verified.');
       for(const key of ['supplier_name','customer_name'])stockFilters.controls.get(key).closest('label').hidden=!data.names_allowed||(key==='customer_name'&&view==='supplier');
@@ -126,19 +129,20 @@
       $('#accounts-stock-count').textContent = total ? `${offset+1}–${Math.min(offset+50,total)} of ${total} rows` : '0 rows';
       $('#accounts-stock-updated').textContent = 'Updated '+date(new Date())+' · Refresh every 30 sec';
     } catch (e) {
+      if(token!==stockGeneration||requestedView!==view||stockStopped)return;
       total = 0;
       $('#accounts-stock-receipts').replaceChildren();
       $('#accounts-stock-list').innerHTML = '';
       $('#accounts-stock-totals').innerHTML = '';
       $('#accounts-stock-count').textContent = '';
       $('#accounts-stock-updated').textContent = 'Update unavailable';
-      msg.textContent = e.message || 'Stock could not be loaded.'; msg.classList.add('is-visible');
-    } finally { context.lock(false); stockFilters.setBusy(false); pagination(); }
+      msg.textContent = e.code==='57014'||/statement timeout/i.test(e.message||'')?'Stock loading timed out. Press Refresh to retry, or choose another Accounts section.':e.message || 'Stock could not be loaded.'; msg.classList.add('is-visible');
+    } finally { if(token===stockGeneration){loadingStock=false;readController=null;stockFilters.setBusy(false);pagination();} }
   }
   function showView(next) {
     if (context.isBusy() || window.GREENLOOP_ACCOUNTS_IMEI?.isBusy() || !['verify','supplier','customer','imei'].includes(next)) return;
     if(['supplier','customer'].includes(next)&&!mayReadStock(next))return;
-    hideDetails();stockGeneration++;view = next;
+    readController?.abort();readController=null;stockGeneration++;loadingStock=false;hideDetails();view=next;stockFilters.setBusy(false);
     document.querySelectorAll('[data-accounts-view]').forEach(b=>{const active=b.dataset.accountsView===view;b.classList.toggle('is-active',active);b.setAttribute('aria-pressed',String(active));});
     $('#accounts-verify-panel').hidden = view !== 'verify';
     $('#accounts-stock-panel').hidden = view === 'verify' || view === 'imei';
@@ -188,7 +192,7 @@
     window.setInterval(()=>{if(!document.hidden)loadStock();},30000);
   }
   function clearStock(){
-    hideDetails();stockGeneration++;$('#accounts-stock-list').replaceChildren();$('#accounts-stock-totals').replaceChildren();$('#accounts-stock-receipts').replaceChildren();$('#accounts-stock-count').textContent='';total=0;
+    stockStopped=true;readController?.abort();readController=null;loadingStock=false;hideDetails();stockGeneration++;stockFilters.setBusy(false);$('#accounts-stock-list').replaceChildren();$('#accounts-stock-totals').replaceChildren();$('#accounts-stock-receipts').replaceChildren();$('#accounts-stock-count').textContent='';total=0;
     for(const key of ['supplier_name','customer_name']){const input=stockFilters.controls.get(key);input.replaceChildren(new Option('All',''));input.closest('label').hidden=true;}
     stockFilters.clear();
   }

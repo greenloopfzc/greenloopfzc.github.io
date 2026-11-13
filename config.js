@@ -138,6 +138,9 @@ window.GREENLOOP_CONFIG = Object.freeze({
       }
       const rpc = sharedClient.rpc.bind(sharedClient);
       sharedClient.rpc = async (name, ...args) => {
+        // Keep the existing access and office checks when cancelling obsolete Accounts reads.
+        const signal=name==='get_accounts_card_report_v1'?args[1]?.signal:null;
+        if(signal){args[1]={...args[1]};delete args[1].signal;}
         // Versioned RPC requirements distinguish independent page actions.
         // The bootstrap readers must finish before accessReady can resolve.
         const bootstrap = new Set(['get_my_page_access_v2','get_my_page_access','get_my_page_capabilities_v1','get_my_damage_tv_settings_v1','get_my_partner_name_access','has_role','get_stock_receipt_catalog_v1']);
@@ -152,7 +155,10 @@ window.GREENLOOP_CONFIG = Object.freeze({
         if(stockRead){await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();}
         if(stockRead&&window.GREENLOOP_BATCH_DISPLAY)args[0]=window.GREENLOOP_BATCH_DISPLAY.readArgs(args[0]);
         if(stockRead&&typeof window.GREENLOOP_STOCK?.readArgs==='function')args[0]=window.GREENLOOP_STOCK.readArgs(args[0]);
-        const response = await rpc(name, ...args);
+        if(signal?.aborted)return {data:null,error:{code:'ABORT_ERR',message:'Report request cancelled.'}};
+        let request=rpc(name,...args);
+        if(signal&&typeof request.abortSignal==='function')request=request.abortSignal(signal);
+        const response = await request;
         if(stockRead&&response?.data)window.GREENLOOP_STOCK?.enrich(response.data,{name,args:args[0]||{}});
         if (response?.error?.code === '23505') {
           let detail;try { detail=JSON.parse(response.error.details || '{}'); } catch (_) {}
