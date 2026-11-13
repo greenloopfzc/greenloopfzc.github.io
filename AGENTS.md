@@ -69,3 +69,5 @@ names or to delete, reset, or otherwise change business records.
 - Preserve original phone/job, supplier, receipt quantity and batch. Each delivery/return has its own date/reference/IMEI history. Never count the same phone in both company and shop availability.
 
 - Chaman User Access must work through both the actual existing-account save RPC and the service-only new-account initializer, including the legacy allowed-page validator. Retain unknown-page rejection, view-only levels, self-access protection, and independent name/copy/screenshot/TV/network settings. Catalog-only or mocked browser saves do not verify this server boundary.
+
+- Greenloop Transferred Stock Data has three summary cells: Transferred to Chaman, Received by Chaman, Balance Pending (transferred minus received). Aggregate every matching delivery before the50-row page; detail filters aggregate matching phone rows. Chaman receiving remains historical after a return. These figures are separate from physical shop balance or Greenloop return receiving. Include the scoped totals in complete exports.
