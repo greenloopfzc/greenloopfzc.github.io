@@ -14,7 +14,7 @@
   let client, catalogue = null, report = null, visible = false, stopped = false, loading = false, exporting = false;
   const cards=window.GREENLOOP_ACCOUNTS_CARDS;
   let detailOpen=false,metric='all';
-  let offset = 0, sortKey = 'imei', direction = 'asc', generation = 0, searchTimer, pdfUrl = '', pdfFilename = '', readController=null;
+  let offset = 0, sortKey = 'imei', direction = 'asc', generation = 0, searchTimer, pdfUrl = '', pdfFilename = '', readController=null,catalogueGeneration=0;
 
   root.innerHTML = `<div class="aid-header"><div><p class="panel-kicker">STOCK RECORDS</p><h2>IMEI DATA</h2><p>Choose a supplier, stock/batch or invoice to view its complete phone list.</p></div><span id="aid-updated"></span></div>
     <div class="aid-primary">
@@ -34,7 +34,7 @@
       <small>Dates apply to the original stock received date (UAE).</small>
     </div>
     <p id="aid-message" role="status" hidden></p><p id="aid-scope" class="aid-scope"></p>
-    <div id="aid-chaman"></div><div id="aid-summary" class="aid-summary"></div>
+    <div id="aid-chaman"></div><h3 class="greenloop-stock-heading" id="aid-greenloop-heading" hidden>Greenloop Stock Data</h3><div id="aid-summary" class="aid-summary"></div>
     <h3 id="aid-selection" hidden></h3><div id="aid-receipt-detail" hidden></div><div class="aid-table-wrap" hidden><table class="aid-table" data-preserve-table-layout><thead><tr>${columns.map(([key,label])=>`<th scope="col"${key?' data-aid-heading="'+key+'"':''}>${key?`<button class="aid-sort" type="button" data-aid-sort="${key}" data-capability="sort" data-capability-page="accounts">${label} <span aria-hidden="true">↕</span></button>`:label}</th>`).join('')}</tr></thead><tbody id="aid-rows"></tbody></table></div>
     <div class="aid-footer" hidden><span id="aid-count">Choose IMEI DATA to load records.</span><div><button id="aid-prev" type="button" class="secondary-button" data-capability="imei_data" data-capability-page="accounts">Previous</button><button id="aid-next" type="button" class="secondary-button" data-capability="imei_data" data-capability-page="accounts">Next</button></div></div>
     <p class="aid-note" hidden>Red rows are returned phones; green rows are entered replacements. S.No follows the current filtered list. Original stock and return history remain available.</p>
@@ -73,7 +73,7 @@
     $('#aid-refresh').disabled = exporting || loading || !permitted;
     root.querySelectorAll('[data-aid-export]').forEach(e=>{e.hidden = !can('imei_download');e.disabled = exporting || loading || !report?.total || !detailOpen || !permitted || !can('imei_download');});
     if (!permitted || !can('imei_download')) closePdf();
-    if (!permitted) { root.hidden = true; report = null; generation++; $('#aid-rows').replaceChildren(); $('#aid-summary').replaceChildren(); }
+    if (!permitted) { root.hidden = true; report = null; generation++; $('#aid-rows').replaceChildren(); $('#aid-summary').replaceChildren();$('#aid-greenloop-heading').hidden=true; }
     window.GREENLOOP_LOCK_VIEW_ONLY_CONTROLS?.(root);
   }
   function fillSelect(el,items,first,value = el.value) {
@@ -91,9 +91,9 @@
     fillSelect($('#aid-invoice'),invoices.map(v=>({value:v,label:v})),'All invoices',invoices.includes(invoice) ? invoice : '');
   }
   async function loadCatalogue() {
-    const data = await rpc('get_accounts_imei_catalogue_v1');
+    const catalogueTicket=++catalogueGeneration;const data = await rpc('get_accounts_imei_catalogue_v1');
     if (!data || !Array.isArray(data.suppliers) || !Array.isArray(data.batches)) throw Error('The stock selector could not be verified. Refresh and retry.');
-    if (!visible || stopped || !allowed()) return;
+    if (catalogueTicket!==catalogueGeneration || !visible || stopped || !allowed()) return;
     catalogue = data;
     fillSelect($('#aid-supplier'),data.suppliers.map(s=>({value:s.supplier_id,label:window.GREENLOOP_PARTNER_LABEL(s.supplier_code,s.supplier_name,'Not recorded')})),'All suppliers');
     stockOptions();
@@ -106,7 +106,7 @@
     if (!report) return;
     if(metric!=='returned'||report.receipt_mode){const table=root.querySelector('.aid-table');table.classList.remove('rp-exchange-table');delete table.dataset.noSerial;if(!table.querySelector('[data-aid-heading]'))table.querySelector('thead').outerHTML=normalHead;}
     const fields = [['Total records','total_records'],['In company','in_company'],['Ready Stock','ready'],['In process','in_process'],['Exported','exported'],['Returned','returned']];
-    $('#aid-summary').innerHTML=cards.stockCards(report.stock_summary,detailOpen?metric:null,'imei_data');$('#aid-chaman').innerHTML=window.GREENLOOP_STOCK?.chamanHtml(report.chaman_summary)||'';
+    $('#aid-greenloop-heading').hidden=false;$('#aid-summary').innerHTML=cards.stockCards(report.stock_summary,detailOpen?metric:null,'imei_data');$('#aid-chaman').innerHTML=window.GREENLOOP_STOCK?.chamanHtml(report.chaman_summary)||'';
     $('#aid-scope').textContent = [$('#aid-supplier').selectedOptions[0]?.textContent,$('#aid-batch').value ? $('#aid-batch').selectedOptions[0]?.textContent : 'All stock / batches',$('#aid-invoice').value ? 'Invoice '+$('#aid-invoice').value : '',report.filters.from_date ? 'From '+report.filters.from_date : '',report.filters.to_date ? 'To '+report.filters.to_date : '',report.summary.missing_imei ? num(report.summary.missing_imei)+' return records have no recorded IMEI' : ''].filter(Boolean).join(' · ');
     $('#aid-selection').hidden=!detailOpen;$('#aid-selection').textContent=metric==='returned'&&report.matched_return_count!=null?'Returned — '+num(report.matched_return_count)+' returns · '+num(report.linked_replacement_count||0)+' linked replacements':cards.labels[metric]+' — '+num(report.total)+(report.receipt_mode?' receipts':' records');
     root.querySelector('.aid-table-wrap').hidden=!detailOpen||report.receipt_mode;root.querySelector('.aid-footer').hidden=!detailOpen;root.querySelector('.aid-note').hidden=!detailOpen||report.receipt_mode;
@@ -127,14 +127,14 @@
     if(!detailOpen){root.querySelector('.aid-table-wrap').hidden=true;root.querySelector('.aid-footer').hidden=true;root.querySelector('.aid-note').hidden=true;$('#aid-selection').hidden=true;$('#aid-receipt-detail').hidden=true;}
     readController?.abort();readController=new AbortController();const signal=readController.signal;
     const ticket = ++generation, sig = signature(); loading = true; report = null; controls(); message('Loading IMEI DATA…');
-    $('#aid-rows').innerHTML='<tr><td colspan="11" class="aid-empty">Loading records…</td></tr>';$('#aid-summary').replaceChildren();$('#aid-count').textContent='Loading…';
+    $('#aid-rows').innerHTML='<tr><td colspan="11" class="aid-empty">Loading records…</td></tr>';$('#aid-summary').replaceChildren();$('#aid-greenloop-heading').hidden=true;$('#aid-count').textContent='Loading…';
     try {
       const data = await rpc('get_accounts_card_report_v1',{p_kind:'imei',p_filters:filters(),p_metric:metric,p_summary_only:!detailOpen,p_offset:offset,p_limit:50,p_sort_key:sortKey,p_sort_direction:direction},signal);
       if (ticket !== generation || sig !== signature() || !visible || stopped || !allowed()) return;
       if (!valid(data)||metric==='returned'&&!window.GREENLOOP_EXCHANGE_PAIRS.valid(data)) throw Error('The complete report totals could not be verified. Refresh and retry.');
       if (offset && offset >= data.total) { offset=0;return load(); }
       report = data; draw(); message();
-    } catch (e) { if (ticket===generation) { report=null;root.querySelector(':scope > [data-chaman-summary]')?.remove();root.querySelector(':scope > [data-stock-balance-summary]')?.remove();$('#aid-rows').replaceChildren();$('#aid-summary').replaceChildren();$('#aid-chaman').replaceChildren();$('#aid-count').textContent='Report unavailable';message(e.message || 'IMEI DATA could not load.',true); } }
+    } catch (e) { if (ticket===generation) { report=null;root.querySelector(':scope > [data-chaman-summary]')?.remove();root.querySelector(':scope > [data-stock-balance-summary]')?.remove();$('#aid-rows').replaceChildren();$('#aid-summary').replaceChildren();$('#aid-greenloop-heading').hidden=true;$('#aid-chaman').replaceChildren();$('#aid-count').textContent='Report unavailable';message(e.message || 'IMEI DATA could not load.',true); } }
     finally { if (ticket===generation) {loading=false;controls();} }
   }
   function changed() { if (!can('search') || exporting) return;detailOpen=metric!=='all'||Object.keys(filters()).length>0;offset=0;generation++;window.GREENLOOP_STOCK_RETURN_DETAILS?.close();closePdf();clearTimeout(searchTimer);searchTimer=setTimeout(load,240); }
@@ -158,17 +158,20 @@
     finally { exporting=false;controls(); }
   }
   async function activate(next) {
+    catalogueGeneration++;
     readController?.abort();readController=null;detailOpen=false;metric='all';offset=0;for(const e of root.querySelectorAll('input,select'))e.value='';clearTimeout(searchTimer);
     root.querySelector('.aid-table-wrap').hidden=true;root.querySelector('.aid-footer').hidden=true;root.querySelector('.aid-note').hidden=true;$('#aid-selection').hidden=true;$('#aid-receipt-detail').hidden=true;
     visible=next==='imei';root.hidden=!visible;
     if (!visible) { generation++;loading=false;closePdf();return; }
     if (!allowed()) { controls();return; }
     message('Loading stock choices…');
-    try { await loadCatalogue();if (visible && !stopped) await load(); } catch(e) {message(e.message || 'Stock choices could not load.',true);}
+    const stockRequest=load(),ticket=generation;
+    await Promise.all([stockRequest,loadCatalogue().catch(e=>{if(ticket===generation&&visible&&!stopped&&allowed())message(e.message||'Stock choices could not load. Refresh and retry.',true);})]);
   }
   function clearSensitive() {
+    catalogueGeneration++;
     readController?.abort();readController=null;stopped=true;visible=false;generation++;loading=false;clearTimeout(searchTimer);closePdf();report=null;catalogue=null;root.hidden=true;
-    $('#aid-rows').replaceChildren();$('#aid-summary').replaceChildren();$('#aid-chaman').replaceChildren();$('#aid-scope').textContent='';$('#aid-updated').textContent='';
+    $('#aid-rows').replaceChildren();$('#aid-summary').replaceChildren();$('#aid-greenloop-heading').hidden=true;$('#aid-chaman').replaceChildren();$('#aid-scope').textContent='';$('#aid-updated').textContent='';
     for(const e of root.querySelectorAll('input,select')) { if(e.tagName==='SELECT')e.replaceChildren(new Option('',''));else e.value=''; }
   }
   async function init(settings) {

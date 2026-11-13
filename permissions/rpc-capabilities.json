@@ -1473,7 +1473,7 @@
     "get_ready_stock_groups_version": {
       "read": true
     },
-    "get_ready_stock_color_groups_v1": {
+    "get_ready_stock_models_v1":{"page":"ready_stock","capability":"view","read":true},"get_ready_stock_models_version":{"read":true},"get_ready_stock_color_groups_v1": {
       "page": "ready_stock",
       "capability": "view",
       "read": true

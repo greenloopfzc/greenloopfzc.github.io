@@ -125,7 +125,7 @@
       $('#accounts-stock-receipts').innerHTML=view==='supplier'?(window.GREENLOOP_STOCK?.chamanHtml(data.chaman_summary)||''):'';
       $('#accounts-stock-downloads').querySelectorAll('button').forEach(b=>b.disabled=!detailOpen||!total);
       const metrics = view === 'supplier' ? [['Received','received'],['In company','in_company'],['Ready','ready'],['In process','in_process'],['Exported','exported'],['Returned','returned']] : [['Exported phones','exported']];
-      $('#accounts-stock-totals').innerHTML = view==='supplier'?cards.stockCards(data.stock_summary,detailOpen?metric:null,'supplier_stock'):metrics.map(([label,key])=>cards.button(label,key,(data.base_totals||data.totals)[key]||0,detailOpen?metric:null,'customer_stock')).join('');
+      $('#accounts-greenloop-heading').hidden=view!=='supplier';$('#accounts-stock-totals').innerHTML = view==='supplier'?cards.stockCards(data.stock_summary,detailOpen?metric:null,'supplier_stock'):metrics.map(([label,key])=>cards.button(label,key,(data.base_totals||data.totals)[key]||0,detailOpen?metric:null,'customer_stock')).join('');
       $('#accounts-stock-count').textContent = total ? `${offset+1}–${Math.min(offset+50,total)} of ${total} rows` : '0 rows';
       $('#accounts-stock-updated').textContent = 'Updated '+date(new Date())+' · Refresh every 30 sec';
     } catch (e) {
@@ -133,7 +133,7 @@
       total = 0;
       $('#accounts-stock-receipts').replaceChildren();
       $('#accounts-stock-list').innerHTML = '';
-      $('#accounts-stock-totals').innerHTML = '';
+      $('#accounts-stock-totals').innerHTML = '';$('#accounts-greenloop-heading').hidden=true;
       $('#accounts-stock-count').textContent = '';
       $('#accounts-stock-updated').textContent = 'Update unavailable';
       msg.textContent = e.code==='57014'||/statement timeout/i.test(e.message||'')?'Stock loading timed out. Press Refresh to retry, or choose another Accounts section.':e.message || 'Stock could not be loaded.'; msg.classList.add('is-visible');
@@ -192,7 +192,7 @@
     window.setInterval(()=>{if(!document.hidden)loadStock();},30000);
   }
   function clearStock(){
-    stockStopped=true;readController?.abort();readController=null;loadingStock=false;hideDetails();stockGeneration++;stockFilters.setBusy(false);$('#accounts-stock-list').replaceChildren();$('#accounts-stock-totals').replaceChildren();$('#accounts-stock-receipts').replaceChildren();$('#accounts-stock-count').textContent='';total=0;
+    stockStopped=true;readController?.abort();readController=null;loadingStock=false;hideDetails();stockGeneration++;stockFilters.setBusy(false);$('#accounts-stock-list').replaceChildren();$('#accounts-stock-totals').replaceChildren();$('#accounts-greenloop-heading').hidden=true;$('#accounts-stock-receipts').replaceChildren();$('#accounts-stock-count').textContent='';total=0;
     for(const key of ['supplier_name','customer_name']){const input=stockFilters.controls.get(key);input.replaceChildren(new Option('All',''));input.closest('label').hidden=true;}
     stockFilters.clear();
   }
