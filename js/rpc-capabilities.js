@@ -47,3 +47,5 @@
 (function(root){Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,{"get_replacement_match_options_v1":{"page":"supplier_returns","capability":"replacement_entry","read":true},"preview_matched_replacements_v1":{"page":"supplier_returns","capability":"replacement_entry","read":true},"receive_matched_replacements_v1":{"page":"supplier_returns","capability":"replacement_entry"},"get_stock_replacement_data_v2":{"page":"supplier_returns","capability":"replacement_view","read":true},"get_replacement_auto_match_version":{"read":true}});})(typeof window!=="undefined"?window:globalThis);
 
 (function(root){Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,{get_chaman_corrections_v1:{page:"reports",capability:"report_chaman_correction",read:true},correct_chaman_transfer_v1:{page:"reports",capability:"report_chaman_correction"},get_chaman_shop_roles_version:{read:true}});})(window);
+
+(function(root){Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,{get_chaman_shop_v2:{page:"chaman_shop",capability:"view",read:true},save_chaman_entry_v2:{page:"chaman_shop",capability:"entry"},get_chaman_shop_flow_version:{read:true}});})(window);

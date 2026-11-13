@@ -79,6 +79,7 @@
       const columns=columnsFor({...data,names_allowed:data.names_allowed&&window.GREENLOOP_CAN_VIEW_PARTNER_NAMES===true});
       const report={title:(selected==='supplier'?'Supplier Stock':'Customer Stock')+' - '+cards.labels[metric],subtitle:Object.entries(args.p_filters).filter(([,v])=>v).map(([k,v])=>k.replace(/^_/,'')+': '+v).join(' | ')||'All matching stock',headers:['S.No',...columns.map(([h])=>h)],rows:data.rows.map((r,i)=>[i+1,...columns.map(([,k])=>k.endsWith('_at')?date(r[k]):k==='batch_number'?window.GREENLOOP_BATCH_LABEL?.(r.batch_number,r)||r.batch_number:k==='invoice_number'?r.invoice_number||r.batch_number:r[k])])};
       const numeric=selected==='supplier'?['received','in_company','ready','in_process','exported','returned']:['quantity'];
+      report.subtitle+=' | '+(window.GREENLOOP_STOCK?.chamanText(data.chaman_summary)||'');
       report.subtitle+=' | '+numeric.map(k=>k.replace(/_/g,' ')+': '+Number(data.totals[k]||0)).join(' | ');
       await downloads.output(kind,report,allowed,'accounts','print');
     }catch(e){const msg=$('#accounts-stock-message');msg.textContent=e.message;msg.classList.add('is-visible');}
@@ -117,7 +118,7 @@
       snapshot=data.snapshot;$('#accounts-stock-details').hidden=!detailOpen;
       $('#accounts-stock-list').innerHTML=detailOpen?(data.receipt_mode?cards.receiptTable(data,offset):table(data)):'';
       $('#accounts-stock-selection').textContent=cards.labels[metric]+' — '+total+(data.receipt_mode?' receipts':' matching records');
-      $('#accounts-stock-receipts').innerHTML=window.GREENLOOP_STOCK?.summaryHtml(data.receipt_summary)||'';cards.decorate($('#accounts-stock-receipts'),metric,view+'_stock');
+      $('#accounts-stock-receipts').innerHTML=(window.GREENLOOP_STOCK?.summaryHtml(data.receipt_summary)||'')+(window.GREENLOOP_STOCK?.chamanHtml(data.chaman_summary)||'');cards.decorate($('#accounts-stock-receipts'),metric,view+'_stock');
       $('#accounts-stock-downloads').querySelectorAll('button').forEach(b=>b.disabled=!detailOpen||!total);
       const metrics = view === 'supplier' ? [['Received','received'],['In company','in_company'],['Ready','ready'],['In process','in_process'],['Exported','exported'],['Returned','returned']] : [['Exported phones','exported']];
       $('#accounts-stock-totals').innerHTML = metrics.map(([label,key])=>cards.button(label,key,(data.base_totals||data.totals)[key]||0,metric,view+'_stock')).join('');
@@ -125,6 +126,7 @@
       $('#accounts-stock-updated').textContent = 'Updated '+date(new Date())+' · Refresh every 30 sec';
     } catch (e) {
       total = 0;
+      $('#accounts-stock-receipts').replaceChildren();
       $('#accounts-stock-list').innerHTML = '';
       $('#accounts-stock-totals').innerHTML = '';
       $('#accounts-stock-count').textContent = '';

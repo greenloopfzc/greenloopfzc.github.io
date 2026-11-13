@@ -416,7 +416,7 @@ function buildStageSections(sortedRows) {
       escape:escapeHtml,date:journeyMoment,currentStage:currentStage(data.device || {}),
       money:value=>number(value)===null ? missing : number(value).toLocaleString("en-GB",{minimumFractionDigits:2,maximumFractionDigits:2})
     });
-    body.innerHTML=renderReplacementHistory(data)+(rows.length ? compact+`<details class="history-full-activity"><summary>Full activity (${rows.length} records)</summary><ol class="history-activity-list">${renderActivityList(visibleRows)}</ol></details>` : '<p class="history-missing">No history has been recorded for this phone.</p>');
+    body.innerHTML=(data.chaman_summary?.sent?'<section class="history-chaman-summary"><h3>Chaman Shop transfers</h3><p>'+escapeHtml('Sent: '+data.chaman_summary.sent+' · Received back at Greenloop: '+data.chaman_summary.returned+' · Outside Greenloop: '+data.chaman_summary.outside_greenloop)+'</p><p>Every dispatch, receiving and return is recorded in the journey below.</p></section>':'')+renderReplacementHistory(data)+(rows.length ? compact+`<details class="history-full-activity"><summary>Full activity (${rows.length} records)</summary><ol class="history-activity-list">${renderActivityList(visibleRows)}</ol></details>` : '<p class="history-missing">No history has been recorded for this phone.</p>');
     count.textContent="Journey by recorded time · Same-time actions follow workflow order · UAE time";
     const totals=data.summary || {};
     const unpriced=number(totals.unpriced_manual_part_quantity) || 0;

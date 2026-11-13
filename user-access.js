@@ -210,9 +210,6 @@
     if (checkbox === view && !view.checked) card.querySelectorAll("[data-access-capability]").forEach(field => { field.checked = false; });
     card.classList.toggle("is-selected", view.checked);
     card.querySelectorAll("[data-access-capability]").forEach(field => { field.disabled = !view.checked || card.dataset.pagePermission === "user_access" && !currentUserIsSuperAdmin; });
-    if(card.dataset.pagePermission==='chaman_shop'&&checkbox.checked&&['greenloop_operations','shop_operations'].includes(checkbox.dataset.accessCapability)){
-      card.querySelectorAll('[data-access-capability="greenloop_operations"],[data-access-capability="shop_operations"]').forEach(field=>{if(field!==checkbox)field.checked=false;});
-    }
     if(card.dataset.pagePermission==='reports'){
       card.querySelectorAll('[data-report-permission]').forEach(group=>{
         const check=group.querySelector(`[data-access-capability="${group.dataset.reportView}"]`),on=view.checked&&check.checked;

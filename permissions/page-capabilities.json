@@ -1324,7 +1324,7 @@
     {
       "key": "chaman_shop",
       "label": "Chaman Shop",
-      "description": "Choose Greenloop OR Chaman workspace. Admin sees all actions.",
+      "description": "Greenloop Section by default. Tick Chaman Shop login only for the shop account.",
       "capabilities": [
         {
           "key": "view",
@@ -1347,13 +1347,8 @@
           "write": false
         },
         {
-          "key": "greenloop_operations",
-          "label": "Greenloop workspace: send stock / receive returns",
-          "write": false
-        },
-        {
           "key": "shop_operations",
-          "label": "Chaman workspace: receive stock / return stock",
+          "label": "This is the Chaman Shop login",
           "write": false
         }
       ]
