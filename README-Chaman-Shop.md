@@ -1,6 +1,6 @@
 # Chaman Shop
 
-Greenloop Section has three main cards: Transfer Stock Entry, Returned Stock Entry, Reports. Chaman Shop Section has Received Stock Entry, Returned Stock Entry, Reports. Reports opens three nested cards: Greenloop = Transferred Stock Data / Received Stock Data / Stock Balance Data; Chaman = Received Stock Data / Returned Stock Data / Stock Balance Data. No table loads on the landing screen. Admin can switch sections; each still shows only its three main cards.
+Greenloop Section has three main cards: Transfer Stock Entry, Returned Stock Entry, Reports. Chaman Shop Section has Received Stock Entry, Returned Stock Entry, Reports. Reports opens two nested cards: Greenloop = Transferred Stock Data / Received Stock Data; Chaman = Received Stock Data / Returned Stock Data. Stock Balance Data is temporarily removed from both sections; its data/APIs and inventory calculations remain available. No table loads on the landing screen. Admin can switch sections; each still shows only its three main cards.
 
 Any allowed non-shop account defaults to Greenloop. User Access has one special flag, This is the Chaman Shop login. View, Entry, Search and PDF/Excel are separate grants; existing staff gains no automatic page access. Every RPC enforces active accounts, office access and the permitted side independently from the browser. Owner / Super Admin can operate both sections. No sales/customer-account process is included.
 
