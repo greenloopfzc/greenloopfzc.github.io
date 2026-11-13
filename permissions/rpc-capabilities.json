@@ -638,6 +638,8 @@
       "page": "lab_glass",
       "capability": "entry"
     },
+    "get_pending_replacement_returns_v1": {"page":"supplier_returns","capability":"replacement_entry","read":true},
+    "get_specific_replacement_version": {"read":true},
     "get_stock_grade_phone_details_v1": {"all":[{"page":"reports","capability":"view"},{"page":"reports","capability":"stock_grade_analysis"}],"read":true},
     "get_grade_phone_details_version": {"read":true},
     "record_stock_return_with_capture_v1": {
@@ -2830,6 +2832,8 @@
     "page": "lab_glass",
     "capability": "entry"
   },
+  "get_pending_replacement_returns_v1": {"page":"supplier_returns","capability":"replacement_entry","read":true},
+  "get_specific_replacement_version": {"read":true},
   "get_stock_grade_phone_details_v1": {"all":[{"page":"reports","capability":"view"},{"page":"reports","capability":"stock_grade_analysis"}],"read":true},
   "get_grade_phone_details_version": {"read":true},
   "record_stock_return_with_capture_v1": {

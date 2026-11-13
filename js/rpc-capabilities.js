@@ -54,3 +54,5 @@
 (function(root){const rule={page:"supplier_returns",capability:"entry"};root.GREENLOOP_RPC_CAPABILITIES.rpcs.record_stock_return_with_capture_v1=rule;root.GREENLOOP_RPC_CAPABILITIES.record_stock_return_with_capture_v1=rule;})(typeof window!=="undefined"?window:globalThis);
 
 (function(root){const rules={get_stock_grade_phone_details_v1:{all:[{page:"reports",capability:"view"},{page:"reports",capability:"stock_grade_analysis"}],read:true},get_grade_phone_details_version:{read:true}};Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,rules);Object.assign(root.GREENLOOP_RPC_CAPABILITIES,rules);})(typeof window!=="undefined"?window:globalThis);
+
+(function(root){const rules={get_pending_replacement_returns_v1:{page:"supplier_returns",capability:"replacement_entry",read:true},get_specific_replacement_version:{read:true}};Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,rules);Object.assign(root.GREENLOOP_RPC_CAPABILITIES,rules);})(typeof window!=="undefined"?window:globalThis);
