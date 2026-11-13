@@ -1,0 +1,9 @@
+# Chaman User Access save / create fix
+
+Existing-account saves and new-account permission initialization both reached a legacy server validator whose allowed-pages list omitted chaman_shop. This caused the exact One or more selected pages are not valid error even though Chaman existed in the capability catalog and table constraint.
+
+Migration297 adds only chaman_shop to that reviewed legacy allowlist and to its read-only default list. The existing v2/capability layer still applies explicitly granted entry rights. Admin/Owner checks, self-access protection, username validation, unknown-page rejection, all other pages and role mapping remain intact. No Edge Function redeployment is required. Only matching before-definition integrity receipts are updated. The atomic installer verifies the complete-flow and page-capability versions and its own checksum marker. It does not modify saved users, permissions or stock records.
+
+The User Access HTML cache version changes so a refreshed editor/create form uses the current single This is the Chaman Shop login choice. Other allowed users remain Greenloop by default. View and Entry remain separate; the Shop flag alone grants no write access. Existing name, copying, screenshot, TV/employee/network and rotation choices remain under their existing server validations.
+
+Validation uses isolated PGlite with the actual public save_user_access_tv_rotation_v1 and service-only initialize_user_office_access_v1 call chains. Both screenshot errors are reproduced before the migration, then existing-target, own-admin and new Chaman-only saves are exercised after it. Browser editor/create payload and cache checks complement the server tests. The publisher verifies the new database marker before a normal fast-forward push and verifies website assets. No live SQL or publish was performed by Codex.
