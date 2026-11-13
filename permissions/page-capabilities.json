@@ -1075,6 +1075,21 @@
           "key": "bulk_imei_correction",
           "label": "Bulk IMEI Correction (editable table; requires Full IMEI Correction)",
           "write": true
+        },
+        {
+          "key": "report_chaman_correction",
+          "label": "Chaman Transfer Correction: view transfers and audit",
+          "write": false
+        },
+        {
+          "key": "chaman_correction",
+          "label": "Correct Chaman transfer details / receiving (Admin only)",
+          "write": true
+        },
+        {
+          "key": "chaman_delete",
+          "label": "Remove phones / delete Chaman transfers (Admin only)",
+          "write": true
         }
       ]
     },
@@ -1309,7 +1324,7 @@
     {
       "key": "chaman_shop",
       "label": "Chaman Shop",
-      "description": "Admin: dispatch, receiving, returns and balance.",
+      "description": "Choose Greenloop OR Chaman workspace. Admin sees all actions.",
       "capabilities": [
         {
           "key": "view",
@@ -1329,6 +1344,16 @@
         {
           "key": "download",
           "label": "PDF and Excel",
+          "write": false
+        },
+        {
+          "key": "greenloop_operations",
+          "label": "Greenloop workspace: send stock / receive returns",
+          "write": false
+        },
+        {
+          "key": "shop_operations",
+          "label": "Chaman workspace: receive stock / return stock",
           "write": false
         }
       ]
@@ -1530,6 +1555,14 @@
       ],
       "search": "report_deleted_history_search",
       "sort": "report_deleted_history_sort"
+    },
+    "chaman_correction": {
+      "label": "Chaman Transfer Correction",
+      "view": "report_chaman_correction",
+      "actions": [
+        "chaman_correction",
+        "chaman_delete"
+      ]
     }
   },
   "reportDependencies": {
@@ -1584,6 +1617,8 @@
     "delete_export_boxes": "report_export_boxes",
     "workflow_delete": "report_imei_correction",
     "workflow_move_back": "report_imei_correction",
-    "bulk_imei_correction": "report_imei_correction"
+    "bulk_imei_correction": "report_imei_correction",
+    "chaman_correction": "report_chaman_correction",
+    "chaman_delete": "report_chaman_correction"
   }
 }

@@ -21,8 +21,8 @@
   let activeReport = "";
   let loadedReport = "";
   const reportSections = window.GREENLOOP_PERMISSION_CATALOG?.reportSections || {};
-  const allowedReport = key => key==="bulk_imei_correction" ? Boolean(window.GREENLOOP_CAN?.("report_imei_correction","reports")&&window.GREENLOOP_CAN?.("workflow_correction","reports")&&window.GREENLOOP_CAN?.("bulk_imei_correction","reports")) : Boolean(reportSections[key] && window.GREENLOOP_CAN?.(reportSections[key].view,"reports"));
-  const selfLoadedReports = new Set(["stock_receipt_correction","bulk_imei_correction","supplier_progress","stock_grade_analysis","stock_parts_cost","manual_damage","production_correction","complete_device_details","data_correction","restricted_data"]);
+  const allowedReport = key => key==="chaman_correction" ? Boolean(canResetData&&window.GREENLOOP_CAN?.("report_chaman_correction","reports")) : key==="bulk_imei_correction" ? Boolean(window.GREENLOOP_CAN?.("report_imei_correction","reports")&&window.GREENLOOP_CAN?.("workflow_correction","reports")&&window.GREENLOOP_CAN?.("bulk_imei_correction","reports")) : Boolean(reportSections[key] && window.GREENLOOP_CAN?.(reportSections[key].view,"reports"));
+  const selfLoadedReports = new Set(["chaman_correction","stock_receipt_correction","bulk_imei_correction","supplier_progress","stock_grade_analysis","stock_parts_cost","manual_damage","production_correction","complete_device_details","data_correction","restricted_data"]);
   let selectedExportBox = "";
   let exportBoxImeiFilter = "";
   let correctionRecord = null;
@@ -100,6 +100,7 @@
   }
 
   const reports = {
+    chaman_correction:{title:"Chaman Transfer Correction",description:"Correct dates, notes and receiving, or remove mistaken phones and transfers with permanent history.",columns:[]},
     stock_receipt_correction:{title:"Stock Receipt Correction",description:"Correct a mistaken received quantity with permanent history. IMEIs, returns and replacements stay preserved.",columns:[]},
     stock_grade_analysis:{title:"Stock Grade & Work Analysis",description:"Initial QC GL grades and required Glass / Polish by supplier, stock / batch or invoice.",columns:[]},
     stock_parts_cost: {title:"Stock Parts Cost",description:"Supplier, invoice and batch parts cost with phone and part breakdown. Missing prices remain explicit.",columns:[]},
@@ -803,7 +804,7 @@
       table = `<div class="report-table-wrap"><table class="report-table audit-table--deleted"><thead><tr>${headers}</tr></thead><tbody>${body}</tbody></table></div>`;
     }
 
-    reportContent.innerHTML = `<div class="audit-switch"><button type="button" data-audit-view="deleted" class="${auditView === "deleted" ? "active" : ""}">Deleted records <span>${deletionRows.length}</span></button><button type="button" data-audit-view="changes" class="${auditView === "changes" ? "active" : ""}">Data changes <span>${changeRows.length}</span></button></div>${table}`;
+    reportContent.innerHTML = `<div class="audit-switch">${allowedReport("chaman_correction")?'<button type="button" data-open-chaman-deleted data-capability="report_chaman_correction" data-capability-page="reports">Chaman deleted transfers</button>':""}<button type="button" data-audit-view="deleted" class="${auditView === "deleted" ? "active" : ""}">Deleted records <span>${deletionRows.length}</span></button><button type="button" data-audit-view="changes" class="${auditView === "changes" ? "active" : ""}">Data changes <span>${changeRows.length}</span></button></div>${table}`;
   }
 
   function toggleSavedAuditDetails(button) {
@@ -924,6 +925,7 @@
   function renderActiveReport() {
     if(!allowedReport(activeReport))activeReport='';
     window.GREENLOOP_ACTIVE_REPORT=activeReport;
+    if(activeReport!=='chaman_correction')window.GREENLOOP_CHAMAN_CORRECTION?.unmount();
     filterForm.querySelectorAll('input,button').forEach(control=>{const allowed=Boolean(activeReport&&window.GREENLOOP_CAN?.('search','reports'));control.disabled=!allowed;if(allowed){control.removeAttribute('aria-disabled');control.removeAttribute('data-view-only-locked');if(control.title==='Access not granted')control.removeAttribute('title');}});
     if(!activeReport){
       for(const name of ['GREENLOOP_STOCK_RECEIPT_CORRECTION','GREENLOOP_STOCK_GRADE_ANALYSIS','GREENLOOP_STOCK_PARTS_COST','GREENLOOP_RESTRICTED_SCOPES','GREENLOOP_FULL_IMEI_CORRECTION','GREENLOOP_BULK_IMEI_CORRECTION','GREENLOOP_PRODUCTION_CORRECTION','GREENLOOP_DAMAGE_MANAGEMENT','GREENLOOP_COMPLETE_DEVICE_DETAILS'])window[name]?.unmount();
@@ -957,6 +959,10 @@
       filterForm.hidden=true;window.GREENLOOP_DAMAGE_MANAGEMENT?.unmount();window.GREENLOOP_COMPLETE_DEVICE_DETAILS?.unmount();
       panelKicker.textContent="Reports · Audited correction";panelTitle.textContent=reports.stock_receipt_correction.title;panelDescription.textContent=reports.stock_receipt_correction.description;rowCount.textContent="Received stock quantity";
       window.GREENLOOP_STOCK_RECEIPT_CORRECTION?.mount(reportContent);return;
+    }
+    if(activeReport==='chaman_correction'){
+      filterForm.hidden=true;panelKicker.textContent='Admin · Audited correction';panelTitle.textContent=reports.chaman_correction.title;panelDescription.textContent=reports.chaman_correction.description;rowCount.textContent='Chaman transfers';
+      window.GREENLOOP_CHAMAN_CORRECTION?.mount(reportContent);return;
     }
     if(activeReport === "stock_grade_analysis") {
       window.GREENLOOP_DAMAGE_MANAGEMENT?.unmount();window.GREENLOOP_COMPLETE_DEVICE_DETAILS?.unmount();
@@ -1012,6 +1018,7 @@
   async function loadReports(event) {
     event?.preventDefault();
     if(!allowedReport(activeReport))return;
+    if(activeReport==='chaman_correction'){await window.GREENLOOP_CHAMAN_CORRECTION?.refresh();return;}
     if(activeReport==='stock_receipt_correction'){await window.GREENLOOP_STOCK_RECEIPT_CORRECTION?.refresh();return;}
     if(activeReport==='supplier_progress'){await loadSupplierProgress({refresh:true});return;}
     if(activeReport==='stock_grade_analysis'){await window.GREENLOOP_STOCK_GRADE_ANALYSIS?.refresh();return;}
@@ -1081,7 +1088,7 @@
   filterForm.addEventListener("submit", loadReports);
   tabs.addEventListener("click", (event) => {
     const tab = event.target.closest(".report-tab[data-report]");
-    if (window.GREENLOOP_STOCK_RECEIPT_CORRECTION?.isSaving()||window.GREENLOOP_FULL_IMEI_CORRECTION?.isSaving()||window.GREENLOOP_BULK_IMEI_CORRECTION?.isSaving()) return;
+    if (window.GREENLOOP_CHAMAN_CORRECTION?.isSaving()||window.GREENLOOP_STOCK_RECEIPT_CORRECTION?.isSaving()||window.GREENLOOP_FULL_IMEI_CORRECTION?.isSaving()||window.GREENLOOP_BULK_IMEI_CORRECTION?.isSaving()) return;
     if(window.GREENLOOP_BULK_IMEI_CORRECTION?.isBusy()&&!window.confirm("Discard unsaved Bulk IMEI corrections and leave this report?"))return;
     if (!tab || tab.hidden || deletionBusy || reportMutationPending || window.GREENLOOP_DAMAGE_MANAGEMENT?.isBusy() || (tab.dataset.report !== "overview" && !reports[tab.dataset.report])) return;
     if(!allowedReport(tab.dataset.report))return;
@@ -1098,6 +1105,8 @@
     else if(activeReport&&!selfLoadedReports.has(activeReport)&&loadedReport!==activeReport)loadReports();
   });
   reportContent.addEventListener("click", (event) => {
+    if(event.target.closest('[data-open-chaman-deleted]')&&allowedReport('chaman_correction')){activeReport='chaman_correction';renderActiveReport();window.GREENLOOP_CHAMAN_CORRECTION?.unmount();window.GREENLOOP_CHAMAN_CORRECTION?.mount(reportContent,{deleted:true});return;}
+
     const savedDataButton = event.target.closest('[data-audit-details-index]');
     if (savedDataButton) { toggleSavedAuditDetails(savedDataButton); return; }
     if (event.target.closest('[data-open-deleted-history], [data-open-data-correction]')) {

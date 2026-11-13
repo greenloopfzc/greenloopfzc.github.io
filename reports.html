@@ -21,8 +21,8 @@
     <link rel="stylesheet" href="css/damage-management.css?v=20261007-damage-payable-1">
     <link rel="stylesheet" href="css/complete-device-details.css?v=20261001-android-support-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script defer src="js/permission-catalog.js?v=20261112-chaman-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261112-chaman-1"></script>
+    <script defer src="js/permission-catalog.js?v=20261113-chaman-workspaces-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261113-chaman-workspaces-1"></script>
 <script defer src="js/page-capabilities.js?v=20261104-report-permissions-1"></script>
 <script defer src="js/imei-scan.js?v=20261105-issuance-sidebar-1"></script>
 <script defer src="js/imei-stage-notice.js?v=20261102-imei-scan-location-1"></script>
@@ -54,7 +54,9 @@
     <script defer src="js/stock-parts-cost.js?v=20261112-report-downloads-1"></script>
     <link rel="stylesheet" href="css/stock-receipt-correction.css?v=20261109-stock-receipt-correction-1">
     <script defer src="js/stock-receipt-correction.js?v=20261112-report-downloads-1"></script>
-    <script defer src="js/reports.js?v=20261112-chaman-1"></script>
+    <link rel="stylesheet" href="css/chaman-correction.css?v=20261113-chaman-workspaces-1">
+    <script defer src="js/chaman-correction.js?v=20261113-chaman-workspaces-1"></script>
+    <script defer src="js/reports.js?v=20261113-chaman-workspaces-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261111-ruby-obsidian-1">
     <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
   <link rel="stylesheet" href="css/sidebar-compact.css?v=20261009-sidebar-pdf-1">
@@ -119,6 +121,7 @@
               <button class="report-tab" type="button" data-report="bulk_imei_correction" aria-pressed="false" hidden data-capability="bulk_imei_correction" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">&#9638;</span><span class="report-tab-label">Bulk IMEI Correction</span></button>
               <button class="report-tab" type="button" data-report="manual_damage" aria-pressed="false" hidden data-capability="report_damage" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">▥</span><span class="report-tab-label">Live Damage Report</span></button>
               <button class="report-tab" type="button" data-report="production_correction" aria-pressed="false" hidden data-capability="production_view" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">▤</span><span class="report-tab-label">Available Stock Correction</span></button>
+              <button class="report-tab" type="button" data-report="chaman_correction" aria-pressed="false" hidden data-capability="report_chaman_correction" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">⇄</span><span class="report-tab-label">Chaman Transfer Correction</span></button>
               <button class="report-tab" type="button" data-report="deleted_history" aria-pressed="false" hidden data-capability="report_deleted_history" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">↶</span><span class="report-tab-label">Deleted History</span></button>
             </nav>
             <form id="report-filter" class="report-filter" hidden novalidate>
