@@ -1,0 +1,13 @@
+# Chaman home overview
+
+Each section keeps its three main action cards and now opens with a receiving-first overview: two clickable pending-phone counts and the latest five transfer/return documents. Greenloop prioritizes returns awaiting GL receiving; Chaman prioritizes stock awaiting Chaman receiving. Counts cover all active pending phones, not the first screen page. No Stock Balance Data card is restored.
+
+The overview uses the existing authorized `get_chaman_shop_v2` home read, with an explicit overview version. Server-side home output contains at most five documents across both directions in descending document-date/reference order. Document rows retain total, received and pending quantities. Pending rows are red; fully received rows are green. Dates have no time, serial numbers start at one, and cells are centered. Each reference opens the correct direction's IMEI detail. View All opens the existing two report cards.
+
+Pending cards use `p_action: pending` on the existing report read. The server filters pending documents or pending detail phones before totals, snapshots and pagination. This works beyond the first 50 documents and stays consistent with complete PDF/Excel exports. Show all records removes this scope without requiring search or entry permission. Existing search/date filters remain independent; Clear removes the pending scope and user filters. Selecting a recent document starts an unfiltered detail view.
+
+The overview refreshes on return, manually, and every 30 seconds while the visible home page is idle. It presents explicit loading, empty, error and retry states. Section/report changes invalidate outstanding home requests; office lock, sign-out and permission changes clear the overview. View-only accounts receive no entry, search or download rights from these links. No stock, transfer, receiving or history records are written by the overview.
+
+Migration300 atomically patches the protected read implementation, preserves matching earlier routine integrity receipts, and exposes `get_chaman_overview_version`. Expected version: `20261113-chaman-overview-1`. Install299 first. Prior marker checks remain valid. Existing stock-balance APIs and records remain preserved.
+
+Validation uses synthetic PGlite data and real Chrome: empty home; latest five of over 50 documents; 37 outbound and 25 return pending phones; exact pending scope across 21 of 51 dated documents; pending detail/full download of 15 phones; original receipt/return pagination and export regressions; install/repeat snapshots; atomic failure rollback; prior version seals; Greenloop/Chaman/Admin/view-only navigation; keyboard access; mobile overflow; error/retry and stale/lock cleanup. No live SQL or publication is performed by Codex.
