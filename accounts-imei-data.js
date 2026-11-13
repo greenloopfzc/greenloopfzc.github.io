@@ -34,12 +34,13 @@
       <small>Dates apply to the original stock received date (UAE).</small>
     </div>
     <p id="aid-message" role="status" hidden></p><p id="aid-scope" class="aid-scope"></p>
-    <div id="aid-summary" class="aid-summary"></div>
+    <div id="aid-chaman"></div><div id="aid-summary" class="aid-summary"></div>
     <h3 id="aid-selection" hidden></h3><div id="aid-receipt-detail" hidden></div><div class="aid-table-wrap" hidden><table class="aid-table" data-preserve-table-layout><thead><tr>${columns.map(([key,label])=>`<th scope="col"${key?' data-aid-heading="'+key+'"':''}>${key?`<button class="aid-sort" type="button" data-aid-sort="${key}" data-capability="sort" data-capability-page="accounts">${label} <span aria-hidden="true">↕</span></button>`:label}</th>`).join('')}</tr></thead><tbody id="aid-rows"></tbody></table></div>
     <div class="aid-footer" hidden><span id="aid-count">Choose IMEI DATA to load records.</span><div><button id="aid-prev" type="button" class="secondary-button" data-capability="imei_data" data-capability-page="accounts">Previous</button><button id="aid-next" type="button" class="secondary-button" data-capability="imei_data" data-capability-page="accounts">Next</button></div></div>
     <p class="aid-note" hidden>Red rows are returned phones; green rows are entered replacements. S.No follows the current filtered list. Original stock and return history remain available.</p>
     <dialog id="aid-pdf-dialog" aria-labelledby="aid-pdf-title"><div class="aid-pdf-header"><h2 id="aid-pdf-title">IMEI DATA - PDF preview</h2><div><button id="aid-pdf-download" type="button" class="primary-button" data-capability="imei_download" data-capability-page="accounts">Download PDF</button><button id="aid-pdf-close" type="button" class="secondary-button" data-capability="imei_data" data-capability-page="accounts">Close</button></div></div><iframe id="aid-pdf-frame" title="IMEI DATA PDF preview"></iframe><a id="aid-pdf-open" target="_blank" rel="noopener" data-capability="imei_download" data-capability-page="accounts">Open PDF in a new tab</a></dialog>`;
 
+  const normalHead=root.querySelector('.aid-table thead').outerHTML;
   function message(text = '', error = false) {
     $('#aid-message').textContent = text; $('#aid-message').hidden = !text;
     $('#aid-message').classList.toggle('is-error',error);
@@ -103,8 +104,9 @@
   function selectedStockReceipts(){const f=filters();return(window.GREENLOOP_STOCK?.rows||[]).filter(r=>(!f.batch_id||r.batch_id===f.batch_id)&&(!f.supplier_id||r.supplier_id===f.supplier_id)&&(!f.invoice_number||r.invoice_number===f.invoice_number));}
   function draw() {
     if (!report) return;
+    if(metric!=='returned'||report.receipt_mode){const table=root.querySelector('.aid-table');table.classList.remove('rp-exchange-table');delete table.dataset.noSerial;if(!table.querySelector('[data-aid-heading]'))table.querySelector('thead').outerHTML=normalHead;}
     const fields = [['Total records','total_records'],['In company','in_company'],['Ready Stock','ready'],['In process','in_process'],['Exported','exported'],['Returned','returned']];
-    $('#aid-summary').innerHTML = fields.map(([label,key])=>cards.button(label,key==='total_records'?'all':key,(report.base_summary||report.summary)[key],detailOpen?metric:null,'imei_data')).join('');
+    $('#aid-summary').innerHTML=cards.stockCards(report.stock_summary,detailOpen?metric:null,'imei_data');$('#aid-chaman').innerHTML=window.GREENLOOP_STOCK?.chamanHtml(report.chaman_summary)||'';
     $('#aid-scope').textContent = [$('#aid-supplier').selectedOptions[0]?.textContent,$('#aid-batch').value ? $('#aid-batch').selectedOptions[0]?.textContent : 'All stock / batches',$('#aid-invoice').value ? 'Invoice '+$('#aid-invoice').value : '',report.filters.from_date ? 'From '+report.filters.from_date : '',report.filters.to_date ? 'To '+report.filters.to_date : '',report.summary.missing_imei ? num(report.summary.missing_imei)+' return records have no recorded IMEI' : ''].filter(Boolean).join(' · ');
     $('#aid-selection').hidden=!detailOpen;$('#aid-selection').textContent=metric==='returned'&&report.matched_return_count!=null?'Returned — '+num(report.matched_return_count)+' returns · '+num(report.linked_replacement_count||0)+' linked replacements':cards.labels[metric]+' — '+num(report.total)+(report.receipt_mode?' receipts':' records');
     root.querySelector('.aid-table-wrap').hidden=!detailOpen||report.receipt_mode;root.querySelector('.aid-footer').hidden=!detailOpen;root.querySelector('.aid-note').hidden=!detailOpen||report.receipt_mode;
@@ -114,11 +116,11 @@
       const key = input.dataset.aidFilter, values = [...(report.facets[key] || [])].sort((a,b)=>key==='storage_gb'?Number(a)-Number(b):String(a).localeCompare(String(b),'en',{numeric:true}));
       fillSelect(input,values.map(v=>({value:v,label:key==='storage_gb'?storage(v):v})),'All');
     }
-    root.querySelectorAll('[data-aid-heading]').forEach(e=>{const active=e.dataset.aidHeading===sortKey;e.setAttribute('aria-sort',active?direction==='asc'?'ascending':'descending':'none');e.querySelector('span').textContent=active?direction==='asc'?'↑':'↓':'↕';});
+    root.querySelectorAll('[data-aid-heading]').forEach(e=>{const active=e.dataset.aidHeading===sortKey;e.setAttribute('aria-sort',active?direction==='asc'?'ascending':'descending':'none');if(e.querySelector('span'))e.querySelector('span').textContent=active?direction==='asc'?'↑':'↓':'↕';});
     $('#aid-count').textContent = report.total ? `${num(offset+1)}–${num(Math.min(offset+50,report.total))} of ${num(report.total)} records · ${num(report.summary.imeis)} recorded IMEIs` : '0 records';
     $('#aid-updated').textContent = 'Updated '+when(report.generated_at)+' · UAE';
     controls();
-    root.querySelector(':scope > [data-stock-balance-summary]')?.remove();if(report.receipt_summary)root.insertAdjacentHTML('afterbegin',window.GREENLOOP_STOCK?.summaryHtml(report.receipt_summary)||'');root.querySelector(':scope > [data-chaman-summary]')?.remove();root.insertAdjacentHTML('afterbegin',window.GREENLOOP_STOCK?.chamanHtml(report.chaman_summary)||'');cards.decorate(root,metric,'imei_data');
+    if(detailOpen&&metric==='returned'&&!report.receipt_mode){const table=root.querySelector('.aid-table');table.classList.add('rp-exchange-table');table.dataset.noSerial='';table.querySelector('thead').outerHTML=window.GREENLOOP_EXCHANGE_PAIRS.imeiHead;$('#aid-rows').innerHTML=report.exchange_rows.map((p,i)=>window.GREENLOOP_EXCHANGE_PAIRS.cells(p,offset+i+1,true)).join('')||'<tr><td colspan="16">No returned phones match this selection.</td></tr>';$('#aid-selection').textContent='Returned — '+num(report.total)+' exchanges';}
   }
   async function load() {
     if (!visible || stopped || !allowed() || exporting) return;window.GREENLOOP_STOCK_RETURN_DETAILS?.close();
@@ -128,10 +130,10 @@
     try {
       const data = await rpc('get_accounts_card_report_v1',{p_kind:'imei',p_filters:filters(),p_metric:metric,p_summary_only:!detailOpen,p_offset:offset,p_limit:50,p_sort_key:sortKey,p_sort_direction:direction});
       if (ticket !== generation || sig !== signature() || !visible || stopped || !allowed()) return;
-      if (!valid(data)) throw Error('The complete report totals could not be verified. Refresh and retry.');
+      if (!valid(data)||metric==='returned'&&!window.GREENLOOP_EXCHANGE_PAIRS.valid(data)) throw Error('The complete report totals could not be verified. Refresh and retry.');
       if (offset && offset >= data.total) { offset=0;return load(); }
       report = data; draw(); message();
-    } catch (e) { if (ticket===generation) { report=null;root.querySelector(':scope > [data-chaman-summary]')?.remove();root.querySelector(':scope > [data-stock-balance-summary]')?.remove();$('#aid-rows').replaceChildren();$('#aid-summary').replaceChildren();$('#aid-count').textContent='Report unavailable';message(e.message || 'IMEI DATA could not load.',true); } }
+    } catch (e) { if (ticket===generation) { report=null;root.querySelector(':scope > [data-chaman-summary]')?.remove();root.querySelector(':scope > [data-stock-balance-summary]')?.remove();$('#aid-rows').replaceChildren();$('#aid-summary').replaceChildren();$('#aid-chaman').replaceChildren();$('#aid-count').textContent='Report unavailable';message(e.message || 'IMEI DATA could not load.',true); } }
     finally { if (ticket===generation) {loading=false;controls();} }
   }
   function changed() { if (!can('search') || exporting) return;detailOpen=metric!=='all'||Object.keys(filters()).length>0;offset=0;generation++;window.GREENLOOP_STOCK_RETURN_DETAILS?.close();closePdf();clearTimeout(searchTimer);searchTimer=setTimeout(load,240); }
@@ -141,7 +143,7 @@
     const snapshot=report.snapshot,sig=signature(),ticket=generation;exporting=true;controls();message('Preparing the complete selected stock…');
     try {
       const data=await rpc('get_accounts_card_report_v1',{p_kind:'imei',p_filters:filters(),p_metric:metric,p_download:true,p_sort_key:sortKey,p_sort_direction:direction,p_expected_snapshot:snapshot});
-      if (!valid(data,true)) throw Error('The full selected report could not be verified. No partial file was created.');
+      if (!valid(data,true)||metric==='returned'&&!window.GREENLOOP_EXCHANGE_PAIRS.valid(data,true)) throw Error('The full selected report could not be verified. No partial file was created.');
       if (sig!==signature() || ticket!==generation || !visible || stopped || !allowed() || !can('imei_download')) return;
       if(data.receipt_mode){await window.GREENLOOP_REPORT_DOWNLOADS.output(kind,cards.receiptReport(data,cards.labels[metric]),()=>sig===signature()&&ticket===generation&&visible&&!stopped&&allowed()&&can('imei_download'),'accounts','imei_download');return;}
       data.selection_label=cards.labels[metric]+' | '+$('#aid-scope').textContent;
@@ -165,7 +167,7 @@
   }
   function clearSensitive() {
     stopped=true;visible=false;generation++;loading=false;clearTimeout(searchTimer);closePdf();report=null;catalogue=null;root.hidden=true;
-    $('#aid-rows').replaceChildren();$('#aid-summary').replaceChildren();$('#aid-scope').textContent='';$('#aid-updated').textContent='';
+    $('#aid-rows').replaceChildren();$('#aid-summary').replaceChildren();$('#aid-chaman').replaceChildren();$('#aid-scope').textContent='';$('#aid-updated').textContent='';
     for(const e of root.querySelectorAll('input,select')) { if(e.tagName==='SELECT')e.replaceChildren(new Option('',''));else e.value=''; }
   }
   async function init(settings) {
@@ -178,7 +180,7 @@
     $('#aid-clear').addEventListener('click',()=>{if(!can('search')||exporting)return;for(const e of root.querySelectorAll('input,select'))e.value='';detailOpen=false;metric='all';offset=0;sortKey='imei';direction='asc';closePdf();stockOptions();load();});
     $('#aid-refresh').addEventListener('click',async()=>{if(exporting)return;try{await loadCatalogue();await load();}catch(e){message(e.message,true);}});
     $('#aid-prev').addEventListener('click',()=>{if(offset>=50&&!loading){offset-=50;load();}});$('#aid-next').addEventListener('click',()=>{if(report&&offset+50<report.total&&!loading){offset+=50;load();}});
-    root.querySelectorAll('[data-aid-sort]').forEach(e=>e.addEventListener('click',()=>{if(!can('sort')||exporting)return;direction=sortKey===e.dataset.aidSort&&direction==='asc'?'desc':'asc';sortKey=e.dataset.aidSort;offset=0;closePdf();load();}));
+    root.addEventListener('click',event=>{const e=event.target.closest('[data-aid-sort]');if(!e||!can('sort')||exporting)return;direction=sortKey===e.dataset.aidSort&&direction==='asc'?'desc':'asc';sortKey=e.dataset.aidSort;offset=0;closePdf();load();});
     root.querySelectorAll('[data-aid-export]').forEach(e=>e.addEventListener('click',()=>exportReport(e.dataset.aidExport)));
     $('#aid-pdf-close').addEventListener('click',closePdf);$('#aid-pdf-download').addEventListener('click',()=>{if(allowed()&&can('imei_download')&&pdfUrl)download(pdfUrl,pdfFilename);});$('#aid-pdf-dialog').addEventListener('cancel',e=>{e.preventDefault();closePdf();});
     document.addEventListener('greenloop:accounts-section',e=>activate(e.detail.view));

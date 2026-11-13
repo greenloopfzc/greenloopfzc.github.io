@@ -10,17 +10,17 @@
   const supplier=(row,r)=>root.GREENLOOP_STOCK?root.GREENLOOP_STOCK.label(row.supplier_code,row.received_quantity,names(r)?row.supplier_name:null,'Not recorded'):String(row.supplier_code||'Not recorded').replace(/-\(\d+\)$/,'')+'-('+row.received_quantity+')'+(names(r)&&row.supplier_name?' '+row.supplier_name:'');
   const file=(r,ext)=>'Greenloop-Stock-Replacement-'+(r.selection?.batch_number||'Selected-Stock').replace(/[^A-Za-z0-9_-]+/g,'-').slice(0,65)+'-'+new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Dubai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(r.generated_at))+'.'+ext;
   function verify(r){if(!root.GREENLOOP_EXCHANGE_PAIRS?.valid(r,true)||!Number.isFinite(Date.parse(r.generated_at)))throw Error('The complete paired exchange report is required.');}
-  const phoneValues=(p,r,i)=>root.GREENLOOP_EXCHANGE_PAIRS.values(p,i);
+  const phoneValues=(p,r,i)=>[...root.GREENLOOP_EXCHANGE_PAIRS.values(p,i),...(r.accounts_pairs?[receivedDate(p.stock_received_at),p.replacement?.stage||p.returned.stage||'Not recorded']:[])];
   const batches=r=>(r.receipts||[]).map(p=>[root.GREENLOOP_BATCH_LABEL(p.batch_number,{batch_number:p.batch_number,receipt_quantity:p.receipt_quantity??p.quantity}),p.invoice_number,p.quantity+' received',...(p.pairs?.length?p.pairs.map(x=>[x.old_imei||'Unrecorded return','->',x.new_imei,x.model,x.storage_gb+' GB',x.color,x.entered?'Entered':'Awaiting IMEI Entry'].filter(Boolean).join(' / ')):(p.phones||[]).map(x=>[x.imei,x.model,x.gb+' GB',x.color].filter(Boolean).join(' / ')))].filter(Boolean).join('\n')).join('\n\n')||'Awaiting replacement';
   function library(name,path){if(root[name])return Promise.resolve(root[name]);if(!loads.has(name))loads.set(name,new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=path;s.onload=()=>{if(root[name])resolve(root[name]);else{loads.delete(name);s.remove();reject(Error('Export library unavailable. Retry.'));}};s.onerror=()=>{loads.delete(name);s.remove();reject(Error('Export library could not load. Check the connection and retry.'));};document.head.append(s);}));return loads.get(name);}
   function scope(r){const f=r.filters||{};return [r.selection_label||'Supplier stock replacements',f.from_date?'From '+f.from_date:'',f.to_date?'To '+f.to_date:'',f.query?'Search: '+f.query:''].filter(Boolean).join(' | ');}
-  function summary(r){return (r.receipt_summary&&root.GREENLOOP_STOCK?root.GREENLOOP_STOCK.summaryText(r.receipt_summary)+" | ":"")+`Exchanges: ${r.exchange_rows.length} | Returned phones: ${r.summary.returned} | Replacement received: ${r.summary.received} | Pending: ${r.summary.pending}`;}
+  function summary(r){if(r.stock_summary)return root.GREENLOOP_ACCOUNTS_CARDS.stockText(r.stock_summary)+' | '+(root.GREENLOOP_STOCK?.chamanText(r.chaman_summary)||'');return (r.receipt_summary&&root.GREENLOOP_STOCK?root.GREENLOOP_STOCK.summaryText(r.receipt_summary)+" | ":"")+`Exchanges: ${r.exchange_rows.length} | Returned phones: ${r.summary.returned} | Replacement received: ${r.summary.received} | Pending: ${r.summary.pending}`;}
 
 
   async function pdf(r) {
     verify(r);
     const lib=await library('PDFLib','js/vendor/pdf-lib-1.17.1.min.js'),doc=await lib.PDFDocument.create(),regular=await doc.embedFont(lib.StandardFonts.Helvetica),bold=await doc.embedFont(lib.StandardFonts.HelveticaBold);
-    doc.setTitle('Stock Replacement');doc.setAuthor('Greenloop FZC');doc.setSubject('Supplier stock return and replacement report');
+    doc.setTitle(r.accounts_pairs?'IMEI DATA - Returns and Replacements':'Stock Replacement');doc.setAuthor('Greenloop FZC');doc.setSubject('Supplier stock return and replacement report');
     let logo;try{const response=await fetch('assets/greenloop-fzc-logo.jpg');if(response.ok)logo=await doc.embedJpg(await response.arrayBuffer());}catch(_){}
     const W=841.89,H=595.28,M=28,cols=[27,85,48,36,48,18,85,48,36,48,124,50,132.89],size=7,line=10,ink='#233b40',green='#087651',muted='#536a76',red='#9c332b',border='#cad8df',pages=[];
     const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');let page,y,tableTop;const appendix=[];
@@ -30,16 +30,17 @@
     function rect(x,top,w,h,fill){page.push({kind:'rect',x,top,w,h,fill});}
     function cells(values,{header=false,replacement=false}={}){const height=Math.max(1,...values.map(v=>v.length))*line+12;let x=M;for(let i=0;i<values.length;i++){rect(x,y,cols[i],height,i>=1&&i<=4?'#f7d9d6':i>=6&&i<=9?(replacement||header?'#dceee2':'#e6edf2'):header?green:'#ffffff');values[i].forEach((s,j)=>text(s,x+(cols[i]-width(s,size,header||i===0))/2,y-(height-values[i].length*line)/2-j*line,size,header||i===0,header&&!(i>=1&&i<=4||i>=6&&i<=9)?'#ffffff':ink));x+=cols[i];}y-=height;}
     function start(){page=[];pages.push(page);if(logo)page.push({kind:'logo',x:M,top:H-18,w:110,h:36.7});else text('GREENLOOP FZC',M,H-20,18,true,green);
-      text('Stock Replacement',M,H-62,17,true);text(r.exchange_rows.length+' exchanges',W-M-width(r.exchange_rows.length+' exchanges',10,true),H-68,10,true,green);
+      text(r.accounts_pairs?'IMEI DATA - Returns and Replacements':'Stock Replacement',M,H-62,17,true);text(r.exchange_rows.length+' exchanges',W-M-width(r.exchange_rows.length+' exchanges',10,true),H-68,10,true,green);
       text('Generated '+date(r.generated_at)+' | UAE (UTC+4)',M,H-86,7,false,muted);y=H-104;
       for(const s of wrap(scope(r),W-2*M,8)){text(s,M,y,8,false,muted);y-=9;}y-=5;
-      const stats=r.receipt_summary?[['Received stock',r.receipt_summary.received],['Returned',r.receipt_summary.returned],['Replacement received',r.receipt_summary.replacement_received],['Stock balance',r.receipt_summary.balance]]:[['Returned phones',r.summary.returned],['Replacement received',r.summary.received],['Replacement pending',r.summary.pending]],w=(W-2*M)/stats.length;
-      stats.forEach(([label,n],i)=>{rect(M+i*w,y,w,30,'#eff6f3');text(label,M+i*w+6,y-5,7,false,muted);text(n,M+i*w+6,y-15,11,true,green);});y-=40;
+      const stats=r.accounts_pairs?root.GREENLOOP_ACCOUNTS_CARDS.stockFields.map(([label,,key])=>[label,r.stock_summary?.[key]]):r.receipt_summary?[['Received stock',r.receipt_summary.received],['Returned',r.receipt_summary.returned],['Replacement received',r.receipt_summary.replacement_received],['Stock balance',r.receipt_summary.balance]]:[['Returned phones',r.summary.returned],['Replacement received',r.summary.received],['Replacement pending',r.summary.pending]],columns=r.accounts_pairs?4:stats.length,w=(W-2*M)/columns;
+      stats.forEach(([label,n],i)=>{const x=M+(i%columns)*w,top=y-Math.floor(i/columns)*30;rect(x,top,w,30,'#eff6f3');text(label,x+6,top-5,7,false,muted);text(n??'Not recorded',x+6,top-15,11,true,green);});y-=Math.ceil(stats.length/columns)*30+10;
+      if(r.accounts_pairs&&r.chaman_summary){for(const s of wrap(root.GREENLOOP_STOCK?.chamanText(r.chaman_summary)||'',W-2*M,7)){text(s,M,y,7,false,muted);y-=10;}y-=6;}
       cells(['S.No','Returned IMEI','Model','GB','Color','To','Replacement IMEI','Model','GB','Color','Original Stock / Supplier','Return date\nNew date','Status / Reference / Notes'].map((s,i)=>wrap(s,cols[i]-10,size,true)),{header:true});tableTop=y;
     }
     function row(values,p){const lines=values.map((v,i)=>wrap(v,cols[i]-10)),height=Math.max(...lines.map(v=>v.length))*line+12;if(height>tableTop-54)throw Error('An exchange is too large to fit on one PDF page. Review its text or use Excel.');if(height>y-54)start();cells(lines,{replacement:!!p.replacement});}
     start();
-    r.exchange_rows.forEach((p,i)=>{const all=phoneValues(p,r,i+1),note=p.reason||'Not recorded',long=note.length>180||note.split(/\r?\n/).length>5;if(long)appendix.push({n:i+1,p,note});const detail=[all[13],long?note.slice(0,100)+'... Full notes: Exchange '+(i+1):note].filter(Boolean).join('\n');row([...all.slice(0,11),all[11]+(p.replacement&&p.replacement_received_at?'\n'+all[12]:''),detail],p);});
+    r.exchange_rows.forEach((p,i)=>{const all=phoneValues(p,r,i+1),note=p.reason||'Not recorded',long=note.length>180||note.split(/\r?\n/).length>5;if(long)appendix.push({n:i+1,p,note});const detail=[all[13],long?note.slice(0,100)+'... Full notes: Exchange '+(i+1):note].filter(Boolean).join('\n');if(r.accounts_pairs)all[10]+='\nDate Received: '+all[15]+'\nStage: '+all[16];row([...all.slice(0,11),all[11]+(p.replacement&&p.replacement_received_at?'\n'+all[12]:''),detail],p);});
     if(!r.exchange_rows.length)row(['','No exchanges','','','','','','','','','','',''],{});
     function notesPage(){page=[];pages.push(page);text('GREENLOOP FZC',M,H-30,18,true,green);text('Exchange Notes',M,H-65,16,true);y=H-96;}
     for(const item of appendix){notesPage();const title='Exchange '+item.n+' | '+(item.p.return_number||item.p.return_reference||'')+' | '+(item.p.returned.imei||'IMEI not recorded')+' -> '+(item.p.replacement?.imei||'Replacement pending');for(const value of [title,item.note])for(const ln of wrap(value,W-2*M,8)){if(y<54){notesPage();text('Exchange '+item.n+' - continued',M,y,9,true);y-=18;}text(ln,M,y,8,value===title);y-=12;}y-=18;}
@@ -55,12 +56,12 @@
 
   async function excel(r){
     verify(r);const JSZip=await library('JSZip','js/vendor/jszip-3.10.1.min.js'),zip=new JSZip();
-    const headers=root.GREENLOOP_EXCHANGE_PAIRS.headers;
-    const units=v=>[...display(v)].reduce((n,c)=>n+(c.charCodeAt(0)>255?2:1),0),maxNotes=r.exchange_rows.reduce((n,p)=>Math.max(n,units(p.reason||'')),0),colWidths=[9,23,20,12,22,10,23,20,12,22,52,20,20,34,Math.min(140,Math.max(80,Math.ceil(maxNotes/20)+5))];
+    const headers=[...root.GREENLOOP_EXCHANGE_PAIRS.headers,...(r.accounts_pairs?['Date Received','Stage / Location']:[])];
+    const units=v=>[...display(v)].reduce((n,c)=>n+(c.charCodeAt(0)>255?2:1),0),maxNotes=r.exchange_rows.reduce((n,p)=>Math.max(n,units(p.reason||'')),0),colWidths=[9,23,20,12,22,10,23,20,12,22,52,20,20,34,Math.min(140,Math.max(80,Math.ceil(maxNotes/20)+5)),...(r.accounts_pairs?[22,30]:[])];
     const letter=n=>{let v='';for(n++;n;n=Math.floor((n-1)/26))v=String.fromCharCode(65+(n-1)%26)+v;return v;},last=letter(headers.length-1),lastRow=7+r.exchange_rows.length;
     const str=(ref,value,style=0)=>`<c r="${ref}" t="inlineStr" s="${style}"><is><t xml:space="preserve">${xml(value)}</t></is></c>`;
     const merged=(n,value,style,height)=>`<row r="${n}" ht="${height}" customHeight="1">${str('A'+n,value,style)}</row>`;
-    let rows=merged(1,'GREENLOOP FZC',1,30)+merged(2,'Stock Replacement',1,28)+merged(3,scope(r),0,42)+merged(4,'Generated '+date(r.generated_at)+' | UAE (UTC+4)',0,24)+merged(5,summary(r),0,30)+`<row r="7" ht="36" customHeight="1">${headers.map((h,i)=>str(letter(i)+'7',h,2)).join('')}</row>`;
+    let rows=merged(1,'GREENLOOP FZC',1,30)+merged(2,r.accounts_pairs?'IMEI DATA - Returns and Replacements':'Stock Replacement',1,28)+merged(3,scope(r),0,42)+merged(4,'Generated '+date(r.generated_at)+' | UAE (UTC+4)',0,24)+merged(5,summary(r),0,30)+`<row r="7" ht="36" customHeight="1">${headers.map((h,i)=>str(letter(i)+'7',h,2)).join('')}</row>`;
     r.exchange_rows.forEach((p,i)=>{const n=i+8,values=phoneValues(p,r,i+1),height=Math.min(409,Math.max(42,14+15*Math.max(...values.map((v,j)=>String(v).split(/\r?\n/).reduce((count,line)=>count+Math.max(1,Math.ceil(units(line)/Math.max(4,colWidths[j]-5))),0)))));rows+='<row r="'+n+'" ht="'+height+'" customHeight="1">'+values.map((v,j)=>str(letter(j)+n,v,j>=1&&j<=4?3:j>=6&&j<=9?(p.replacement?4:5):0)).join('')+'</row>';});
     rows+=merged(lastRow+2,summary(r),1,30);
     const ns='http://schemas.openxmlformats.org/';

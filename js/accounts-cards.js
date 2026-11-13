@@ -1,6 +1,9 @@
 (function(root){
  'use strict';
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const stockFields=[['Original received','all','original_received'],['In company','in_company','in_company'],['Ready Stock','ready','ready'],['In process','in_process','in_process'],['Exported','exported','exported'],['Returned','returned','returned'],['Replacement received','receipt_replacement','replacement_received'],['Stock balance','receipt_balance','stock_balance']];
+ function stockCards(s,active,cap){return stockFields.map(([label,key,value])=>button(label,key,s?.[value],active,cap)).join('');}
+ function stockText(s){return s?stockFields.map(([label,,key])=>label+': '+(s[key]??'Not recorded')).join(' | '):'';}
  const labels={all:'All matching records',received:'Received',total_records:'Total records',in_company:'In company',ready:'Ready Stock',in_process:'In process',exported:'Exported',returned:'Returned',receipt_received:'Received stock',receipt_returned:'Returned stock',receipt_replacement:'Replacement received',receipt_balance:'Stock balance'};
  const receiptColumns=[['Supplier','supplier_code'],['Stock / Batch','batch_number'],['Invoice','invoice_number'],['Date Received','received_at'],['Received stock','received_quantity'],['Returned','returned_quantity'],['Replacement received','replacement_quantity'],['Stock balance','balance_quantity']];
  function button(label,key,n,active,cap){return '<button type="button" class="accounts-summary-card" data-account-card="'+key+'" data-capability="'+cap+'" data-capability-page="accounts" aria-pressed="'+(active===key)+'"><span>'+esc(label)+'</span><strong>'+esc(n==null?'Not recorded':Number(n).toLocaleString('en-GB'))+'</strong></button>';}
@@ -8,5 +11,5 @@
  function receiptValue(r,key){if(key==='received_at')return root.GREENLOOP_REPORT_DOWNLOADS.date(r[key]);if(key==='batch_number')return root.GREENLOOP_BATCH_LABEL?.(r[key],r)||r[key];if(key==='supplier_code')return root.GREENLOOP_SUPPLIER_RECEIPT_LABEL?.(r.supplier_code,r.received_quantity,root.GREENLOOP_CAN_VIEW_PARTNER_NAMES===true?r.supplier_name:null)||r.supplier_code;return r[key]??'Not recorded';}
  function receiptReport(data,title){return {title,subtitle:'Original stock receipts and their recorded quantities | '+(root.GREENLOOP_STOCK?.chamanText(data.chaman_summary)||''),headers:['S.No',...receiptColumns.map(([h])=>h)],rows:data.rows.map((r,i)=>[i+1,...receiptColumns.map(([,k])=>receiptValue(r,k))])};}
  function receiptTable(data,offset=0){return '<div class="box-table-wrap"><table class="box-table accounts-stock-table"><thead><tr><th>S.No</th>'+receiptColumns.map(([h])=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>'+(data.rows.length?data.rows.map((r,i)=>'<tr><td>'+(offset+i+1)+'</td>'+receiptColumns.map(([,k])=>'<td>'+esc(receiptValue(r,k))+'</td>').join('')+'</tr>').join(''):'<tr><td colspan="9">No receipts match this card and filters.</td></tr>')+'</tbody></table></div>';}
- root.GREENLOOP_ACCOUNTS_CARDS={labels,button,decorate,receiptReport,receiptTable};
+ root.GREENLOOP_ACCOUNTS_CARDS={labels,button,stockFields,stockCards,stockText,decorate,receiptReport,receiptTable};
 })(window);

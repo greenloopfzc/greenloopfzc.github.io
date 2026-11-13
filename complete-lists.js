@@ -30,6 +30,7 @@
   try{for(const table of document.querySelectorAll('table')){
    if(table.matches('[data-no-serial],.damage-summary-table')||table.closest('[data-label-preview],.phone-label,.device-label'))continue;
    const head=table.tHead?.rows[table.tHead.rows.length-1];if(!head)continue;
+   if([...table.tHead.rows].slice(0,-1).some(row=>[...row.cells].some(c=>c.rowSpan>1&&/^(?:S\.?\s*No\.?|#|No\.)$/i.test(c.textContent.trim()))))continue;
    // Composite workbench rows keep their existing grouped layout.
    const complex=[...table.tBodies].some(b=>[...b.rows].some(r=>r.cells.length>1&&[...r.cells].some(c=>c.colSpan>1||c.rowSpan>1)));
    if(complex)continue;

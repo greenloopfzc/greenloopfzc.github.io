@@ -80,6 +80,7 @@
       const report={title:(selected==='supplier'?'Supplier Stock':'Customer Stock')+' - '+cards.labels[metric],subtitle:Object.entries(args.p_filters).filter(([,v])=>v).map(([k,v])=>k.replace(/^_/,'')+': '+v).join(' | ')||'All matching stock',headers:['S.No',...columns.map(([h])=>h)],rows:data.rows.map((r,i)=>[i+1,...columns.map(([,k])=>k.endsWith('_at')?date(r[k]):k==='batch_number'?window.GREENLOOP_BATCH_LABEL?.(r.batch_number,r)||r.batch_number:k==='invoice_number'?r.invoice_number||r.batch_number:r[k])])};
       const numeric=selected==='supplier'?['received','in_company','ready','in_process','exported','returned']:['quantity'];
       report.subtitle+=' | '+(window.GREENLOOP_STOCK?.chamanText(data.chaman_summary)||'');
+      report.subtitle+=' | '+cards.stockText(data.stock_summary);
       report.subtitle+=' | '+numeric.map(k=>k.replace(/_/g,' ')+': '+Number(data.totals[k]||0)).join(' | ');
       await downloads.output(kind,report,allowed,'accounts','print');
     }catch(e){const msg=$('#accounts-stock-message');msg.textContent=e.message;msg.classList.add('is-visible');}
@@ -118,10 +119,10 @@
       snapshot=data.snapshot;$('#accounts-stock-details').hidden=!detailOpen;
       $('#accounts-stock-list').innerHTML=detailOpen?(data.receipt_mode?cards.receiptTable(data,offset):table(data)):'';
       $('#accounts-stock-selection').textContent=cards.labels[metric]+' — '+total+(data.receipt_mode?' receipts':' matching records');
-      $('#accounts-stock-receipts').innerHTML=(window.GREENLOOP_STOCK?.summaryHtml(data.receipt_summary)||'')+(window.GREENLOOP_STOCK?.chamanHtml(data.chaman_summary)||'');cards.decorate($('#accounts-stock-receipts'),metric,view+'_stock');
+      $('#accounts-stock-receipts').innerHTML=view==='supplier'?(window.GREENLOOP_STOCK?.chamanHtml(data.chaman_summary)||''):'';
       $('#accounts-stock-downloads').querySelectorAll('button').forEach(b=>b.disabled=!detailOpen||!total);
       const metrics = view === 'supplier' ? [['Received','received'],['In company','in_company'],['Ready','ready'],['In process','in_process'],['Exported','exported'],['Returned','returned']] : [['Exported phones','exported']];
-      $('#accounts-stock-totals').innerHTML = metrics.map(([label,key])=>cards.button(label,key,(data.base_totals||data.totals)[key]||0,metric,view+'_stock')).join('');
+      $('#accounts-stock-totals').innerHTML = view==='supplier'?cards.stockCards(data.stock_summary,detailOpen?metric:null,'supplier_stock'):metrics.map(([label,key])=>cards.button(label,key,(data.base_totals||data.totals)[key]||0,detailOpen?metric:null,'customer_stock')).join('');
       $('#accounts-stock-count').textContent = total ? `${offset+1}–${Math.min(offset+50,total)} of ${total} rows` : '0 rows';
       $('#accounts-stock-updated').textContent = 'Updated '+date(new Date())+' · Refresh every 30 sec';
     } catch (e) {
@@ -137,7 +138,7 @@
   function showView(next) {
     if (context.isBusy() || window.GREENLOOP_ACCOUNTS_IMEI?.isBusy() || !['verify','supplier','customer','imei'].includes(next)) return;
     if(['supplier','customer'].includes(next)&&!mayReadStock(next))return;
-    hideDetails();view = next;
+    hideDetails();stockGeneration++;view = next;
     document.querySelectorAll('[data-accounts-view]').forEach(b=>{const active=b.dataset.accountsView===view;b.classList.toggle('is-active',active);b.setAttribute('aria-pressed',String(active));});
     $('#accounts-verify-panel').hidden = view !== 'verify';
     $('#accounts-stock-panel').hidden = view === 'verify' || view === 'imei';
@@ -187,7 +188,7 @@
     window.setInterval(()=>{if(!document.hidden)loadStock();},30000);
   }
   function clearStock(){
-    hideDetails();stockGeneration++;$('#accounts-stock-list').replaceChildren();$('#accounts-stock-totals').replaceChildren();$('#accounts-stock-count').textContent='';total=0;
+    hideDetails();stockGeneration++;$('#accounts-stock-list').replaceChildren();$('#accounts-stock-totals').replaceChildren();$('#accounts-stock-receipts').replaceChildren();$('#accounts-stock-count').textContent='';total=0;
     for(const key of ['supplier_name','customer_name']){const input=stockFilters.controls.get(key);input.replaceChildren(new Option('All',''));input.closest('label').hidden=true;}
     stockFilters.clear();
   }

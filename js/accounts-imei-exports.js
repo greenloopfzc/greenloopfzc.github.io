@@ -10,14 +10,16 @@
   const supplier=(row,r)=>root.GREENLOOP_STOCK?.labelRow(row)||root.GREENLOOP_SUPPLIER_RECEIPT_LABEL(row.supplier_code,row.receipt_quantity,names(r)?row.supplier_name:null,'Not recorded');
   const file=(r,ext)=>'Greenloop-IMEI-DATA-'+(r.selection?.batch_number||'Selected-Stock').replace(/[^A-Za-z0-9_-]+/g,'-').slice(0,65)+'-'+new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Dubai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(r.generated_at))+'.'+ext;
   const linkedStage=p=>[p.stage||'Not recorded',(p.linked_replacements||[]).length?'Replacement: '+p.linked_replacements.map(x=>x.new_imei+(x.entered?'':' (entry pending)')).join(', '):p.replacement_details?'Returned: '+(p.replacement_details.old_imei||'Not recorded'):p.returned?'No linked replacement':''].filter(Boolean).join(' | ');
+  function pairReport(r){return {...r,accounts_pairs:true,selection_label:'Accounts IMEI DATA - Returned | '+(r.selection_label||''),summary:{returned:r.total,received:r.exchange_rows.filter(p=>p.replacement).length,pending:r.exchange_rows.filter(p=>!p.replacement).length}};}
   function verify(r) {
     if(!r||!Array.isArray(r.rows)||!Number.isSafeInteger(r.total)||r.rows.length!==r.total||r.summary?.total_records!==r.total||new Set(r.rows.map(x=>x.record_key)).size!==r.total||!Number.isFinite(Date.parse(r.generated_at))||r.rows.filter(x=>x.returned).length!==r.summary.returned)throw Error('The complete selected stock is required. No partial file was created.');
   }
   function library(name,path){if(root[name])return Promise.resolve(root[name]);if(!loads.has(name))loads.set(name,new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=path;s.onload=()=>{if(root[name])resolve(root[name]);else{loads.delete(name);s.remove();reject(Error('Export library unavailable. Retry.'));}};s.onerror=()=>{loads.delete(name);s.remove();reject(Error('Export library could not load. Check the connection and retry.'));};document.head.append(s);}));return loads.get(name);}
   function scope(r){return r.selection_label||[r.selection?.supplier_code,r.selection?.batch_number,r.selection?.invoice_number].filter(Boolean).join(' | ')||'All selected stock records';}
-  function summary(r){const s=r.summary;return (root.GREENLOOP_STOCK?.chamanText(r.chaman_summary)||'')+' | '+(r.receipt_summary?window.GREENLOOP_STOCK.summaryText(r.receipt_summary)+" | ":"")+`Total: ${s.total_records} | In company: ${s.in_company} | Ready: ${s.ready} | In process: ${s.in_process} | Exported: ${s.exported} | Returned: ${s.returned}`;}
+  function summary(r){const s=r.summary;return root.GREENLOOP_ACCOUNTS_CARDS.stockText(r.stock_summary)+' | '+(root.GREENLOOP_STOCK?.chamanText(r.chaman_summary)||'')+' | Recorded unit rows: '+r.total;}
 
   async function pdf(r) {
+    if(r.metric==='returned')return root.GREENLOOP_STOCK_REPLACEMENT_EXPORT.pdf(pairReport(r));
     verify(r);r={...r,rows:r.rows.map((p,i)=>({...p,serial_no:i+1}))};
     const lib=await library('PDFLib','js/vendor/pdf-lib-1.17.1.min.js'),doc=await lib.PDFDocument.create(),regular=await doc.embedFont(lib.StandardFonts.Helvetica),bold=await doc.embedFont(lib.StandardFonts.HelveticaBold);
     doc.setTitle('IMEI DATA');doc.setAuthor('Greenloop FZC');doc.setSubject('Selected stock IMEIs and supplier returns');
@@ -33,9 +35,8 @@
       text('IMEI DATA',M,H-94,20,true);text(r.total+' stock records',W-M-width(r.total+' stock records',10,true),H-102,10,true,green);
       text('Generated '+date(r.generated_at)+' | UAE (UTC+4)',M,H-123,8,false,muted);y=H-145;
       for(const s of wrap(scope(r),W-2*M,8)){text(s,M,y,8,false,muted);y-=11;}y-=7;
-      const stats=[['Total records',r.summary.total_records],['In company',r.summary.in_company],['Ready Stock',r.summary.ready],['In process',r.summary.in_process],['Exported',r.summary.exported],['Returned',r.summary.returned]],w=(W-2*M)/6;
-      stats.forEach(([label,n],i)=>{rect(M+i*w,y,w,40,i===5?'#fff1ee':'#eff6f3');text(label,M+i*w+6,y-6,7,false,muted);text(n,M+i*w+6,y-19,13,true,i===5?red:green);});y-=52;
-      if(r.receipt_summary){const a=r.receipt_summary,extra=[['Received stock',a.received],['Returned',a.returned],['Replacement received',a.replacement_received],['Stock balance',a.balance]],sw=(W-2*M)/4;extra.forEach(([label,n],i)=>{rect(M+i*sw,y,sw,38,'#eff6f3');text(label,M+i*sw+6,y-6,7,false,muted);text(n===null?'Not recorded':n,M+i*sw+6,y-18,13,true,green);});y-=50;}
+      const stats=root.GREENLOOP_ACCOUNTS_CARDS.stockFields.map(([label,,key])=>[label,r.stock_summary?.[key]]),w=(W-2*M)/4;
+      stats.forEach(([label,n],i)=>{const x=M+(i%4)*w,top=y-Math.floor(i/4)*38;rect(x,top,w,38,'#eff6f3');text(label,x+6,top-5,7,false,muted);text(n??'Not recorded',x+6,top-18,12,true,green);});y-=88;
       if(r.chaman_summary){for(const s of wrap(root.GREENLOOP_STOCK?.chamanText(r.chaman_summary)||'',W-2*M,7)){text(s,M,y,7,false,muted);y-=11;}y-=7;}
       cells(['S.No','IMEI','Model','GB','Color','Supplier','Stock / Batch No.','Invoice No.','Date Received','Stage / Location'].map((s,i)=>wrap(s,cols[i]-10,size,true)),{header:true});tableTop=y;
     }
@@ -54,6 +55,7 @@
   }
 
   async function excel(r){
+    if(r.metric==='returned')return root.GREENLOOP_STOCK_REPLACEMENT_EXPORT.excel(pairReport(r));
     verify(r);r={...r,rows:r.rows.map((p,i)=>({...p,serial_no:i+1}))};const JSZip=await library('JSZip','js/vendor/jszip-3.10.1.min.js'),zip=new JSZip();
     const headers=['S.No','IMEI','Model','GB','Color','Supplier','Stock / Batch No.','Invoice No.','Date Received','Stage / Location'];
     const letter=n=>{let v='';for(n++;n;n=Math.floor((n-1)/26))v=String.fromCharCode(65+(n-1)%26)+v;return v;},last=letter(headers.length-1),lastRow=7+r.total;
