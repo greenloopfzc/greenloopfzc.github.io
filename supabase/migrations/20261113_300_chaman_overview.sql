@@ -4,12 +4,14 @@ do $patch$declare sig text:='greenloop_private.chaman_read_v2(text,uuid,text,dat
  if public.get_chaman_report_cards_version()is distinct from '20261113-chaman-report-cards-1'then raise exception 'Install the verified Chaman report-cards update first.';end if;
  old:=pg_get_functiondef(sig::regprocedure);before_hash:=md5(old);updated:=old;
  if position('p_view in(''history'',''home'')'in old)=0 then
-  if position('if p_view=''home''then rows:=''[]'';'in old)=0 or position('where(p_view not in(''balance'',''detail'')'in old)=0 then raise exception 'Chaman overview read boundary changed. Review before installing.';end if;
-  updated:=replace(updated,'if p_view=''home''then rows:=''[]'';'||chr(10)||' elsif p_view in(''balance'',''detail'')then','if p_view in(''balance'',''detail'')then');
+  if position('if p_view=''home''then rows:=''[]'';'in old)=0 or position('elsif p_view in(''balance'',''detail'')then'in old)=0 or position('where(p_view not in(''balance'',''detail'')'in old)=0 then raise exception 'Chaman overview read boundary changed. Review before installing.';end if;
+  -- Patch the two SQL tokens independently: clipboard/editor line endings and indentation may differ.
+  updated:=replace(updated,'if p_view=''home''then rows:=''[]'';','');
+  updated:=replace(updated,'elsif p_view in(''balance'',''detail'')then','if p_view in(''balance'',''detail'')then');
   updated:=replace(updated,'p_view=''history''or d.direction=p_view','p_view in(''history'',''home'')or d.direction=p_view');
   updated:=replace(updated,'where(p_view not in(''balance'',''detail'')',$scope$where(p_action is distinct from 'pending' or p_view in('out','return')and(r->>'pending')::bigint>0 or p_view='detail'and r->>'receipt_status'='Pending')and(p_view not in('balance','detail')$scope$);
   updated:=replace(updated,'''rows'',case when p_download then chosen',$home$'overview_version','20261113-chaman-overview-1','rows',case when p_view='home'then coalesce((select jsonb_agg(r order by n)from jsonb_array_elements(chosen)with ordinality a(r,n)where n<=5),'[]')when p_download then chosen$home$);
-  if updated=old or position('if p_view=''home''then rows:=''[]'';'in updated)>0 then raise exception 'Chaman overview could not be applied.';end if;
+  if updated=old or position('if p_view=''home''then rows:=''[]'';'in updated)>0 or position('p_view in(''history'',''home'')'in updated)=0 or position('p_action is distinct from ''pending'''in updated)=0 or position('''overview_version'',''20261113-chaman-overview-1'''in updated)=0 then raise exception 'Chaman overview could not be applied.';end if;
   execute updated;
  end if;
  -- Preserve the reviewed routine's existing integrity receipts, including the complete-flow marker.
