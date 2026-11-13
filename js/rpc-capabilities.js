@@ -49,3 +49,6 @@
 (function(root){Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,{get_chaman_corrections_v1:{page:"reports",capability:"report_chaman_correction",read:true},correct_chaman_transfer_v1:{page:"reports",capability:"report_chaman_correction"},get_chaman_shop_roles_version:{read:true}});})(window);
 
 (function(root){Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,{get_chaman_shop_v2:{page:"chaman_shop",capability:"view",read:true},save_chaman_entry_v2:{page:"chaman_shop",capability:"entry"},get_chaman_shop_flow_version:{read:true}});})(window);
+
+// Captured Stock Return uses the same explicit entry grant as the legacy save.
+(function(root){const rule={page:"supplier_returns",capability:"entry"};root.GREENLOOP_RPC_CAPABILITIES.rpcs.record_stock_return_with_capture_v1=rule;root.GREENLOOP_RPC_CAPABILITIES.record_stock_return_with_capture_v1=rule;})(typeof window!=="undefined"?window:globalThis);

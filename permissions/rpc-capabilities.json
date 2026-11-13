@@ -638,6 +638,10 @@
       "page": "lab_glass",
       "capability": "entry"
     },
+    "record_stock_return_with_capture_v1": {
+      "page": "supplier_returns",
+      "capability": "entry"
+    },
     "record_simple_stock_return": {
       "page": "supplier_returns",
       "capability": "entry"
@@ -2822,6 +2826,10 @@
   },
   "record_part_installation": {
     "page": "lab_glass",
+    "capability": "entry"
+  },
+  "record_stock_return_with_capture_v1": {
+    "page": "supplier_returns",
     "capability": "entry"
   },
   "record_simple_stock_return": {
