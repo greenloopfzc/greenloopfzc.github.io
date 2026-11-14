@@ -1473,7 +1473,7 @@
     "get_ready_stock_groups_version": {
       "read": true
     },
-    "get_imei_report_corrections_v1":{"page":"imei_search","capability":"view","read":true},"get_imei_qc_corrections_version":{"read":true},"get_imei_correction_sources_version":{"read":true},"get_ready_stock_models_v1":{"page":"ready_stock","capability":"view","read":true},"get_ready_stock_models_version":{"read":true},"get_ready_stock_color_groups_v1": {
+    "get_imei_report_corrections_v1":{"page":"imei_search","capability":"view","read":true},"get_imei_qc_corrections_version":{"read":true},"get_imei_correction_sources_version":{"read":true},"get_imei_grade_audit_version":{"read":true},"get_ready_stock_models_v1":{"page":"ready_stock","capability":"view","read":true},"get_ready_stock_models_version":{"read":true},"get_ready_stock_color_groups_v1": {
       "page": "ready_stock",
       "capability": "view",
       "read": true

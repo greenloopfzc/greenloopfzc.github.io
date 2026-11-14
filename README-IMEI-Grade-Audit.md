@@ -1,0 +1,7 @@
+IMEI Data Correction: saved Direct Ready Final Grade audit
+
+Reproduced through the actual Reports get/save_full_imei_workflow_v2 APIs in a disposable local database: a no-work phone releases to Ready Stock with Final Grade A, then the Reports Direct Ready outcome is edited to BA. Its immutable workflow_stage_audit was omitted from SQL311, so only an unrelated current-batch1500->1400 correction appeared. SQL312 includes those existing Direct Ready and per-phone Supplier Return edits by exact device ID. It maps recorded final-grade/battery values and adds a dated correction milestone when there is no mirrored device event. GL Grade remains independently saved A; no old final grade is inferred from it and no Final QC inspection is invented.
+
+Whole-batch received-quantity changes are omitted from the phone correction list. Their immutable receipts and Stock Receipt Correction report remain intact. General, full-workflow, Bulk and exact Chaman audits remain, along with50-row snapshots and independent IMEI Search permissions/name-price protection. No saved stock/grade/audit/access records are rewritten by this installer.
+
+Run Publish-GreenLoop-IMEI-Grade-Audit-Fix.ps1. When Install-IMEI-Grade-Audit.sql is copied, paste/run the entire SQL in Supabase SQL Editor. Wait for20261114-imei-grade-audit-1 before pressing Enter in PowerShell. Ctrl+F5, search355149933063758, open Reports Corrections. Existing saved A->BA audits require no re-save. All validation used isolated local fixtures; Codex did not read this live phone or run live SQL/publish.
