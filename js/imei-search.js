@@ -570,6 +570,7 @@ function buildStageSections(sortedRows) {
     if(requestedReceipt){await openReceipt({id:requestedReceipt});return;}
     if (requestedQuery.trim()) { query.value = requestedQuery.trim(); await search(); }
   }
+  document.addEventListener('click',event=>{const button=event.target.closest('[data-corrections-refresh]');if(!button||button.disabled||!allowed||window.GREENLOOP_CAN?.('view','imei_search')!==true)return;openDevice({identifier:button.dataset.correctionsRefresh},{popup:Boolean(historyDialog?.open)});});
   query.addEventListener("input", () => { ++searchVersion;++bulkVersion;closeHistoryPopup();bulkSearchResult?.remove(); setSubmitting(false); result.hidden = true; receiptResult.hidden=true; setMessage(); });
   form.addEventListener("submit", search);
   document.querySelector("#open-menu").addEventListener("click", () => setMenu(true));

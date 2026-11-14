@@ -5,7 +5,7 @@
   const field=(row,...names)=>text((row.details||[]).find(d=>names.some(n=>norm(n)===norm(d.label)))?.value);
   const stamp=r=>{const t=Date.parse(r.occurred_at);return Number.isFinite(t)?t:null;};
   const prefix=r=>text(r.id).split(':')[0];
-  const titles={stock_received:'Stock Received',imei_entry:'IMEI Entry',initial_qc:'Initial QC',parts:'Parts',qc_issuance:'Lab & Glass Issuance',laboratory:'Lab & Glass',glass:'Lab & Glass',final_qc:'Final QC',frame:'B-DEPT',ready_stock:'Ready Stock',export:'Verified Export',box_entry:'Box Entry',accounts_pending:'Accounts Pending',box_recheck:'Box Re-check',box_history:'Box Scan History (not exported)',export_history:'Verified Export History',stock_return:'Stock Return',rework:'Rework',other:'Recorded activity'};
+  const titles={correction:'Reports correction',stock_received:'Stock Received',imei_entry:'IMEI Entry',initial_qc:'Initial QC',parts:'Parts',qc_issuance:'Lab & Glass Issuance',laboratory:'Lab & Glass',glass:'Lab & Glass',final_qc:'Final QC',frame:'B-DEPT',ready_stock:'Ready Stock',export:'Verified Export',box_entry:'Box Entry',accounts_pending:'Accounts Pending',box_recheck:'Box Re-check',box_history:'Box Scan History (not exported)',export_history:'Verified Export History',stock_return:'Stock Return',rework:'Rework',other:'Recorded activity'};
   function place(v){
     const n=norm(v).replace(/[-–—]/g,' ').replace(/\s+/g,' ');
     if(/^(?:lab\s*(?:&|and)\s*glass issuance|qc issuance|issuance)$/.test(n))return 'qc_issuance';
@@ -30,6 +30,7 @@
     return route?place(route[1]):'';
   }
   function kind(r){
+    if(r.report_correction===true||norm(r.stage)==='correction'||norm(r.status)==='admin correction')return 'correction';
     if(r.automatic_direct_bdept===true)return 'support';
     if(r.direct_bdept_transfer===true)return 'frame';
     const id=prefix(r),s=norm(r.stage),t=norm(r.title);
@@ -166,8 +167,8 @@
       if(['final_qc','frame'].includes(g.key)&&results.includes('fail'))add('Failure reason',unique(g.rows.filter(r=>norm(r.status)==='fail').map(r=>field(r,'Failure reason','Reason','Notes'))).join('; '));
       if(['final_qc','frame','ready_stock'].includes(g.key)){add('Grade',vals('Final grade').join(', '));add('Battery',vals('Final battery health').join(', '));}
       if(['export','export_history','box_entry','accounts_pending','box_recheck','box_history'].includes(g.key)){add('Box / dispatch',vals('Box number','Dispatch number','Shipment reference').join(', '));add('Record',vals('Stage meaning').join('; '));}
-      if(g.key==='stock_return'||g.key==='rework')add('Reason',vals('Reason').join('; '));
-      return '<li class="journey-summary-step"><span class="journey-step-number">'+(index+1)+'</span><div><h3>'+esc(title)+'</h3><p class="journey-step-meta">'+esc(when)+(actors.length?' · '+esc(actors.join(', ')):'')+'</p>'+(facts.length?'<p class="journey-step-facts">'+facts.join(' · ')+'</p>':'')+(currentKey&&index===groups.length-1&&g.key===currentKey?currentNote():'')+'</div></li>';
+      if(['stock_return','rework','correction'].includes(g.key))add('Reason',vals('Reason').join('; '));
+      return '<li class="journey-summary-step'+(g.key==='correction'?' is-report-correction':'')+'"><span class="journey-step-number">'+(index+1)+'</span><div><h3>'+esc(title)+'</h3><p class="journey-step-meta">'+esc(when)+(actors.length?' · '+esc(actors.join(', ')):'')+'</p>'+(facts.length?'<p class="journey-step-facts">'+facts.join(' · ')+'</p>':'')+(currentKey&&index===groups.length-1&&g.key===currentKey?currentNote():'')+'</div></li>';
     }).join('');
     const currentTail=currentKey&&groups.at(-1)?.key!==currentKey?'<li class="journey-summary-step journey-current-step"><span class="journey-step-number">'+(groups.length+1)+'</span><div><h3>'+esc(currentLabel)+'</h3>'+currentNote()+'</div></li>':'';
     return html||currentTail?'<ol class="stock-journey-compact">'+html+currentTail+'</ol>':'<p>No dated stages recorded yet. See Full activity for the saved records.</p>';
