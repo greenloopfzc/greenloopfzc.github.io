@@ -219,26 +219,12 @@
   }
 
   function manualPartValues(row) {
-    return [...row.querySelectorAll('[data-requirement="part"]')].filter(s => s.dataset.autoHousing !== "yes").map(s => s.value).filter(Boolean);
+    return [...row.querySelectorAll('[data-requirement="part"]')].map(s => s.value).filter(Boolean);
   }
 
-  function applyGradeHousing(row) {
+  function applyGradeRouting(row) {
     if (row.dataset.completed === "yes") return;
     const required = row.querySelector('[data-carry-field="gcGrade"]').value.trim().toUpperCase() === "D";
-    const list = row.querySelector('[data-requirement-group="part"] .qc-bulk-requirement-list');
-    for (const select of list.querySelectorAll('[data-auto-housing]')) {
-      if (select.value.trim().toLowerCase() !== "housing") { delete select.dataset.autoHousing; select.removeAttribute("title"); }
-      else if (!required) { if (list.children.length > 1) select.remove(); else { select.value = ""; delete select.dataset.autoHousing; } }
-    }
-    if (!required || ![...list.querySelectorAll("select")].some(s => s.value)) delete row.dataset.housingOverride;
-    if (required && row.dataset.housingOverride !== "yes" && ![...list.querySelectorAll('select')].some(s => s.value.trim().toLowerCase() === "housing")) {
-      let housing = workItems.find(i => i.kind === "part" && i.label.trim().toLowerCase() === "housing");
-      if (!housing) { housing = {label:"Housing",kind:"part",partName:"Housing",action:"Replace or use Housing"}; workItems.push(housing); }
-      let select = [...list.querySelectorAll('select')].find(s => !s.value);
-      if (!select) { list.insertAdjacentHTML("beforeend", requirementSelect("part")); select = list.lastElementChild; }
-      select.innerHTML = requirementOptions("part", housing.label); select.value = housing.label;
-      select.dataset.autoHousing = "yes"; select.title = "Default for GL Grade D — choose another part if needed";
-    }
     const frame = row.querySelector('[data-route-frame]');
     if (!frame) return;
     if (required) { frame.checked = false; frame.disabled = true; frame.dataset.autoFrameLocked = "yes"; }
@@ -252,7 +238,6 @@
       gcGrade: row.querySelector('[data-carry-field="gcGrade"]')?.value || "",
       technician: row.querySelector('[data-carry-field="technician"]')?.value || "",
       parts: manualPartValues(row),
-      housingOverride: row.dataset.housingOverride === "yes",
       services: valuesForGroup(row, "service")
     };
   }
@@ -262,10 +247,9 @@
     row.querySelector('[data-carry-field="supplierGrade"]').value = snapshot.supplierGrade;
     row.querySelector('[data-carry-field="gcGrade"]').value = snapshot.gcGrade;
 
-    if (snapshot.housingOverride) row.dataset.housingOverride = "yes"; else delete row.dataset.housingOverride;
     setGroupValues(row, "part", snapshot.parts);
     setGroupValues(row, "service", snapshot.services);
-    applyGradeHousing(row);
+    applyGradeRouting(row);
   }
 
   function createRows(quantity) {
@@ -290,7 +274,7 @@
     let nextRow = row.nextElementSibling;
     const key = manualKey(field);
     while (nextRow) {
-      if (nextRow.dataset[key] !== "yes" && nextRow.dataset.completed !== "yes") { nextRow.querySelector(`[data-carry-field="${field}"]`).value = source.value; if (field === "gcGrade") applyGradeHousing(nextRow); }
+      if (nextRow.dataset[key] !== "yes" && nextRow.dataset.completed !== "yes") { nextRow.querySelector(`[data-carry-field="${field}"]`).value = source.value; if (field === "gcGrade") applyGradeRouting(nextRow); }
       nextRow = nextRow.nextElementSibling;
     }
   }
@@ -302,7 +286,7 @@
     let nextRow = row.nextElementSibling;
     const key = manualKey(kind === "part" ? "parts" : "services");
     while (nextRow) {
-      if (nextRow.dataset[key] !== "yes" && nextRow.dataset.completed !== "yes") { setGroupValues(nextRow, kind, values); if (kind === "part") { if (row.dataset.housingOverride === "yes") nextRow.dataset.housingOverride = "yes"; else delete nextRow.dataset.housingOverride; applyGradeHousing(nextRow); } }
+      if (nextRow.dataset[key] !== "yes" && nextRow.dataset.completed !== "yes") { setGroupValues(nextRow, kind, values); if (kind === "part") { applyGradeRouting(nextRow); } }
       nextRow = nextRow.nextElementSibling;
     }
   }
@@ -392,9 +376,9 @@
     if (!gcGrade.value && device.gc_grade) {
       gcGrade.value = String(device.gc_grade).toUpperCase();
       carrySimpleField(row, "gcGrade");
-      applyGradeHousing(row);
+      applyGradeRouting(row);
     }
-    if(result.reopened_inspection){row.dataset.reopened='yes';setGroupValues(row,'part',result.reopened_inspection.parts||[]);setGroupValues(row,'service',result.reopened_inspection.services||[]);row.dataset.housingOverride='yes';}
+    if(result.reopened_inspection){row.dataset.reopened='yes';setGroupValues(row,'part',result.reopened_inspection.parts||[]);setGroupValues(row,'service',result.reopened_inspection.services||[]);}
     row.classList.remove("is-error");
     row.classList.add("is-loaded");
     setRowState(row, "");
@@ -549,7 +533,7 @@
         if (!selectedJob) return;
         row.querySelector('[data-carry-field="supplierGrade"]').value = selectedJob.supplier_grade ? String(selectedJob.supplier_grade).toUpperCase() : "";
         row.querySelector('[data-carry-field="gcGrade"]').value = selectedJob.device?.gc_grade ? String(selectedJob.device.gc_grade).toUpperCase() : "";
-        applyGradeHousing(row);
+        applyGradeRouting(row);
       });
 
       const loadedCount = rows.filter((row) => rowJobs.has(row.dataset.rowId)).length;
@@ -572,7 +556,7 @@
   }
 
   function buildRowSubmission(row) {
-    applyGradeHousing(row);
+    applyGradeRouting(row);
     const partsSelected = uniqueValues(valuesForGroup(row, "part"));
     const servicesSelected = uniqueValues(valuesForGroup(row, "service"));
     const selectedLabels = [...partsSelected, ...servicesSelected];
@@ -823,7 +807,7 @@
     if (simpleSelect) {
       const field = simpleSelect.dataset.carryField;
       row.dataset[manualKey(field)] = "yes";
-      if (field === "gcGrade") applyGradeHousing(row);
+      if (field === "gcGrade") applyGradeRouting(row);
       carrySimpleField(row, field);
       return;
     }
@@ -831,8 +815,7 @@
     if (requirement) {
       const kind = requirement.dataset.requirement;
       if (kind === "part") {
-        if (requirement.dataset.autoHousing === "yes" && requirement.value && requirement.value.trim().toLowerCase() !== "housing") row.dataset.housingOverride = "yes";
-        applyGradeHousing(row);
+        applyGradeRouting(row);
       }
       row.dataset[manualKey(kind === "part" ? "parts" : "services")] = "yes";
       carryRequirementGroup(row, kind);
@@ -861,7 +844,7 @@
       if (selects.length === 1 && !selects[0].value) return;
       if (window.prompt(`Enter deletion code to remove this ${kind}:`) !== "1213") return;
       if (selects.length > 1) selects[selects.length - 1].remove(); else selects[0].value = "";
-      if (kind === "part") applyGradeHousing(row);
+      if (kind === "part") applyGradeRouting(row);
       row.dataset[manualKey(kind === "part" ? "parts" : "services")] = "yes";
       carryRequirementGroup(row, kind);
       return;
@@ -888,7 +871,7 @@
   backdrop.addEventListener("click", () => setMenu(false));
   excelPaste = window.GREENLOOP_QC_EXCEL_PASTE.attach({
     app,tableBody,page:"initial_qc",selector:".qc-bulk-imei",client:getClient(),
-    createRows,clearRow:clearAutoData,loadRow:loadPastedRow,prepare:(imeis,active) => window.GREENLOOP_QC_FAST.load("initial_qc",imeis,active),onUnlock:() => [...tableBody.rows].forEach(applyGradeHousing)
+    createRows,clearRow:clearAutoData,loadRow:loadPastedRow,prepare:(imeis,active) => window.GREENLOOP_QC_FAST.load("initial_qc",imeis,active),onUnlock:() => [...tableBody.rows].forEach(applyGradeRouting)
   });
   initialize().catch((error) => {
     permissionMessage.textContent = error.message || "Initial QC could not be loaded.";
