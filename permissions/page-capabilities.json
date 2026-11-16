@@ -1090,6 +1090,21 @@
           "key": "chaman_delete",
           "label": "Remove phones / delete Chaman transfers (Admin only)",
           "write": true
+        },
+        {
+          "key": "parts_usage",
+          "label": "View Parts Usage Report",
+          "write": false
+        },
+        {
+          "key": "parts_usage_search",
+          "label": "Parts Usage: search and filters",
+          "write": false
+        },
+        {
+          "key": "parts_usage_download",
+          "label": "Parts Usage: PDF and Excel",
+          "write": false
         }
       ]
     },
@@ -1558,6 +1573,15 @@
         "chaman_correction",
         "chaman_delete"
       ]
+    },
+    "parts_usage": {
+      "label": "Parts Usage Report",
+      "view": "parts_usage",
+      "actions": [
+        "parts_usage_search",
+        "parts_usage_download"
+      ],
+      "search": "parts_usage_search"
     }
   },
   "reportDependencies": {
@@ -1614,6 +1638,8 @@
     "workflow_move_back": "report_imei_correction",
     "bulk_imei_correction": "report_imei_correction",
     "chaman_correction": "report_chaman_correction",
-    "chaman_delete": "report_chaman_correction"
+    "chaman_delete": "report_chaman_correction",
+    "parts_usage_search": "parts_usage",
+    "parts_usage_download": "parts_usage"
   }
 }

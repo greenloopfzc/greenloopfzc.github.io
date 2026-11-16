@@ -23,7 +23,7 @@
   const reportSections = window.GREENLOOP_PERMISSION_CATALOG?.reportSections || {};
   const removedReportKeys = new Set(["overview", "stock_received", "work_in_progress", "parts_requests", "parts_inventory", "technicians", "final_qc", "costs"]);
   const allowedReport = key => !removedReportKeys.has(key) && (key==="chaman_correction" ? Boolean(canResetData&&window.GREENLOOP_CAN?.("report_chaman_correction","reports")) : key==="bulk_imei_correction" ? Boolean(window.GREENLOOP_CAN?.("report_imei_correction","reports")&&window.GREENLOOP_CAN?.("workflow_correction","reports")&&window.GREENLOOP_CAN?.("bulk_imei_correction","reports")) : Boolean(reportSections[key] && window.GREENLOOP_CAN?.(reportSections[key].view,"reports")));
-  const selfLoadedReports = new Set(["chaman_correction","stock_receipt_correction","bulk_imei_correction","supplier_progress","stock_grade_analysis","stock_parts_cost","manual_damage","production_correction","complete_device_details","data_correction","restricted_data"]);
+  const selfLoadedReports = new Set(["chaman_correction","stock_receipt_correction","bulk_imei_correction","supplier_progress","stock_grade_analysis","parts_usage","stock_parts_cost","manual_damage","production_correction","complete_device_details","data_correction","restricted_data"]);
   let selectedExportBox = "";
   let exportBoxImeiFilter = "";
   let correctionRecord = null;
@@ -104,6 +104,7 @@
     chaman_correction:{title:"Chaman Transfer Correction",description:"Correct dates, notes and receiving, or remove mistaken phones and transfers with permanent history.",columns:[]},
     stock_receipt_correction:{title:"Stock Receipt Correction",description:"Correct a mistaken received quantity with permanent history. IMEIs, returns and replacements stay preserved.",columns:[]},
     stock_grade_analysis:{title:"Stock Grade & Work Analysis",description:"Initial QC GL grades and required Glass / Polish by supplier, stock / batch or invoice.",columns:[]},
+    parts_usage: {title:"Parts Usage Report",description:"Supplier and batch-wise parts issued and installed on each model, with exact IMEI details.",columns:[]},
     stock_parts_cost: {title:"Stock Parts Cost",description:"Supplier, invoice and batch parts cost with phone and part breakdown. Missing prices remain explicit.",columns:[]},
     manual_damage: {
       title: "Live Damage Report",
@@ -934,7 +935,7 @@
     if(activeReport!=='chaman_correction')window.GREENLOOP_CHAMAN_CORRECTION?.unmount();
     filterForm.querySelectorAll('input,button').forEach(control=>{const allowed=Boolean(activeReport&&window.GREENLOOP_CAN?.('search','reports'));control.disabled=!allowed;if(allowed){control.removeAttribute('aria-disabled');control.removeAttribute('data-view-only-locked');if(control.title==='Access not granted')control.removeAttribute('title');}});
     if(!activeReport){
-      for(const name of ['GREENLOOP_STOCK_RECEIPT_CORRECTION','GREENLOOP_STOCK_GRADE_ANALYSIS','GREENLOOP_STOCK_PARTS_COST','GREENLOOP_RESTRICTED_SCOPES','GREENLOOP_FULL_IMEI_CORRECTION','GREENLOOP_BULK_IMEI_CORRECTION','GREENLOOP_PRODUCTION_CORRECTION','GREENLOOP_DAMAGE_MANAGEMENT','GREENLOOP_COMPLETE_DEVICE_DETAILS'])window[name]?.unmount();
+      for(const name of ['GREENLOOP_PARTS_USAGE','GREENLOOP_STOCK_RECEIPT_CORRECTION','GREENLOOP_STOCK_GRADE_ANALYSIS','GREENLOOP_STOCK_PARTS_COST','GREENLOOP_RESTRICTED_SCOPES','GREENLOOP_FULL_IMEI_CORRECTION','GREENLOOP_BULK_IMEI_CORRECTION','GREENLOOP_PRODUCTION_CORRECTION','GREENLOOP_DAMAGE_MANAGEMENT','GREENLOOP_COMPLETE_DEVICE_DETAILS'])window[name]?.unmount();
       filterForm.hidden=true;document.querySelectorAll('.table-filters').forEach(el=>el.hidden=true);document.getElementById('supplier-progress-controls')?.setAttribute('hidden','');
       panelKicker.textContent='Reports';panelTitle.textContent='Reports';panelDescription.textContent='';rowCount.textContent='';
       reportContent.innerHTML='<p class="report-empty">No reports assigned.</p>';return;
@@ -942,6 +943,7 @@
 
     if(activeReport!=="stock_receipt_correction")window.GREENLOOP_STOCK_RECEIPT_CORRECTION?.unmount();
     if(activeReport!=="stock_grade_analysis")window.GREENLOOP_STOCK_GRADE_ANALYSIS?.unmount();
+    if(activeReport!=="parts_usage")window.GREENLOOP_PARTS_USAGE?.unmount();
     if(activeReport!=="stock_parts_cost")window.GREENLOOP_STOCK_PARTS_COST?.unmount();
     if(activeReport!=="restricted_data")window.GREENLOOP_RESTRICTED_SCOPES?.unmount();
     if(activeReport!=='bulk_imei_correction')window.GREENLOOP_BULK_IMEI_CORRECTION?.unmount();
@@ -954,7 +956,7 @@
     });
     const liveDetails = activeReport === "complete_device_details";
     const supplierControls=document.getElementById("supplier-progress-controls");if(supplierControls)supplierControls.hidden=activeReport!=="supplier_progress";
-    filterForm.hidden = activeReport === "supplier_progress" || activeReport === "stock_parts_cost" || activeReport === "stock_grade_analysis" || liveDetails || activeReport === "restricted_data" || activeReport === "data_correction" || activeReport === "manual_damage" || activeReport === "production_correction";
+    filterForm.hidden = activeReport === "parts_usage" || activeReport === "supplier_progress" || activeReport === "stock_parts_cost" || activeReport === "stock_grade_analysis" || liveDetails || activeReport === "restricted_data" || activeReport === "data_correction" || activeReport === "manual_damage" || activeReport === "production_correction";
     window.GREENLOOP_PRODUCTION_CORRECTION?.unmount();
     if(activeReport==='bulk_imei_correction'){
       filterForm.hidden=true;window.GREENLOOP_DAMAGE_MANAGEMENT?.unmount();window.GREENLOOP_COMPLETE_DEVICE_DETAILS?.unmount();
@@ -974,6 +976,10 @@
       window.GREENLOOP_DAMAGE_MANAGEMENT?.unmount();window.GREENLOOP_COMPLETE_DEVICE_DETAILS?.unmount();
       panelKicker.textContent="Initial QC analysis";panelTitle.textContent=reports.stock_grade_analysis.title;panelDescription.textContent=reports.stock_grade_analysis.description;rowCount.textContent="Supplier / stock / invoice";
       window.GREENLOOP_STOCK_GRADE_ANALYSIS?.mount(reportContent);return;
+    }
+    if(activeReport === "parts_usage") {
+      panelKicker.textContent="Parts usage";panelTitle.textContent=reports.parts_usage.title;panelDescription.textContent=reports.parts_usage.description;rowCount.textContent="Supplier / Batch / Model / Part";
+      window.GREENLOOP_PARTS_USAGE?.mount(reportContent);return;
     }
     if(activeReport === "stock_parts_cost") {
       window.GREENLOOP_DAMAGE_MANAGEMENT?.unmount();window.GREENLOOP_COMPLETE_DEVICE_DETAILS?.unmount();
@@ -1028,6 +1034,7 @@
     if(activeReport==='stock_receipt_correction'){await window.GREENLOOP_STOCK_RECEIPT_CORRECTION?.refresh();return;}
     if(activeReport==='supplier_progress'){await loadSupplierProgress({refresh:true});return;}
     if(activeReport==='stock_grade_analysis'){await window.GREENLOOP_STOCK_GRADE_ANALYSIS?.refresh();return;}
+    if(activeReport==='parts_usage'){await window.GREENLOOP_PARTS_USAGE?.refresh();return;}
     if(activeReport==='stock_parts_cost'){await window.GREENLOOP_STOCK_PARTS_COST?.refresh();return;}
     if(activeReport==='manual_damage'){await window.GREENLOOP_DAMAGE_MANAGEMENT?.refresh();return;}
     if(selfLoadedReports.has(activeReport))return;
