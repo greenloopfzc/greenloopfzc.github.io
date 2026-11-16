@@ -624,6 +624,7 @@
     try {
       submission = buildRowSubmission(row);
       submission.directReady = row.querySelector('[data-direct-ready]').checked;
+      if(!submission.gcGrade&&(selectedJob.receiving_batch_id||selectedJob.receiving_batch?.id))throw Error('Choose a GL Grade before saving this stock phone for issuance.');
       if (submission.directReady && (submission.parts.length || submission.findings.length)) throw Error('Direct Ready Stock needs no selected parts or services. Change the dropdowns or untick Direct Ready Stock.');
       if (submission.directReady && (!submission.gcGrade || submission.gcGrade.toUpperCase()==='D')) throw Error('Choose a non-D GL Grade before Direct Ready Stock.');
     } catch (error) {

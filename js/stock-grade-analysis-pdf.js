@@ -22,7 +22,7 @@
    text(F.title,M,H-96,19,true);const date=new Date(r.generated_at).toLocaleString('en-GB',{timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric'});text('Generated '+date+' | UAE (UTC+4)',M,H-122,8,false,muted);y=H-141;
    const scope=longScope?['Supplier: '+unique(r.stocks.map(s=>String(s.supplier_code||'Not recorded').replace(/-\(\d+\)$/,'')+(s.stock_quantity==null?'':'-('+s.stock_quantity+')'))).join(', '),'Selected stock details are listed after the analysis.']:fullScope;
    for(const value of scope)for(const line of wrap(value,IW,8)){text(line,M,y,8,false,muted);y-=11;}
-   y-=8;const stats=[['Received stock',r.totals.stock_quantity],['Entered IMEIs',r.totals.qty],['Not entered',r.totals.unentered],['QC / grade pending',r.totals.pending]],w=IW/4;
+   y-=8;const stats=[['Received stock',r.totals.stock_quantity],['Entered IMEIs',r.totals.qty],['Not entered',r.totals.unentered],['Initial QC pending',r.totals.qc_waiting]],w=IW/4;
    for(let i=0;i<stats.length;i++){rect(M+i*w,y,w,40,'#eff6f3');centered(stats[i][0],M+i*w,y-6,w,7.5,false,muted);centered(F.num(stats[i][1]),M+i*w,y-19,w,14,true,green);}y-=56;
    if(r.receipt_summary){const stock=r.receipt_summary,extra=[['Received',stock.received],['Returned',stock.returned],['Replacement received',stock.replacement_received],['Stock balance',stock.balance]];for(let i=0;i<extra.length;i++){rect(M+i*w,y,w,38,'#eff6f3');centered(extra[i][0],M+i*w,y-6,w,7.5,false,muted);centered(extra[i][1]===null?'Not recorded':F.num(extra[i][1]),M+i*w,y-18,w,14,true,green);}y-=52;}
   }
@@ -40,7 +40,7 @@
   start();const cols=F.columns(r),quantity=x=>cols.map(([k])=>k==='model'?x.model:F.num(x[k])),percentage=x=>cols.map(([k])=>k==='model'?x.model:k==='qty'?F.num(x.qty):F.pct(x[k],x.qty));
   section('Grade & required work',cols.map(c=>c[1]),r.rows.map(quantity),quantity({...r.totals,model:'TOTAL'}));
   section('Percentage analysis',cols.map(c=>c[1]),r.rows.map(percentage),percentage({...r.totals,model:'TOTAL'}));
-  const notes=[...(r.other_grades.length?['Other grades: '+r.other_grades.map(g=>g.grade+': '+F.num(g.qty)).join(' | ')]:[]),'Initial QC GL Grade and required work. Later Lab additions are excluded.','Percentages use entered model Qty; totals use total entered Qty. Glass and Polish can overlap.','Returned phones remain included in their original stock analysis.'];
+  const notes=[...(r.other_grades.length?['Other grades: '+r.other_grades.map(g=>g.grade+': '+F.num(g.qty)).join(' | ')]:[]),'Initial QC pending: '+F.num(r.totals.qc_waiting)+' | Grade missing after QC: '+F.num(r.totals.grade_missing)+' | QC record missing: '+F.num(r.totals.qc_record_missing),'Saved Initial QC grades are used when available; Final Grade stays separate. Later Lab additions are excluded.','Percentages use entered model Qty; totals use total entered Qty. Glass and Polish can overlap.','Returned phones remain included in their original stock analysis.'];
   for(const note of notes)for(const line of wrap(note,IW,8)){if(y<62)start();text(line,M,y,8,false,muted);y-=12;}
   if(r.stocks.length>1||longScope){y-=20;section('Selected stock receipts',['Supplier','Stock / Batch','Invoice','Received Qty'],r.stocks.map(s=>[F.supplier(s,r),root.GREENLOOP_BATCH_LABEL(s.batch_number,{batch_number:s.batch_number,receipt_quantity:s.stock_quantity}),s.invoice_number||'Not recorded',F.num(s.stock_quantity)]),null);}
   const rgb=hex=>lib.rgb(...hex.match(/[\da-f]{2}/gi).map(v=>parseInt(v,16)/255));

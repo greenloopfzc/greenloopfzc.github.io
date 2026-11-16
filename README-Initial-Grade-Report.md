@@ -1,0 +1,11 @@
+Initial QC grading report: saved-grade evidence and exact missing-data categories
+
+SQL313 fixes the combined QC / grade pending category. Initial QC pending means the job has no saved inspection and is still at intake/Initial QC. An existing inspection without a verified GL Grade is Grade missing. A progressed job without its exact Initial QC record is QC record missing. Current stage alone never proves a grade or an inspection.
+
+The report uses the current saved GL Grade when present. If blank, it reads the latest recorded Initial QC grade for the exact device/job/inspection and later typed Reports GL edits. A later explicit clearing remains missing. Other jobs, Final Grade and Supplier Grade are never substitutes. Glass aliases count each phone once; original stock units/replacement exclusion, return history and receipt quantities remain intact. The report does not backfill or rewrite device, stock, QC or audit records.
+
+Counts, percentages, clickable totals,50-row detail pages and complete PDF share the same canonical rows. Details include QC Status, Grade Source and Issue. Phone-level snapshots reject changed membership even when aggregate totals stay equal. Names/search/download/office permissions remain independent. New company-owned stock inspections require GL Grade in the normal Initial QC form and protected save routine; saved receipt retries are preserved.
+
+Run Publish-GreenLoop-Initial-Grade-Report-Fix.ps1. Paste/run the entire copied Install-Initial-Grade-Report.sql in Supabase SQL Editor. Wait for20261116-initial-grade-report-1 before pressing Enter in PowerShell. The SQL result also includes batch_95_check with the real breakdown for canonical BATCH-2026-0004. Then Ctrl+F5, Reports > Stock Grade Analysis, select BATCH-2026-0004-(95), and click any missing-data total for exact IMEIs. Diagnose-Initial-Grade-Batch.sql is an additional read-only per-phone check.
+
+Local disposable tests reproduce95 phones,47 current grades and48 saved-only grades, then resolve the48 verified saved grades. These test grades are synthetic and are not this live batch's values. If a live grade is genuinely missing, it remains listed for verified correction. Codex did not access live phone records or run live SQL/publish.
