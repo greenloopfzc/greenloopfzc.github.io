@@ -1,0 +1,10 @@
+# Scanner readiness and QC loading
+
+- IMEI Search focuses its search field after authorized startup. It does not wait for the stock catalog to focus, or steal a deliberate edit/menu/dialog focus.
+- Initial QC, Lab & Glass Issuance and Final QC clear rejected manual scans. The notice keeps the rejected IMEI and its actual current stage; OK/Escape returns to the empty scanner. Duplicate loaded phones and valid rows stay intact. Bulk-paste failures stay visible for review. Network/ambiguous receive errors remain explicit errors and are not replayed automatically.
+- In-flight scans are combined in batches of100 and deduplicated. Initial QC and Issuance have at most two concurrent read batches. Final QC receive batches are serialized. Cancelled requests, office/access changes and a failed bulk receive stop unsent work; completed snapshots are never cached.
+- Exact QC reads and their independent stock lookup overlap. Original receipt enrichment still finishes before rows are returned. Selected Initial QC stock loading no longer fetches the full pending queue a second time. Large work dropdowns populate when opened, keeping selected values and first-line carry.
+
+No new database migration is required for this frontend update. The publisher retains all existing prerequisite checks, including Parts Usage Report (SQL316), and the earlier grade/return/correction fixes.
+
+Validation: actual full-page Chromium fixtures cover scanner OK/Escape recovery, wrong-stage/secondary/unknown/duplicate cases on all three QC pages, bulk review, stale responses, office/sign-out/read-only access, IMEI Search focus, batched requests, large dropdowns and original stock metadata. Bounded scheduler tests cover250-unit trays, permission epochs, cancellation and failed receive boundaries. Identical local110-phone/300-part fixtures measured3029ms before and1142ms after, with33440 versus220 initial work-dropdown options; these are fixture measurements, not a live-server guarantee. No live stock was modified or SQL executed.

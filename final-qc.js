@@ -361,8 +361,7 @@
     if (duplicate) {
       row.classList.add("is-error");
       setRowState(row, "Duplicate IMEI in this tray", "is-error");
-      if (!options.bulk) void window.GREENLOOP_IMEI_STAGE_NOTICE?.show({ imei, message: "This IMEI is already in this QC tray.", isCurrent: () => row.isConnected && input.value.trim() === imei });
-      if (!options.bulk) input.focus();
+      if (!options.bulk) void window.GREENLOOP_SCAN_READY.notice({input,imei,reset:()=>clearRowData(row),allowed:()=>window.GREENLOOP_CAN?.('entry','final_qc')===true,message:"This IMEI is already in this QC tray."});
       return;
     }
 
@@ -376,7 +375,7 @@
     if(!snapshot?.ok){
       const message=snapshot?.message||"This phone could not be loaded. Scan again.";
       row.classList.add("is-error");setRowState(row,message,"is-error");
-      if(!options.bulk)void window.GREENLOOP_IMEI_STAGE_NOTICE?.show({imei,title:"Phone unavailable here",message,knownRecord:snapshot?.record,isCurrent});
+      if(!options.bulk)void window.GREENLOOP_SCAN_READY.notice({input,imei,reset:()=>clearRowData(row),allowed:()=>window.GREENLOOP_CAN?.('entry','final_qc')===true,title:"Phone unavailable here",message,knownRecord:snapshot?.record,isCurrent});
       return;
     }
     const step=snapshot.item;
@@ -461,11 +460,13 @@
       rowSequence = 0;
       createRows(pending.length);
       const rows = [...tableBody.rows];
+      const active=()=>rows[0]?.parentElement===tableBody&&tableBody.firstElementChild===rows[0];
       const batchSize = 100;
 
       for (let start = 0; start < pending.length; start += batchSize) {
         const end = Math.min(start + batchSize, pending.length);
-        const prepared=await window.GREENLOOP_QC_FAST.load("final_qc",pending.slice(start,end).map(item=>item.imei));
+        const prepared=await window.GREENLOOP_QC_FAST.load("final_qc",pending.slice(start,end).map(item=>item.imei),active);
+        if(!active())return;
         await Promise.all(pending.slice(start, end).map((item, offset) => {
           const row = rows[start + offset];
           row.querySelector(".final-row-imei").value = item.imei;
@@ -734,6 +735,17 @@
     syncHorizontalScrollWidth();
   }
 
+  window.addEventListener('greenloop:imei-scan',event=>{
+    if(!editable()||excelPaste?.busy||tableBody.querySelector('tr[data-saving="yes"]'))return;
+    const imei=String(event.detail?.imei||'');if(!/^\d{15}$/.test(imei))return;
+    const existing=[...tableBody.querySelectorAll('.final-row-imei')].some(e=>e.value.trim()===imei);
+    let input=[...tableBody.querySelectorAll('.final-row-imei')].find(e=>!e.value.trim()&&!e.disabled);
+    if(!input){createRows(1);input=tableBody.lastElementChild.querySelector('.final-row-imei');}
+    event.preventDefault();
+    if(existing){void window.GREENLOOP_SCAN_READY.notice({input,imei,allowed:editable,message:'This IMEI is already in this QC tray.'});return;}
+    input.value=imei;void loadScannedRow(input.closest('tr'));
+  });
+
   async function initialize() {
     if (!config.supabaseUrl || !config.supabaseAnonKey || !window.supabase) throw new Error("Supabase authentication is not configured.");
     const { data: sessionData } = await getClient().auth.getSession();
@@ -744,7 +756,7 @@
     const { data: canInspect, error } = await getClient().rpc("has_role", { required_roles: ["super_admin", "owner", "manager", "final_qc"] });
     if (error) throw error;
     if (!canInspect) throw new Error("Your account does not have Final QC permission.");
-    await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();
+    await window.GREENLOOP_ACCESS_READY;
     if (window.GREENLOOP_PAGE_ACCESS?.pageKey !== "final_qc") return;
     await Promise.all([loadFinalGrades(), loadQueue(), loadFailureOptions()]);
     createRows(10);

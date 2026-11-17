@@ -135,6 +135,7 @@
     return `<option value="">Select technician</option>${technicians.map((technician) => `<option value="${escapeHtml(technician.id)}"${String(selectedValue) === String(technician.id) ? " selected" : ""}>${escapeHtml(technician.full_name || technician.email || "Technician")}</option>`).join("")}`;
   }
 
+  let deferWorkOptions=false;
   function requirementOptions(kind, selectedValue = "") {
     const items = workItems.filter((item) => item.kind === kind);
     const placeholder = kind === "part" ? "Select part" : "Select service";
@@ -173,6 +174,7 @@
   window.addEventListener('storage',e=>{if(e.key===workOptionsKey)refreshSharedWorkOptions();});window.addEventListener('focus',refreshSharedWorkOptions);
 
   function requirementSelect(kind, selectedValue = "") {
+    if(deferWorkOptions)return `<select data-requirement="${kind}" data-options-deferred="yes"><option value="">${kind==='part'?'Select part':'Select service'}</option>${selectedValue?`<option value="${escapeHtml(selectedValue)}" selected>${escapeHtml(selectedValue)}</option>`:''}</select>`;
     return `<select data-requirement="${kind}">${requirementOptions(kind, selectedValue)}</select>`;
   }
 
@@ -253,6 +255,7 @@
   }
 
   function createRows(quantity) {
+    deferWorkOptions=tableBody.rows.length+quantity>50&&workItems.length>40;
     const templateRow = tableBody.firstElementChild;
     const inherited = templateRow ? rowSnapshot(templateRow) : null;
     tableBody.insertAdjacentHTML("beforeend", Array.from({ length: quantity }, rowMarkup).join(""));
@@ -337,8 +340,7 @@
     if (duplicate) {
       row.classList.add("is-error");
       setRowState(row, "Duplicate IMEI in this tray", "is-error");
-      if (!options.bulk) void window.GREENLOOP_IMEI_STAGE_NOTICE?.show({ imei, message: "This IMEI is already in this QC tray.", isCurrent: () => row.isConnected && input.value.trim() === imei });
-      if (!options.bulk) input.focus();
+      if (!options.bulk) void window.GREENLOOP_SCAN_READY.notice({input,imei,reset:()=>clearAutoData(row),allowed:()=>window.GREENLOOP_CAN?.('entry','initial_qc')===true,message:"This IMEI is already in this QC tray."});
       return;
     }
 
@@ -352,7 +354,7 @@
     if(!snapshot?.ok){
       const message=snapshot?.message||"This phone could not be loaded. Scan again.";
       row.classList.add("is-error");setRowState(row,message,"is-error");
-      if(!options.bulk)void window.GREENLOOP_IMEI_STAGE_NOTICE?.show({imei,title:"Phone unavailable here",message,knownRecord:snapshot?.record,isCurrent});
+      if(!options.bulk)void window.GREENLOOP_SCAN_READY.notice({input,imei,reset:()=>clearAutoData(row),allowed:()=>window.GREENLOOP_CAN?.('entry','initial_qc')===true,title:"Phone unavailable here",message,knownRecord:snapshot?.record,isCurrent});
       return;
     }
     const result=snapshot.item,job=result.job||{},device=result.device||{},receivingBatch=result.receiving_batch;
@@ -493,7 +495,7 @@
     setMessage();
     setSubmitting(autoPickButton, true, "Loading...");
     try {
-      await loadPendingCount();
+      if(!Array.isArray(selectedImeis))await loadPendingCount();
       const imeis = Array.isArray(selectedImeis) ? selectedImeis : pendingJobs
         .map(pendingJobData)
         .map((job) => String(job.imei || "").trim())
@@ -513,11 +515,13 @@
       rowSequence = 0;
       createRows(imeis.length);
       const rows = [...tableBody.rows];
+      const active=()=>rows[0]?.parentElement===tableBody&&tableBody.firstElementChild===rows[0];
       const batchSize = 100;
+      const prepared=await window.GREENLOOP_QC_FAST.load("initial_qc",imeis,active);
+      if(!active())return;
 
       for (let start = 0; start < imeis.length; start += batchSize) {
         const end = Math.min(start + batchSize, imeis.length);
-        const prepared=await window.GREENLOOP_QC_FAST.load("initial_qc",imeis.slice(start,end));
         await Promise.all(imeis.slice(start, end).map((imei, offset) => {
           const row = rows[start + offset];
           row.querySelector(".qc-bulk-imei").value = imei;
@@ -735,9 +739,8 @@
     if (existing) {
       event.preventDefault();
       existing.scrollIntoView({ behavior: "smooth", block: "center" });
-      existing.querySelector('[data-carry-field="supplierGrade"]')?.focus();
-      setRowState(existing, "");
-      void window.GREENLOOP_IMEI_STAGE_NOTICE?.show({ imei, message: "This IMEI is already in this QC tray.", isCurrent: () => existing.isConnected && existing.querySelector(".qc-bulk-imei").value.trim() === imei });
+      const input=[...tableBody.querySelectorAll('.qc-bulk-imei')].find(e=>!e.value.trim()&&!e.disabled);
+      if(input)void window.GREENLOOP_SCAN_READY.notice({input,imei,allowed:()=>window.GREENLOOP_CAN?.('entry','initial_qc')===true,message:"This IMEI is already in this QC tray."});
       return;
     }
     const blank = [...tableBody.querySelectorAll(".qc-bulk-imei")].find((input) => !input.value.trim() && !input.disabled);
@@ -754,11 +757,11 @@
       window.location.replace("index.html");
       return;
     }
-    await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();
+    await window.GREENLOOP_ACCESS_READY;
     const { data: canInspect, error } = await getClient().rpc("has_role", { required_roles: ["super_admin", "owner", "manager", "initial_qc"] });
     if (error) throw error;
     if (!canInspect) throw new Error("Your account does not have Initial QC permission.");
-    await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();
+    await window.GREENLOOP_ACCESS_READY;
     document.querySelector("#qc-manage-options").hidden=!canManageWorkOptions();
     await Promise.all([loadPendingCount(), loadPartOptions()]);
     createRows(10);
@@ -769,6 +772,8 @@
     tableBody.querySelector(".qc-bulk-imei")?.focus();
   }
 
+  function expandWorkOptions(event){const select=event.target.closest('[data-options-deferred]');if(!select||select.disabled)return;const value=select.value;select.innerHTML=requirementOptions(select.dataset.requirement,value);if(value&&![...select.options].some(o=>o.value===value))select.insertAdjacentHTML('beforeend',`<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`);select.value=value;delete select.dataset.optionsDeferred;}
+  for(const event of ['focusin','pointerdown','keydown'])tableBody.addEventListener(event,expandWorkOptions);
   tableBody.addEventListener("input", (event) => {
     const input = event.target.closest(".qc-bulk-imei");
     if (!input) return;

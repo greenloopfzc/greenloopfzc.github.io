@@ -90,16 +90,16 @@ window.GREENLOOP_CONFIG = Object.freeze({
       // fluent .select().eq().single() API and ordinary read-only queries.
       if (typeof sharedClient.from === 'function') {
         const from=sharedClient.from.bind(sharedClient);
-        const stockReadQuery=query=>new Proxy(query,{get(target,key){
-          if(key==='then')return(resolve,reject)=>(async()=>{if(window.GREENLOOP_PAGE_ACCESS)await window.GREENLOOP_STOCK?.ready();const result=await target;if(result?.data)window.GREENLOOP_STOCK?.enrich(result.data);return result;})().then(resolve,reject);
-          const value=target[key];return typeof value==='function'?(...args)=>{const next=value.apply(target,args);return next&&typeof next.then==='function'?stockReadQuery(next):next;}:value;
+        const stockReadQuery=(query,overlap=false)=>new Proxy(query,{get(target,key){
+          if(key==='then')return(resolve,reject)=>(async()=>{let result;if(overlap){[result]=await Promise.all([Promise.resolve(target),window.GREENLOOP_STOCK?.ready()]);}else{if(window.GREENLOOP_PAGE_ACCESS)await window.GREENLOOP_STOCK?.ready();result=await target;}if(result?.data)window.GREENLOOP_STOCK?.enrich(result.data);return result;})().then(resolve,reject);
+          const value=target[key];return typeof value==='function'?(...args)=>{const next=value.apply(target,args);return next&&typeof next.then==='function'?stockReadQuery(next,overlap):next;}:value;
         }});
 
         sharedClient.from=(...fromArgs)=>{
-          const builder=from(...fromArgs);
+          const builder=from(...fromArgs),overlap=fromArgs[0]==='job_work_order_steps'&&window.GREENLOOP_PAGE_ACCESS?.pageKey==='final_qc'&&window.GREENLOOP_CAN?.('view','final_qc')===true;
           return new Proxy(builder,{get(target,property){
             if(!['insert','update','upsert','delete'].includes(property)) {
-              const member=target[property];return typeof member==='function'?(...args)=>{const next=member.apply(target,args);return next&&typeof next.then==='function'?stockReadQuery(next):next;}:member;
+              const member=target[property];return typeof member==='function'?(...args)=>{const next=member.apply(target,args);return next&&typeof next.then==='function'?stockReadQuery(next,overlap):next;}:member;
             }
             return (...writeArgs)=>{
               const calls=[];let result;
@@ -152,13 +152,16 @@ window.GREENLOOP_CONFIG = Object.freeze({
           }
         }
         const stockRead=!bootstrap.has(name)&&!name.startsWith('get_my_')&&/^(get_|list_|export_)/.test(name)&&!/_version$/.test(name);
-        if(stockRead){await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();}
+        const qcRead=stockRead&&['initial_qc','qc_issuance','final_qc'].includes(window.GREENLOOP_PAGE_ACCESS?.pageKey)&&!args[0]?.p_filters&&new Set(['get_initial_qc_fast_rows_v1','get_initial_qc_work_tray_v1','get_qc_issuance_rows_v1','get_qc_issuance_options_v1','get_ranked_qc_dropdowns_v1','get_final_qc_failure_options_v1',...(args[0]?.p_option_group==='grade'?['get_entry_options']:[])]).has(name);
+        let stockReady;
+        if(stockRead){await window.GREENLOOP_ACCESS_READY;if(qcRead)stockReady=window.GREENLOOP_STOCK?.ready();else await window.GREENLOOP_STOCK?.ready();}
         if(stockRead&&window.GREENLOOP_BATCH_DISPLAY)args[0]=window.GREENLOOP_BATCH_DISPLAY.readArgs(args[0]);
         if(stockRead&&typeof window.GREENLOOP_STOCK?.readArgs==='function')args[0]=window.GREENLOOP_STOCK.readArgs(args[0]);
         if(signal?.aborted)return {data:null,error:{code:'ABORT_ERR',message:'Report request cancelled.'}};
         let request=rpc(name,...args);
         if(signal&&typeof request.abortSignal==='function')request=request.abortSignal(signal);
         const response = await request;
+        if(stockReady)await stockReady;
         if(stockRead&&response?.data)window.GREENLOOP_STOCK?.enrich(response.data,{name,args:args[0]||{}});
         if (response?.error?.code === '23505') {
           let detail;try { detail=JSON.parse(response.error.details || '{}'); } catch (_) {}
@@ -675,6 +678,9 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
       scannerStatus.textContent = `Showing ${label} in this page.`;
     };
     window.addEventListener("greenloop:imei-scan", (event) => {
+      // Editable QC trays own scan routing; filtering here would hide their
+      // empty scanner rows before the page can handle a duplicate.
+      if(['initial-qc.html','qc-issuance.html','final-qc.html'].includes(file))return;
       const imei = normalizeImei(event.detail?.imei);
       if (!/^\d{15}$/.test(imei)) return;
       const row = findLoadedImeiRow(imei);

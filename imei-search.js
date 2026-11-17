@@ -562,13 +562,14 @@ function buildStageSections(sortedRows) {
     const { data: sessionData, error } = await getClient().auth.getSession();
     if (error) throw error;
     if (!sessionData?.session) { window.location.replace("index.html"); return; }
-    await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();
+    await window.GREENLOOP_ACCESS_READY;
     if (!window.GREENLOOP_PAGE_ACCESS || window.GREENLOOP_PAGE_ACCESS.pageKey !== "imei_search") { permissionMessage.textContent = "Your account does not have IMEI Search permission."; permissionMessage.hidden = false; return; }
     allowed = true; app.hidden = false;
     searchWidget=window.GREENLOOP_RECORD_SEARCH.attach(query,{onExactIdentifier:value=>openDevice({identifier:value}),onSelect:item=>item.kind==="receipt"?openReceipt(item):openDevice(item)});
     const requestedReceipt=new URLSearchParams(window.location.search).get("receipt");
     if(requestedReceipt){await openReceipt({id:requestedReceipt});return;}
     if (requestedQuery.trim()) { query.value = requestedQuery.trim(); await search(); }
+    else window.GREENLOOP_SCAN_READY.focus(query,()=>allowed&&window.GREENLOOP_CAN?.('view','imei_search')===true&&window.GREENLOOP_CAN_SEARCH!==false);
   }
   document.addEventListener('click',event=>{const button=event.target.closest('[data-corrections-refresh]');if(!button||button.disabled||!allowed||window.GREENLOOP_CAN?.('view','imei_search')!==true)return;openDevice({identifier:button.dataset.correctionsRefresh},{popup:Boolean(historyDialog?.open)});});
   query.addEventListener("input", () => { ++searchVersion;++bulkVersion;closeHistoryPopup();bulkSearchResult?.remove(); setSubmitting(false); result.hidden = true; receiptResult.hidden=true; setMessage(); });

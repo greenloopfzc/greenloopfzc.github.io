@@ -4,6 +4,8 @@
   const pending = new Map();
   let revision = 0;
   let dialog;
+  let afterClose,openedAt=0;
+  function userClose(){revision++;const callback=afterClose;afterClose=null;if(dialog?.open)dialog.close();if(callback)setTimeout(callback,0);}
   function currentDialog() {
     if (dialog) return dialog;
     dialog = document.querySelector("#duplicate-imei-dialog");
@@ -24,8 +26,9 @@
     dialog.querySelector(".duplicate-imei-actions").before(details);
     const open=document.createElement("button");open.type="button";open.className="secondary-button";open.dataset.openCurrentStage="true";open.textContent="Open Current Stage";open.hidden=true;
     dialog.querySelector(".duplicate-imei-actions").prepend(open);
-    dialog.querySelector("#duplicate-imei-close").addEventListener("click", () => { revision++; if (dialog.open) dialog.close(); });
-    dialog.addEventListener("cancel", () => { revision++; });
+    dialog.querySelector("#duplicate-imei-close").addEventListener("click", userClose);
+    dialog.addEventListener("cancel", event => { event.preventDefault();userClose(); });
+    dialog.addEventListener("keydown",event=>{if(afterClose&&event.key==='Enter'&&performance.now()-openedAt<180){event.preventDefault();event.stopPropagation();}});
     return dialog;
   }
   async function lookup(imei) {
@@ -49,7 +52,8 @@
     }
     return pending.get(value);
   }
-  async function show({ imei, title = "Duplicate phone", message = "This phone already exists in the system.", isCurrent = () => true, onlyIfFound = false, knownRecord = null } = {}) {
+  async function show({ imei, title = "Duplicate phone", message = "This phone already exists in the system.", isCurrent = () => true, onlyIfFound = false, knownRecord = null, onClose = null } = {}) {
+    afterClose=null;
     const ticket = ++revision;
     const valid = () => ticket === revision && isCurrent();
     // A newer scan owns the notice. Close an older one while the new lookup
@@ -70,6 +74,7 @@
     modal.querySelector("[data-notice-imei]").textContent = String(imei || "");
     modal.querySelector("[data-notice-stage]").textContent = "Checking current stage…";
     const open=modal.querySelector('[data-open-current-stage]');open.hidden=true;open.onclick=null;
+    afterClose=typeof onClose==='function'?onClose:null;openedAt=performance.now();
     if (!modal.open) modal.showModal();
     record ||= await result;
     if (!valid() || !modal.open) {
@@ -82,7 +87,7 @@
       modal.querySelector("[data-notice-imei]").textContent = record.primary_imei;
     }
     modal.querySelector("[data-notice-stage]").textContent = record?.found && record.current_stage
-      ? record.current_stage.replace(/â€”|â€“|—|–/g,' - ').replace(/Frame Department/gi,'B-DEPT') : "Current stage could not be checked. Please try again.";
+      ? record.current_stage.replace(/â€”|â€“|—|–/g,' - ').replace(/Frame Department/gi,'B-DEPT') : record?.found===false ? "Not found in software" : "Current stage could not be checked. Please try again.";
     const destination=record?.found&&window.GREENLOOP_IMEI_SCAN?.target(record.current_stage);
     const mayOpen=()=>destination&&window.GREENLOOP_CAN?.('view',destination.page);
     if(mayOpen()){
@@ -92,7 +97,7 @@
     return true;
   }
   function clear() {
-    revision++;
+    revision++;afterClose=null;
     const details = document.querySelector(".gl-imei-stage-details");
     if (details) details.hidden = true;
     if(dialog)dialog.querySelector('[data-open-current-stage]').hidden=true;
@@ -104,6 +109,7 @@
     if(r.matched_type === "secondary"){await show({imei:value,isCurrent,knownRecord:r});return false;}
     return true;
   }
-  function dismiss(){revision++;if(dialog?.open)dialog.close();}
+  function dismiss(){revision++;afterClose=null;if(dialog?.open)dialog.close();}
+  for(const event of ['pagehide','greenloop:office-locked','greenloop:signed-out','greenloop:permissions-changed'])window.addEventListener(event,()=>{dismiss();if(dialog){dialog.querySelector('[data-notice-imei]').textContent='';dialog.querySelector('[data-notice-stage]').textContent='';dialog.querySelector(':scope > p').textContent='';}});
   window.GREENLOOP_IMEI_STAGE_NOTICE = { show, clear, checkPrimary, lookup, dismiss };
 })();
