@@ -39,7 +39,7 @@
   async function add(values,source){
    if(!can())return;
    if(host.querySelector('tr[data-busy="yes"]')){count.textContent='Wait for the current Save to finish, then scan again.';return;}
-   const revision=ticket,seen=new Set(entries.map(e=>e.imei)),first=entries.length===0;selected=true;
+   const revision=ticket;if(window.GREENLOOP_IMEI_CANONICAL){values=await window.GREENLOOP_IMEI_CANONICAL.list(values,()=>revision===ticket&&can());if(!values||revision!==ticket||!can())return;}const seen=new Set(entries.map(e=>e.imei)),first=entries.length===0;selected=true;
    for(const imei of values){const duplicate=seen.has(imei);seen.add(imei);entries.push({imei,state:duplicate?'error':'checking',message:duplicate?'Duplicate IMEI — this extra line cannot be saved.':'Checking this phone…',source});}
    input.value='';if(first)await start();if(revision!==ticket||!can())return;changed();void process();input.focus();
   }

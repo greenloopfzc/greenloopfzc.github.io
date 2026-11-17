@@ -159,6 +159,11 @@
       }
       if(stopped||!['view','edit'].includes(window.GREENLOOP_PAGE_ACCESS?.accessLevel)){forgetConnection();return;}
       failedReads = 0;
+      if(window.GREENLOOP_IMEI_CANONICAL&&/^\d{15}$/.test(device.imei)){
+        const scanned=device.imei,identities=await window.GREENLOOP_IMEI_CANONICAL.resolve([scanned],()=>!stopped),identity=identities.get(scanned);
+        if(!identity||stopped)return;
+        if(identity.imei!==scanned)device={...device,imei:identity.imei,imei2:scanned};
+      }
       if (window.GREENLOOP_IMEI_STAGE_NOTICE?.checkPrimary && cableIdentityCheck?.imei !== device.imei) cableIdentityCheck={imei:device.imei,allowed:await window.GREENLOOP_IMEI_STAGE_NOTICE.checkPrimary(device.imei)};
       if (cableIdentityCheck?.allowed === false) {
         forgetConnection();publishReaderState("waiting","Duplicate phone — the cable IMEI belongs to this phone's main IMEI. Use IMEI 1.");return;

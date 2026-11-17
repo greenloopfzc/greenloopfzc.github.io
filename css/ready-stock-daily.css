@@ -124,3 +124,9 @@ html[data-theme="ruby-obsidian"] #ready-stock-view{--rsd-green:#efb0bd;--rsd-blu
 
 /* Keep the matrix and each IMEI on one aligned line at every viewport. */
 #ready-model-dialog .rsm-table{display:table!important;border-collapse:collapse}#ready-model-dialog .rsm-table thead{display:table-header-group!important}#ready-model-dialog .rsm-table tbody{display:table-row-group!important}#ready-model-dialog .rsm-table tr{display:table-row!important;padding:0!important}#ready-model-dialog .rsm-table :is(th,td){display:table-cell!important;white-space:nowrap!important;text-align:center!important;width:auto!important}#ready-model-dialog .rsm-table tbody th{position:static}#ready-model-dialog .rsm-table td::before{display:none!important}#ready-model-dialog .rsm-table tbody td{color:inherit}#ready-model-dialog .rsm-table .rsm-total :is(th,td){font-weight:800}#ready-model-total{background:transparent;text-align:center;font-size:12px;font-weight:400;padding:12px 18px}
+
+/* Three matching daily activity tiles; original receipt arrivals form their own card. */
+#ready-daily .rsd-cards{grid-template-columns:repeat(3,minmax(0,1fr))}
+#ready-daily .rsd-received{border-top-color:#58947d;background:radial-gradient(ellipse at 100% 0,#c1e2d250,transparent 65%),var(--nm-card,#f6f9fb)}
+#ready-daily .rsd-stat-pair strong{font-size:clamp(1.8rem,2.5vw,3rem)}
+@media(max-width:1100px){#ready-daily .rsd-cards{grid-template-columns:1fr}#ready-daily .rsd-stat-pair strong{font-size:2.6rem}}

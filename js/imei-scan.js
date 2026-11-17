@@ -162,5 +162,5 @@
     const observer=new MutationObserver(()=>{if(apply())observer.disconnect();});observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['disabled','hidden']});setTimeout(()=>observer.disconnect(),10000);
   }
   window.addEventListener('DOMContentLoaded',()=>void prefill());
-  window.GREENLOOP_IMEI_SCAN={checkLocation,target,stageKey};
+  window.GREENLOOP_IMEI_SCAN={checkLocation,target,stageKey,field};
 })();

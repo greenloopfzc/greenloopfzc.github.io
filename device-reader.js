@@ -1,0 +1,193 @@
+(() => {
+  "use strict";
+
+  const endpoint = "http://127.0.0.1:51892/v1/device";
+  const threeUToolsEndpoint = "http://127.0.0.1:51894/v1/device";
+  let lastFingerprint = "";
+  const nextThreeUToolsAttemptAt = new Map();
+  let polling = false;
+  let forceReaderRead = false;
+  let failedReads = 0;
+  let readerState = "";
+  let cableIdentityCheck = null;
+  window.GREENLOOP_GET_CONNECTED_DEVICE = () =>
+    Date.now() - (window.GREENLOOP_LAST_DEVICE_AT || 0) < 30000 ? window.GREENLOOP_LAST_DEVICE : null;
+  const appleSalesRegions = new Map([
+    ["VC/A", "Canada"], ["C/A", "Canada"], ["CL/A", "Canada"],
+    ["LL/A", "United States"], ["CH/A", "Mainland China"], ["ZP/A", "Hong Kong / Macau"],
+    ["J/A", "Japan"], ["KH/A", "South Korea"], ["VN/A", "Vietnam"], ["TA/A", "Taiwan"],
+    ["ZA/A", "Singapore / Malaysia"], ["AB/A", "United Arab Emirates"], ["X/A", "Australia / New Zealand"],
+    ["B/A", "United Kingdom / Ireland"], ["ZD/A", "Central Europe"]
+  ]);
+
+  function formatPhoneRegion(value) {
+    const source = String(value || "").trim();
+    if (!source) return "";
+    const match = source.toUpperCase().match(/\b([A-Z]{1,3}\/A)\b/);
+    const code = match?.[1] || "";
+    const country = appleSalesRegions.get(code);
+    if (!country) return source;
+    return source.toLocaleLowerCase().includes(country.toLocaleLowerCase()) ? source : `${code} — ${country}`;
+  }
+  let stopped = false;
+
+  function normalise(payload) {
+    const source = payload?.device || payload || {};
+    const batteryRaw = source.batteryHealth ?? source.battery_health;
+    const platform = source.platform === "android" ? "android" : "ios";
+    const imei = String(source.imei || source.imei1 || "").replace(/[\s-]/g, "");
+    const serialNumber = String(source.serialNumber || source.serial_number || "").trim();
+    return {
+      imei: /^\d{15}$/.test(imei) ? imei : "",
+      imei2: /^\d{15}$/.test(String(source.imei2 || source.imei_2 || "").trim()) && String(source.imei2 || source.imei_2).trim() !== imei ? String(source.imei2 || source.imei_2).trim() : "",
+      identitySchemaVersion: Number(source.identitySchemaVersion || 0),
+      platform,
+      brand: String(source.brand || (platform === "ios" ? "Apple" : "")).trim(),
+      connectionId: String(source.connectionId || (source.udid ? `ios:${source.udid}` : platform === "ios" && /^\d{15}$/.test(imei) ? `ios:${imei}` : "")),
+      model: String(source.model || source.productName || "").trim(),
+      storageGb: Number(source.storageGb || source.storage_gb || source.capacity || 0) || "",
+      color: String(source.color || source.deviceColor || "").trim(),
+      batteryHealth: batteryRaw === "" || batteryRaw === null || batteryRaw === undefined
+        ? ""
+        : (Number.isInteger(Number(batteryRaw)) && Number(batteryRaw) >= 0 && Number.isFinite(Number(batteryRaw)) ? Math.min(100, Number(batteryRaw)) : ""),
+      batteryHealthUnavailable: platform === "android" && source.batteryHealthUnavailable === true,
+      batteryHealthSource: String(source.batteryHealthSource || "device"),
+      serialNumber,
+      phoneRegion: (platform === "ios" ? formatPhoneRegion : (value) => String(value || "").trim())(source.phoneRegion || source.phone_region || source.specificationRegion || source.specification_region || source.region)
+    };
+  }
+
+  async function readThreeUToolsDevice() {
+    const response = await fetch(threeUToolsEndpoint, { cache: "no-store", signal: AbortSignal.timeout(2500) });
+    if (!response.ok) return null;
+    const payload = await response.json();
+    if (payload?.ok === false) return null;
+    const device = normalise(payload);
+    return /^\d{15}$/.test(device.imei) ? device : null;
+  }
+
+  async function fillMissingColorFrom3uTools(device) {
+    if (device.platform === "android" || device.color || !device.imei) return device;
+    const now = Date.now();
+    if (now < (nextThreeUToolsAttemptAt.get(device.imei) || 0)) return device;
+    // 3uTools can finish reading a newly connected iPhone a moment after its IMEI.
+    // Retry automatically instead of requiring a cable reconnect.
+    nextThreeUToolsAttemptAt.set(device.imei, now + 1500);
+    try {
+      const fallback = await readThreeUToolsDevice();
+      if (!fallback) return device;
+      if (fallback.imei !== device.imei) return device;
+      return {
+        ...device,
+        color: fallback.color || device.color,
+        imei2: device.imei2 || fallback.imei2,
+        serialNumber: device.serialNumber || fallback.serialNumber,
+        phoneRegion: device.phoneRegion || fallback.phoneRegion
+      };
+    } catch (_) {
+      return device;
+    }
+  }
+
+  function publishDevice(device) {
+    const previous = window.GREENLOOP_LAST_DEVICE;
+    const samePhone = previous?.connectionId && previous.connectionId === device.connectionId && (!previous.imei || !device.imei || previous.imei === device.imei);
+    if (!samePhone) window.GREENLOOP_CABLE_CONNECTION_ID = (window.GREENLOOP_CABLE_CONNECTION_ID || 0) + 1;
+    if (samePhone) {
+      // Late/partial USB responses enrich the same phone, never erase good data.
+      device = { ...device };
+      const missingBattery = device.batteryHealth === "" || device.batteryHealth == null;
+      for (const key of ["imei", "imei2", "brand", "model", "storageGb", "color", "batteryHealth", "serialNumber", "phoneRegion"]) {
+        if (device[key] === "" || device[key] == null) device[key] = previous[key];
+      }
+      if (missingBattery) device.batteryHealthSource = previous.batteryHealthSource;
+    }
+    if (device.batteryHealth !== "" && device.batteryHealth != null) device.batteryHealthUnavailable = false;
+    const fingerprint = JSON.stringify(device);
+    window.GREENLOOP_LAST_DEVICE_AT = Date.now();
+    if (fingerprint === lastFingerprint) return false;
+    lastFingerprint = fingerprint;
+    window.GREENLOOP_LAST_DEVICE = device;
+    window.dispatchEvent(new CustomEvent("greenloop:device", { detail: device }));
+    return true;
+  }
+  function publishReaderState(state, message = "") {
+    const key = `${state}:${message}`;
+    if (key === readerState) return;
+    readerState = key;
+    window.GREENLOOP_READER_STATUS = { state, message };
+    window.dispatchEvent(new CustomEvent("greenloop:device-reader-status", { detail: { state, message } }));
+  }
+  function forgetConnection() {
+    lastFingerprint = "";
+    window.GREENLOOP_LAST_DEVICE = null;
+    window.GREENLOOP_LAST_DEVICE_AT = 0;
+  }
+
+  async function poll() {
+    if (stopped || document.hidden || polling || !['view','edit'].includes(window.GREENLOOP_PAGE_ACCESS?.accessLevel)) return;
+    polling = true;
+    try {
+      let device = null;
+      let readerResponded = false;
+      let readerMessage = "";
+      if (!window.GREENLOOP_LAST_DEVICE) publishReaderState("reading", "Reading connected phone...");
+      try {
+        const readerPath=forceReaderRead?"/v1/device?refresh=1":"/v1/device";forceReaderRead=false;
+        // USB startup + optional diagnostics are bounded by the helper. Do not
+        // abort a healthy first read after only 2.5 seconds.
+        const response = await (window.GREENLOOP_READER_CONNECTION?.fetch || ((p, o) => fetch(new URL(p, endpoint).href, o)))(readerPath, { cache: "no-store", signal: AbortSignal.timeout(20000) });
+        const payload = await response.json();
+        readerResponded = true;
+        readerMessage = payload?.message || "Connect one unlocked phone and accept Trust if asked.";
+        if (response.ok) {
+          if (payload?.ok !== false) device = normalise(payload);
+        }
+      } catch (_) {
+        // A 3uTools-only receiving PC does not run the Apple driver reader.
+      }
+      // A known disconnected/locked phone must not be replaced with stale OCR.
+      if (!readerResponded && (!device || !/^\d{15}$/.test(device.imei))) {
+        try { device = await readThreeUToolsDevice(); } catch (_) { device = null; }
+      }
+      if (!device || (!/^\d{15}$/.test(device.imei) && !(device.platform === "android" && device.connectionId))) {
+        failedReads += 1;
+        cableIdentityCheck = null;
+        forgetConnection();
+        publishReaderState(readerResponded ? "waiting" : "offline", readerResponded ? readerMessage : "Cable reader unavailable. Start Greenloop Cable Reader; allow local-network access if your browser asks.");
+        return;
+      }
+      if(stopped||!['view','edit'].includes(window.GREENLOOP_PAGE_ACCESS?.accessLevel)){forgetConnection();return;}
+      failedReads = 0;
+      if(window.GREENLOOP_IMEI_CANONICAL&&/^\d{15}$/.test(device.imei)){
+        const scanned=device.imei,identities=await window.GREENLOOP_IMEI_CANONICAL.resolve([scanned],()=>!stopped),identity=identities.get(scanned);
+        if(!identity||stopped)return;
+        if(identity.imei!==scanned)device={...device,imei:identity.imei,imei2:scanned};
+      }
+      if (window.GREENLOOP_IMEI_STAGE_NOTICE?.checkPrimary && cableIdentityCheck?.imei !== device.imei) cableIdentityCheck={imei:device.imei,allowed:await window.GREENLOOP_IMEI_STAGE_NOTICE.checkPrimary(device.imei)};
+      if (cableIdentityCheck?.allowed === false) {
+        forgetConnection();publishReaderState("waiting","Duplicate phone — the cable IMEI belongs to this phone's main IMEI. Use IMEI 1.");return;
+      }
+      publishReaderState("ready");
+      publishDevice(device);
+      if (device.platform !== "android" && !device.color) {
+        const enriched = await fillMissingColorFrom3uTools(device);
+        publishDevice(enriched);
+      }
+    } catch (_) {
+      failedReads += 1;
+      forgetConnection();
+      publishReaderState("offline", "Cable reader could not respond. Start Greenloop Cable Reader, then retry.");
+    } finally {
+      polling = false;
+    }
+  }
+
+  for(const name of ['greenloop:office-locked','greenloop:signed-out'])window.addEventListener(name,()=>{stopped=true;forgetConnection();});
+  window.addEventListener("beforeunload", () => { stopped = true; });
+  window.addEventListener("focus", poll);
+  window.addEventListener("greenloop:retry-device", () => { forceReaderRead = true; cableIdentityCheck = null; lastFingerprint = ""; window.GREENLOOP_CABLE_CONNECTION_ID = (window.GREENLOOP_CABLE_CONNECTION_ID || 0) + 1; poll(); });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
+  window.setInterval(poll, 900);
+  window.setTimeout(poll, 100);
+})();

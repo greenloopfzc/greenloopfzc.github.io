@@ -1,6 +1,12 @@
 {
   "version": "20261105-stock-consistency-1",
   "rpcs": {
+    "get_scan_imei_identities_v1": {"read":true},
+    "get_primary_imei_scans_version": {"read":true},
+    "get_ready_stock_daily_metrics_v2": {"page":"ready_stock","capability":"view","read":true},
+    "get_ready_stock_received_activity_v1": {"page":"ready_stock","capability":"view","read":true},
+    "get_ready_stock_received_daily_version": {"read":true},
+
     "add_accounts_customer_v1": {
       "page": "accounts",
       "capability": "manage_customers"

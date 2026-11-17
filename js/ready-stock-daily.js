@@ -9,18 +9,23 @@
   const timeText=value=>new Date(value).toLocaleTimeString('en-GB',{timeZone:'Asia/Dubai',hour:'2-digit',minute:'2-digit',hour12:true});
   const canSearch=()=>GREENLOOP_CAN?.('search','ready_stock')===true;
   function validate(data,kind){
-    if(!data||!/^\d{4}-\d{2}-\d{2}$/.test(data.date)||data.timezone!=='Asia/Dubai'||![data.ready_count,data.export_count,data.total,data.offset].every(n=>Number.isSafeInteger(n)&&n>=0)||!Array.isArray(data.rows)||data.rows.length>50||data.kind!==kind)throw Error('Daily activity could not be verified. Refresh and try again.');
+    if(kind==='received'){
+      if(!data||!/^\d{4}-\d{2}-\d{2}$/.test(data.date)||data.timezone!=='Asia/Dubai'||data.kind!==kind||![data.received_count,data.total,data.offset].every(n=>Number.isSafeInteger(n)&&n>=0)||!Array.isArray(data.rows)||data.rows.length>50||data.rows.some(r=>!r.batch_id||!r.received_at||!Number.isSafeInteger(r.quantity)||r.quantity<0))throw Error('Received stock could not be verified. Refresh and try again.');
+      return data;
+    }
+
+    if(!data||!/^\d{4}-\d{2}-\d{2}$/.test(data.date)||data.timezone!=='Asia/Dubai'||![data.ready_count,data.export_count,data.total,data.offset].every(n=>Number.isSafeInteger(n)&&n>=0)||!Array.isArray(data.rows)||data.rows.length>50||data.kind!==kind||!kind&&(!Number.isSafeInteger(data.received_count)||data.received_count<0))throw Error('Daily activity could not be verified. Refresh and try again.');
     if(data.rows.some(r=>!/^\d{15}$/.test(r.imei)||!r.occurred_at))throw Error('Phone details could not be verified. Refresh and try again.');
     if(!kind){const a=data.average,shift=n=>{const d=new Date(data.date+'T00:00:00Z');d.setUTCDate(d.getUTCDate()-n);return d.toISOString().slice(0,10);};
-      if(!a||a.from!==shift(30)||a.to!==shift(1)||a.window_days!==30||a.exclude_sundays!==true||![25,26].includes(a.days)||![a.ready_total,a.export_total].every(n=>Number.isSafeInteger(n)&&n>=0)||![a.ready_daily,a.export_daily].every(n=>Number.isFinite(n)&&n>=0)||Math.abs(a.ready_daily-Math.round(a.ready_total/a.days*100)/100)>.001||Math.abs(a.export_daily-Math.round(a.export_total/a.days*100)/100)>.001)throw Error('Daily averages could not be verified. Refresh and try again.');
+      if(!a||a.from!==shift(30)||a.to!==shift(1)||a.window_days!==30||a.exclude_sundays!==true||![25,26].includes(a.days)||![a.ready_total,a.export_total,a.received_total].every(n=>Number.isSafeInteger(n)&&n>=0)||![a.ready_daily,a.export_daily,a.received_daily].every(n=>Number.isFinite(n)&&n>=0)||Math.abs(a.ready_daily-Math.round(a.ready_total/a.days*100)/100)>.001||Math.abs(a.export_daily-Math.round(a.export_total/a.days*100)/100)>.001||Math.abs(a.received_daily-Math.round(a.received_total/a.days*100)/100)>.001)throw Error('Daily averages could not be verified. Refresh and try again.');
     }
     return data;
   }
   async function read(kind=null,pageOffset=0,date=activeDate){
     if(!allowed())throw Error('Ready Stock view permission is required.');
-    const{data,error}=await GREENLOOP_GET_CLIENT().rpc(kind?'get_ready_stock_daily_activity_v1':'get_ready_stock_daily_metrics_v1',kind?{p_date:date,p_kind:kind,p_offset:pageOffset,p_limit:50}:{p_date:date});
+    const{data,error}=await GREENLOOP_GET_CLIENT().rpc(kind==='received'?'get_ready_stock_received_activity_v1':kind?'get_ready_stock_daily_activity_v1':'get_ready_stock_daily_metrics_v2',kind==='received'?{p_date:date,p_offset:pageOffset,p_limit:50}:kind?{p_date:date,p_kind:kind,p_offset:pageOffset,p_limit:50}:{p_date:date});
     if(error)throw error;validate(data,kind);
-    if(date&&data.date!==date||data.offset!==pageOffset||data.limit!==50||kind&&data.total!==data[kind+'_count']||data.rows.length!==(kind?Math.min(50,Math.max(0,data.total-pageOffset)):0))throw Error('Daily activity response changed. Refresh and try again.');
+    if(date&&data.date!==date||data.offset!==pageOffset||data.limit!==50||kind&&kind!=='received'&&data.total!==data[kind+'_count']||data.rows.length!==(kind?Math.min(50,Math.max(0,data.total-pageOffset)):0))throw Error('Daily activity response changed. Refresh and try again.');
     return data;
   }
   function cards(data){
@@ -29,15 +34,15 @@
     $('ready-daily-date-label').textContent=dateText(data.date);
     if($('ready-daily-filters').hidden&&document.activeElement!==$('ready-daily-date'))$('ready-daily-date').value=data.date;
     $('ready-daily-date').max=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Dubai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(data.as_of));
-    for(const kind of ['ready','export']){
+    for(const kind of ['ready','export','received']){
       const count=data[kind+'_count'],button=panel.querySelector('[data-daily-kind="'+kind+'"]');
       button.querySelector('[data-daily-count]').textContent=count.toLocaleString('en-GB');button.disabled=false;
       button.querySelector('[data-daily-average]').textContent=data.average[kind+'_daily'].toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
       button.querySelector('[data-daily-day-label]').textContent=data.date===new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Dubai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(data.as_of))?'Today':'Selected day';
-      button.setAttribute('aria-label',`View ${count} ${kind==='ready'?'phones made ready':'exported phones'} on ${dateText(data.date)}`);
+      button.setAttribute('aria-label',`View ${count} ${kind==='ready'?'phones made ready':kind==='received'?'phones received':'exported phones'} on ${dateText(data.date)}`);
     }
     $('ready-daily-average-note').textContent='30-day average · Sundays excluded · '+data.average.days+' days · '+dateText(data.average.from)+' – '+dateText(data.average.to);
-    $('ready-daily-note').textContent='10:00 AM – 9:00 PM · UAE (UTC+4)';
+    $('ready-daily-note').textContent='Ready / Export: 10:00 AM – 9:00 PM · Stock Received: full day · UAE (UTC+4)';
     $('ready-daily-updated').textContent='Updated '+timeText(data.as_of);
     $('ready-daily-error').hidden=true;
   }
@@ -52,6 +57,13 @@
   function stop(){live=false;request++;summaryRequest++;clearTimeout(timer);clearInterval(pending);if(dialog.open)dialog.close();$('ready-daily-rows').replaceChildren();panel.hidden=true;}
   function close(){window.GREENLOOP_READY_GROUPS?.close();request++;selectedKind=null;if(dialog.open)dialog.close();$('ready-daily-rows').replaceChildren();updateSelection();}
   function rows(data){
+    if(selectedKind==='received'){
+      const labels=['S.No','Stock / Batch','Invoice','Supplier','Qty received','Time'];
+      $('ready-daily-head').innerHTML='<tr>'+labels.map(x=>'<th scope="col">'+esc(x)+'</th>').join('')+'</tr>';
+      $('ready-daily-rows').innerHTML=data.rows.length?data.rows.map((r,i)=>{const b=window.GREENLOOP_BATCH_LABEL?.(r.batch_number,{batch_number:r.batch_number,receipt_quantity:r.planned_quantity})||r.batch_number||'—',supplier=GREENLOOP_SUPPLIER_RECEIPT_LABEL(r.supplier_code,r.planned_quantity,r.supplier_name);return '<tr>'+[offset+i+1,b,r.invoice_number||'—',supplier,r.quantity.toLocaleString('en-GB'),timeText(r.received_at)].map((v,j)=>'<td data-label="'+esc(labels[j])+'">'+esc(v)+'</td>').join('')+'</tr>';}).join(''):'<tr><td colspan="6" class="rsd-empty">No company stock received on this date.</td></tr>';
+      return;
+    }
+
     const history=GREENLOOP_CAN?.('view','imei_search')&&GREENLOOP_CAN?.('search','imei_search'),fields=['S.No','IMEI','Model','GB','Grade','Color','Supplier code','Stock / Batch','Time'];if(selectedKind==='export')fields.push('Box');
     $('ready-daily-head').innerHTML='<tr>'+fields.map(label=>'<th scope="col">'+esc(label)+'</th>').join('')+'</tr>';
     $('ready-daily-rows').innerHTML=data.rows.length?data.rows.map((r,i)=>{
@@ -68,7 +80,7 @@
       const data=await read(kind,pageOffset,date);if(ticket!==request||!allowed()||!dialog.open||selectedKind!==kind||date!==reportedDate)return;
       total=data.total;
       if(offset&&offset>=total){offset=Math.max(0,Math.floor((total-1)/50)*50);return await loadPhones();}
-      rows(data);$('ready-daily-status').textContent=total+' phone'+(total===1?'':'s')+' · Each phone counted once for this day';
+      rows(data);$('ready-daily-status').textContent=kind==='received'?data.received_count+' phones received · '+total+' original stock receipts':total+' phone'+(total===1?'':'s')+' · Each phone counted once for this day';
       $('ready-daily-page').textContent=total?`${offset+1}–${Math.min(offset+data.rows.length,total)} of ${total}`:'0 phones';
       $('ready-daily-previous').disabled=offset===0;$('ready-daily-next').disabled=offset+data.rows.length>=total;
     }catch(e){if(ticket===request&&allowed()&&dialog.open){$('ready-daily-status').textContent=e.message||'Phone details could not load.';$('ready-daily-rows').replaceChildren();$('ready-daily-page').textContent='';}}
@@ -76,10 +88,10 @@
   }
   function open(kind){
     if(!allowed()||!reportedDate)return;
-    if(window.GREENLOOP_READY_GROUPS){GREENLOOP_READY_GROUPS.open({mode:kind,date:reportedDate,label:kind==='ready'?'Daily Ready Stock':'Daily Export',source:panel.querySelector('[data-daily-kind="'+kind+'"]')});return;}
+    if(kind!=='received'&&window.GREENLOOP_READY_GROUPS){GREENLOOP_READY_GROUPS.open({mode:kind,date:reportedDate,label:kind==='ready'?'Daily Ready Stock':'Daily Export',source:panel.querySelector('[data-daily-kind="'+kind+'"]')});return;}
     request++;selectedKind=kind;offset=0;
-    $('ready-daily-title').textContent=kind==='ready'?'Daily Ready Stock':'Daily Export';
-    $('ready-daily-period').textContent=dateText(reportedDate)+' · 10:00 AM – 9:00 PM · UAE';
+    $('ready-daily-title').textContent=kind==='ready'?'Daily Ready Stock':kind==='received'?'Daily Stock Received':'Daily Export';
+    $('ready-daily-period').textContent=dateText(reportedDate)+(kind==='received'?' · Full day · UAE':' · 10:00 AM – 9:00 PM · UAE');
     $('ready-daily-rows').replaceChildren();if(!dialog.open)dialog.showModal();updateSelection();void loadPhones();
   }
   panel.addEventListener('click',e=>{const button=e.target.closest('[data-daily-kind]');if(button&&!button.disabled)open(button.dataset.dailyKind);});

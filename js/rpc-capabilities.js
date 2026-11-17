@@ -62,3 +62,7 @@
 (function(root){const m=root.GREENLOOP_RPC_CAPABILITIES,rules={get_supplier_exchange_report_v1:{page:"supplier_returns",capability:"replacement_view",read:true},get_supplier_exchange_pairs_version:{read:true}};Object.assign(m.rpcs,rules);Object.assign(m,rules);const d=m.get_stock_return_replacement_details_v1;d.supplier_returns={page:"supplier_returns",capability:"replacement_view",read:true};m.rpcs.get_stock_return_replacement_details_v1=d;})(typeof window!=="undefined"?window:globalThis);
 
 (function(root){Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,{"get_battery_cell_final_bh_version":{"read":true},"get_shared_loading_performance_version":{"read":true}});})(typeof window!=="undefined"?window:globalThis);
+
+(function(root){const rules={get_scan_imei_identities_v1:{read:true},get_primary_imei_scans_version:{read:true}};Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,rules);Object.assign(root.GREENLOOP_RPC_CAPABILITIES,rules);})(typeof window!=='undefined'?window:globalThis);
+
+(function(root){const rules={"get_ready_stock_daily_metrics_v2":{"page":"ready_stock","capability":"view","read":true},"get_ready_stock_received_activity_v1":{"page":"ready_stock","capability":"view","read":true},"get_ready_stock_received_daily_version":{"read":true}};Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,rules);Object.assign(root.GREENLOOP_RPC_CAPABILITIES,rules);})(typeof window!=="undefined"?window:globalThis);

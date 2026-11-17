@@ -48,6 +48,13 @@
       const job={...parsed,issues:[...parsed.issues],loaded:0,settled:0,unloaded:0,cancel:false,live:true,rows:[],controls:new Map()};current=job;
       region.hidden=false;details.hidden=true;details.open=false;list.replaceChildren();stop.hidden=false;stop.disabled=false;
       const active=()=>current===job&&job.live&&!stopped&&permitted()&&tableBody.isConnected;
+      if(root.GREENLOOP_IMEI_CANONICAL&&parsed.entries.length){
+        lock(job);update(job);
+        try{const identities=await root.GREENLOOP_IMEI_CANONICAL.resolve(parsed.entries.map(e=>e.value),()=>active()&&!job.cancel);if(!active()||job.cancel){unlock(job);update(job,true);if(current===job)current=null;return;}
+          const aliases=new Map();parsed.entries=parsed.entries.filter(item=>{const match=identities.get(item.value);if(!match)throw Error('Phone identities changed. Paste again.');const raw=item.value,previous=aliases.get(match.imei);item.value=match.imei;if(previous&&previous!==raw)return false;aliases.set(match.imei,raw);return true;});
+        }catch(error){unlock(job);throw error;}
+        unlock(job);job.controls.clear();
+      }
       const occupied=new Set([...tableBody.querySelectorAll(selector)].map(e=>e.value.trim()).filter(Boolean));
       const accepted=[];
       for(const item of parsed.entries){const duplicate=occupied.has(item.value);if(duplicate)job.issues.push({...item,message:'Duplicate IMEI: already in this tray or this pasted list. This extra line cannot be saved.'});occupied.add(item.value);accepted.push({...item,duplicate});}
