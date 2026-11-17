@@ -130,3 +130,14 @@ html[data-theme="ruby-obsidian"] #ready-stock-view{--rsd-green:#efb0bd;--rsd-blu
 #ready-daily .rsd-received{border-top-color:#58947d;background:radial-gradient(ellipse at 100% 0,#c1e2d250,transparent 65%),var(--nm-card,#f6f9fb)}
 #ready-daily .rsd-stat-pair strong{font-size:clamp(1.8rem,2.5vw,3rem)}
 @media(max-width:1100px){#ready-daily .rsd-cards{grid-template-columns:1fr}#ready-daily .rsd-stat-pair strong{font-size:2.6rem}}
+
+/* Day/month activity figures are separate accessible controls within each report. */
+#ready-daily .rsd-card{cursor:default;padding:20px 18px 12px;gap:10px;min-height:310px}#ready-daily .rsd-card-title{font-size:1.15rem;margin:0 0 4px;padding:0 28px}
+#ready-daily .rsd-stat-pair{width:100%;display:grid;grid-template-columns:minmax(0,1fr) 22px minmax(0,1fr);gap:4px;align-items:stretch;margin:0}#ready-daily .rsd-slash{align-self:center;font-size:2rem;opacity:.55}
+#ready-daily .rsa-figure{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-width:0;min-height:103px;width:100%;padding:8px 3px;border:1px solid transparent;border-radius:12px;background:transparent;box-shadow:none;font:inherit;color:inherit;cursor:pointer}
+#ready-daily .rsa-figure:hover:not(:disabled),#ready-daily .rsa-figure:focus-visible{border-color:#a6d0bd;background:#c1e2d244;outline:2px solid transparent}#ready-daily .rsa-figure:disabled{cursor:default;opacity:1}
+#ready-daily .rsa-label{font-size:12px;line-height:1.4;min-height:34px;display:flex;align-items:center;justify-content:center}#ready-daily .rsa-figure strong{font-size:clamp(1.65rem,2.2vw,2.8rem);line-height:1.15;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.035em}
+#ready-daily .rsa-figure small{font-size:10px;line-height:1.35;min-height:27px;color:var(--nm-muted,#587080)}#ready-daily .rsa-averages{border-top:1px solid var(--nm-line,#ccdce3);padding-top:6px}#ready-daily .rsa-card-note{font-size:10px;color:var(--nm-muted,#587080)}
+@media(max-width:1100px){#ready-daily .rsd-card{min-height:290px}#ready-daily .rsa-figure strong{font-size:2rem}}
+
+#ready-daily .rsa-long strong{font-size:clamp(1.2rem,1.6vw,2.1rem)}@media(max-width:1100px){#ready-daily .rsa-long strong{font-size:1.45rem}}

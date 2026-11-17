@@ -1,6 +1,11 @@
 {
   "version": "20261105-stock-consistency-1",
   "rpcs": {
+    "get_stock_activity_reports_v1": {"page":"ready_stock","capability":"view","read":true},
+    "get_stock_activity_details_v1": {"page":"ready_stock","capability":"view","read":true},
+    "get_stock_activity_grouped_v1": {"page":"ready_stock","capability":"view","read":true},
+    "get_stock_activity_reports_version": {"read":true},
+
     "get_lab_damage_workbench_v1": {"page":"lab_glass","capability":"view","read":true},
     "get_parts_damage_order_v1": {"page":"parts","capability":"view","read":true},
     "order_lab_parts_damage_v1": {"page":"lab_glass","capability":"entry"},

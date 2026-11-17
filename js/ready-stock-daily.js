@@ -1,119 +1,52 @@
-/* Daily movement totals are independent of the current physical stock table. */
+/* Stock activity: reviewed day/month totals and transparent averaging periods. */
 (() => {
-  'use strict';
-  const panel=document.querySelector('#ready-daily'),dialog=document.querySelector('#ready-daily-dialog');if(!panel||!dialog)return;
-  const $=id=>document.getElementById(id),allowed=()=>live&&window.GREENLOOP_PAGE_ACCESS?.pageKey==='ready_stock'&&window.GREENLOOP_CAN?.('view','ready_stock');
-  let live=true,activeDate=null,reportedDate=null,selectedKind=null,offset=0,total=0,request=0,summaryRequest=0,timer=null,pending=null,initialized=false,userId=null;
-  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const dateText=value=>new Date(value+'T00:00:00Z').toLocaleDateString('en-GB',{timeZone:'UTC',day:'2-digit',month:'short',year:'numeric'});
-  const timeText=value=>new Date(value).toLocaleTimeString('en-GB',{timeZone:'Asia/Dubai',hour:'2-digit',minute:'2-digit',hour12:true});
-  const canSearch=()=>GREENLOOP_CAN?.('search','ready_stock')===true;
-  function validate(data,kind){
-    if(kind==='received'){
-      if(!data||!/^\d{4}-\d{2}-\d{2}$/.test(data.date)||data.timezone!=='Asia/Dubai'||data.kind!==kind||![data.received_count,data.total,data.offset].every(n=>Number.isSafeInteger(n)&&n>=0)||!Array.isArray(data.rows)||data.rows.length>50||data.rows.some(r=>!r.batch_id||!r.received_at||!Number.isSafeInteger(r.quantity)||r.quantity<0))throw Error('Received stock could not be verified. Refresh and try again.');
-      return data;
-    }
-
-    if(!data||!/^\d{4}-\d{2}-\d{2}$/.test(data.date)||data.timezone!=='Asia/Dubai'||![data.ready_count,data.export_count,data.total,data.offset].every(n=>Number.isSafeInteger(n)&&n>=0)||!Array.isArray(data.rows)||data.rows.length>50||data.kind!==kind||!kind&&(!Number.isSafeInteger(data.received_count)||data.received_count<0))throw Error('Daily activity could not be verified. Refresh and try again.');
-    if(data.rows.some(r=>!/^\d{15}$/.test(r.imei)||!r.occurred_at))throw Error('Phone details could not be verified. Refresh and try again.');
-    if(!kind){const a=data.average,shift=n=>{const d=new Date(data.date+'T00:00:00Z');d.setUTCDate(d.getUTCDate()-n);return d.toISOString().slice(0,10);};
-      if(!a||a.from!==shift(30)||a.to!==shift(1)||a.window_days!==30||a.exclude_sundays!==true||![25,26].includes(a.days)||![a.ready_total,a.export_total,a.received_total].every(n=>Number.isSafeInteger(n)&&n>=0)||![a.ready_daily,a.export_daily,a.received_daily].every(n=>Number.isFinite(n)&&n>=0)||Math.abs(a.ready_daily-Math.round(a.ready_total/a.days*100)/100)>.001||Math.abs(a.export_daily-Math.round(a.export_total/a.days*100)/100)>.001||Math.abs(a.received_daily-Math.round(a.received_total/a.days*100)/100)>.001)throw Error('Daily averages could not be verified. Refresh and try again.');
-    }
-    return data;
-  }
-  async function read(kind=null,pageOffset=0,date=activeDate){
-    if(!allowed())throw Error('Ready Stock view permission is required.');
-    const{data,error}=await GREENLOOP_GET_CLIENT().rpc(kind==='received'?'get_ready_stock_received_activity_v1':kind?'get_ready_stock_daily_activity_v1':'get_ready_stock_daily_metrics_v2',kind==='received'?{p_date:date,p_offset:pageOffset,p_limit:50}:kind?{p_date:date,p_kind:kind,p_offset:pageOffset,p_limit:50}:{p_date:date});
-    if(error)throw error;validate(data,kind);
-    if(date&&data.date!==date||data.offset!==pageOffset||data.limit!==50||kind&&kind!=='received'&&data.total!==data[kind+'_count']||data.rows.length!==(kind?Math.min(50,Math.max(0,data.total-pageOffset)):0))throw Error('Daily activity response changed. Refresh and try again.');
-    return data;
-  }
-  function cards(data){
-    if(reportedDate&&reportedDate!==data.date)close();
-    reportedDate=data.date;
-    $('ready-daily-date-label').textContent=dateText(data.date);
-    if($('ready-daily-filters').hidden&&document.activeElement!==$('ready-daily-date'))$('ready-daily-date').value=data.date;
-    $('ready-daily-date').max=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Dubai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(data.as_of));
-    for(const kind of ['ready','export','received']){
-      const count=data[kind+'_count'],button=panel.querySelector('[data-daily-kind="'+kind+'"]');
-      button.querySelector('[data-daily-count]').textContent=count.toLocaleString('en-GB');button.disabled=false;
-      button.querySelector('[data-daily-average]').textContent=data.average[kind+'_daily'].toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
-      button.querySelector('[data-daily-day-label]').textContent=data.date===new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Dubai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(data.as_of))?'Today':'Selected day';
-      button.setAttribute('aria-label',`View ${count} ${kind==='ready'?'phones made ready':kind==='received'?'phones received':'exported phones'} on ${dateText(data.date)}`);
-    }
-    $('ready-daily-average-note').textContent='30-day average · Sundays excluded · '+data.average.days+' days · '+dateText(data.average.from)+' – '+dateText(data.average.to);
-    $('ready-daily-note').textContent='Ready / Export: 10:00 AM – 9:00 PM · Stock Received: full day · UAE (UTC+4)';
-    $('ready-daily-updated').textContent='Updated '+timeText(data.as_of);
-    $('ready-daily-error').hidden=true;
-  }
-  async function refresh(){
-    if(!allowed()||document.hidden||$('ready-stock-view').hidden)return;
-    const version=++summaryRequest,date=activeDate;
-    try{const data=await read(null,0,date);if(version!==summaryRequest||!allowed()||date!==activeDate)return;cards(data);}
-    catch(e){if(version!==summaryRequest||!allowed())return;$('ready-daily-average-note').textContent='';panel.querySelectorAll('[data-daily-average]').forEach(el=>el.textContent='—');panel.querySelectorAll('[data-daily-count]').forEach(el=>el.textContent='—');panel.querySelectorAll('[data-daily-kind]').forEach(el=>el.disabled=true);$('ready-daily-error').textContent=e.message||'Daily activity is unavailable. Refresh to try again.';$('ready-daily-error').hidden=false;}
-  }
-  function schedule(){if(!initialized||!allowed())return;clearTimeout(timer);timer=setTimeout(()=>{void refresh();if(dialog.open)void loadPhones();},200);}
-  function updateSelection(){panel.querySelectorAll('[data-daily-kind]').forEach(el=>{const on=dialog.open&&el.dataset.dailyKind===selectedKind;el.classList.toggle('is-selected',on);el.setAttribute('aria-expanded',String(on));});}
-  function stop(){live=false;request++;summaryRequest++;clearTimeout(timer);clearInterval(pending);if(dialog.open)dialog.close();$('ready-daily-rows').replaceChildren();panel.hidden=true;}
-  function close(){window.GREENLOOP_READY_GROUPS?.close();request++;selectedKind=null;if(dialog.open)dialog.close();$('ready-daily-rows').replaceChildren();updateSelection();}
-  function rows(data){
-    if(selectedKind==='received'){
-      const labels=['S.No','Stock / Batch','Invoice','Supplier','Qty received','Time'];
-      $('ready-daily-head').innerHTML='<tr>'+labels.map(x=>'<th scope="col">'+esc(x)+'</th>').join('')+'</tr>';
-      $('ready-daily-rows').innerHTML=data.rows.length?data.rows.map((r,i)=>{const b=window.GREENLOOP_BATCH_LABEL?.(r.batch_number,{batch_number:r.batch_number,receipt_quantity:r.planned_quantity})||r.batch_number||'—',supplier=GREENLOOP_SUPPLIER_RECEIPT_LABEL(r.supplier_code,r.planned_quantity,r.supplier_name);return '<tr>'+[offset+i+1,b,r.invoice_number||'—',supplier,r.quantity.toLocaleString('en-GB'),timeText(r.received_at)].map((v,j)=>'<td data-label="'+esc(labels[j])+'">'+esc(v)+'</td>').join('')+'</tr>';}).join(''):'<tr><td colspan="6" class="rsd-empty">No company stock received on this date.</td></tr>';
-      return;
-    }
-
-    const history=GREENLOOP_CAN?.('view','imei_search')&&GREENLOOP_CAN?.('search','imei_search'),fields=['S.No','IMEI','Model','GB','Grade','Color','Supplier code','Stock / Batch','Time'];if(selectedKind==='export')fields.push('Box');
-    $('ready-daily-head').innerHTML='<tr>'+fields.map(label=>'<th scope="col">'+esc(label)+'</th>').join('')+'</tr>';
-    $('ready-daily-rows').innerHTML=data.rows.length?data.rows.map((r,i)=>{
-      const imei='<span data-gl-copy-identifier>'+esc(r.imei)+'</span>',supplier=GREENLOOP_SUPPLIER_RECEIPT_LABEL(r.supplier_code,r.planned_quantity,r.supplier_name),batch=window.GREENLOOP_BATCH_LABEL?.(r.batch_number,{batch_number:r.batch_number,receipt_quantity:r.planned_quantity})||r.batch_number||'—';
-      const values=[String(offset+i+1),history?'<a href="imei-search.html?q='+encodeURIComponent(r.imei)+'" title="Open phone history">'+imei+'</a>':imei,esc(r.model||'Not recorded'),esc(r.storage_gb==null?'—':GREENLOOP_STORAGE.label(r.storage_gb)),esc(r.grade||'Not recorded'),esc(r.color||'—'),esc(supplier),'<span data-gl-copy-identifier>'+esc(batch)+'</span>',esc(timeText(r.occurred_at))];if(selectedKind==='export')values.push(esc(r.box_number||'Recorded dispatch'));
-      return '<tr>'+values.map((v,j)=>'<td data-label="'+esc(fields[j])+'">'+v+'</td>').join('')+'</tr>';
-    }).join(''):'<tr><td colspan="'+fields.length+'" class="rsd-empty">No '+(selectedKind==='ready'?'Ready Stock arrivals':'confirmed exports')+' recorded during these hours.</td></tr>';
-  }
-  async function loadPhones(){
-    if(!allowed()||!dialog.open||!selectedKind)return;
-    const ticket=++request,kind=selectedKind,date=reportedDate,pageOffset=offset;
-    $('ready-daily-previous').disabled=$('ready-daily-next').disabled=true;dialog.setAttribute('aria-busy','true');$('ready-daily-status').textContent='Loading phones…';
-    try{
-      const data=await read(kind,pageOffset,date);if(ticket!==request||!allowed()||!dialog.open||selectedKind!==kind||date!==reportedDate)return;
-      total=data.total;
-      if(offset&&offset>=total){offset=Math.max(0,Math.floor((total-1)/50)*50);return await loadPhones();}
-      rows(data);$('ready-daily-status').textContent=kind==='received'?data.received_count+' phones received · '+total+' original stock receipts':total+' phone'+(total===1?'':'s')+' · Each phone counted once for this day';
-      $('ready-daily-page').textContent=total?`${offset+1}–${Math.min(offset+data.rows.length,total)} of ${total}`:'0 phones';
-      $('ready-daily-previous').disabled=offset===0;$('ready-daily-next').disabled=offset+data.rows.length>=total;
-    }catch(e){if(ticket===request&&allowed()&&dialog.open){$('ready-daily-status').textContent=e.message||'Phone details could not load.';$('ready-daily-rows').replaceChildren();$('ready-daily-page').textContent='';}}
-    finally{if(ticket===request)dialog.removeAttribute('aria-busy');}
-  }
-  function open(kind){
-    if(!allowed()||!reportedDate)return;
-    if(kind!=='received'&&window.GREENLOOP_READY_GROUPS){GREENLOOP_READY_GROUPS.open({mode:kind,date:reportedDate,label:kind==='ready'?'Daily Ready Stock':'Daily Export',source:panel.querySelector('[data-daily-kind="'+kind+'"]')});return;}
-    request++;selectedKind=kind;offset=0;
-    $('ready-daily-title').textContent=kind==='ready'?'Daily Ready Stock':kind==='received'?'Daily Stock Received':'Daily Export';
-    $('ready-daily-period').textContent=dateText(reportedDate)+(kind==='received'?' · Full day · UAE':' · 10:00 AM – 9:00 PM · UAE');
-    $('ready-daily-rows').replaceChildren();if(!dialog.open)dialog.showModal();updateSelection();void loadPhones();
-  }
-  panel.addEventListener('click',e=>{const button=e.target.closest('[data-daily-kind]');if(button&&!button.disabled)open(button.dataset.dailyKind);});
-  $('ready-daily-close').addEventListener('click',close);dialog.addEventListener('cancel',close);dialog.addEventListener('close',()=>{request++;selectedKind=null;updateSelection();});
-  $('ready-daily-previous').addEventListener('click',()=>{offset=Math.max(0,offset-50);void loadPhones();});
-  $('ready-daily-next').addEventListener('click',()=>{offset+=50;void loadPhones();});
-  $('ready-daily-reload').addEventListener('click',()=>void loadPhones());
-  $('ready-daily-refresh').addEventListener('click',()=>{void refresh();if(dialog.open)void loadPhones();});
-  $('ready-daily-filter-toggle').addEventListener('click',()=>{if(!canSearch())return;const filters=$('ready-daily-filters');filters.hidden=!filters.hidden;$('ready-daily-filter-toggle').setAttribute('aria-expanded',String(!filters.hidden));});
-  $('ready-daily-apply').addEventListener('click',()=>{
-    if(!canSearch())return;const value=$('ready-daily-date').value;if(!/^\d{4}-\d{2}-\d{2}$/.test(value))return;
-    close();activeDate=value;reportedDate=null;$('ready-daily-filters').hidden=true;$('ready-daily-filter-toggle').setAttribute('aria-expanded','false');void refresh();
-  });
-  $('ready-daily-today').addEventListener('click',()=>{if(!canSearch())return;close();activeDate=null;reportedDate=null;void refresh();});
-  document.addEventListener('visibilitychange',()=>{if(!document.hidden)schedule();});
-  for(const event of ['greenloop:ready-stock-refreshed','greenloop:workflow-committed','greenloop:supplier-return-changed'])window.addEventListener(event,schedule);
-  window.addEventListener('pagehide',stop);window.addEventListener('greenloop:office-locked',stop);
-  window.addEventListener('hashchange',()=>{close();schedule();});
-  (async()=>{
-    await window.GREENLOOP_ACCESS_READY;const client=GREENLOOP_GET_CLIENT(),{data,error}=await client.auth.getSession();if(error||!data.session||!allowed())return;userId=data.session.user.id;
-    client.auth.onAuthStateChange?.((event,session)=>{if(event==='SIGNED_OUT'||session?.user?.id&&session.user.id!==userId)stop();});
-    initialized=true;panel.hidden=false;GREENLOOP_LOCK_VIEW_ONLY_CONTROLS?.(panel);await refresh();
-    if(allowed())pending=setInterval(()=>{if(!document.hidden&&allowed()){void refresh();if(dialog.open)void loadPhones();}},30000);
-  })().catch(e=>{if(allowed()){$('ready-daily-error').textContent=e.message||'Daily activity is unavailable.';$('ready-daily-error').hidden=false;}});
+ 'use strict';
+ const panel=document.querySelector('#ready-daily'),dialog=document.querySelector('#ready-daily-dialog');if(!panel||!dialog)return;
+ const $=id=>document.getElementById(id),titles={ready:'Stock Production Report',export:'Stock Export Report',received:'Stock Received Report'},nouns={ready:'Production',export:'Export',received:'Received'};
+ const metrics=['today','month','daily_average','monthly_average'];let live=true,data=null,selection=null,offset=0,total=0,request=0,summaryRequest=0,activeDate=null,timer,poll;
+ const canSearch=()=>window.GREENLOOP_CAN?.('search','ready_stock')===true,allowed=()=>live&&GREENLOOP_PAGE_ACCESS?.pageKey==='ready_stock'&&GREENLOOP_CAN?.('view','ready_stock')===true;
+ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const fmt=(v,average=false)=>v==null?'—':v.toLocaleString('en-GB',average?{minimumFractionDigits:2,maximumFractionDigits:2}:{});
+ const date=v=>new Date(v+'T00:00:00Z').toLocaleDateString('en-GB',{timeZone:'UTC',day:'2-digit',month:'short',year:'numeric'}),month=v=>new Date(v+'T00:00:00Z').toLocaleDateString('en-GB',{timeZone:'UTC',month:'short',year:'numeric'});
+ const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Dubai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+ const whole=n=>Number.isSafeInteger(n)&&n>=0,validDate=v=>/^\d{4}-\d{2}-\d{2}$/.test(v||'');
+ function verify(d){if(!d||d.version!=='20261117-stock-activity-reports-1'||!validDate(d.date)||d.timezone!=='Asia/Dubai'||!Number.isFinite(Date.parse(d.as_of))||!/^[a-f0-9]{32}$/.test(d.snapshot)||!d.exclude_sundays||![25,26].includes(d.daily_days)||!['month_from','month_to','daily_from','daily_to'].every(k=>validDate(d[k])))throw Error('Stock activity periods could not be verified. Refresh the reports.');
+  for(const kind of Object.keys(titles)){const r=d.reports?.[kind];if(!r||![r.today,r.month,r.daily_total,r.monthly_total,r.monthly_months].every(whole)||r.monthly_months>3||!Number.isFinite(r.daily_average)||Math.abs(r.daily_average-Math.round(r.daily_total/d.daily_days*100)/100)>.001||r.monthly_months===0&&(r.monthly_average!==null||r.monthly_from!==null||r.monthly_to!==null)||r.monthly_months>0&&(!validDate(r.monthly_from)||!validDate(r.monthly_to)||!Number.isFinite(r.monthly_average)||Math.abs(r.monthly_average-Math.round(r.monthly_total/r.monthly_months*100)/100)>.001))throw Error('Stock activity figures could not be verified. Refresh the reports.');}
+  return d;
+ }
+ async function rpc(name,args){if(!allowed())throw Error('Ready Stock view permission is required.');const r=await GREENLOOP_GET_CLIENT().rpc(name,args);if(r.error)throw r.error;return r.data;}
+ function cards(d){$('ready-daily-date-label').textContent=date(d.date);$('ready-daily-date').max=today();if($('ready-daily-filters').hidden)$('ready-daily-date').value=d.date;
+  for(const card of panel.querySelectorAll('[data-daily-kind]')){const kind=card.dataset.dailyKind,r=d.reports[kind];for(const button of card.querySelectorAll('[data-activity-metric]')){const metric=button.dataset.activityMetric,average=metric.includes('average');const text=fmt(r[metric],average);button.querySelector('[data-activity-value]').textContent=text;button.classList.toggle('rsa-long',text.length>7);button.disabled=metric!=='today'&&!canSearch();button.querySelector('.rsa-label').textContent=(metric==='today'?(d.date===today()?'Today’s ':'Selected Day’s '):metric==='month'?'Monthly ':metric==='daily_average'?'Average Daily ':'Average Monthly ')+nouns[kind];button.querySelector('[data-activity-period]').textContent=metric==='today'?date(d.date):metric==='month'?date(d.month_from)+' – '+date(d.month_to):metric==='daily_average'?d.daily_days+' working days':r.monthly_months?r.monthly_months+' completed month'+(r.monthly_months===1?'':'s')+' · '+month(r.monthly_from)+' – '+month(r.monthly_to):'No completed recorded month';button.title=button.disabled?'Search permission is required to open this period.':'View '+button.querySelector('.rsa-label').textContent;}}
+  $('ready-daily-average-note').textContent='Daily average: '+date(d.daily_from)+' – '+date(d.daily_to)+' · Sundays excluded. Monthly average: up to 3 completed recorded months; current month excluded.';
+  $('ready-daily-note').textContent='Production / Export: 10 AM – 9 PM · Received: full day · UAE (UTC+4)';$('ready-daily-updated').textContent='Updated '+new Date(d.as_of).toLocaleTimeString('en-GB',{timeZone:'Asia/Dubai',hour:'2-digit',minute:'2-digit',hour12:true});$('ready-daily-error').hidden=true;
+ }
+ async function refresh(){if(!allowed()||document.hidden||$('ready-stock-view').hidden)return null;const t=++summaryRequest,anchor=activeDate;try{const d=verify(await rpc('get_stock_activity_reports_v1',{p_date:anchor}));if(t!==summaryRequest||!allowed()||anchor!==activeDate)return null;if(anchor&&d.date!==anchor)throw Error('The selected date changed. Refresh.');if(data&&d.date!==data.date){close();GREENLOOP_READY_GROUPS?.close();}data=d;cards(d);if(dialog.open&&selection&&selection.snapshot!==d.snapshot){request++;$('ready-daily-rows').replaceChildren();$('ready-daily-status').textContent='Activity changed. Refresh list to view the current figures.';$('ready-daily-previous').disabled=$('ready-daily-next').disabled=true;}return d;}catch(e){if(t===summaryRequest&&allowed()){$('ready-daily-error').hidden=false;$('ready-daily-error').textContent=e.message||'Stock activity is unavailable.';panel.querySelectorAll('[data-activity-metric]').forEach(b=>{b.disabled=true;b.querySelector('[data-activity-value]').textContent='—';});}return null;}}
+ function close(){request++;selection=null;offset=0;if(dialog.open)dialog.close();$('ready-daily-rows').replaceChildren();}
+ function stop(){live=false;request++;summaryRequest++;clearTimeout(timer);clearInterval(poll);data=null;close();panel.hidden=true;}
+ function periodLabel(scope){return scope?.from?date(scope.from)+(scope.to!==scope.from?' – '+date(scope.to):''):'No completed recorded month';}
+ function render(d){const view=d.scope.view;let headers,rows;
+  if(view==='days'||view==='months'){headers=['S.No',view==='days'?'Date':'Completed month','Quantity','Details'];rows=d.rows.map((r,i)=>[offset+i+1,view==='days'?date(r.from):month(r.from),fmt(r.quantity),'<button type="button" class="secondary-button" data-activity-period="'+r.from+'" data-activity-total="'+r.quantity+'" data-capability="search" data-capability-page="ready_stock">View '+(selection.kind==='received'?'stock':'phones')+' →</button>']);}
+  else if(view==='receipts'){headers=['S.No','Stock / Batch','Invoice','Supplier','Qty received','Received'];rows=d.rows.map((r,i)=>[offset+i+1,GREENLOOP_BATCH_LABEL?.(r.batch_number,{receipt_quantity:r.planned_quantity})||r.batch_number,r.invoice_number||'Not recorded',GREENLOOP_SUPPLIER_RECEIPT_LABEL(r.supplier_code,r.planned_quantity,r.supplier_name),fmt(r.quantity),new Date(r.received_at).toLocaleString('en-GB',{timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true})]);}
+  else{headers=['S.No','IMEI','Model','GB','Grade','Color','Supplier','Stock / Batch','Date'];rows=d.rows.map((r,i)=>[offset+i+1,r.imei,r.model,GREENLOOP_STORAGE.label(r.storage_gb),r.grade,r.color,GREENLOOP_SUPPLIER_RECEIPT_LABEL(r.supplier_code,r.planned_quantity,r.supplier_name),GREENLOOP_BATCH_LABEL?.(r.batch_number,{receipt_quantity:r.planned_quantity})||r.batch_number,new Date(r.occurred_at).toLocaleString('en-GB',{timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric'})]);}
+  $('ready-daily-head').innerHTML='<tr>'+headers.map(h=>'<th scope="col">'+esc(h)+'</th>').join('')+'</tr>';$('ready-daily-rows').innerHTML=rows.length?rows.map(row=>'<tr>'+row.map((v,i)=>'<td>'+(i===3&&(view==='days'||view==='months')?v:esc(v??'—'))+'</td>').join('')+'</tr>').join(''):'<tr><td colspan="'+headers.length+'" class="rsd-empty">'+(view==='months'?'No completed month of recorded history is available yet.':'No activity records in this period.')+'</td></tr>';
+  $('ready-daily-period').textContent=periodLabel(d.scope)+' · UAE';$('ready-daily-back').hidden=!selection.period;const average=selection.metric.includes('average')&&!selection.period;
+  $('ready-daily-status').textContent=average&&d.total===0?'Monthly average will be available after the first recorded calendar month completes.':average?fmt(d.quantity)+' total / '+d.total+(view==='days'?' working days':' completed months')+' = '+fmt(data.reports[selection.kind][selection.metric],true)+(view==='days'?' phones / day':' phones / month'):fmt(d.quantity)+' '+(selection.kind==='received'?'phones received · '+d.total+' original receipts':'activity entries');
+  $('ready-daily-page').textContent=d.total?(offset+1)+'–'+Math.min(offset+d.rows.length,d.total)+' of '+d.total:'0 records';total=d.total;$('ready-daily-previous').disabled=offset===0;$('ready-daily-next').disabled=offset+d.rows.length>=total;
+ }
+ async function load(){if(!selection||!dialog.open||!allowed())return;const s=selection,t=++request,page=offset;$('ready-daily-previous').disabled=$('ready-daily-next').disabled=true;$('ready-daily-status').textContent='Loading activity…';dialog.setAttribute('aria-busy','true');try{const d=await rpc('get_stock_activity_details_v1',{p_kind:s.kind,p_metric:s.metric,p_date:s.date,p_expected:s.snapshot,p_period_date:s.period,p_offset:page,p_limit:50});if(t!==request||s!==selection||!dialog.open||!allowed())return;if(d.version!=='20261117-stock-activity-reports-1'||d.date!==s.date||d.kind!==s.kind||d.metric!==s.metric||d.snapshot!==s.snapshot||d.period_date!==s.period||d.offset!==page||d.limit!==50||!whole(d.total)||!whole(d.quantity)||!Array.isArray(d.rows)||d.rows.length!==Math.min(50,Math.max(0,d.total-page))||!['days','months','receipts','phones'].includes(d.scope?.view))throw Error('Activity details could not be verified. Refresh the reports.');render(d);}catch(e){if(t===request&&allowed()&&dialog.open){$('ready-daily-rows').replaceChildren();$('ready-daily-status').textContent=e.message||'Activity details could not load.';}}finally{if(t===request)dialog.removeAttribute('aria-busy');}}
+ function show(kind,metric,period=null,quantity=null){if(!data||!allowed()||metric!=='today'&&!canSearch())return;
+  if(kind!=='received'&&(metric==='today'||metric==='month'||period)&&window.GREENLOOP_READY_GROUPS){const activity=metric==='today'?null:{kind,metric,date:data.date,expected:data.snapshot,period,total:quantity??data.reports[kind].month};GREENLOOP_READY_GROUPS.open({mode:kind,date:data.date,label:titles[kind]+' · '+(period?date(period):metric==='month'?'Monthly':"Today’s"),activity,source:panel.querySelector('[data-daily-kind="'+kind+'"] [data-activity-metric="'+metric+'"]')});return;}
+  request++;selection={kind,metric,period,date:data.date,snapshot:data.snapshot};offset=0;$('ready-daily-title').textContent=titles[kind]+' · '+(metric==='today'?"Today’s ":metric==='month'?'Monthly ':metric==='daily_average'?'Average Daily ':'Average Monthly ')+nouns[kind];$('ready-daily-rows').replaceChildren();if(!dialog.open)dialog.showModal();void load();
+ }
+ panel.addEventListener('click',e=>{const b=e.target.closest('[data-activity-metric]');if(b&&!b.disabled)show(b.closest('[data-daily-kind]').dataset.dailyKind,b.dataset.activityMetric);});
+ $('ready-daily-rows').onclick=e=>{const b=e.target.closest('[data-activity-period]');if(b&&selection&&canSearch())show(selection.kind,selection.metric,b.dataset.activityPeriod,Number(b.dataset.activityTotal));};
+ $('ready-daily-back').onclick=()=>{if(selection){selection={...selection,period:null};offset=0;void load();}};$('ready-daily-close').onclick=close;dialog.addEventListener('cancel',close);dialog.addEventListener('close',()=>{request++;selection=null;});
+ $('ready-daily-previous').onclick=()=>{offset=Math.max(0,offset-50);void load();};$('ready-daily-next').onclick=()=>{offset+=50;void load();};$('ready-daily-reload').onclick=async()=>{const d=await refresh();if(d&&selection){selection={...selection,snapshot:d.snapshot};offset=0;void load();}};
+ $('ready-daily-refresh').onclick=async()=>{const d=await refresh();if(d&&selection){selection={...selection,snapshot:d.snapshot};offset=0;void load();}};
+ $('ready-daily-filter-toggle').onclick=()=>{if(!canSearch())return;const el=$('ready-daily-filters');el.hidden=!el.hidden;$('ready-daily-filter-toggle').setAttribute('aria-expanded',String(!el.hidden));};
+ $('ready-daily-apply').onclick=()=>{if(!canSearch()||!validDate($('ready-daily-date').value))return;close();GREENLOOP_READY_GROUPS?.close();activeDate=$('ready-daily-date').value;data=null;$('ready-daily-filters').hidden=true;void refresh();};$('ready-daily-today').onclick=()=>{if(!canSearch())return;close();GREENLOOP_READY_GROUPS?.close();activeDate=null;void refresh();};
+ const schedule=()=>{clearTimeout(timer);timer=setTimeout(()=>void refresh(),200);};for(const name of ['greenloop:ready-stock-refreshed','greenloop:workflow-committed','greenloop:supplier-return-changed'])window.addEventListener(name,schedule);document.addEventListener('visibilitychange',()=>{if(!document.hidden)schedule();});
+ for(const name of ['pagehide','greenloop:office-locked','greenloop:signed-out','greenloop:permissions-changed'])window.addEventListener(name,stop);window.addEventListener('hashchange',()=>{close();schedule();});
+ window.GREENLOOP_STOCK_ACTIVITY={async request(activity,args={}){const response=await GREENLOOP_GET_CLIENT().rpc('get_stock_activity_grouped_v1',{p_kind:activity.kind,p_metric:activity.metric,p_date:activity.date,p_expected:activity.expected,p_period_date:activity.period,...args});if(!response.error&&response.data?.activity_snapshot!==activity.expected)return{data:null,error:{message:'Activity scope could not be verified. Refresh the reports.'}};return response;},async refreshScope(activity){const d=await refresh();if(!d)throw Error('Refresh stock activity reports first.');const det=await rpc('get_stock_activity_details_v1',{p_kind:activity.kind,p_metric:activity.metric,p_date:activity.date,p_expected:d.snapshot,p_period_date:activity.period,p_offset:0,p_limit:50});activity.expected=d.snapshot;activity.total=det.quantity;},period(activity){return activity.period?date(activity.period)+(activity.metric==='monthly_average'?' · Completed month':''):date(activity.date.slice(0,8)+'01')+' – '+date(activity.date);}};
+ (async()=>{await GREENLOOP_ACCESS_READY;if(!allowed())return;panel.hidden=false;await refresh();poll=setInterval(()=>{if(!document.hidden)void refresh();},30000);})().catch(e=>{if(allowed()){$('ready-daily-error').hidden=false;$('ready-daily-error').textContent=e.message;}});
 })();
