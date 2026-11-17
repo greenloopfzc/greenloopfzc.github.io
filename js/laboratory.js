@@ -228,7 +228,10 @@
     return initialServiceNames(row, true);
   }
   function readOnlyList(values) { const list = unique(values); return list.length ? `<div class="line-list">${list.map((value) => `<span>${escapeHtml(value)}</span>`).join("")}</div>` : '<span class="line-empty">None</span>'; }
-  function choiceTag(kind,value,quantity=1){return kind==='part'?`<span class="pf-lab-part-tag"><button type="button" data-remove-choice="part" data-value="${escapeHtml(value)}" title="Remove">${escapeHtml(value)}</button><input data-part-quantity data-name="${escapeHtml(value)}" type="number" min="1" max="10000" step="1" value="${escapeHtml(quantity)}" aria-label="Quantity for ${escapeHtml(value)}"></span>`:`<button type="button" data-remove-choice="service" data-value="${escapeHtml(value)}" title="Remove">${escapeHtml(value)}</button>`;}
+  function choiceTag(kind,value,quantity=1,damaged=false,reason=''){return kind==='part'?`<span class="pf-lab-part-tag"><button type="button" data-remove-choice="part" data-value="${escapeHtml(value)}" title="Remove">${escapeHtml(value)}</button><input data-part-quantity data-name="${escapeHtml(value)}" type="number" min="1" max="10000" step="1" value="${escapeHtml(quantity)}" aria-label="Quantity for ${escapeHtml(value)}"><label class="pd-check"><input type="checkbox" data-part-damaged data-name="${escapeHtml(value)}" ${damaged?'checked':''}> Damaged</label><input class="pd-reason" data-part-damage-reason data-name="${escapeHtml(value)}" value="${escapeHtml(reason)}" maxlength="1000" placeholder="Reason (optional)" aria-label="Damage reason for ${escapeHtml(value)}" ${damaged?'':'hidden'}></span>`:`<button type="button" data-remove-choice="service" data-value="${escapeHtml(value)}" title="Remove">${escapeHtml(value)}</button>`;}
+  function damageBadge(part){return part.damaged?`<span class="pd-badge" title="${escapeHtml([part.damage_by,part.damage_at?new Date(part.damage_at).toLocaleString('en-GB',{timeZone:'Asia/Dubai'}):'',part.damage_source==='parts'?'Parts':'Lab & Glass',part.damage_reason].filter(Boolean).join(' · '))}">Damaged</span>`:'';}
+  function draftChoice(kind,value,data){const d=lineDrafts.get(String(data.step_id)),saved=!additionalMode(data)?data.pf_plan?.parts?.find(p=>normalise(p.name)===normalise(value)):null;return choiceTag(kind,value,d?.quantities?.[value]??saved?.quantity??1,d?.damaged?.[value]??saved?.damaged??false,d?.damageReasons?.[value]??saved?.damage_reason??'');}
+
   function additionalMode(row) { const p=row?.pf_plan; return !!(p?.additional_only||p?.submitted||p?.locked); }
   function canOrderPart(row,name) {
     if(!additionalMode(row))return true;const p=row.pf_plan,k=normalise(name);
@@ -237,7 +240,7 @@
     return !issued||(p.reorder_available||[]).some(x=>normalise(x.name)===k&&Number(x.quantity)>0);
   }
   function choiceCell(kind, options, selected, data={}) {
-    return `<div class="lab-choice" data-choice="${kind}"><div class="lab-choice-row"><select>${optionsMarkup(rankChoices(kind,kind==='part'?options.filter(name=>canOrderPart(data,name)):options),kind==='part'?'Select part':'Select service')}</select><button type="button" data-add-choice="${kind}" title="Add">+</button></div><div class="lab-choice-tags">${unique(selected).map(value=>choiceTag(kind,value,lineDrafts.get(String(data.step_id))?.quantities?.[value]??data.pf_plan?.parts?.find(p=>normalise(p.name)===normalise(value))?.quantity??1)).join('')}</div></div>`;
+    return `<div class="lab-choice" data-choice="${kind}"><div class="lab-choice-row"><select>${optionsMarkup(rankChoices(kind,kind==='part'?options.filter(name=>canOrderPart(data,name)):options),kind==='part'?'Select part':'Select service')}</select><button type="button" data-add-choice="${kind}" title="Add">+</button></div><div class="lab-choice-tags">${unique(selected).map(value=>draftChoice(kind,value,data)).join('')}</div></div>`;
   }
   function selectedChoices(row, kind) {
     const tags = [...row.querySelectorAll(`[data-choice="${kind}"] [data-remove-choice]`)].map((button) => button.dataset.value);
@@ -248,10 +251,10 @@
     if (!row?.dataset.stepId) return;
     const id=String(row.dataset.stepId),old=lineDrafts.get(id)||{};
     lineDrafts.set(id, {...old,cycle:rowData(row)?.pf_plan?.cycle,modeLocked:additionalMode(rowData(row)),
-      ...(kind==='part'?{parts:selectedChoices(row,'part'),quantities:Object.fromEntries([...row.querySelectorAll('[data-part-quantity]')].map(e=>[e.dataset.name,e.value])),partsDirty:true}:{}),
+      ...(kind==='part'?{parts:selectedChoices(row,'part'),quantities:Object.fromEntries([...row.querySelectorAll('[data-part-quantity]')].map(e=>[e.dataset.name,e.value])),damaged:Object.fromEntries([...row.querySelectorAll('[data-part-damaged]')].map(e=>[e.dataset.name,e.checked])),damageReasons:Object.fromEntries([...row.querySelectorAll('[data-part-damage-reason]')].map(e=>[e.dataset.name,e.value])),partsDirty:true}:{}),
       ...(kind==='service'?{services:selectedChoices(row,'service'),servicesDirty:true}:{})});
   }
-  function clearDraftKind(id,kind){const d=lineDrafts.get(String(id));if(!d)return;delete d[kind+'Dirty'];delete d[kind==='parts'?'parts':'services'];if(kind==='parts')delete d.quantities;if(!d.partsDirty&&!d.servicesDirty)lineDrafts.delete(String(id));}
+  function clearDraftKind(id,kind){const d=lineDrafts.get(String(id));if(!d)return;delete d[kind+'Dirty'];delete d[kind==='parts'?'parts':'services'];if(kind==='parts'){delete d.quantities;delete d.damaged;delete d.damageReasons;delete d.damageAction;}if(!d.partsDirty&&!d.servicesDirty)lineDrafts.delete(String(id));}
   function labelledStatic(label, value, className = "") {
     return `<div class="lab-static-field ${className}"><span class="lab-field-label">${escapeHtml(label)}</span><div class="lab-static-value">${value}</div></div>`;
   }
@@ -271,7 +274,7 @@
     const send=st.hasParts||st.submitted||d.partsDirty;
     return `${additionalMode(row)?`<button type="button" class="line-save order-parts" data-order-parts="${escapeHtml(row.step_id)}" ${d.partsDirty&&d.parts?.length?'':'disabled'}>Order Additional Parts</button>`:send?`<button type="button" class="line-save order-parts" data-order-parts="${escapeHtml(row.step_id)}">${st.submitted?'Update Parts list':'Send to Parts'}</button>`:''}<button type="button" class="line-save job-completed" data-complete-lab="${escapeHtml(row.step_id)}" ${ready?'':'disabled'}>Job Completed</button><small class="line-status" data-line-status>${d.partsDirty||d.servicesDirty?'Save the changed list before completing the job':st.pendingReturns.length?'Waiting for Parts return review':!servicesReady?'Save the Lab services list':ready?'Ready to send to Final QC':!st.submitted?'Send the parts list to Parts':'Waiting for required parts'}</small>`;
   }
-  function activePartList(row){const parts=row.pf_plan?.parts||[];return parts.length?'<ul class="pp-active-parts">'+parts.map(p=>`<li><span>${escapeHtml(p.name)} × ${escapeHtml(p.quantity)} <small>${Number(p.issued)>=Number(p.quantity)?'Issued':'Awaiting issue'}</small></span>${p.can_cancel?`<button type="button" data-cancel-part="${escapeHtml(p.request_id)}" aria-label="Remove unissued ${escapeHtml(p.name)}">Remove</button>`:''}</li>`).join('')+'</ul>':'<small>No active parts.</small>';}
+  function activePartList(row){const parts=row.pf_plan?.parts||[];return parts.length?'<ul class="pp-active-parts">'+parts.map(p=>`<li><span>${escapeHtml(p.name)} × ${escapeHtml(p.quantity)} ${damageBadge(p)} <small>${Number(p.issued)>=Number(p.quantity)?'Issued':'Awaiting issue'}</small></span>${p.can_cancel?`<button type="button" data-cancel-part="${escapeHtml(p.request_id)}" aria-label="Remove unissued ${escapeHtml(p.name)}">Remove</button>`:''}</li>`).join('')+'</ul>':'<small>No active parts.</small>';}
   function returnableParts(row) {
     return activeLabPartRequests(row).filter((item) => Number(item.issued || 0) - Number(item.installed || 0) - Number(item.returned || 0) > 0);
   }
@@ -457,7 +460,7 @@
   async function readWorkbench(args) {
     const key=JSON.stringify(args);
     if(!workbenchReads.has(key)){
-      const request=labRead(getClient().rpc('get_lab_return_workbench_v1',args)).then(({data,error})=>{if(error)throw error;if(!data||!Array.isArray(data.rows)||!data.rows.every(row=>typeof row.returned_from_final_qc==='boolean')||!Number.isFinite(Date.parse(data.server_now))||!Array.isArray(data.work_options?.parts)||!Array.isArray(data.work_options?.services)||![...data.work_options.parts,...data.work_options.services].every(o=>typeof o.name==='string'&&o.name.trim()))throw new Error('Phone lines could not be verified.');return data;}).finally(()=>workbenchReads.delete(key));
+      const request=labRead(getClient().rpc('get_lab_damage_workbench_v1',args)).then(({data,error})=>{if(error)throw error;if(!data||data.damage_version!=='20261117-parts-request-damage-1'||!Array.isArray(data.rows)||!data.rows.every(row=>typeof row.returned_from_final_qc==='boolean')||!Number.isFinite(Date.parse(data.server_now))||!Array.isArray(data.work_options?.parts)||!Array.isArray(data.work_options?.services)||![...data.work_options.parts,...data.work_options.services].every(o=>typeof o.name==='string'&&o.name.trim()))throw new Error('Phone lines could not be verified.');return data;}).finally(()=>workbenchReads.delete(key));
       workbenchReads.set(key,request);
     }
     return workbenchReads.get(key);
@@ -617,8 +620,9 @@
   }
   async function orderParts(button) {
     if(!editable())return;const row=button.closest('tr'),data=rowData(row),p=data?.pf_plan;if(!p)return;
-    const parts=selectedChoices(row,'part').map(name=>({name,quantity:Number([...row.querySelectorAll('[data-part-quantity]')].find(e=>normalise(e.dataset.name)===normalise(name))?.value||1)}));
-    const {error}=await getClient().rpc(additionalMode(data)?'add_lab_parts_v1':'submit_lab_parts_plan_v2',{p_step_id:row.dataset.stepId,p_revision:p.revision,p_parts:parts});
+    const parts=selectedChoices(row,'part').map(name=>({name,quantity:Number([...row.querySelectorAll('[data-part-quantity]')].find(e=>normalise(e.dataset.name)===normalise(name))?.value||1),damaged:[...row.querySelectorAll('[data-part-damaged]')].find(e=>normalise(e.dataset.name)===normalise(name))?.checked===true,damage_reason:[...row.querySelectorAll('[data-part-damage-reason]')].find(e=>normalise(e.dataset.name)===normalise(name))?.value.trim()||null}));
+    const draft=lineDrafts.get(String(data.step_id))||{},key=JSON.stringify([p.revision,parts,additionalMode(data)]);if(draft.damageAction?.key!==key)draft.damageAction={key,id:crypto.randomUUID()};lineDrafts.set(String(data.step_id),draft);
+    const {error}=await getClient().rpc('order_lab_parts_damage_v1',{p_step_id:row.dataset.stepId,p_revision:p.revision,p_parts:parts,p_additional:additionalMode(data),p_action_id:draft.damageAction.id});
     if(error){setBoardMessage(error.message);return;}row.dataset.saved='yes';clearDraftKind(row.dataset.stepId,'parts');showToast(additionalMode(data)?'Additional parts ordered.':'Parts list sent to Parts.');document.dispatchEvent(new Event('greenloop:notifications-changed'));await refreshAll();
   }
   async function saveServices(button){const row=button.closest('tr'),p=rowData(row)?.pf_plan;if(!p)return;const {error}=await getClient().rpc('save_lab_services_v1',{p_step_id:row.dataset.stepId,p_services_revision:p.services_revision??0,p_services:selectedChoices(row,'service')});if(error){setBoardMessage(error.message);return;}row.dataset.saved='yes';clearDraftKind(row.dataset.stepId,'services');showToast('Services saved in Lab & Glass.');await refreshAll();}
@@ -854,9 +858,11 @@
     const completeLabButton = event.target.closest("[data-complete-lab]"); if (completeLabButton) runLineAction(completeLabButton, completeLab).catch((error) => setBoardMessage(error.message));
     const completeFrameButton = event.target.closest("[data-complete-frame]"); if (completeFrameButton) runLineAction(completeFrameButton, completeFrame).catch((error) => setBoardMessage(error.message));
   });
+  technicianWorkRows.addEventListener('input',event=>{if(editable()&&event.target.matches('[data-part-damage-reason]')){rememberLineDraft(event.target.closest('tr'),'part');markLineChanged(event.target.closest('tr'),'part');}});
   technicianWorkRows.addEventListener("change", (event) => {
     if (!editable()) return;
     if(event.target.matches('[data-pf-return-issue]')){const row=event.target.closest('tr'),available=Number(event.target.selectedOptions[0]?.dataset.available||1),qty=row.querySelector('[data-pf-return-qty]');qty.max=available;qty.value='1';row.querySelector('[data-pf-return-qty-wrap]').hidden=available<=1;return;}
+    if(event.target.matches('[data-part-damaged]')){const tag=event.target.closest('.pf-lab-part-tag');tag.querySelector('[data-part-damage-reason]').hidden=!event.target.checked;rememberLineDraft(event.target.closest('tr'),'part');markLineChanged(event.target.closest('tr'),'part');return;}
     if(event.target.matches("[data-part-quantity]")){rememberLineDraft(event.target.closest("tr"),"part");markLineChanged(event.target.closest("tr"),"part");return;}
     const choiceSelect = event.target.closest('[data-choice] select');
     if (choiceSelect) {

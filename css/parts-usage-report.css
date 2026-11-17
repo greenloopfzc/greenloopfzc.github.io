@@ -3,3 +3,5 @@
 .pug-report{padding:0 18px 18px}.pug-scroll button{padding:7px 10px!important;min-height:32px!important;font-size:11px}.pug-scroll td{padding:10px}.pug-report .pug-heading>div{min-width:0;flex:1}@media(max-width:520px){.pug-report{padding:0 10px 14px}}
 
 @media(max-width:520px){.pug-search{grid-column:1/-1}.pug-filter-actions{display:grid;grid-template-columns:1fr 1fr}.pug-filter-actions button{width:100%!important}}
+
+.pug-summary{grid-template-columns:repeat(5,minmax(0,1fr))}@media(max-width:850px){.pug-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}

@@ -31,3 +31,15 @@ html[data-mode="dark"] .pf-app [data-pf-tone="complete"],html[data-mode="dark"] 
 .pf-order-tabs button:focus-visible{outline:2px solid var(--nm-green,#087651);outline-offset:3px}
 .pf-order-note{font-size:12px;color:var(--nm-muted,#546b77);margin:0 0 16px}
 @media(max-width:600px){.pf-order-tabs{gap:8px}.pf-order-tabs button{flex:1;padding:9px;gap:7px;font-size:12px}}
+
+/* Damage belongs to the individual part request, separately from quantity. */
+.pd-check{display:inline-flex!important;align-items:center;gap:5px;font-size:12px;font-weight:700;white-space:nowrap;color:var(--nm-ink,#24343b)}
+.pd-check input[type=checkbox]{width:16px!important;height:16px!important;min-height:16px!important;flex:none;accent-color:#aa3a3a;box-shadow:none!important;padding:0!important;cursor:pointer}
+.pd-reason{width:180px!important;max-width:100%;min-height:32px!important;font-size:12px!important}.pd-reason[hidden],.pd-actions[hidden]{display:none!important}
+.pd-badge{display:inline-block;padding:3px 8px;border:1px solid #edc5c5;border-radius:8px;background:#f8e1e1;color:#943636;font-size:11px;font-weight:700;white-space:nowrap}
+.pd-editor{display:flex;flex-direction:column;align-items:flex-start;gap:6px;margin-top:7px}.pd-meta{display:block;font-size:11px;line-height:1.5;color:var(--nm-muted,#546b77);max-width:260px;white-space:normal}.pd-actions{display:flex;gap:5px}.pd-actions button{min-height:30px!important;font-size:11px!important;padding:5px 9px!important}
+.pf-lab-part-tag{flex-wrap:wrap;align-items:center;gap:7px}.pf-lab-part-tag .pd-check{margin:0}.pf-lab-part-tag .pd-reason{flex-basis:180px}
+
+.pd-check:has(input:checked){background:#f8e1e1;border:1px solid #edc5c5;color:#943636;padding:3px 6px;border-radius:7px}
+
+.pf-lab-part-tag [data-part-quantity]{width:74px!important;max-width:74px!important;min-width:0!important;flex:0 0 74px}.pf-lab-part-tag{width:auto!important;max-width:100%}
