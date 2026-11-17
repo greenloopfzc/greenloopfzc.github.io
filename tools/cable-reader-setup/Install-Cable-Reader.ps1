@@ -2,7 +2,7 @@
 [CmdletBinding()]
 param([switch]$CheckOnly)
 $ErrorActionPreference='Stop'
-$version='20261112-stable-cable-setup-1'
+$version='20261117-reader-autostart-1'
 $readerRoot=Join-Path ([Environment]::GetFolderPath('UserProfile')) 'AppData\Local\Greenloop\ReadOnlyDeviceReader'
 $readerScript=Join-Path $readerRoot 'Greenloop-Device-Reader.ps1'
 $launcherScript=Join-Path $readerRoot 'Start-Greenloop.ps1'
@@ -11,6 +11,7 @@ $powershell=Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.ex
 . (Join-Path $PSScriptRoot 'Setup-Utilities.ps1')
 . (Join-Path $PSScriptRoot 'Update-Reader-Source.ps1')
 . (Join-Path $PSScriptRoot 'Reader-Startup.ps1')
+. (Join-Path $PSScriptRoot 'Reader-Autostart.ps1')
 . (Join-Path $PSScriptRoot 'reader-fast-bh/Update-Reader.ps1')
 . (Join-Path $PSScriptRoot 'reader-health-fix/Update-Reader.ps1')
 $utf8=New-Object Text.UTF8Encoding($false)
@@ -58,6 +59,7 @@ try{
  $shortcutShell=New-Object -ComObject WScript.Shell
  Assert-Shortcut $startupShortcut -Startup
  Assert-Shortcut $desktopShortcut
+ [void](Get-GreenloopAutostartTask $readerRoot $powershell)
  if($CheckOnly){Write-Output 'SETUP CHECK PASSED. Payload, existing reader compatibility and shortcut ownership verified. No installation, network downloads or phone commands.';return}
  $lock=New-Object Threading.Mutex($false,('Local\Greenloop.CableSetup.'+[Security.Principal.WindowsIdentity]::GetCurrent().User.Value))
  $owns=$false
@@ -103,6 +105,7 @@ try{
   }
   Save-Shortcut $startupShortcut
   Save-Shortcut $desktopShortcut -OpenWebsite
+  [void](Install-GreenloopAutostart $readerRoot $powershell $backupRoot)
  }catch{
   foreach($path in $backups.Keys){if($backups[$path]){[IO.File]::WriteAllBytes($path,[IO.File]::ReadAllBytes($backups[$path]))}elseif(Test-Path -LiteralPath $path -PathType Leaf){Remove-Item -LiteralPath $path}}
   if($present.Count -eq 3){Start-Process -FilePath $powershell -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-File',('"'+$launcherScript+'"')) -WindowStyle Hidden}
@@ -115,7 +118,7 @@ try{
  if(-not $health -or -not $health.ok -or $health.service -cne 'Greenloop Read-Only Device Reader' -or $health.mode -cne 'read-only' -or $health.dualImeiVersion -cne '20261023-dual-imei-1' -or -not $health.androidToolsReady -or $health.readerBatteryHealthVersion -cne '20261112-bh-capacity-1'){throw 'Reader running version could not be verified. Setup is incomplete.'}
  $hint=Get-AppleDriverHint
  @{version=$version;readerVerified=$true;phoneVerified=$false;readerPort=$selectedPort;installedAt=[datetime]::UtcNow.ToString('o');backup=$backupRoot;appleDriverHint=$hint} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $readerRoot 'cable-setup.json') -Encoding UTF8
- Write-Output 'READER RUNNING - VERIFIED. Phone USB communication still needs a connected phone test.'
+ Write-Output 'READER RUNNING AND AUTO-START CONFIGURED. Phone USB communication still needs a connected phone test.'
  Write-Output $hint
  Write-Output 'Android: enable USB debugging, reconnect and Allow. If not detected, use the official driver link for the phone brand.'
 }catch{Write-Output ('SETUP INCOMPLETE: '+$_.Exception.Message);exit 1}

@@ -1480,7 +1480,9 @@
     },
     "get_ready_stock_color_groups_version": {
       "read": true
-    }
+    },
+    "get_battery_cell_final_bh_version": {"read": true},
+    "get_shared_loading_performance_version": {"read": true}
   },
   "get_box_status_v1": {
     "page": "export_boxes",

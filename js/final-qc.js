@@ -392,7 +392,7 @@
     const batteryDefault = step.batteryDefault;
     if (!batteryDefault) throw new Error("Refresh the Final QC queue to verify Battery Health.");
     row.querySelector("[data-final-battery]").value = batteryDefault.final_battery_health === null ? "" : String(batteryDefault.final_battery_health);
-    row.querySelector("[data-final-battery]").title = batteryDefault.diagnostic_battery_installed ? "Diagnostic Battery issued — automatic 100%" : "Final Battery Health";
+    row.querySelector("[data-final-battery]").title = (batteryDefault.battery_replacement_issued||batteryDefault.diagnostic_battery_installed) ? `${(batteryDefault.battery_issue_parts||["Diagnostic Battery"]).join(" + ")} issued — automatic 100%` : "Final Battery Health";
     row.querySelector("[data-battery-unavailable]").checked = device.device_platform === "android" && batteryDefault.battery_health_unavailable;
     syncBatteryAvailability(row);
     row.querySelector('[data-auto="supplier"]').textContent = supplierLabel(supplier, job.receiving_batch);
@@ -411,6 +411,7 @@
     const defaults=new Map();
       for (const value of values) {
         if (!ids.includes(value.step_id) || defaults.has(value.step_id) || typeof value.diagnostic_battery_installed !== "boolean" || typeof value.battery_health_unavailable !== "boolean" || !(value.final_battery_health === null || Number.isInteger(value.final_battery_health) && value.final_battery_health >= 0 && value.final_battery_health <= 100) || value.diagnostic_battery_installed && (value.final_battery_health !== 100 || value.battery_health_unavailable)) throw new Error("Final Battery Health defaults could not be verified. Refresh and try again.");
+        if(value.battery_replacement_issued!==undefined&&(typeof value.battery_replacement_issued!=='boolean'||value.battery_replacement_issued!==value.diagnostic_battery_installed||!Array.isArray(value.battery_issue_parts)||value.battery_issue_parts.some(name=>!['Diagnostic Battery','Battery Cell'].includes(name))||new Set(value.battery_issue_parts).size!==value.battery_issue_parts.length||Boolean(value.battery_issue_parts.length)!==value.battery_replacement_issued))throw new Error('Battery replacement evidence could not be verified. Refresh and try again.');
         defaults.set(value.step_id, value);
       }
       if (!ids.every(id => defaults.has(id))) throw new Error("The Final QC queue changed. Refresh and try again.");

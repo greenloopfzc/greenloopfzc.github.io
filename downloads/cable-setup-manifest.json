@@ -75,5 +75,11 @@
     }
   ],
   "startupFixVersion": "20261110-cable-startup-1",
-  "readerSpeedBhVersion": "20261111-fast-bh-1"
+  "readerSpeedBhVersion": "20261111-fast-bh-1",
+  "portableSetup": {
+    "version": "20261117-reader-autostart-1",
+    "path": "Greenloop-Cable-Reader-Setup.zip",
+    "sha256": "37219c7f485932c0243ce6f705bec8cd41923809358658f57d25bb856d30c232",
+    "bytes": 2988453
+  }
 }

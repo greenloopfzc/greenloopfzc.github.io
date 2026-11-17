@@ -136,6 +136,14 @@ window.GREENLOOP_CONFIG = Object.freeze({
           return invoke(...args);
         };
       }
+      // Metadata never needs a complete phone inventory. Share only concurrent
+      // reads; completed responses are not cached across workflow/access changes.
+      const leanReads=new Set(['get_sidebar_notification_counts_v1','get_workflow_notification_counts','get_qc_stage_notification_counts_v1','get_parts_pending_imei_counts_v1','get_shared_employees_v1','get_assignable_technicians','get_ranked_qc_dropdowns_v1','get_qc_work_options_v1','get_qc_issuance_options_v1','get_qc_issuance_choices_v1','get_final_qc_failure_options_v1','get_final_qc_return_context_v1','get_imei_duplicate_stage_v1','get_entry_options','list_entry_options','get_suspicious_summary_v1','get_closing_stock_access_catalog_v1','get_damage_tv_employee_access_v1','get_office_access_settings_v1','get_user_tv_rotation_v1']);
+      const leanPending=new Map();let leanEpoch=0;
+      const clearLean=()=>{leanEpoch++;leanPending.clear();};
+      sharedClient.auth.onAuthStateChange(event=>{if(['SIGNED_OUT','SIGNED_IN','USER_UPDATED'].includes(event))clearLean();});
+      for(const event of ['greenloop:office-locked','greenloop:signed-out','greenloop:permissions-changed','pagehide'])window.addEventListener(event,clearLean);
+      document.addEventListener('greenloop:workflow-committed',clearLean);
       const rpc = sharedClient.rpc.bind(sharedClient);
       sharedClient.rpc = async (name, ...args) => {
         // Keep the existing access and office checks when cancelling obsolete Accounts reads.
@@ -151,16 +159,23 @@ window.GREENLOOP_CONFIG = Object.freeze({
             if (!window.GREENLOOP_RPC_ALLOWED?.(name,args[0] || {})) return {data:null,error:{code:'42501',message:requirement.capability==='__unmapped_write__'?'The permission mapping for this action is missing. Refresh the page and report this message if it continues.':'This action is not allowed for your account.'}};
           }
         }
-        const stockRead=!bootstrap.has(name)&&!name.startsWith('get_my_')&&/^(get_|list_|export_)/.test(name)&&!/_version$/.test(name);
+        const leanRead=leanReads.has(name);
+        const stockRead=!leanRead&&!bootstrap.has(name)&&!name.startsWith('get_my_')&&/^(get_|list_|export_)/.test(name)&&!/_version$/.test(name);
         const qcRead=stockRead&&['initial_qc','qc_issuance','final_qc'].includes(window.GREENLOOP_PAGE_ACCESS?.pageKey)&&!args[0]?.p_filters&&new Set(['get_initial_qc_fast_rows_v1','get_initial_qc_work_tray_v1','get_qc_issuance_rows_v1','get_qc_issuance_options_v1','get_ranked_qc_dropdowns_v1','get_final_qc_failure_options_v1',...(args[0]?.p_option_group==='grade'?['get_entry_options']:[])]).has(name);
         let stockReady;
         if(stockRead){await window.GREENLOOP_ACCESS_READY;if(qcRead)stockReady=window.GREENLOOP_STOCK?.ready();else await window.GREENLOOP_STOCK?.ready();}
         if(stockRead&&window.GREENLOOP_BATCH_DISPLAY)args[0]=window.GREENLOOP_BATCH_DISPLAY.readArgs(args[0]);
         if(stockRead&&typeof window.GREENLOOP_STOCK?.readArgs==='function')args[0]=window.GREENLOOP_STOCK.readArgs(args[0]);
         if(signal?.aborted)return {data:null,error:{code:'ABORT_ERR',message:'Report request cancelled.'}};
-        let request=rpc(name,...args);
+        let request;
+        if(leanRead){
+          const key=leanEpoch+':'+name+':'+JSON.stringify(args[0]||{});
+          request=leanPending.get(key);
+          if(!request){request=Promise.resolve(rpc(name,...args));leanPending.set(key,request);const release=()=>{if(leanPending.get(key)===request)leanPending.delete(key);};request.then(release,release);}
+        }else request=rpc(name,...args);
         if(signal&&typeof request.abortSignal==='function')request=request.abortSignal(signal);
-        const response = await request;
+        const sharedResponse = await request;
+        const response=leanRead?structuredClone(sharedResponse):sharedResponse;
         if(stockReady)await stockReady;
         if(stockRead&&response?.data)window.GREENLOOP_STOCK?.enrich(response.data,{name,args:args[0]||{}});
         if (response?.error?.code === '23505') {
@@ -544,11 +559,15 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
       return;
     }
 
+    // These are independent self-access reads. Start together, but keep the
+    // TV-only redirect and fail-closed unlock checks in their existing order.
+    const capabilityRequest=client.rpc("get_my_page_capabilities_v1").catch(error=>({data:null,error}));
+    const partnerNameRequest=client.rpc("get_my_partner_name_access").catch(error=>({data:null,error}));
     const tvSettings=await client.rpc("get_my_damage_tv_settings_v1");
     if(tvSettings.error || !tvSettings.data || typeof tvSettings.data.tv_only!=="boolean"){showAccessError(navigation,main);return;}
     if(tvSettings.data.tv_only){window.location.replace("tv.html");return;}
 
-    const capabilities = await client.rpc("get_my_page_capabilities_v1");
+    const capabilities = await capabilityRequest;
     if (capabilities.error || !capabilities.data || Array.isArray(capabilities.data)
       || typeof capabilities.data !== "object" || !window.GREENLOOP_CAN
       || Object.values(capabilities.data).some(value => !Array.isArray(value) || value.some(cap => typeof cap !== "string"))) {
@@ -569,7 +588,7 @@ document.querySelectorAll('a[href="receiving.html"]').forEach((link) => {
     document.querySelectorAll("[data-stock-return-link]").forEach((link) => {
       link.hidden = !stockReturnAccess;
     });
-    const { data: partnerNameAccess, error: partnerNameError } = await client.rpc("get_my_partner_name_access");
+    const { data: partnerNameAccess, error: partnerNameError } = await partnerNameRequest;
     let partnerNameValue = partnerNameAccess;
     if (Array.isArray(partnerNameValue)) partnerNameValue = partnerNameValue[0];
     if (partnerNameValue && typeof partnerNameValue === "object") {

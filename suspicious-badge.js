@@ -12,5 +12,5 @@
   const start=()=>{if(!window.GREENLOOP_CAN?.('view','suspicious_activity'))return;if(!timer)timer=setInterval(refresh,15000);refresh();};
   window.addEventListener('pagehide',()=>{clearInterval(timer);timer=null;});
   window.addEventListener('pageshow',start);
-  (async()=>{await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();start();})();
+  (async()=>{await window.GREENLOOP_ACCESS_READY;start();})();
 })();

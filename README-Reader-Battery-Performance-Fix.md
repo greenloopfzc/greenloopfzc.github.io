@@ -1,0 +1,17 @@
+# Reader auto-start, issued Battery Cell and shared loading
+
+The cable reader already runs manually. Installed fixed-event logs showed scheduled_task_not_verified; repeat installation was starting its fallback supervisor. The new separate Repair-Autostart.ps1 registers/repairs only this user's verified Greenloop task, targeting the permanently installed supervisor rather than the ZIP. A15-second logon delay, hidden least-privilege interactive task, battery-power allowance, no execution time limit and bounded task restart preserve the existing reader's own recovery loop. Task identity/settings are checked and prior owned XML is backed up. Fresh setup installs the same task. Existing USB/custom reader code and packaged third-party tools are preserved. Repair is one-time on each cable-entry PC.
+
+This Codex sandbox denied Task Scheduler COM access (0x80070005), so no actual Windows task was changed and no reboot was performed here. Run the delivered repair once in normal Windows PowerShell, then verify it after the next normal sign-in. Fixtures tested registration, repeat, unrelated-task preservation and rollback; they do not claim a real reboot result. Task settings follow [Microsoft Task Scheduler documentation](https://learn.microsoft.com/en-us/windows/win32/taskschd/tasksettings).
+
+SQL317 adds exact active Diagnostic Battery / Battery Cell evidence to the authoritative Final QC receive snapshot and common server battery rule. Final BH is100 with the actual part reason; Initial BH and historical inspections stay unchanged. Ordinary Battery/Battery Boost, cancelled/fully returned/pending-return stock do not qualify. The legacy diagnostic boolean stays compatible. No business records are backfilled.
+
+Shared loading had serial self-access calls and generic stock-catalog waits even for small metadata requests. These reads now overlap, share only concurrent requests and retain permission/office/TV guards. Stock-bearing reads still finish original-receipt enrichment. SQL318 computes sidebar pending counts without generating rich IMEI/plan rows and prevents repeated evaluation of the unchanged stock-entry calculation. Eligibility and counter results remain equal, including original/replacement/returned stock. It validates direct intact routine receipts; legitimate later updates can leave older transitive marker getters stale, so this update does not re-bless unrelated routines.
+
+Measured disposable2801-phone/49-batch workload: shared sidebar6086ms before /676ms after with identical counters. A201-phone fixture measured stock-entry217ms before /12ms after. These are local comparisons, not a live database/network guarantee. Protected native database tests covered issue/return/Save enforcement, Android availability, original BH/history preservation, CRLF/repeat/atomic SQL installation, staff/anonymous/Office Only and private-helper boundaries. Browser tests covered scanner regression, actual new battery snapshots, metadata concurrency, parallel access failure handling and25 shared page bootstraps. The Suspicious Activity fixture has two pre-existing schema gaps, reproduced on baseline; that screen was not validated with live data.
+
+Required manual SQL results:
+-20261117-battery-cell-final-bh-1
+-20261117-shared-loading-performance-1
+
+Use Publish-GreenLoop-Reader-Battery-Performance-Fix.ps1. It retains existing prerequisites, bounded timeout/schema-cache retry, clean pinned source/package hashes, no-force remote ancestry and published text/binary verification. No live SQL or Git push was performed by Codex.
