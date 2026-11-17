@@ -2,7 +2,7 @@
 (function(root){
   'use strict';
   let live=true,epoch=0;
-  const versions=new WeakMap(),scanner='.qc-bulk-imei,.final-row-imei,.qc-issuance-imei,#imei-query';
+  const versions=new WeakMap(),scanner='.qc-bulk-imei,.final-row-imei,.qc-issuance-imei,#imei-query,#imei-1,.batch-row-imei';
   document.addEventListener('input',event=>{if(event.target.matches?.(scanner))versions.set(event.target,(versions.get(event.target)||0)+1);},true);
   for(const event of ['pagehide','greenloop:office-locked','greenloop:signed-out'])root.addEventListener(event,()=>{live=false;epoch++;});
   root.addEventListener('greenloop:permissions-changed',()=>{epoch++;});
@@ -23,5 +23,8 @@
     if(!shown&&valid())focus(input,allowed);
     return shown;
   }
-  root.GREENLOOP_SCAN_READY={focus,notice};
+  function advance(input,action,allowed=()=>true){
+    if(available(input,allowed)&&document.activeElement===input&&!document.querySelector('dialog[open]'))action();
+  }
+  root.GREENLOOP_SCAN_READY={focus,notice,advance};
 })(window);

@@ -91,6 +91,22 @@
         catch (error) { syncEntryPage(error.message || "Queued IMEIs could not load. Retry Next 50 lines."); }
       }
     }
+    const scanVersions=new WeakMap();
+    function checkManualRow(input){
+      const row=input.closest('tr'),value=input.value.trim(),version=scanVersions.get(input),batchId=currentBatch?.batch_id;
+      if(!/^\d{15}$/.test(value)||row.dataset.scanChecking==='yes'||row.dataset.saved==='yes'||!canEnter())return;
+      const current=()=>panel.contains(row)&&scanVersions.get(input)===version&&input.value.trim()===value&&currentBatch?.batch_id===batchId&&batchSelect.value===String(batchId)&&canEnter();
+      const reset=()=>{input.value='';input.setCustomValidity('');setRowStatus(row,'Scan next IMEI');syncEntryPage();};
+      const duplicate=entryRows().some(other=>other!==row&&other.querySelector('.batch-row-imei').value.trim()===value);
+      if(duplicate){void window.GREENLOOP_SCAN_READY.notice({input,imei:value,reset,isCurrent:current,allowed:canEnter,message:'This IMEI is already in this entry tray.'});return;}
+      row.dataset.scanChecking='yes';
+      Promise.resolve(window.GREENLOOP_CHECK_IMEI_DUPLICATE(value,{force:true,scanInput:input,scanReset:reset,scanCurrent:current})).then(duplicate=>{
+        if(!current()||duplicate)return;
+        row.dataset.scanChecking='';scheduleRowSave(row);
+        window.GREENLOOP_SCAN_READY.advance(input,()=>{const next=row.nextElementSibling?.querySelector('.batch-row-imei:not(:disabled)');(next||row.querySelector('.batch-row-battery:not(:disabled)'))?.focus();},canEnter);
+      }).catch(()=>{if(current())setRowStatus(row,'IMEI check failed - see popup','is-error');})
+      .finally(()=>{if(scanVersions.get(input)===version)row.dataset.scanChecking='';});
+    }
     let autoSaveEpoch = 0;
     let autoSaveRunning = false;
     const autoSaveQueue = [];
@@ -145,7 +161,7 @@
     }
     function scheduleRowSave(row) {
       window.clearTimeout(row._autoSaveTimer);
-      if (!autoSaveEnabled() || row.dataset.busy === "yes" || row.dataset.saved === "yes" || !canEnter()) return;
+      if (!autoSaveEnabled() || row.dataset.busy === "yes" || row.dataset.saved === "yes" || row.dataset.scanChecking === "yes" || !canEnter()) return;
       const estimated = row.querySelector(".batch-row-battery").dataset.estimated === "yes";
       if (!rowComplete(row)) {
         const missing = [];
@@ -317,15 +333,11 @@
           row.querySelector(".batch-row-battery-unavailable").checked = false;
           syncRowKind(row);
         }
-        if (input.value.length === 15) {
-          window.GREENLOOP_CHECK_IMEI_DUPLICATE?.(input.value, { force: true }).then((duplicate) => {
-            if (duplicate) setRowStatus(input.closest("tr"), "Duplicate IMEI — see popup", "is-error");
-          }).catch(() => setRowStatus(input.closest("tr"), "IMEI check failed - see popup", "is-error"));
-          const nextImei = input.closest("tr").nextElementSibling?.querySelector(".batch-row-imei:not(:disabled)");
-          window.setTimeout(() => (nextImei || panel.querySelector(".batch-row-battery:not(:disabled)"))?.focus(), 0);
-        }
-        scheduleRowSave(row);
+        scanVersions.set(input,(scanVersions.get(input)||0)+1);row.dataset.scanChecking='';
+        if(input.value.length===15)checkManualRow(input);
+
       }));
+      panel.querySelectorAll('.batch-row-imei').forEach(input=>input.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key==='Tab'&&input.closest('tr').dataset.scanChecking==='yes'){event.preventDefault();checkManualRow(input);}}));
       panel.querySelectorAll(".batch-row-platform, .batch-row-brand, .batch-row-battery-unavailable").forEach((input) => input.addEventListener("change", () => {
         const row = input.closest("tr");
         if (input.classList.contains("batch-row-platform")) {
@@ -357,7 +369,7 @@
 
     async function saveRow(row, automatic = false, epoch = autoSaveEpoch) {
       if (pasteLoading) return;
-      if (!row || row.dataset.busy === "yes" || row.dataset.saved === "yes") return;
+      if (!row || row.dataset.busy === "yes" || row.dataset.saved === "yes" || row.dataset.scanChecking === "yes") return;
       if (!canEnter()) { setRowStatus(row, "Entry permission is required", "is-error"); return; }
       if (automatic && (epoch !== autoSaveEpoch || !autoSaveEnabled() || !rowComplete(row))) return;
       if (!currentBatch || String(currentBatch.batch_id) !== batchSelect.value || !panel.contains(row)) {

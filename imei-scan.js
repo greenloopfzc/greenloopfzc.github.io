@@ -112,6 +112,11 @@
       return;
     }
     if(event.key==='Enter'||event.key==='Tab'){
+      // A fast completed scan may open a duplicate notice synchronously.
+      // Consume its one terminator, rather than activating the dialog's OK.
+      if(s&&!s.deliberateSelection&&s.digits.length===15&&(s.last-s.start)/14<=90&&now-s.last<500&&document.querySelector('.gl-imei-stage-dialog[open]')){
+        event.preventDefault();event.stopPropagation();states.delete(input);return;
+      }
       if(s&&!s.deliberateSelection&&s.digits.length===15&&(s.last-s.start)/14<=90)complete(input,s);
       schedule(input,0);states.delete(input);return;
     }

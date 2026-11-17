@@ -384,6 +384,7 @@
     row.classList.remove("is-error");
     row.classList.add("is-loaded");
     setRowState(row, "");
+    if(!options.bulk)window.GREENLOOP_SCAN_READY.advance(input,()=>focusNextScan(row),()=>window.GREENLOOP_CAN?.('entry','initial_qc')===true);
     } catch (error) {
       if (isCurrent()) { rowJobs.delete(row.dataset.rowId); setRowState(row, error.message || "Could not load IMEI", "is-error"); }
     } finally { if (isCurrent()) row.dataset.loading = ""; }
@@ -784,19 +785,15 @@
     if (input.value.length !== 15) {
       return;
     }
-    focusNextScan(row);
     void loadScannedRow(row).catch((error) => setRowState(row, error.message || "Could not load IMEI", "is-error"));
   });
 
   tableBody.addEventListener("keydown", (event) => {
     const input = event.target.closest(".qc-bulk-imei");
-    if (!input || event.key !== "Enter") return;
+    if (!input || event.key !== "Enter" && !(event.key === "Tab" && input.closest('tr').dataset.loading === 'yes')) return;
     event.preventDefault();
-    // A barcode scanner sends Enter after the 15 digits. The input handler has
-    // already moved focus to the next empty row, so that Enter arrives on an
-    // empty input. Never move again from an empty row or one line is skipped.
+    // Stay on this row while checking. Only a successful load advances it.
     if (!/^\d{15}$/.test(input.value.trim())) return;
-    focusNextScan(input.closest("tr"));
     loadScannedRow(input.closest("tr")).catch((error) => setRowState(input.closest("tr"), error.message || "Could not load IMEI", "is-error"));
   });
 

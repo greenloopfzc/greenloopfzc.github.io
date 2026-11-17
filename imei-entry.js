@@ -37,6 +37,7 @@
   let autoSaveTimer;
   let saving = false;
   let duplicateTimer;
+  let manualScanRevision=0,manualScanPending=false,manualScanVerified=-1;
   let lastDuplicateNotice = "";
   let entryReady = false;
   let cableMirror = false;
@@ -121,11 +122,15 @@
     const code=/^[A-Z0-9]{3,12}$/.test(String(error?.code||""))?` (${error.code})`:"";
     return reason+code;
   }
-  function showDuplicateDialog(record, { kind = "duplicate", text = "", title = "", force = false, isCurrent = () => true } = {}) {
+  function showDuplicateDialog(record, { kind = "duplicate", text = "", title = "", force = false, isCurrent = () => true, scanInput = null, scanReset = null } = {}) {
     if (!duplicateDialog || !isCurrent()) return;
     const notice = `${record.imei}:${window.GREENLOOP_CABLE_CONNECTION_ID || 0}:${kind}`;
     if (!force && lastDuplicateNotice === notice) return;
     lastDuplicateNotice = notice;
+    if(scanInput&&window.GREENLOOP_SCAN_READY){
+      void window.GREENLOOP_SCAN_READY.notice({input:scanInput,imei:record.imei,reset:scanReset||(()=>{scanInput.value='';}),isCurrent,allowed:()=>canEnter(),title:title||(kind==='error'?'IMEI check unavailable':'Duplicate phone'),message:kind==='error'?text:'This phone already exists in the system.'});
+      return;
+    }
     if (kind === "duplicate" && window.GREENLOOP_IMEI_STAGE_NOTICE) {
       void window.GREENLOOP_IMEI_STAGE_NOTICE.show({ imei: record.imei, isCurrent });
       return;
@@ -136,10 +141,11 @@
     duplicateDialog.dataset.imei = record.imei || "";
     if (!duplicateDialog.open) duplicateDialog.showModal();
   }
-  async function checkDuplicateImei(value, { show = true, force = false } = {}) {
+  async function checkDuplicateImei(value, { show = true, force = false, scanInput = null, scanReset = null, scanCurrent = () => true } = {}) {
     const scannedImei = String(value || "").replace(/\D/g, "").slice(0, 15);
     if (!/^\d{15}$/.test(scannedImei)) return false;
-    const isCurrent = duplicateNoticeGuard(scannedImei);
+    const guard=duplicateNoticeGuard(scannedImei);
+    const isCurrent=()=>guard()&&scanCurrent()&&(!scanInput||scanInput.isConnected&&scanInput.value.trim()===scannedImei);
     if (!duplicateChecks.has(scannedImei)) {
       duplicateChecks.set(scannedImei, withTimeout(api().rpc("get_imei_entry_duplicate_status", { p_imei: scannedImei }), "Duplicate check")
         .finally(() => duplicateChecks.delete(scannedImei)));
@@ -151,13 +157,13 @@
       data = response.data;
       if (!Array.isArray(data) || data.length > 1 || (data.length === 1 && typeof data[0]?.found !== "boolean")) throw new Error("Invalid duplicate-check response.");
     } catch (error) {
-      if (show) showDuplicateDialog({ imei: scannedImei }, { kind: "error", force, isCurrent, text: `The duplicate check could not be completed. ${imeiErrorText(error)} Saving is blocked; nothing was saved.` });
+      if (show) showDuplicateDialog({ imei: scannedImei }, { kind: "error", force, isCurrent, scanInput, scanReset, text: `The duplicate check could not be completed. ${imeiErrorText(error)} Saving is blocked; nothing was saved.` });
       if (isCurrent()) setMessage("IMEI check failed - saving is blocked. See popup.");
       throw new Error("IMEI check failed - saving is blocked. See popup.");
     }
     const record = data[0];
     if (!record?.found) return false;
-    if (show) showDuplicateDialog({ ...record, imei: scannedImei }, { force, isCurrent });
+    if (show) showDuplicateDialog({ ...record, imei: scannedImei }, { force, isCurrent, scanInput, scanReset });
     if (isCurrent()) setMessage("Duplicate IMEI - see popup.");
     return true;
   }
@@ -401,10 +407,10 @@
   let autoSaveEpoch = 0;
   const canEnter = () => window.GREENLOOP_PAGE_ACCESS?.canEdit === true && (!window.GREENLOOP_CAN || window.GREENLOOP_CAN("entry", "imei_entry"));
   window.addEventListener("greenloop:imei-auto-save-changed", () => { autoSaveEpoch += 1; window.clearTimeout(autoSaveTimer); syncAutoSaveControl(); scheduleAutoSave(); });
-  batchSelect.addEventListener("change", () => { autoSaveEpoch += 1; window.clearTimeout(autoSaveTimer); });
+  batchSelect.addEventListener("change", () => { autoSaveEpoch += 1;manualScanRevision++;manualScanPending=false;window.clearTimeout(duplicateTimer);window.clearTimeout(autoSaveTimer); });
   function canAutoSave() {
     return Boolean(
-      entryReady && canEnter() && !savedImeis.has(imei.value.trim()) &&
+      entryReady && canEnter() && !manualScanPending && !savedImeis.has(imei.value.trim()) &&
       !(cableMirror && window.GREENLOOP_BULK_CABLE_OWNER?.()) &&
       batches.some((item) => item.batch_id === batchSelect.value) &&
       /^\d{15}$/.test(imei.value.trim()) && imei.checkValidity() &&
@@ -424,6 +430,7 @@
     event?.preventDefault();
     window.clearTimeout(autoSaveTimer);
     if (saving) return;
+    if(manualScanPending){setMessage('Wait for this IMEI check to finish before saving.');return;}
     if (!entryReady || !canEnter()) { setMessage("Entry permission is required to save an IMEI."); return; }
     if (automatic && (!autoSaveEnabled() || !canAutoSave())) return;
     const epoch = autoSaveEpoch;
@@ -514,7 +521,19 @@
   document.querySelector("#close-menu").addEventListener("click", () => setMenu(false));
   backdrop.addEventListener("click", () => setMenu(false));
   batchSelect.addEventListener("change", updateBatchView);
+  async function checkManualScan(){
+    const value=imei.value.trim(),revision=manualScanRevision,batchId=batchSelect.value;
+    if(!/^\d{15}$/.test(value)||manualScanPending||saving||!canEnter())return;
+    manualScanPending=true;
+    const current=()=>revision===manualScanRevision&&batchSelect.value===batchId&&imei.isConnected&&imei.value.trim()===value&&canEnter();
+    try{
+      const duplicate=await checkDuplicateImei(value,{force:true,scanInput:imei,scanCurrent:current,scanReset:()=>{imei.value='';imei.setCustomValidity('');window.clearTimeout(autoSaveTimer);}});
+      if(!duplicate&&current()){manualScanVerified=revision;manualScanPending=false;scheduleAutoSave();}
+    }catch{}finally{if(revision===manualScanRevision)manualScanPending=false;}
+  }
+  imei.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key==='Tab'&&/^\d{15}$/.test(imei.value.trim())&&manualScanVerified!==manualScanRevision){event.preventDefault();window.clearTimeout(duplicateTimer);void checkManualScan();}});
   imei.addEventListener("input", () => {
+    manualScanRevision++;manualScanPending=false;
     cableMirror = false;
     imei.value = imei.value.replace(/\D/g, "");
     imei.setCustomValidity("");
@@ -527,8 +546,8 @@
       setMessage("IMEI changed. Enter the details for this phone before saving.");
     }
     window.clearTimeout(duplicateTimer);
-    if (/^\d{15}$/.test(imei.value)) duplicateTimer = window.setTimeout(() => checkDuplicateImei(imei.value, { force: true }).catch(() => {}), 180);
-    scheduleAutoSave();
+    window.clearTimeout(autoSaveTimer);
+    if (/^\d{15}$/.test(imei.value)) duplicateTimer = window.setTimeout(()=>void checkManualScan(),180);
   });
   for (const field of [model, storage, color, battery, serialNumber, phoneRegion]) field.addEventListener("input", () => { field.dataset.cableEdited = "yes"; });
   for (const field of [brand, model, storage, color]) field.addEventListener("change", scheduleAutoSave);

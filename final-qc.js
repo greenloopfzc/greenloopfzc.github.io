@@ -401,6 +401,7 @@
     row.classList.remove("is-error");
     row.classList.add("is-loaded");
     setRowState(row, "");
+    if(!options.bulk)window.GREENLOOP_SCAN_READY.advance(input,()=>focusNextScan(row),()=>window.GREENLOOP_CAN?.('entry','final_qc')===true);
     } catch (error) {
       if (isCurrent()) { rowSteps.delete(row.dataset.rowId); setRowState(row, error.message || "Could not load IMEI", "is-error"); }
     } finally { if (isCurrent()) row.dataset.loading = ""; }
@@ -777,20 +778,16 @@
     if (input.value.length !== 15) {
       return;
     }
-    focusNextScan(row);
     void loadScannedRow(row).catch((error) => setRowState(row, error.message || "Could not load IMEI", "is-error"));
   });
 
   tableBody.addEventListener("keydown", (event) => {
     if (!editable()) return;
     const input = event.target.closest(".final-row-imei");
-    if (!input || event.key !== "Enter") return;
+    if (!input || event.key !== "Enter" && !(event.key === "Tab" && input.closest('tr').dataset.loading === 'yes')) return;
     event.preventDefault();
-    // The scanner's trailing Enter reaches the next row because the final
-    // digit already advanced focus. Ignore Enter on that empty row so scanning
-    // continues line-by-line without skipping a line.
+    // Stay on this row while checking. Only a successful load advances it.
     if (!/^\d{15}$/.test(input.value.trim())) return;
-    focusNextScan(input.closest("tr"));
     loadScannedRow(input.closest("tr")).catch((error) => setRowState(input.closest("tr"), error.message || "Could not load IMEI", "is-error"));
   });
 
