@@ -79,7 +79,7 @@
   "portableSetup": {
     "version": "20261117-reader-autostart-1",
     "path": "Greenloop-Cable-Reader-Setup.zip",
-    "sha256": "37219c7f485932c0243ce6f705bec8cd41923809358658f57d25bb856d30c232",
-    "bytes": 2988453
+    "sha256": "1ff8ea49a0bc4090d126c885ff115649c05c69753c28757777a0f4211b2cc62e",
+    "bytes": 2989166
   }
 }

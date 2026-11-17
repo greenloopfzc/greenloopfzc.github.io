@@ -35,7 +35,49 @@ function Assert-GreenloopAutostartXml {
  $en=[Xml.XmlNamespaceManager]::new($expected.NameTable);$en.AddNamespace('t','http://schemas.microsoft.com/windows/2004/02/mit/task')
  foreach($parent in @('Triggers','Actions','Principals')){if($actual.SelectNodes('/t:Task/t:'+ $parent +'/*',$ns).Count -ne 1){throw 'Automatic startup contains unexpected actions/triggers.'}}
  $paths=@('Triggers/LogonTrigger/Enabled','Triggers/LogonTrigger/UserId','Triggers/LogonTrigger/Delay','Principals/Principal/UserId','Principals/Principal/LogonType','Principals/Principal/RunLevel','Actions/Exec/Command','Actions/Exec/Arguments','Actions/Exec/WorkingDirectory','Settings/MultipleInstancesPolicy','Settings/AllowHardTerminate','Settings/DisallowStartIfOnBatteries','Settings/StopIfGoingOnBatteries','Settings/StartWhenAvailable','Settings/RunOnlyIfNetworkAvailable','Settings/AllowStartOnDemand','Settings/Enabled','Settings/Hidden','Settings/RunOnlyIfIdle','Settings/ExecutionTimeLimit','Settings/RestartOnFailure/Interval','Settings/RestartOnFailure/Count')
- foreach($path in $paths){$xpath='/t:Task/t:'+($path -replace '/', '/t:');$a=$actual.SelectSingleNode($xpath,$ns);$b=$expected.SelectSingleNode($xpath,$en);if(-not $a -or $a.InnerText -cne $b.InnerText){throw ('Reader automatic startup verification differs: '+$path)}}
+ # Task Scheduler omits default-valued XML nodes and canonicalizes identities
+ # and durations. Compare their effective values, not the submitted text.
+ # Defaults: https://learn.microsoft.com/windows/win32/taskschd/task-scheduler-schema
+ $defaults=@{
+  'Triggers/LogonTrigger/Enabled'='true';'Triggers/LogonTrigger/Delay'='PT0M'
+  'Principals/Principal/RunLevel'='LeastPrivilege'
+  'Settings/MultipleInstancesPolicy'='IgnoreNew';'Settings/AllowHardTerminate'='true'
+  'Settings/DisallowStartIfOnBatteries'='true';'Settings/StopIfGoingOnBatteries'='true'
+  'Settings/StartWhenAvailable'='false';'Settings/RunOnlyIfNetworkAvailable'='false'
+  'Settings/AllowStartOnDemand'='true';'Settings/Enabled'='true';'Settings/Hidden'='false'
+  'Settings/RunOnlyIfIdle'='false';'Settings/ExecutionTimeLimit'='PT72H'
+ }
+ $booleans=@('Triggers/LogonTrigger/Enabled','Settings/AllowHardTerminate','Settings/DisallowStartIfOnBatteries','Settings/StopIfGoingOnBatteries','Settings/StartWhenAvailable','Settings/RunOnlyIfNetworkAvailable','Settings/AllowStartOnDemand','Settings/Enabled','Settings/Hidden','Settings/RunOnlyIfIdle')
+ $durations=@('Triggers/LogonTrigger/Delay','Settings/ExecutionTimeLimit','Settings/RestartOnFailure/Interval')
+ foreach($path in $paths){
+  $xpath='/t:Task/t:'+($path -replace '/', '/t:');$nodes=$actual.SelectNodes($xpath,$ns);$b=$expected.SelectSingleNode($xpath,$en)
+  if($nodes.Count -gt 1){throw ('Reader automatic startup has duplicate values: '+$path)}
+  if($nodes.Count -eq 1){$value=$nodes.Item(0).InnerText}else{$value=$defaults[$path]}
+  $same=$false
+  if($null -ne $value){
+   try{
+    if($path -in $booleans){$same=[Xml.XmlConvert]::ToBoolean($value.Trim()) -eq [Xml.XmlConvert]::ToBoolean($b.InnerText)}
+    elseif($path -in $durations){$same=[Xml.XmlConvert]::ToTimeSpan($value.Trim()) -eq [Xml.XmlConvert]::ToTimeSpan($b.InnerText)}
+    elseif($path -eq 'Settings/RestartOnFailure/Count'){$same=[Xml.XmlConvert]::ToInt32($value.Trim()) -eq [Xml.XmlConvert]::ToInt32($b.InnerText)}
+    elseif($path.EndsWith('/UserId')){
+     $user=$value.Trim();if($user -notmatch '^S-1-'){$user=([Security.Principal.NTAccount]$user).Translate([Security.Principal.SecurityIdentifier]).Value}
+     $same=$user -ceq $Sid
+    }
+    elseif($path -in @('Actions/Exec/Command','Actions/Exec/WorkingDirectory')){$same=[IO.Path]::GetFullPath($value).TrimEnd('\') -ieq [IO.Path]::GetFullPath($b.InnerText).TrimEnd('\')}
+    elseif($path -eq 'Actions/Exec/Arguments'){
+     $match=[regex]::Match($value,'(?i)^-NoProfile\s+-ExecutionPolicy\s+Bypass\s+-WindowStyle\s+Hidden\s+-File\s+"([^"]+)"$')
+     $same=$match.Success -and [IO.Path]::GetFullPath($match.Groups[1].Value) -ieq [IO.Path]::GetFullPath((Join-Path $ReaderRoot 'Watch-Greenloop-Reader.ps1'))
+    }
+    else{$same=$value -ceq $b.InnerText}
+   }catch{$same=$false}
+  }
+  if(-not $same){throw ('Reader automatic startup verification differs: '+$path)}
+ }
+ $principal=$actual.SelectSingleNode('/t:Task/t:Principals/t:Principal',$ns)
+ $context=$actual.SelectSingleNode('/t:Task/t:Actions',$ns).GetAttribute('Context')
+ if($context -and $context -cne $principal.GetAttribute('id')){throw 'Reader task action principal differs.'}
+ if($principal.SelectNodes('t:GroupId|t:RequiredPrivileges/t:Privilege',$ns).Count){throw 'Reader task has unexpected group or privilege settings.'}
+
 }
 function Install-GreenloopAutostart {
  param([string]$ReaderRoot,[string]$PowerShell,[string]$BackupRoot)
