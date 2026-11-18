@@ -78,3 +78,5 @@
 (function(root){for(const[name,rule]of Object.entries({"get_qc_issuance_choices_v2":{"page":"qc_issuance","capability":"view","read":true},"update_qc_issuance_details_v2":{"page":"qc_issuance","capability":"entry"},"get_issuance_grade_edit_version":{"read":true}})){root.GREENLOOP_RPC_CAPABILITIES.rpcs[name]=rule;root.GREENLOOP_RPC_CAPABILITIES[name]=rule;}})(typeof window!=="undefined"?window:globalThis);
 
 (function(root){const rule={read:true};root.GREENLOOP_RPC_CAPABILITIES.rpcs.get_background_read_speed_version=rule;root.GREENLOOP_RPC_CAPABILITIES.get_background_read_speed_version=rule;})(typeof window!=="undefined"?window:globalThis);
+
+(function(root){const rule={read:true};root.GREENLOOP_RPC_CAPABILITIES.rpcs.get_lab_counter_membership_version=rule;root.GREENLOOP_RPC_CAPABILITIES.get_lab_counter_membership_version=rule;})(typeof window!=="undefined"?window:globalThis);

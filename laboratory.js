@@ -309,11 +309,10 @@
     const selectedTech = technicians.find((item) => String(item.id) === String(activeTechnicianId));
     const assignedRows = technicianRows.filter((row) => isFrameMode ? String(row.department) === "frame" : ["laboratory", "glass"].includes(String(row.department)));
     const filtered = assignedRows.filter(row => !focusedImei || (String(row.imei) === focusedImei && (!focusedStepId || String(row.step_id) === focusedStepId)));
-    const awaitingFinalQc = isFrameMode ? 0 : Math.max(0, Number(selectedTech?.pending_count || 0) - assignedRows.length);
-    technicianLinesCount.textContent = focusedImei ? `${filtered.length} matching phone${filtered.length === 1 ? "" : "s"}` : `${filtered.length} repair line${filtered.length === 1 ? "" : "s"}${awaitingFinalQc ? ` - ${awaitingFinalQc} Final QC receipt` : ""}`;
+    technicianLinesCount.textContent = focusedImei ? `${filtered.length} matching phone${filtered.length === 1 ? "" : "s"}` : `${filtered.length} phone${filtered.length === 1 ? "" : "s"}`;
     if (!activeTechnicianId) { technicianWorkRows.innerHTML = '<tr><td colspan="12" class="technician-lines-empty">Select a technician.</td></tr>'; return; }
     if (!filtered.length) {
-      technicianWorkRows.innerHTML = `<tr><td colspan="12" class="technician-lines-empty">${focusedImei ? `No pending line for IMEI ${escapeHtml(focusedImei)}. Use Show all to return to this technician’s phones.` : awaitingFinalQc ? `${escapeHtml(selectedTech?.full_name || "This technician")} has ${awaitingFinalQc} phone${awaitingFinalQc === 1 ? "" : "s"} awaiting Final QC receipt.` : `${escapeHtml(selectedTech?.full_name || "This technician")} has no ${isFrameMode ? "B-DEPT" : "Laboratory"} phones pending.`}</td></tr>`;
+      technicianWorkRows.innerHTML = `<tr><td colspan="12" class="technician-lines-empty">${focusedImei ? `No pending line for IMEI ${escapeHtml(focusedImei)}. Use Show all to return to this technician’s phones.` : `${escapeHtml(selectedTech?.full_name || "This technician")} has no ${isFrameMode ? "B-DEPT" : "Laboratory"} phones pending.`}</td></tr>`;
       return;
     }
     if(focusedStepId&&filtered.some(row=>String(row.step_id)===String(focusedStepId)))activePhoneStepId=String(focusedStepId);
@@ -468,7 +467,7 @@
   async function readWorkbench(args) {
     const key=JSON.stringify(args);
     if(!workbenchReads.has(key)){
-      const request=labRead(getClient().rpc('get_lab_damage_workbench_v1',args)).then(({data,error})=>{if(error)throw error;if(!data||data.damage_version!=='20261117-parts-request-damage-1'||!Array.isArray(data.rows)||!data.rows.every(row=>typeof row.returned_from_final_qc==='boolean')||!Number.isFinite(Date.parse(data.server_now))||!Array.isArray(data.work_options?.parts)||!Array.isArray(data.work_options?.services)||![...data.work_options.parts,...data.work_options.services].every(o=>typeof o.name==='string'&&o.name.trim()))throw new Error('Phone lines could not be verified.');return data;}).finally(()=>workbenchReads.delete(key));
+      const request=labRead(getClient().rpc('get_lab_damage_workbench_v1',args)).then(({data,error})=>{if(error)throw error;if(!data||data.damage_version!=='20261117-parts-request-damage-1'||!Array.isArray(data.rows)||!data.rows.every(row=>typeof row.returned_from_final_qc==='boolean'&&typeof row.step_id==='string'&&row.step_id&&typeof row.job_id==='string'&&/^[0-9]{15}$/.test(row.imei)&&['laboratory','glass'].includes(row.department))||new Set(data.rows.map(row=>row.step_id)).size!==data.rows.length||new Set(data.rows.map(row=>row.imei)).size!==data.rows.length||!Number.isFinite(Date.parse(data.server_now))||!Array.isArray(data.work_options?.parts)||!Array.isArray(data.work_options?.services)||![...data.work_options.parts,...data.work_options.services].every(o=>typeof o.name==='string'&&o.name.trim()))throw new Error('Phone lines could not be verified.');return data;}).finally(()=>workbenchReads.delete(key));
       workbenchReads.set(key,request);
     }
     return workbenchReads.get(key);
@@ -479,6 +478,12 @@
     for(const row of rows){const p=row.pf_plan;if(!p)continue;const id=String(row.step_id),d=lineDrafts.get(id);if(d&&d.cycle!==p.cycle)lineDrafts.delete(id);else if(d?.partsDirty&&d.modeLocked!==additionalMode(row))clearDraftKind(id,'parts');}
     if(quiet&&JSON.stringify(technicianRows)===JSON.stringify(rows))return;
     technicianRows=rows;renderTechnicianLines();
+  }
+  function alignSelectedCounter(){
+    if(isFrameMode||focusedImei||bulkWorkbenchImeis||window.GREENLOOP_LAB_PENDING_CONTEXT?.hasDrafts())return;
+    const selected=technicians.find(t=>String(t.id)===String(activeTechnicianId));if(!selected)return;
+    const count=new Set(technicianRows.map(row=>row.imei)).size;
+    if(selected.pending_count!==count){selected.pending_count=count;renderTechnicianCards();}
   }
   async function loadTechnicianRows({quiet=false}={}) {
     if(window.GREENLOOP_BULK_IMEI?.busy)return;
@@ -491,7 +496,7 @@
     const data=await readWorkbench({p_employee_id:employee?.unassigned?null:technicianId,p_imei:scan||null});
     if(labStopped||window.GREENLOOP_CAN?.('view','lab_glass')!==true||version!==rowLoadVersion||technicianId!==activeTechnicianId||editsAtStart!==editVersion||scan!==focusedImei)return;
     if(scan&&String(data.employee_id)!==String(technicianId)){setBoardMessage('Phone assignment changed. Scan the IMEI again.');return;}
-    applyWorkbenchRows(data.rows,{quiet,serverTime:data.server_now,workOptions:data.work_options});
+    applyWorkbenchRows(data.rows,{quiet,serverTime:data.server_now,workOptions:data.work_options});alignSelectedCounter();return true;
   }
   async function loadFrameRows(skipHistory=false) {
     setBoardMessage();
@@ -514,7 +519,8 @@
     }).finally(()=>boardRead=null);}
     const {data,error}=await boardRead;if(error)throw error;if(labStopped||window.GREENLOOP_CAN?.('view','lab_glass')!==true)return;
     if(activeTechnicianId!==selectionAtStart)preferredId=activeTechnicianId;
-    const next=data||[];technicians=next;
+    if(!Array.isArray(data)||!data.every(t=>typeof t.id==='string'&&t.id&&typeof t.full_name==='string'&&Number.isSafeInteger(t.pending_count)&&t.pending_count>=0)||new Set(data.map(t=>t.id)).size!==data.length)throw new Error('Technician counts could not be verified. Select Refresh to retry.');
+    const next=data;technicians=next;
     activeTechnicianId = technicians.some((item) => String(item.id) === String(preferredId)) ? String(preferredId) : String(technicians.find((item) => !isHiddenTechnician(item) && Number(item.pending_count || 0) > 0)?.id || technicians.find(item=>!isHiddenTechnician(item))?.id || "");
     if(hiddenTechnicianIds.has(activeTechnicianId)&&!showHiddenTechnicians&&!focusedImei&&!window.GREENLOOP_LAB_PENDING_CONTEXT.hasDrafts())activeTechnicianId=String(technicians.find(t=>!isHiddenTechnician(t))?.id||'');
     if(renderAtStart!==JSON.stringify([technicians,activeTechnicianId,[...hiddenTechnicianIds],visibilityReady])||document.querySelector('#lab-total-pending-count').textContent==='…')renderTechnicianCards();
@@ -534,7 +540,7 @@
   async function refreshAll() {
     if (isFrameMode) { await loadFrameRows(); return; }
     const previous=activeTechnicianId;
-    if(previous){await Promise.all([loadTechnicians(previous),loadTechnicianRows({quiet:true})]);if(previous!==activeTechnicianId)await loadTechnicianRows();}
+    if(previous){const results=await Promise.all([loadTechnicians(previous),loadTechnicianRows({quiet:true})]);if(previous!==activeTechnicianId)await loadTechnicianRows();else if(results[1]===true)alignSelectedCounter();}
     else{await loadTechnicians();await loadTechnicianRows();}
   }
 
@@ -789,7 +795,7 @@
     if (!isFrameMode) {await refreshAll();}
     else {await loadFrameGrades();await refreshAll();}
     if (!isFrameMode) {
-      window.GREENLOOP_EMPLOYEES?.watch(async()=>{if(!app.hidden&&!technicianWorkRows.querySelector('tr[data-busy="yes"]')){const previous=activeTechnicianId;await loadTechnicians(activeTechnicianId);if(previous!==activeTechnicianId&&!technicianEditorIsActive())await loadTechnicianRows();}});
+      window.GREENLOOP_EMPLOYEES?.watch(scheduleBackgroundRefresh);
       // One fallback refresh; workflow signals/focus remain immediate. A signal
       // arriving during a request is queued, never silently consumed.
       document.addEventListener('greenloop:workflow-notifications-refreshed',scheduleBackgroundRefresh);
@@ -849,7 +855,12 @@
     event.preventDefault(); window.clearTimeout(imeiTimer); scanTechnicianImei();
   });
   checkTechnicianImei.addEventListener("click", () => { window.clearTimeout(imeiTimer); scanTechnicianImei(); });
-  clearTechnicianImei.addEventListener("click", () => { if (searchable()) { clearImeiFocus(); technicianImeiScan.focus(); } });
+  clearTechnicianImei.addEventListener("click", async () => {
+    if(!searchable())return;
+    if(window.GREENLOOP_LAB_PENDING_CONTEXT.hasDrafts()){setBoardMessage('Save or cancel your phone changes before showing all phones.');return;}
+    clearImeiFocus();technicianImeiScan.focus();
+    try{await loadTechnicianRows();}catch(error){setBoardMessage(error.message);}
+  });
   technicianWorkRows.addEventListener("pointerdown",activatePhoneCard);
   technicianWorkRows.addEventListener("focusin",activatePhoneCard);
   technicianWorkRows.addEventListener("click", (event) => {
