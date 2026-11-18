@@ -300,3 +300,12 @@ html[data-design="neumorphism"] .supplier-scope select,html[data-design="neumorp
 @media(max-width:700px){.supplier-scope-heading p{display:none;}.supplier-scope-heading>button{width:auto;min-width:88px;flex:none;}}
 
 .report-tab[hidden]{display:none!important}
+
+/* Historical Chaman dispatch/confirmed Greenloop receiving, in current scope. */
+.supplier-report-summary article.supplier-chaman-summary {grid-column:1 / -1;padding:0;overflow:hidden;border-color:#b4d4c4;background:var(--nm-card,#f6f9fb);text-align:center;}
+.supplier-chaman-summary h3 {margin:0;padding:10px 14px;background:#c1e2d2;color:#194b3c;font-size:.86rem;font-weight:800;}
+.supplier-chaman-pair {display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:12px;padding:14px;}
+.supplier-chaman-pair > div {min-width:0;}
+.supplier-report-summary .supplier-chaman-pair span {line-height:1.5;}
+.supplier-chaman-slash {color:var(--nm-muted,#849c92);font-size:1.8rem;font-weight:400;}
+html[data-mode="dark"] .supplier-chaman-summary h3 {background:#244c3e;color:#ddf2e7;}
