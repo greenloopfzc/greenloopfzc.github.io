@@ -53,13 +53,15 @@
       for(const selector of ['[data-work-save]','[data-work-cancel]']){
         const button=row.querySelector(selector);button.hidden=!active;button.disabled=locked||!active;
       }
-      if(active)for(const cell of row.querySelectorAll('[data-parts],[data-services]'))cell.querySelectorAll('select,button').forEach(e=>e.disabled=locked);
+      if(active)for(const cell of row.querySelectorAll('[data-parts],[data-services],[data-supplier-grade],[data-gl-grade]'))cell.querySelectorAll('select,button').forEach(e=>e.disabled=locked);
     }
     for(const id of ['issuance-transfer-all','issuance-add','issuance-clear','issuance-load-all','issuance-refresh']){
       const e=$('#'+id);e.disabled=busy||paste?.busy||Boolean(editing)||(e.dataset.capability==='entry'&&!can());
     }
   }
   function renderSavedWork(row,r){
+    for(const [selector,value]of [['[data-supplier-grade]',r.supplier_grade],['[data-gl-grade]',r.gl_grade]]){const cell=row.querySelector(selector);cell.textContent=value||'—';cell.title=`Inspection saved: ${date(r.saved_at)}${r.saved_by?' · '+r.saved_by:''}`;}
+
     for(const [selector,values]of [['[data-parts]',r.parts.map(p=>p.name)],['[data-services]',r.services]]){
       const cell=row.querySelector(selector);cell.textContent=values.length?values.join('; '):'None';cell.title=cell.textContent;
     }
@@ -69,8 +71,14 @@
     if(value&&!items.includes(value))items.push(value);
     return `<select data-work-choice="${kind}" data-capability="entry" aria-label="${kind==='part'?'Select part':'Select service'}"><option value="">${kind==='part'?'Select part':'Select service'}</option>${items.map(name=>`<option value="${esc(name)}"${name===value?' selected':''}>${esc(name)}</option>`).join('')}</select>`;
   }
+  function gradeSelect(field,value){
+    const items=editing.catalog[field==='supplierGrade'?'supplier_grades':'gc_grades'].map(o=>o.name);if(value&&!items.includes(value))items.push(value);
+    const label=field==='supplierGrade'?'Supplier Grade':'GL Grade';
+    return `<select class="issuance-inline-grade" data-work-grade="${field}" data-capability="entry" aria-label="${label}" ${field==='glGrade'?'required':''}><option value="">${field==='supplierGrade'?'Not recorded':'Select GL Grade'}</option>${items.map(name=>`<option value="${esc(name)}"${name===value?' selected':''}>${esc(name)}</option>`).join('')}</select>`;
+  }
   function renderWorkEditor(){
     if(!editing)return;
+    for(const [selector,field]of [['[data-supplier-grade]','supplierGrade'],['[data-gl-grade]','glGrade']]){const cell=editing.row.querySelector(selector);cell.removeAttribute('title');cell.innerHTML=gradeSelect(field,editing[field]);}
     for(const kind of ['part','service']){
       const values=kind==='part'?editing.parts.map(p=>p.name):editing.services;
       const cell=editing.row.querySelector(kind==='part'?'[data-parts]':'[data-services]');cell.removeAttribute('title');
@@ -88,33 +96,40 @@
     if(editing||busy||paste?.busy||!can()||!r||row.dataset.completed==='yes')return;
     lock(true);state(row,'Loading options…');message();
     try{
-      const catalog=workCatalog&&Date.now()-catalogAt<60000?workCatalog:await rpc('get_qc_issuance_choices_v1');
+      const catalog=workCatalog&&Date.now()-catalogAt<60000?workCatalog:await rpc('get_qc_issuance_choices_v2');
       if(!can()||!row.isConnected||records.get(row)!==r)return;
-      if(!Array.isArray(catalog?.parts)||!Array.isArray(catalog?.services)||![...catalog.parts,...catalog.services].every(o=>typeof o.name==='string'&&o.name.trim()))throw Error('Parts and services options could not load. Try Edit again.');
+      if(catalog?.version!=='20261118-issuance-grade-edit-1'||!['parts','services','supplier_grades','gc_grades'].every(key=>Array.isArray(catalog[key])&&catalog[key].every(o=>typeof o.name==='string'&&o.name.trim())))throw Error('Grades, parts and services options could not load. Install the Issuance grade update, then try Edit again.');
       workCatalog=catalog;catalogAt=Date.now();
-      editing={row,record:r,catalog,parts:r.parts.length?r.parts.map(p=>({name:p.name,quantity:p.quantity})):[{name:'',quantity:1}],services:r.services.length?[...r.services]:[''],request:null};
-      row.classList.add('is-editing');renderWorkEditor();state(row,'Editing parts / services');
+      editing={row,record:r,catalog,supplierGrade:r.supplier_grade||'',glGrade:r.gl_grade||'',parts:r.parts.length?r.parts.map(p=>({name:p.name,quantity:p.quantity})):[{name:'',quantity:1}],services:r.services.length?[...r.services]:[''],request:null};
+      row.classList.add('is-editing');renderWorkEditor();state(row,'Editing grades / parts / services');
     }catch(e){state(row,e.message||'The editor could not be opened.',true);}
     finally{lock(false);}
   }
   async function saveWorkEditor(){
     if(!editing||busy||paste?.busy||!can())return;
     const draft=editing,r=draft.record,parts=draft.parts.filter(p=>p.name),services=draft.services.filter(Boolean);
+    if(!draft.glGrade){workMessage('Select a GL Grade.');return;}
     if(parts.length>100||services.length>100){workMessage('Select no more than 100 different parts and 100 services.');return;}
     const key=v=>String(v).trim().replace(/\s+/g,' ').toLowerCase();
     if(new Set(parts.map(p=>key(p.name))).size!==parts.length||new Set(services.map(key)).size!==services.length){workMessage('Select each part and service only once.');return;}
     draft.request ||= crypto.randomUUID();lock(true);workMessage('Saving changes…');
     try{
-      const result=await rpc('update_qc_issuance_requirements_v1',{
-        p_job_id:r.job_id,p_revision:r.revision,p_parts:parts.map(p=>({part_name:p.name,quantity:p.quantity})),p_services:services,p_request_id:draft.request
+      const result=await rpc('update_qc_issuance_details_v2',{
+        p_job_id:r.job_id,p_revision:r.revision,p_parts:parts.map(p=>({part_name:p.name,quantity:p.quantity})),p_services:services,p_supplier_grade:draft.supplierGrade||null,p_gl_grade:draft.glGrade,p_request_id:draft.request
       });
       if(stopped||editing!==draft||!can()||!draft.row.isConnected)return;
       const updated=result?.row;
-      if(result.saved!==true||updated?.job_id!==r.job_id||updated?.imei!==r.imei||!Array.isArray(updated.parts)||!Array.isArray(updated.services)||typeof updated.revision!=='string')throw Error('Saved changes could not be verified. Retry Save or cancel and reload the phone.');
+      if(result.saved!==true||updated?.job_id!==r.job_id||updated?.imei!==r.imei||!Array.isArray(updated.parts)||!Array.isArray(updated.services)||typeof updated.revision!=='string'||updated.supplier_grade!==(draft.supplierGrade||null)||updated.gl_grade!==draft.glGrade)throw Error('Saved changes could not be verified. Retry Save or cancel and reload the phone.');
+      await window.GREENLOOP_STOCK?.ready();if(stopped||editing!==draft||!can()||!draft.row.isConnected)return;window.GREENLOOP_STOCK?.enrich(updated);
       prepared.clear();populate(draft.row,updated);closeWorkEditor();state(draft.row,'Changes saved · Awaiting Issuance');
       window.dispatchEvent(new CustomEvent('greenloop:workflow-committed',{detail:{source:'qc-issuance-edit',imeis:[r.imei]}}));
     }catch(e){if(editing===draft)workMessage(e.message||'Changes were not saved. Your selections are still here.');}
     finally{lock(false);}
+  }
+  function changeWorkGrade(select){
+    if(!editing||busy||paste?.busy||!can()||select.closest('tr')!==editing.row)return;
+    const field=select.dataset.workGrade;if(!['supplierGrade','glGrade'].includes(field))return;
+    editing[field]=select.value;editing.request=null;workMessage();
   }
   function changeWorkChoice(select){
     if(!editing||busy||paste?.busy||!can()||select.closest('tr')!==editing.row)return;
@@ -191,7 +206,7 @@
   function reset(){if(editing||busy||paste?.busy)return;if([...body.rows].some(r=>records.has(r)&&r.dataset.completed!=='yes')&&!window.confirm('Clear this unfinished handover tray? Saved inspections stay in the queue.'))return;body.innerHTML='';records.clear();prepared.clear();paste?.clear();createRows(10);message();}
   body.addEventListener('input',event=>{const input=event.target.closest('.qc-issuance-imei');if(!input||editing)return;const row=input.closest('tr');clearTimeout(timers.get(row));input.value=input.value.replace(/\D/g,'').slice(0,15);clearRow(row);if(input.value.length===15){void loadRow(row).catch(e=>message(e.message));}});
   body.addEventListener('keydown',event=>{if(editing||!event.target.matches('.qc-issuance-imei'))return;const row=event.target.closest('tr');if(event.key!=='Enter'&&!(event.key==='Tab'&&row.dataset.loading==='yes'))return;event.preventDefault();clearTimeout(timers.get(row));void loadRow(row).catch(e=>message(e.message));});
-  body.addEventListener('change',e=>{const row=e.target.closest('tr');if(!row||!can()||busy||paste?.busy||row.dataset.completed==='yes')return;if(e.target.matches('[data-work-choice]')){changeWorkChoice(e.target);return;}if(editing)return;if(e.target.matches('[data-destination],[data-technician]')){delete row.dataset.issueRequest;carrySelection(row,e.target.matches('[data-technician]')?'technician':'destination');sync(row);}});
+  body.addEventListener('change',e=>{const row=e.target.closest('tr');if(!row||!can()||busy||paste?.busy||row.dataset.completed==='yes')return;if(e.target.matches('[data-work-grade]')){changeWorkGrade(e.target);return;}if(e.target.matches('[data-work-choice]')){changeWorkChoice(e.target);return;}if(editing)return;if(e.target.matches('[data-destination],[data-technician]')){delete row.dataset.issueRequest;carrySelection(row,e.target.matches('[data-technician]')?'technician':'destination');sync(row);}});
   body.addEventListener('click',e=>{
     const row=e.target.closest('tr');if(!row||busy||paste?.busy||!can())return;
     if(editing){
