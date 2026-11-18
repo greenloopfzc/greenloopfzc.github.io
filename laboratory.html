@@ -45,14 +45,14 @@
   <link rel="stylesheet" href="css/lab-bulk-transfer.css?v=20261030-lab-bulk-transfer-1">
   <link rel="stylesheet" href="css/b-dept-scan.css?v=20261105-issuance-sidebar-1">
 <script defer src="js/b-dept-scan.js?v=20261117-primary-imei-1"></script>
-<script defer src="js/laboratory.js?v=20261118-operational-loading-1"></script>
+<script defer src="js/laboratory.js?v=20261118-remove-workflow-help-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261111-ruby-obsidian-1">
     <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261102-imei-scan-location-1">
   <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
   <link rel="stylesheet" href="css/sidebar-compact.css?v=20261009-sidebar-pdf-1">
   <script defer src="js/sidebar-compact.js?v=20261105-issuance-sidebar-1"></script>
-  <link rel="stylesheet" href="css/clean-layout.css?v=20261112-centered-report-cells-1">
-  <script defer src="js/clean-layout.js?v=20261030-supplier-progress-1"></script>
+  <link rel="stylesheet" href="css/clean-layout.css?v=20261118-remove-workflow-help-1">
+  <script defer src="js/clean-layout.js?v=20261118-remove-workflow-help-1"></script>
   <script defer src="js/suspicious-badge.js?v=20261117-reader-battery-performance-1"></script>
   <link rel="stylesheet" href="css/parts-flow.css?v=20261117-parts-damage-1">
 <link rel="stylesheet" href="css/b-dept-report.css?v=20261101-b-dept-report-visibility-1">
@@ -92,7 +92,6 @@
               <div class="frame-report-heading"><div><p class="panel-kicker">B-DEPT performance</p><h2>Pass and Fail history</h2></div><div class="frame-report-counts"><span id="frame-pass-count">0 Pass</span><span id="frame-fail-count">0 Fail</span></div></div>
               <div class="frame-report-scroll"><table><thead><tr><th>Time</th><th>IMEI</th><th>Supplier</th><th>Model</th><th>Result</th><th>Recorded by</th></tr></thead><tbody id="frame-report-rows"><tr><td colspan="6">No B-DEPT results recorded yet.</td></tr></tbody></table></div>
             </section>
-            <details class="lab-workflow-help"><summary>Workflow help</summary><p id="workflow-rule-text">Initial QC sends required parts directly to Parts. Laboratory orders additional parts and saves services. Return an issued part before ordering its replacement. Laboratory completion sends the phone to Final QC. Direct Final QC Pass decides the Final Grade. B-DEPT phones receive Final Grade in B-DEPT and then go to Ready Stock.</p></details>
           </section>
         </div>
       </main>

@@ -126,21 +126,20 @@
     '#report-panel-description', '.login-activity-help:not(#login-activity-since)'
   ];
   function routineHelp() {
-    document.querySelectorAll(helpSelectors.join(',')).forEach(element => {
-      if (!element.textContent.trim() || element.closest('dialog,.gl-clean-help') || element.matches('#ready-stock-subtitle,[role="status"],[role="alert"],[aria-live]')) return;
-      const disclosure = node('details', 'gl-clean-help');
-      disclosure.append(node('summary', '', element.closest('.page-heading') ? 'Page help' : 'Details'));
-      element.before(disclosure); disclosure.append(element);
+    // Retain referenced description nodes, but remove informational help from
+    // the interface. Operational details, controls and live status stay visible.
+    const protectedContent='input,select,textarea,button,a[href],[role="status"],[role="alert"],[aria-live]';
+    document.querySelectorAll(helpSelectors.join(',')+',.gl-clean-help,.gl-workflow-help,.lab-workflow-help').forEach(element=>{
+      if(element.closest('dialog')||element.matches('#ready-stock-subtitle,[role="status"],[role="alert"],[aria-live]')||element.querySelector(protectedContent))return;
+      element.classList.add('gl-retired-help');hidden(element,true);
     });
-    document.querySelectorAll('.gl-clean-help').forEach(disclosure => {
-      hidden(disclosure, ![...disclosure.children].some(element => element.tagName !== 'SUMMARY' && element.textContent.trim()));
+    document.querySelectorAll('.side-card').forEach(card=>{
+      if(card.querySelector(protectedContent+', [id]')||card.matches('[id],.glass-status-card,.stock-out-status'))return;
+      card.classList.add('gl-retired-help');hidden(card,true);
     });
-    document.querySelectorAll('.receiving-side').forEach(side => {
-      if (side.closest('.gl-secondary-tool') || side.querySelector('input,select,textarea,button,[role="status"],[role="alert"]')) return;
-      const disclosure = node('details', 'gl-secondary-tool gl-workflow-help');
-      disclosure.append(node('summary', '', 'Workflow help'));
-      side.before(disclosure); disclosure.append(side);
-      disclosure.closest('.receiving-layout')?.classList.add('gl-work-first');
+    document.querySelectorAll('.receiving-side').forEach(side=>{
+      if(side.querySelector(protectedContent)||[...side.children].some(child=>!child.hidden&&!child.classList.contains('gl-retired-help')))return;
+      side.classList.add('gl-retired-help');hidden(side,true);side.closest('.receiving-layout')?.classList.add('gl-work-first');
     });
   }
   function inventory() {

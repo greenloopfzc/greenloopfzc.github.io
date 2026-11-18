@@ -145,7 +145,6 @@
     technicianLinesHelp.textContent = "Choose a destination after Pass. Selections carry to the visible rows below. Save each phone to transfer it.";
     refreshFrameButton.hidden = false;
     linesHead.innerHTML = "<th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>Initial BH</th><th>Final BH</th><th>Supplier code</th><th>Supplier grade</th><th>Initial grade</th><th>Final grade</th><th>Pass</th><th>Fail</th><th>Destination / Save</th>";
-    document.querySelector("#workflow-rule-text").textContent = "Ready Stock needs a Final Grade. Lab & Glass needs a technician. Choose Initial QC for reinspection or Lab & Glass Issuance to reassign the saved inspection. Fail keeps the phone in B-DEPT.";
   }
 
   function showFrameView(view, moveFocus = false) {
