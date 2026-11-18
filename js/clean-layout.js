@@ -129,9 +129,15 @@
     // Retain referenced description nodes, but remove informational help from
     // the interface. Operational details, controls and live status stay visible.
     const protectedContent='input,select,textarea,button,a[href],[role="status"],[role="alert"],[aria-live]';
-    document.querySelectorAll(helpSelectors.join(',')+',.gl-clean-help,.gl-workflow-help,.lab-workflow-help').forEach(element=>{
+    document.querySelectorAll(helpSelectors.join(',')+',.gl-clean-help,.gl-workflow-help,.lab-workflow-help,.lab-performance-help,.bdr-notes,.sa-coverage').forEach(element=>{
       if(element.closest('dialog')||element.matches('#ready-stock-subtitle,[role="status"],[role="alert"],[aria-live]')||element.querySelector(protectedContent))return;
       element.classList.add('gl-retired-help');hidden(element,true);
+    });
+    document.querySelectorAll('details').forEach(details=>{
+      const summary=details.querySelector(':scope > summary');
+      if(summary&&/^(?:page help|workflow help|how\b.+|monitoring coverage & context)$/i.test(summary.textContent.trim())&&!details.querySelector(protectedContent)){
+        details.classList.add('gl-retired-help');hidden(details,true);
+      }
     });
     document.querySelectorAll('.side-card').forEach(card=>{
       if(card.querySelector(protectedContent+', [id]')||card.matches('[id],.glass-status-card,.stock-out-status'))return;
@@ -193,7 +199,7 @@
     queued = true;
     requestAnimationFrame(() => { queued = false; refresh(); });
   }
-  window.GREENLOOP_CLEAN_LAYOUT = {version:'20261017-clean-layout-1', refresh:schedule};
+  window.GREENLOOP_CLEAN_LAYOUT = {version:'20261118-remove-workflow-help-2', refresh:schedule};
   const main = document.querySelector('.app-main');
   if (main) new MutationObserver(schedule).observe(main, {childList:true, subtree:true, attributes:true, attributeFilter:['hidden','aria-pressed']});
   document.addEventListener('change', schedule);

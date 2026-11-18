@@ -35,8 +35,8 @@
   <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
   <link rel="stylesheet" href="css/sidebar-compact.css?v=20261009-sidebar-pdf-1">
   <script defer src="js/sidebar-compact.js?v=20261105-issuance-sidebar-1"></script>
-  <link rel="stylesheet" href="css/clean-layout.css?v=20261118-remove-workflow-help-1">
-  <script defer src="js/clean-layout.js?v=20261118-remove-workflow-help-1"></script>
+  <link rel="stylesheet" href="css/clean-layout.css?v=20261118-remove-workflow-help-2">
+  <script defer src="js/clean-layout.js?v=20261118-remove-workflow-help-2"></script>
   <script defer src="js/suspicious-badge.js?v=20261117-reader-battery-performance-1"></script>
 
 
@@ -69,7 +69,6 @@
 <p id="bdr-selection" class="bdr-selection"></p><p id="bdr-message" class="bdr-message" role="status" aria-live="polite"></p>
 <div class="bdr-table-scroll"><table id="bdr-table"><thead><tr><th><button type="button" data-sort="imei" data-search-read-only>Phone / IMEI <span>↕</span></button></th><th><button type="button" data-sort="supplier_code" data-search-read-only>Supplier code <span>↕</span></button></th><th><button type="button" data-sort="arrived_at" data-search-read-only>First arrival <span>↓</span></button></th><th><button type="button" data-sort="last_reviewed_at" data-search-read-only>Latest result <span>↕</span></button></th><th><button type="button" data-sort="status" data-search-read-only>Status <span>↕</span></button></th><th><button type="button" data-sort="fail_attempts" data-search-read-only>Fail attempts <span>↕</span></button></th><th><button type="button" data-sort="elapsed_seconds" data-search-read-only>Total time <span>↕</span></button></th><th>History</th></tr></thead><tbody id="bdr-rows"></tbody></table></div>
 <div class="bdr-pagination"><span id="bdr-count"></span><button type="button" id="bdr-prev" data-capability="view" data-capability-page="frame_department" class="secondary-button" data-search-read-only>Previous</button><button type="button" id="bdr-next" data-capability="view" data-capability-page="frame_department" class="secondary-button" data-search-read-only>Next</button></div>
-<details class="bdr-notes"><summary>How this report is counted</summary><p>One line per phone job. Pass / Fail attempts stay in its history. Dates select phones by first arrival or latest result; the totals cover the full B-DEPT history of those phones. Time includes recorded periods inside B-DEPT and stops when the phone passes or leaves. Time outside B-DEPT is excluded. Missing arrival records show “Time not recorded”. Average time includes passed phones with recorded times. All dates use UAE (UTC+4).</p></details>
 </section></section></div></main></div>
 <dialog id="bdr-history" class="bdr-dialog"><header><div><p class="eyebrow">Recorded B-DEPT history</p><h2 id="bdr-history-title"></h2></div><button type="button" id="bdr-history-close" data-capability="view" data-capability-page="frame_department" class="secondary-button" data-search-read-only>Close</button></header><div id="bdr-history-body"></div></dialog>
 <dialog id="bdr-pdf" class="bdr-dialog bdr-pdf"><header><h2>B-DEPT Performance Report</h2><a id="bdr-pdf-open" class="secondary-button" target="_blank" rel="noopener" data-capability="download" data-capability-page="frame_department">Open PDF</a><button type="button" id="bdr-pdf-close" data-capability="view" data-capability-page="frame_department" class="secondary-button" data-search-read-only>Close</button></header><iframe id="bdr-pdf-frame" title="B-DEPT Performance PDF preview"></iframe></dialog>

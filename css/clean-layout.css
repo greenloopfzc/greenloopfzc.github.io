@@ -1,4 +1,4 @@
-.gl-retired-help { display:none !important; }
+.gl-retired-help, .gl-clean-help, .lab-workflow-help, .lab-performance-help, .bdr-notes, .sa-coverage { display:none !important; }
 /* Screen-only spacing. Existing raised surfaces, entry controls and print layouts stay native. */
 @media screen {
   body.app-page.gl-clean-layout .page-content { padding-top:20px; padding-bottom:28px; }
