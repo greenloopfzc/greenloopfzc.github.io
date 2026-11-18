@@ -24,7 +24,7 @@
   let refreshTimer, pollTimer, channel, authSubscription;
   let inFlight = false, dirty = false, connected = false, stopped = false;
   let lastStarted = -Infinity, failures = 0, epoch = 0, userId = null;
-  const minimumGap = 200; // Leading refresh, with a bounded trailing refresh for bulk writes.
+  const minimumGap = 1000; // One leading read plus a bounded trailing read for committed changes.
   let autoPickTimer;
   let manualImeiAction = false;
   let lastCountsKey="",forceDispatch=false;
@@ -95,8 +95,8 @@
   function pollLater() {
     window.clearTimeout(pollTimer);
     if (stopped || document.hidden) return;
-    const officeOnly = window.GREENLOOP_OFFICE?.state?.mode === 'office';
-    const delay = failures ? Math.min(30000, 5000 * 2 ** Math.min(failures - 1, 3)) : officeOnly ? 2000 : connected ? 30000 : 5000;
+    // Office access keeps its independent network checks; badge polling is 30s.
+    const delay = failures ? Math.min(30000, 10000 * 2 ** Math.min(failures - 1, 2)) : 30000;
     pollTimer = window.setTimeout(refreshWorkflowNotifications, delay);
   }
 
@@ -161,6 +161,11 @@
     } catch (_) {
       // A temporary connection failure must not make pending work disappear.
       failures += 1;
+      if(requestEpoch===epoch&&!stopped&&!document.hidden){
+        document.querySelectorAll('[data-workflow-badge],[data-accounts-pending-badge]').forEach(badge=>{
+          if(!badge.hidden){badge.dataset.countState='stale';badge.title='Last shown count · update unavailable';}
+        });
+      }
     } finally {
       inFlight = false;
       pollLater();
@@ -169,7 +174,7 @@
   }
 
   function setBadge(badge,count,title){
-    badge.textContent=String(count);badge.hidden=count===0;badge.title=`${count} ${title}`;badge.setAttribute('aria-label',badge.title);
+    badge.dataset.countState='ready';badge.textContent=String(count);badge.hidden=count===0;badge.title=`${count} ${title}`;badge.setAttribute('aria-label',badge.title);
   }
   function renderCounts(counts){
     for(const stage of stages){

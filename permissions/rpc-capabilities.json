@@ -1,6 +1,7 @@
 {
   "version": "20261105-stock-consistency-1",
   "rpcs": {
+    "get_background_read_speed_version":{"read":true},
     "get_qc_issuance_choices_v2":{"page":"qc_issuance","capability":"view","read":true},
     "update_qc_issuance_details_v2":{"page":"qc_issuance","capability":"entry"},
     "get_issuance_grade_edit_version":{"read":true},
@@ -3899,4 +3900,6 @@
 "get_qc_issuance_choices_v2":{"page":"qc_issuance","capability":"view","read":true},
 "update_qc_issuance_details_v2":{"page":"qc_issuance","capability":"entry"},
 "get_issuance_grade_edit_version":{"read":true}
+,
+"get_background_read_speed_version":{"read":true}
 }
