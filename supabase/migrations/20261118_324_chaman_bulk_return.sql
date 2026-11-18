@@ -1,7 +1,8 @@
 -- Current company custody, audited bulk technician changes and optional return specifications.
 do $stage_fix$
-declare reviewed jsonb:='[]';sig text;old text;updated text;f record;b record;c record;t record;matches integer;one integer;
+declare reviewed jsonb:='[]';sig text;old text;updated text;f record;b record;c record;t record;matches integer;one integer;api_oid oid;target_oid oid;wrapper_oid oid;root_api text;target_name text;
 begin
+ perform set_config('search_path','pg_catalog,public',true);
  if to_regprocedure('public.get_chaman_bulk_return_version()')is not null then
   if public.get_chaman_bulk_return_version()is distinct from '20261118-chaman-bulk-return-1'then raise exception 'Existing Chaman / Bulk / Return update integrity differs. Nothing installed.';end if;return;
  end if;
@@ -78,7 +79,15 @@ if updated!~$token$job\.deleted_at\s*is\s*null$token$then raise exception 'Revie
 updated:=regexp_replace(updated,$token$job\.deleted_at\s*is\s*null$token$,$patch$job.deleted_at is null and greenloop_private.company_job_available(job.id)$patch$,'g');
 if updated=old then raise exception 'Routine patch made no change: %',sig;end if;
 reviewed:=reviewed||jsonb_build_array(jsonb_build_object('identity',sig,'hash',md5(old)));execute updated;
-sig:=$patch$greenloop_private.office_impl_155669()$patch$;old:=pg_get_functiondef(sig::regprocedure);updated:=old;
+root_api:=$api$public.get_initial_qc_work_tray_v1()$api$;api_oid:=to_regprocedure(root_api);
+if api_oid is null then raise exception 'Required public API is not installed: %',root_api;end if;
+select count(distinct to_regprocedure(implementation)::oid),min(to_regprocedure(implementation)::oid)into matches,target_oid from greenloop_private.office_routines where to_regprocedure(identity)=api_oid;
+if matches<>1 or target_oid is null then raise exception 'Missing or ambiguous registered implementation for %. Nothing installed.',root_api;end if;
+if not exists(select 1 from pg_proc p join pg_proc a on a.oid=api_oid where p.oid=target_oid and p.pronamespace='greenloop_private'::regnamespace and p.prokind='f'and p.prosecdef and p.proargtypes=a.proargtypes and p.prorettype=a.prorettype)then raise exception 'Registered implementation shape differs for %',root_api;end if;
+if not exists(select 1 from greenloop_private.office_routines where to_regprocedure(identity)=api_oid and to_regprocedure(implementation)=target_oid and original_hash=md5(pg_get_functiondef(target_oid))and wrapped_hash=md5(pg_get_functiondef(api_oid)))then raise exception 'Registered implementation integrity differs for %. Nothing installed.',root_api;end if;
+select 'greenloop_private.'||proname||'('into target_name from pg_proc where oid=target_oid;
+if position(target_name in regexp_replace(replace(pg_get_functiondef(api_oid),'"',''),'\s','','g'))=0 then raise exception 'Public API does not call its registered implementation: %',root_api;end if;
+sig:=target_oid::regprocedure::text;old:=pg_get_functiondef(target_oid);updated:=old;
 matches:=0;
  select count(*)into matches from greenloop_private.office_routines where to_regprocedure(implementation)=to_regprocedure(sig)and original_hash=md5(old);
  if matches=0 then select count(*)into matches from greenloop_private.capability_routines where to_regprocedure(implementation)=to_regprocedure(sig)and original_hash=md5(old);end if;
@@ -92,7 +101,15 @@ if updated!~$token$j\.deleted_at\s*is\s*null$token$then raise exception 'Reviewe
 updated:=regexp_replace(updated,$token$j\.deleted_at\s*is\s*null$token$,$patch$j.deleted_at is null and greenloop_private.company_job_available(j.id)$patch$,'g');
 if updated=old then raise exception 'Routine patch made no change: %',sig;end if;
 reviewed:=reviewed||jsonb_build_array(jsonb_build_object('identity',sig,'hash',md5(old)));execute updated;
-sig:=$patch$greenloop_private.office_impl_155671()$patch$;old:=pg_get_functiondef(sig::regprocedure);updated:=old;
+root_api:=$api$public.get_qc_issuance_options_v1()$api$;api_oid:=to_regprocedure(root_api);
+if api_oid is null then raise exception 'Required public API is not installed: %',root_api;end if;
+select count(distinct to_regprocedure(implementation)::oid),min(to_regprocedure(implementation)::oid)into matches,target_oid from greenloop_private.office_routines where to_regprocedure(identity)=api_oid;
+if matches<>1 or target_oid is null then raise exception 'Missing or ambiguous registered implementation for %. Nothing installed.',root_api;end if;
+if not exists(select 1 from pg_proc p join pg_proc a on a.oid=api_oid where p.oid=target_oid and p.pronamespace='greenloop_private'::regnamespace and p.prokind='f'and p.prosecdef and p.proargtypes=a.proargtypes and p.prorettype=a.prorettype)then raise exception 'Registered implementation shape differs for %',root_api;end if;
+if not exists(select 1 from greenloop_private.office_routines where to_regprocedure(identity)=api_oid and to_regprocedure(implementation)=target_oid and original_hash=md5(pg_get_functiondef(target_oid))and wrapped_hash=md5(pg_get_functiondef(api_oid)))then raise exception 'Registered implementation integrity differs for %. Nothing installed.',root_api;end if;
+select 'greenloop_private.'||proname||'('into target_name from pg_proc where oid=target_oid;
+if position(target_name in regexp_replace(replace(pg_get_functiondef(api_oid),'"',''),'\s','','g'))=0 then raise exception 'Public API does not call its registered implementation: %',root_api;end if;
+sig:=target_oid::regprocedure::text;old:=pg_get_functiondef(target_oid);updated:=old;
 matches:=0;
  select count(*)into matches from greenloop_private.office_routines where to_regprocedure(implementation)=to_regprocedure(sig)and original_hash=md5(old);
  if matches=0 then select count(*)into matches from greenloop_private.capability_routines where to_regprocedure(implementation)=to_regprocedure(sig)and original_hash=md5(old);end if;
@@ -106,7 +123,15 @@ if updated!~$token$j\.deleted_at\s*is\s*null$token$then raise exception 'Reviewe
 updated:=regexp_replace(updated,$token$j\.deleted_at\s*is\s*null$token$,$patch$j.deleted_at is null and greenloop_private.company_job_available(j.id)$patch$,'g');
 if updated=old then raise exception 'Routine patch made no change: %',sig;end if;
 reviewed:=reviewed||jsonb_build_array(jsonb_build_object('identity',sig,'hash',md5(old)));execute updated;
-sig:=$patch$greenloop_private.office_impl_18260(text)$patch$;old:=pg_get_functiondef(sig::regprocedure);updated:=old;
+root_api:=$api$public.get_initial_qc_job_by_identifier(text)$api$;api_oid:=to_regprocedure(root_api);
+if api_oid is null then raise exception 'Required public API is not installed: %',root_api;end if;
+select count(distinct to_regprocedure(implementation)::oid),min(to_regprocedure(implementation)::oid)into matches,target_oid from greenloop_private.office_routines where to_regprocedure(identity)=api_oid;
+if matches<>1 or target_oid is null then raise exception 'Missing or ambiguous registered implementation for %. Nothing installed.',root_api;end if;
+if not exists(select 1 from pg_proc p join pg_proc a on a.oid=api_oid where p.oid=target_oid and p.pronamespace='greenloop_private'::regnamespace and p.prokind='f'and p.prosecdef and p.proargtypes=a.proargtypes and p.prorettype=a.prorettype)then raise exception 'Registered implementation shape differs for %',root_api;end if;
+if not exists(select 1 from greenloop_private.office_routines where to_regprocedure(identity)=api_oid and to_regprocedure(implementation)=target_oid and original_hash=md5(pg_get_functiondef(target_oid))and wrapped_hash=md5(pg_get_functiondef(api_oid)))then raise exception 'Registered implementation integrity differs for %. Nothing installed.',root_api;end if;
+select 'greenloop_private.'||proname||'('into target_name from pg_proc where oid=target_oid;
+if position(target_name in regexp_replace(replace(pg_get_functiondef(api_oid),'"',''),'\s','','g'))=0 then raise exception 'Public API does not call its registered implementation: %',root_api;end if;
+sig:=target_oid::regprocedure::text;old:=pg_get_functiondef(target_oid);updated:=old;
 matches:=0;
  select count(*)into matches from greenloop_private.office_routines where to_regprocedure(implementation)=to_regprocedure(sig)and original_hash=md5(old);
  if matches=0 then select count(*)into matches from greenloop_private.capability_routines where to_regprocedure(implementation)=to_regprocedure(sig)and original_hash=md5(old);end if;
@@ -120,7 +145,15 @@ if updated!~$token$job\.deleted_at\s*is\s*null$token$then raise exception 'Revie
 updated:=regexp_replace(updated,$token$job\.deleted_at\s*is\s*null$token$,$patch$job.deleted_at is null and greenloop_private.company_job_available(job.id)$patch$,'g');
 if updated=old then raise exception 'Routine patch made no change: %',sig;end if;
 reviewed:=reviewed||jsonb_build_array(jsonb_build_object('identity',sig,'hash',md5(old)));execute updated;
-sig:=$patch$greenloop_private.office_impl_18362()$patch$;old:=pg_get_functiondef(sig::regprocedure);updated:=old;
+root_api:=$api$public.get_frame_department_rows()$api$;api_oid:=to_regprocedure(root_api);
+if api_oid is null then raise exception 'Required public API is not installed: %',root_api;end if;
+select count(distinct to_regprocedure(implementation)::oid),min(to_regprocedure(implementation)::oid)into matches,target_oid from greenloop_private.office_routines where to_regprocedure(identity)=api_oid;
+if matches<>1 or target_oid is null then raise exception 'Missing or ambiguous registered implementation for %. Nothing installed.',root_api;end if;
+if not exists(select 1 from pg_proc p join pg_proc a on a.oid=api_oid where p.oid=target_oid and p.pronamespace='greenloop_private'::regnamespace and p.prokind='f'and p.prosecdef and p.proargtypes=a.proargtypes and p.prorettype=a.prorettype)then raise exception 'Registered implementation shape differs for %',root_api;end if;
+if not exists(select 1 from greenloop_private.office_routines where to_regprocedure(identity)=api_oid and to_regprocedure(implementation)=target_oid and original_hash=md5(pg_get_functiondef(target_oid))and wrapped_hash=md5(pg_get_functiondef(api_oid)))then raise exception 'Registered implementation integrity differs for %. Nothing installed.',root_api;end if;
+select 'greenloop_private.'||proname||'('into target_name from pg_proc where oid=target_oid;
+if position(target_name in regexp_replace(replace(pg_get_functiondef(api_oid),'"',''),'\s','','g'))=0 then raise exception 'Public API does not call its registered implementation: %',root_api;end if;
+sig:=target_oid::regprocedure::text;old:=pg_get_functiondef(target_oid);updated:=old;
 matches:=0;
  select count(*)into matches from greenloop_private.office_routines where to_regprocedure(implementation)=to_regprocedure(sig)and original_hash=md5(old);
  if matches=0 then select count(*)into matches from greenloop_private.capability_routines where to_regprocedure(implementation)=to_regprocedure(sig)and original_hash=md5(old);end if;
@@ -134,7 +167,15 @@ if updated!~$token$job\.deleted_at\s*is\s*null$token$then raise exception 'Revie
 updated:=regexp_replace(updated,$token$job\.deleted_at\s*is\s*null$token$,$patch$job.deleted_at is null and greenloop_private.company_job_available(job.id)$patch$,'g');
 if updated=old then raise exception 'Routine patch made no change: %',sig;end if;
 reviewed:=reviewed||jsonb_build_array(jsonb_build_object('identity',sig,'hash',md5(old)));execute updated;
-sig:=$patch$greenloop_private.office_impl_24603()$patch$;old:=pg_get_functiondef(sig::regprocedure);updated:=old;
+root_api:=$api$public.get_lab_employee_board_v1()$api$;api_oid:=to_regprocedure(root_api);
+if api_oid is null then raise exception 'Required public API is not installed: %',root_api;end if;
+select count(distinct to_regprocedure(implementation)::oid),min(to_regprocedure(implementation)::oid)into matches,target_oid from greenloop_private.office_routines where to_regprocedure(identity)=api_oid;
+if matches<>1 or target_oid is null then raise exception 'Missing or ambiguous registered implementation for %. Nothing installed.',root_api;end if;
+if not exists(select 1 from pg_proc p join pg_proc a on a.oid=api_oid where p.oid=target_oid and p.pronamespace='greenloop_private'::regnamespace and p.prokind='f'and p.prosecdef and p.proargtypes=a.proargtypes and p.prorettype=a.prorettype)then raise exception 'Registered implementation shape differs for %',root_api;end if;
+if not exists(select 1 from greenloop_private.office_routines where to_regprocedure(identity)=api_oid and to_regprocedure(implementation)=target_oid and original_hash=md5(pg_get_functiondef(target_oid))and wrapped_hash=md5(pg_get_functiondef(api_oid)))then raise exception 'Registered implementation integrity differs for %. Nothing installed.',root_api;end if;
+select 'greenloop_private.'||proname||'('into target_name from pg_proc where oid=target_oid;
+if position(target_name in regexp_replace(replace(pg_get_functiondef(api_oid),'"',''),'\s','','g'))=0 then raise exception 'Public API does not call its registered implementation: %',root_api;end if;
+sig:=target_oid::regprocedure::text;old:=pg_get_functiondef(target_oid);updated:=old;
 matches:=0;
  select count(*)into matches from greenloop_private.office_routines where to_regprocedure(implementation)=to_regprocedure(sig)and original_hash=md5(old);
  if matches=0 then select count(*)into matches from greenloop_private.capability_routines where to_regprocedure(implementation)=to_regprocedure(sig)and original_hash=md5(old);end if;
@@ -148,7 +189,15 @@ if updated!~$token$j\.deleted_at\s*is\s*null$token$then raise exception 'Reviewe
 updated:=regexp_replace(updated,$token$j\.deleted_at\s*is\s*null$token$,$patch$j.deleted_at is null and greenloop_private.company_job_available(j.id)$patch$,'g');
 if updated=old then raise exception 'Routine patch made no change: %',sig;end if;
 reviewed:=reviewed||jsonb_build_array(jsonb_build_object('identity',sig,'hash',md5(old)));execute updated;
-sig:=$patch$greenloop_private.office_impl_24700(uuid,text)$patch$;old:=pg_get_functiondef(sig::regprocedure);updated:=old;
+root_api:=$api$public.get_lab_workbench_v1(uuid,text)$api$;api_oid:=to_regprocedure(root_api);
+if api_oid is null then raise exception 'Required public API is not installed: %',root_api;end if;
+select count(distinct to_regprocedure(implementation)::oid),min(to_regprocedure(implementation)::oid)into matches,target_oid from greenloop_private.office_routines where to_regprocedure(identity)=api_oid;
+if matches<>1 or target_oid is null then raise exception 'Missing or ambiguous registered implementation for %. Nothing installed.',root_api;end if;
+if not exists(select 1 from pg_proc p join pg_proc a on a.oid=api_oid where p.oid=target_oid and p.pronamespace='greenloop_private'::regnamespace and p.prokind='f'and p.prosecdef and p.proargtypes=a.proargtypes and p.prorettype=a.prorettype)then raise exception 'Registered implementation shape differs for %',root_api;end if;
+if not exists(select 1 from greenloop_private.office_routines where to_regprocedure(identity)=api_oid and to_regprocedure(implementation)=target_oid and original_hash=md5(pg_get_functiondef(target_oid))and wrapped_hash=md5(pg_get_functiondef(api_oid)))then raise exception 'Registered implementation integrity differs for %. Nothing installed.',root_api;end if;
+select 'greenloop_private.'||proname||'('into target_name from pg_proc where oid=target_oid;
+if position(target_name in regexp_replace(replace(pg_get_functiondef(api_oid),'"',''),'\s','','g'))=0 then raise exception 'Public API does not call its registered implementation: %',root_api;end if;
+sig:=target_oid::regprocedure::text;old:=pg_get_functiondef(target_oid);updated:=old;
 matches:=0;
  select count(*)into matches from greenloop_private.office_routines where to_regprocedure(implementation)=to_regprocedure(sig)and original_hash=md5(old);
  if matches=0 then select count(*)into matches from greenloop_private.capability_routines where to_regprocedure(implementation)=to_regprocedure(sig)and original_hash=md5(old);end if;
@@ -355,7 +404,21 @@ if updated!~$token$gb_changed:=nullif\(c\->>'storage_gb',''\)::integer\s*is\s*di
 updated:=regexp_replace(updated,$token$gb_changed:=nullif\(c\->>'storage_gb',''\)::integer\s*is\s*distinct\s*from\s*gb;$token$,$patch$gb_changed:=nullif(c->>'storage_gb','')is not null and nullif(c->>'storage_gb','')::integer is distinct from gb;$patch$,'g');
 if updated=old then raise exception 'Routine patch made no change: %',sig;end if;
 reviewed:=reviewed||jsonb_build_array(jsonb_build_object('identity',sig,'hash',md5(old)));execute updated;
-sig:=$patch$greenloop_private.cap_impl_18f299603223a5a16f1025c2a56049b5(jsonb,uuid)$patch$;old:=pg_get_functiondef(sig::regprocedure);updated:=old;
+root_api:=$api$public.record_simple_stock_return(jsonb,uuid)$api$;api_oid:=to_regprocedure(root_api);
+if api_oid is null then raise exception 'Required public API is not installed: %',root_api;end if;
+select count(distinct to_regprocedure(implementation)::oid),min(to_regprocedure(implementation)::oid)into matches,target_oid from greenloop_private.capability_routines where to_regprocedure(identity)=api_oid;
+if matches<>1 or target_oid is null then raise exception 'Missing or ambiguous registered implementation for %. Nothing installed.',root_api;end if;
+if not exists(select 1 from pg_proc p join pg_proc a on a.oid=api_oid where p.oid=target_oid and p.pronamespace='greenloop_private'::regnamespace and p.prokind='f'and p.prosecdef and p.proargtypes=a.proargtypes and p.prorettype=a.prorettype)then raise exception 'Registered implementation shape differs for %',root_api;end if;
+if not exists(select 1 from greenloop_private.capability_routines where to_regprocedure(identity)=api_oid and to_regprocedure(implementation)=target_oid and original_hash=md5(pg_get_functiondef(target_oid))and wrapped_hash=md5(pg_get_functiondef(api_oid)))then raise exception 'Registered implementation integrity differs for %. Nothing installed.',root_api;end if;
+select 'greenloop_private.'||proname||'('into target_name from pg_proc where oid=target_oid;
+wrapper_oid:=api_oid;
+ if position(target_name in regexp_replace(replace(pg_get_functiondef(wrapper_oid),'"',''),'\s','','g'))=0 then
+  select count(distinct to_regprocedure(implementation)::oid),min(to_regprocedure(implementation)::oid)into matches,wrapper_oid from greenloop_private.office_routines where to_regprocedure(identity)=api_oid;
+  if matches<>1 or wrapper_oid is null or not exists(select 1 from greenloop_private.office_routines where to_regprocedure(identity)=api_oid and to_regprocedure(implementation)=wrapper_oid and original_hash=md5(pg_get_functiondef(wrapper_oid))and wrapped_hash=md5(pg_get_functiondef(api_oid)))then raise exception 'Registered office chain integrity differs for %',root_api;end if;
+  if position((select 'greenloop_private.'||proname||'('from pg_proc where oid=wrapper_oid)in regexp_replace(replace(pg_get_functiondef(api_oid),'"',''),'\s','','g'))=0 then raise exception 'Public API does not call its registered office wrapper: %',root_api;end if;
+ end if;
+ if position(target_name in regexp_replace(replace(pg_get_functiondef(wrapper_oid),'"',''),'\s','','g'))=0 then raise exception 'Office API does not call its registered implementation: %',root_api;end if;
+sig:=target_oid::regprocedure::text;old:=pg_get_functiondef(target_oid);updated:=old;
 matches:=0;
  select count(*)into matches from greenloop_private.office_routines where to_regprocedure(implementation)=to_regprocedure(sig)and original_hash=md5(old);
  if matches=0 then select count(*)into matches from greenloop_private.capability_routines where to_regprocedure(implementation)=to_regprocedure(sig)and original_hash=md5(old);end if;
@@ -419,7 +482,8 @@ and exists(select 1 from greenloop_private.page_capability_installation where id
 then '20261118-chaman-bulk-return-1'end;$$;
 revoke all on function public.get_chaman_bulk_return_version()from public;grant execute on function public.get_chaman_bulk_return_version()to anon,authenticated;
 $definition$;
-insert into greenloop_private.chaman_bulk_return_installation select s,md5(pg_get_functiondef(s::regprocedure))from unnest(array['greenloop_private.ed_unassigned_rows(uuid)','greenloop_private.office_impl_155669()','greenloop_private.office_impl_155671()','greenloop_private.office_impl_18260(text)','greenloop_private.office_impl_18362()','greenloop_private.office_impl_24603()','greenloop_private.office_impl_24700(uuid,text)','greenloop_private.qcis_rows(text[])','greenloop_private.qcn_counts()','greenloop_private.qdr_stock_selection(text,jsonb,integer,integer)','greenloop_private.sbn_counts()','greenloop_private.chaman_preview(text,jsonb)','greenloop_private.chaman_move(text,jsonb,uuid,text,uuid)','greenloop_private.bci_options()','greenloop_private.bci_row(uuid)','greenloop_private.bci_save(jsonb,text,text,uuid)','greenloop_private.bcg_save(jsonb,text,text,uuid)','greenloop_private.handover_technician_timer(uuid,uuid,uuid,text)','greenloop_private.srma_plan(uuid,uuid,jsonb)','greenloop_private.cap_impl_18f299603223a5a16f1025c2a56049b5(jsonb,uuid)','greenloop_private.itc_changes(jsonb,jsonb,text,boolean,boolean)','greenloop_private.company_job_available(uuid)','greenloop_private.bct_target(uuid)','greenloop_private.bct_assign(uuid,uuid,uuid)','public.get_stock_return_candidates_v1(uuid,text,integer)','public.get_chaman_bulk_return_version()'])s;
+insert into greenloop_private.chaman_bulk_return_installation select identity,md5(pg_get_functiondef(to_regprocedure(identity)))from jsonb_to_recordset(reviewed)as x(identity text);
+insert into greenloop_private.chaman_bulk_return_installation select s,md5(pg_get_functiondef(s::regprocedure))from unnest(array['greenloop_private.company_job_available(uuid)','greenloop_private.bct_target(uuid)','greenloop_private.bct_assign(uuid,uuid,uuid)','public.get_stock_return_candidates_v1(uuid,text,integer)','public.get_chaman_bulk_return_version()'])s;
 insert into greenloop_private.chaman_bulk_return_installation select '@routines',md5(string_agg(identity,','order by identity))from greenloop_private.chaman_bulk_return_installation;
 if public.get_chaman_bulk_return_version()is distinct from '20261118-chaman-bulk-return-1'then raise exception 'Chaman / Bulk / Return verification failed. Nothing installed.';end if;
  notify pgrst,'reload schema';
