@@ -473,7 +473,7 @@
     queueCount.focus();
   }
 
-  let pendingRefreshTimer;
+  let pendingRefreshTimer,queueEpoch=0,queueStopped=false,queueRead=null;
   function refreshPendingAfterSave(){
     window.clearTimeout(pendingRefreshTimer);
     pendingRefreshTimer=window.setTimeout(()=>{
@@ -481,7 +481,11 @@
     },250);
   }
   async function loadPendingCount() {
+    if(queueStopped||window.GREENLOOP_CAN?.("view","initial_qc")!==true)return;
+    if(queueRead)return queueRead;
+    const ticket=queueEpoch;queueRead=(async()=>{
     const { data, error } = await getClient().rpc("get_initial_qc_work_tray_v1");
+    if(ticket!==queueEpoch||queueStopped||window.GREENLOOP_CAN?.("view","initial_qc")!==true)return;
     if (error) throw error;
     const completed=new Set([...tableBody.rows].filter(row=>row.dataset.completed==="yes").map(row=>rowJobs.get(row.dataset.rowId)?.id));
     pendingJobs = (data?.pending || []).filter(job=>!completed.has(job.id));
@@ -489,6 +493,7 @@
     queueCount.setAttribute("aria-label", `View ${pendingJobs.length} phones waiting for Initial QC`);
     if (!pendingModal.hidden) renderPendingJobs(pendingSearch.value);
     stockScope?.refreshCount();
+    })().finally(()=>{if(ticket===queueEpoch)queueRead=null;});return queueRead;
   }
 
   async function autoPickAllPending(selectedImeis = null) {
@@ -863,7 +868,11 @@
   document.querySelector("#add-ten-rows").addEventListener("click", () => createRows(10));
   document.querySelector("#clear-tray").addEventListener("click", resetTray);
   autoPickButton.addEventListener("click", () => stockScope?.hasSelection() ? stockScope.load() : autoPickAllPending());
-  queueCount.addEventListener("click", openPendingModal);
+  queueCount.addEventListener("click",()=>{openPendingModal();void loadPendingCount().catch(()=>{});});
+  document.addEventListener("greenloop:workflow-notifications-refreshed",refreshPendingAfterSave);
+  window.addEventListener("greenloop:workflow-committed",refreshPendingAfterSave);
+  window.addEventListener("focus",refreshPendingAfterSave);
+  for(const name of ["greenloop:office-locked","greenloop:signed-out","pagehide"])window.addEventListener(name,()=>{queueStopped=true;queueEpoch++;queueRead=null;clearTimeout(pendingRefreshTimer);pendingJobs=[];queueCount.textContent="— QC pending";pendingListBody.replaceChildren();pendingModal.hidden=true;document.body.classList.remove("qc-modal-open");});
   pendingSearch.addEventListener("input", () => renderPendingJobs(pendingSearch.value));
   pendingModal.addEventListener("click", (event) => { if (event.target.closest("[data-close-pending]")) closePendingModal(); });
   document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !pendingModal.hidden) closePendingModal(); });

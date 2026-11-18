@@ -163,7 +163,7 @@
     finally{if(current()){row.dataset.loading='';sync(row);}}
   }
   async function refresh(){
-    const data=await rpc('get_qc_issuance_options_v1');technicians=data.technicians||[];$('#issuance-count').textContent=String(data.awaiting_issuance||0);
+    const data=await rpc('get_qc_issuance_options_v1');if(stopped||!window.GREENLOOP_CAN?.('view','qc_issuance'))return;technicians=data.technicians||[];$('#issuance-count').textContent=String(data.awaiting_issuance||0);
     for(const select of app.querySelectorAll('[data-technician]')){const v=select.value;select.innerHTML=options(v);}
     if(body.firstElementChild)selectionTemplate.technician=body.firstElementChild.querySelector('[data-technician]').value;
     // A successful inspection save in another tab becomes available on Refresh.
@@ -211,6 +211,8 @@
   function stop(){stopped=true;closeWorkEditor();records.clear();prepared.clear();body.innerHTML='';app.hidden=true;message('Access ended. Reload after signing in.');}
   window.addEventListener('greenloop:office-locked',stop);window.addEventListener('pagehide',stop);client.auth.onAuthStateChange?.(e=>{if(e==='SIGNED_OUT')stop();});
   window.addEventListener('greenloop:permissions-changed',()=>{if(!window.GREENLOOP_CAN?.('view','qc_issuance'))stop();else{if(!can()&&editing)closeWorkEditor();syncAll();}});
+  let queueRefresh=null;function scheduleQueueRefresh(){if(stopped||document.hidden||busy||editing||paste?.busy)return;clearTimeout(queueRefresh);queueRefresh=setTimeout(()=>{if(!stopped&&!busy&&!editing&&!paste?.busy)void refresh().catch(()=>{});},250);}
+  document.addEventListener('greenloop:workflow-notifications-refreshed',scheduleQueueRefresh);window.addEventListener('focus',scheduleQueueRefresh);
   async function init(){await window.GREENLOOP_ACCESS_READY;if(!window.GREENLOOP_CAN?.('view','qc_issuance'))throw Error('Lab & Glass Issuance page access is required.');await refresh();createRows(10);app.hidden=false;stockScope=window.GREENLOOP_QC_STOCK_SCOPE?.attach({host:app.querySelector('.qc-bulk-toolbar'),stage:'issuance',client,load:imeis=>loadAll(imeis),blocked:()=>busy||paste?.busy||Boolean(editing)});paste=window.GREENLOOP_QC_EXCEL_PASTE.attach({app,tableBody:body,selector:'.qc-issuance-imei',page:'qc_issuance',client,createRows,clearRow,loadRow,prepare,onUnlock:()=>setTimeout(syncAll,0)});window.GREENLOOP_QC_HANDOVER?.refresh();syncAll();window.GREENLOOP_SCAN_READY.focus(body.querySelector('.qc-issuance-imei'),can);}
   void init().catch(e=>{$('#permission-message').textContent=e.message||'Issuance could not load.';$('#permission-message').hidden=false;});
 })();

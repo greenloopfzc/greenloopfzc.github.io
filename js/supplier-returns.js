@@ -12,9 +12,10 @@
   const imei = r => r.imei_1 || r.imei || "Without IMEI";
   const button = (text, attrs = "") => `<button type="button" class="secondary-button sr-button" ${attrs}>${escape(text)}</button>`;
   let context, dialog, modalGeneration = 0, modalBusy = false, reportRoot, reportGeneration = 0;
-  const retries = new Map();
+  const retries = new Map();let returnPickerClose=null;
+  for(const name of ["greenloop:office-locked","greenloop:signed-out","greenloop:permissions-changed"])window.addEventListener(name,()=>returnPickerClose?.());
   async function rpc(name, args = {}) {
-    await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();
+    await window.GREENLOOP_ACCESS_READY;if(name!=="get_stock_return_candidates_v1")await window.GREENLOOP_STOCK?.ready();
     const { data, error } = await window.GREENLOOP_GET_CLIENT().rpc(name, args);
     if (error) throw Object.assign(new Error(error.code === "PGRST202" ? "Install the Supplier Returns database update first." : error.message || "The request could not be completed."), { code: error.code });
     return data;
@@ -184,14 +185,14 @@
   }
   function renderSimpleForm(host) {
     let scanned = [], selectedBatch = "", pasteIssues = [], lastAutoQuantity = "";
-    const imeiErrors = new Map(), stockChecks = new Map(), captures = new Map();
+    const imeiErrors = new Map(), stockChecks = new Map(), captures = new Map(), pickedDetails=new Map();
     let checkEpoch=0, checkRevision=0, checkRunning=false, checkTimer;
     host.innerHTML = '<form class="sr-form sr-simple-form">' +
       '<div class="sr-request-start"><label>Supplier / supplier code<select name="supplier" required><option value="">Select supplier</option></select></label><label>Original Stock / Batch<select name="batch" required disabled><option value="">Select received stock</option></select></label></div>' +
       '<dl class="sr-receipt-summary" data-sr-receipt hidden></dl>' +
       '<fieldset data-sr-inputs disabled><label class="sr-return-quantity">Return quantity<input name="quantity" type="number" min="1" max="1000" step="1" required placeholder="Enter return quantity"></label>' +
-      '<div class="sr-optional-fields"><label>Model <span class="sr-optional">Optional</span><input name="model" list="sr-model-options" maxlength="100" placeholder="e.g. 15 Pro"><datalist id="sr-model-options"></datalist></label><label>GB <span class="sr-optional">Optional</span><input name="storage_gb" type="number" min="1" max="16384" step="1" placeholder="e.g. 128"></label><label>Scan IMEI <span class="sr-optional">Optional</span><span class="sr-scan-line" data-multiple-imeis><input name="imei" inputmode="numeric" maxlength="15" autocomplete="off" placeholder="Scan or enter IMEI">' + button("Add", 'data-sr-add-imei') + '</span></label></div>' +
-      '<div class="sr-bulk-toolbar">' + button('Bulk IMEIs','data-sr-bulk-toggle aria-expanded="false" aria-controls="sr-bulk-imei-panel"') + '<span class="sr-hint">Paste an IMEI column from Excel, or keep scanning one phone at a time.</span></div>' +
+      '<div class="sr-optional-fields"><label>Model <span class="sr-optional">Optional</span><input name="model" list="sr-model-options" maxlength="100" placeholder="e.g. 15 Pro"><datalist id="sr-model-options"></datalist></label><label>GB <span class="sr-optional">Optional</span><input name="storage_gb" type="number" min="1" max="16384" step="1" placeholder="e.g. 128"></label><label>Color <span class="sr-optional">Optional</span><input name="color" maxlength="120" placeholder="Leave blank if unknown"></label><label>Scan IMEI <span class="sr-optional">Optional</span><span class="sr-scan-line" data-multiple-imeis><input name="imei" inputmode="numeric" maxlength="15" autocomplete="off" placeholder="Scan or enter IMEI">' + button("Add", 'data-sr-add-imei') + '</span></label></div>' +
+      '<div class="sr-bulk-toolbar">' + button('Select saved phones (no scan)','data-sr-select-saved') + button('Bulk IMEIs','data-sr-bulk-toggle aria-expanded="false" aria-controls="sr-bulk-imei-panel"') + '<span class="sr-hint">Paste an IMEI column from Excel, or keep scanning one phone at a time.</span></div>' +
       '<section id="sr-bulk-imei-panel" class="sr-bulk-panel" data-sr-bulk-panel hidden><label>Bulk IMEIs<textarea name="bulk_imeis" rows="4" spellcheck="false" autocomplete="off" placeholder="Paste IMEIs here, one per line"></textarea></label><div class="sr-bulk-toolbar">' + button('Add IMEIs','data-sr-add-bulk') + button('Clear text','data-sr-clear-bulk') + '</div></section>' +
       '<label class="sr-bulk-reason"><span>Return reason <small class="sr-optional">Optional</small></span><input name="reason" maxlength="500" placeholder="Enter one reason for all IMEIs in this return"><small class="sr-hint">Applies to the complete return list.</small></label>' +
       button('Check stock again','data-sr-recheck hidden') + '<div class="sr-scanned" data-sr-scanned hidden></div><p class="sr-hint" data-sr-scan-message role="status" hidden></p>' +
@@ -199,11 +200,32 @@
     const form = host.querySelector("form"), get = name => form.elements.namedItem(name), q = selector => host.querySelector(selector);
     const batch = () => simpleContext?.receipts.find(r => r.batch_id === get("batch").value && r.supplier_id === get("supplier").value);
     const canPrepare = () => form.isConnected && !modalBusy && window.GREENLOOP_PAGE_ACCESS?.canEdit === true && simpleContext?.permissions?.can_return === true && Boolean(batch()) && (typeof window.GREENLOOP_CAN!=='function'||window.GREENLOOP_CAN('entry','supplier_returns'));
+    const picker=document.createElement('dialog');picker.className='sr-stock-picker';host.append(picker);
+    picker.innerHTML='<header class="sr-heading"><div><h2>Select saved phones</h2><p>Choose the exact record from this stock. No IMEI scan or typing is needed.</p></div>'+button('Close','data-picker-close')+'</header><div class="sr-search-line"><input type="search" data-picker-search maxlength="200" placeholder="Search model, serial, GB, color or saved IMEI" aria-label="Find saved phone">'+button('Refresh','data-picker-refresh')+'</div><p data-picker-status role="status"></p><div class="sr-table-wrap" data-picker-list></div><div class="sr-simple-toolbar"><span data-picker-range></span>'+button('Previous','data-picker-prev')+button('Next','data-picker-next')+'</div>';
+    const pick=sel=>picker.querySelector(sel);let pickerEpoch=0,pickerOffset=0,pickerData=null,pickerTimer;
+    function closePicker(){pickerEpoch++;clearTimeout(pickerTimer);if(picker.open)picker.close();pickerData=null;pick('[data-picker-list]').replaceChildren();}
+    returnPickerClose=closePicker;
+    async function loadPicker(start=0){
+      if(!canPrepare()||!picker.open)return;const ticket=++pickerEpoch,receiptId=selectedBatch;pickerOffset=start;pickerData=null;pick('[data-picker-status]').textContent='Loading saved phones…';pick('[data-picker-list]').replaceChildren();pick('[data-picker-prev]').disabled=pick('[data-picker-next]').disabled=true;
+      try{
+        const data=await rpc('get_stock_return_candidates_v1',{p_batch_id:receiptId,p_query:pick('[data-picker-search]').value.trim(),p_offset:start});
+        if(ticket!==pickerEpoch||receiptId!==selectedBatch||!canPrepare()||!picker.open)return;
+        if(data.batch_id!==receiptId||data.offset!==start||data.limit!==50||!Number.isSafeInteger(data.total)||data.total<0||!Array.isArray(data.rows)||data.rows.length!==Math.min(50,Math.max(0,data.total-start))||data.rows.some(r=>!r.device_id||!r.job_id||!/^\d{15}$/.test(r.imei)))throw Error('Saved phones could not be verified. Refresh the list.');
+        pickerData=data;pick('[data-picker-list]').innerHTML=data.rows.length?'<table class="sr-table" data-preserve-table-layout><thead><tr>'+['S.No','Saved IMEI','Model','GB','Color','Serial','Current stage',''].map(h=>'<th>'+escape(h)+'</th>').join('')+'</tr></thead><tbody>'+data.rows.map((r,i)=>'<tr><td>'+(start+i+1)+'</td><td>'+escape(r.imei)+'</td><td>'+escape(r.model||'Not recorded')+'</td><td>'+escape(r.storage_gb==null?'Not recorded':r.storage_gb+' GB')+'</td><td>'+escape(r.color||'Not recorded')+'</td><td>'+escape(r.serial_number||'Not recorded')+'</td><td>'+escape(String(r.current_stage||'').replaceAll('_',' '))+'</td><td>'+button(scanned.includes(r.imei)?'Added':'Add','data-picker-add="'+i+'"'+(scanned.includes(r.imei)?' disabled':''))+'</td></tr>').join('')+'</tbody></table>':'<p>No available saved phones match this stock/search.</p>';
+        pick('[data-picker-status]').textContent='Added phones stay in the return list for review. Use Stock Return to save.';pick('[data-picker-range]').textContent=data.total?(start+1)+'–'+Math.min(start+50,data.total)+' of '+data.total:'0 records';pick('[data-picker-prev]').disabled=start===0;pick('[data-picker-next]').disabled=start+50>=data.total;
+      }catch(e){if(ticket===pickerEpoch&&picker.open&&form.isConnected)pick('[data-picker-status]').textContent=e.message||'Saved phones could not load.';}
+    }
+    pick('[data-picker-close]').onclick=closePicker;picker.addEventListener('cancel',e=>{e.preventDefault();closePicker();});
+    pick('[data-picker-refresh]').onclick=()=>loadPicker(pickerOffset);pick('[data-picker-prev]').onclick=()=>loadPicker(Math.max(0,pickerOffset-50));pick('[data-picker-next]').onclick=()=>loadPicker(pickerOffset+50);
+    pick('[data-picker-search]').oninput=()=>{clearTimeout(pickerTimer);pickerTimer=setTimeout(()=>void loadPicker(),200);};
+    picker.addEventListener('click',event=>{const b=event.target.closest('[data-picker-add]');if(!b||!canPrepare()||!pickerData)return;const row=pickerData.rows[Number(b.dataset.pickerAdd)];if(!row||scanned.includes(row.imei))return;pickedDetails.set(row.imei,{model:row.model,storageGb:row.storage_gb,color:row.color});addBulk(row.imei);if(scanned.includes(row.imei)){b.disabled=true;b.textContent='Added';}});
+    q('[data-sr-select-saved]').onclick=()=>{if(!canPrepare())return;if(!picker.open)picker.showModal();void loadPicker();};
+
     function syncQuantity(){const control=get('quantity');if(control.value===''||control.value===lastAutoQuantity){control.value=scanned.length?String(scanned.length):'';lastAutoQuantity=control.value;}}
     function showScanned() {
       q('[data-sr-scanned]').hidden = !scanned.length && !pasteIssues.length;
       const rows=scanned.map((v,i)=>{const check=stockChecks.get(v);const failed=imeiErrors.has(v)||check?.allowed===false;const receipt=check?.batch_number?{batch_number:check.batch_number,received_quantity:check.received_quantity}:null;
-        return '<tr data-sr-scan-row="'+escape(v)+'"'+(failed?' class="sr-imei-error"':check?.status==='unrecorded'?' class="sr-imei-warning"':'')+'><td class="gl-serial">'+(i+1)+'</td><td>'+escape(v)+'</td><td>'+escape([captures.get(v)?.model,captures.get(v)?.storageGb,captures.get(v)?.color].filter(Boolean).join(' · ')||'—')+'</td><td>'+escape(receipt?receiptLabel(receipt).replace(/ · —$/,''):check?.status==='checking'?'Checking…':'Not recorded')+'</td><td>'+escape(check?.current_stage||(check?.status==='error'?'Check unavailable':check?.status==='checking'?'Checking…':'Not recorded'))+'</td><td>'+escape(imeiErrors.get(v)||check?.reason||'Checking stock…')+'</td><td>'+button('Remove','data-sr-remove-imei="'+i+'" aria-label="Remove IMEI '+escape(v)+'"')+'</td></tr>';});
+        return '<tr data-sr-scan-row="'+escape(v)+'"'+(failed?' class="sr-imei-error"':check?.status==='unrecorded'?' class="sr-imei-warning"':'')+'><td class="gl-serial">'+(i+1)+'</td><td>'+escape(v)+'</td><td>'+escape([(captures.get(v)||pickedDetails.get(v))?.model,(captures.get(v)||pickedDetails.get(v))?.storageGb,(captures.get(v)||pickedDetails.get(v))?.color].filter(Boolean).join(' · ')||'—')+'</td><td>'+escape(receipt?receiptLabel(receipt).replace(/ · —$/,''):check?.status==='checking'?'Checking…':'Not recorded')+'</td><td>'+escape(check?.current_stage||(check?.status==='error'?'Check unavailable':check?.status==='checking'?'Checking…':'Not recorded'))+'</td><td>'+escape(imeiErrors.get(v)||check?.reason||'Checking stock…')+'</td><td>'+button('Remove','data-sr-remove-imei="'+i+'" aria-label="Remove IMEI '+escape(v)+'"')+'</td></tr>';});
       rows.push(...pasteIssues.map((issue,i)=>'<tr class="sr-imei-error" data-sr-paste-issue><td class="gl-serial">'+(scanned.length+i+1)+'</td><td>'+escape(issue.value)+'</td><td>—</td><td>—</td><td>'+escape(issue.message)+'</td><td>'+button('Remove','data-sr-remove-issue="'+i+'" aria-label="Remove issue"')+'</td></tr>'));
       q('[data-sr-scanned]').innerHTML='<table class="sr-imei-list" data-no-table-filters><thead><tr><th class="gl-serial">S.No</th><th>IMEI</th><th>Model / GB / Color</th><th>Stock / Batch No</th><th>Current Stage</th><th>Status / reason</th><th>Remove</th></tr></thead><tbody>'+rows.join('')+'</tbody></table>';
       q('[data-sr-recheck]').hidden=!scanned.length;
@@ -272,7 +294,7 @@
       selectedBatch = receipt?.batch_id || "";
       q("[data-sr-inputs]").disabled = !receipt;
       q("[data-sr-receipt]").hidden = !receipt;
-      if (changed) { checkEpoch++;clearTimeout(checkTimer);checkRunning=false;stockChecks.clear();captures.clear();scanned = []; pasteIssues=[];imeiErrors.clear();lastAutoQuantity="";get("bulk_imeis").value=""; showScanned(); scanNotice(""); get("imei").value = ""; get("quantity").value = ""; get("model").value = ""; get("storage_gb").value = ""; get("reason").value = ""; }
+      if (changed) { closePicker();pickedDetails.clear();checkEpoch++;clearTimeout(checkTimer);checkRunning=false;stockChecks.clear();captures.clear();scanned = []; pasteIssues=[];imeiErrors.clear();lastAutoQuantity="";get("bulk_imeis").value=""; showScanned(); scanNotice(""); get("imei").value = ""; get("quantity").value = ""; get("model").value = ""; get("storage_gb").value = ""; get("color").value = ""; get("reason").value = ""; }
       if (!receipt) return;
       q("[data-sr-receipt]").innerHTML = [["Received",showDate(receipt.received_at)],["Supplier code",receiptCode(receipt)],["Quantity received",receipt.received_quantity],["Return Stock",receipt.returned_quantity]].map(([k,v]) => '<div><dt>' + escape(k) + '</dt><dd>' + escape(v) + '</dd></div>').join("");
       get("quantity").max = String(Math.min(1000, Math.max(0, Number(receipt.received_quantity)-Number(receipt.returned_quantity))));
@@ -325,6 +347,7 @@
       if(reason.toLowerCase()==="other")payload.notes=reason;
       if (get("model").value.trim()) payload.model = get("model").value.trim();
       if (storage) payload.storage_gb = Number(storage);
+      if (get("color").value.trim()) payload.color=get("color").value.trim();
       const signature = JSON.stringify(["record_simple_stock_return",payload,captureDetails]);
       if (!retries.has(signature)) retries.set(signature,crypto.randomUUID());
       const controls = [...form.querySelectorAll("button,input,select,textarea")].map(el => [el,el.disabled]);
@@ -335,7 +358,7 @@
         retries.delete(signature);
         lastSaved = "Stock return saved: " + (result.return_reference || "") + " · " + quantity + " phone(s).";
         const selectedSupplier = get("supplier").value, selectedReceipt = get("batch").value;
-        checkEpoch++;clearTimeout(checkTimer);checkRunning=false;stockChecks.clear();captures.clear();scanned = []; pasteIssues=[];imeiErrors.clear();lastAutoQuantity="";get("bulk_imeis").value=""; showScanned(); scanNotice(""); get("quantity").value = ""; get("imei").value = ""; get("model").value = ""; get("storage_gb").value = ""; get("reason").value = "";
+        checkEpoch++;clearTimeout(checkTimer);checkRunning=false;stockChecks.clear();captures.clear();scanned = []; pasteIssues=[];imeiErrors.clear();lastAutoQuantity="";get("bulk_imeis").value=""; showScanned(); scanNotice(""); get("quantity").value = ""; get("imei").value = ""; get("model").value = ""; get("storage_gb").value = ""; get("color").value = ""; get("reason").value = "";
         // A completed return must never leave a filled form available to repeat.
         simpleContext = null;
         await refreshReport();
@@ -368,7 +391,7 @@
     returnSearchWidget?.destroy();
     reportRoot = root;
     root.innerHTML = '<div class="sr-simple-toolbar">' + button("Refresh", 'data-sr-refresh') + '</div><p data-sr-simple-message role="status" aria-live="polite"></p>' +
-      '<section class="sr-card sr-report" data-sr-create><header><h2>Return stock</h2><p>Select the supplier and received stock, add IMEIs or enter quantity, then save.</p></header><div data-sr-simple-form></div></section>' +
+      '<section class="sr-card sr-report" data-sr-create><header><h2>Return stock</h2><p>Select the supplier and received stock, add IMEIs or enter quantity, then save. IMEI, GB and Color can be left blank when unknown.</p></header><div data-sr-simple-form></div></section>' +
       '<section class="sr-card sr-report"><header class="sr-heading"><div><h2>Stock Return report</h2><p data-sr-total></p></div><a class="secondary-button sr-report-link" href="reports.html?report=stock_returns">Open in Reports</a></header><label class="sr-report-search">Find return<input data-sr-report-search type="search" placeholder="Supplier, receipt, model or IMEI"></label><div class="sr-table-wrap" data-sr-simple-table></div></section>' +
       '<details class="sr-card sr-report sr-legacy" data-sr-legacy hidden></details>';
     root.querySelector("[data-sr-refresh]").onclick = () => { if (!modalBusy) refreshReport(); };
@@ -380,7 +403,7 @@
     });
     refreshReport();
   }
-  function unmount() { returnSearchWidget?.destroy();returnSearchWidget=null; reportRoot = null; simpleContext = null; simpleRows = []; ++simpleGeneration; window.clearTimeout(externalRefreshTimer); externalRefreshPending = false; closeStaleDetails = false; }
+  function unmount() { returnPickerClose?.();returnPickerClose=null;returnSearchWidget?.destroy();returnSearchWidget=null; reportRoot = null; simpleContext = null; simpleRows = []; ++simpleGeneration; window.clearTimeout(externalRefreshTimer); externalRefreshPending = false; closeStaleDetails = false; }
   window.GREENLOOP_SUPPLIER_RETURNS = {mount,unmount};
   const root = document.querySelector("#stock-return-app");
   if (root) {

@@ -419,14 +419,18 @@
     return defaults;
   }
 
+  let queueEpoch=0,queueStopped=false;
   async function loadQueue() {
+    const ticket=++queueEpoch;
     const { data, error } = await window.GREENLOOP_FILTERS.all(()=>getClient()
       .from("job_work_order_steps")
       .select("id, work_order:job_work_orders!inner(work_order_number, job:jobs!inner(id, job_number, supplier_grade, supplier:greenloop_suppliers(supplier_code, company_name), receiving_batch:receiving_batches(planned_quantity, invoice_number, batch_number), device:devices(device_number, imei_1, imei_2, serial_number, brand, model, storage_gb, color, battery_health, device_platform, battery_health_unavailable, gc_grade)))")
+      .in("work_order.job.current_status", ["final_qc_pending","qc_failed"])
       .eq("department", "final_qc")
       .eq("step_status", "in_progress")
       .order("created_at", { ascending: true }).order("id"));
     if (error) throw error;
+    if(queueStopped||ticket!==queueEpoch||window.GREENLOOP_CAN?.("view","final_qc")!==true)return;
     const nextSteps = data || [];
     // Queue summaries need only their joined phone/receipt fields. Fresh BH and
     // return context arrive in the targeted receive snapshot when a row loads.
@@ -834,7 +838,9 @@
   document.querySelector("#clear-tray").addEventListener("click", resetTray);
   autoPickButton.addEventListener("click", autoPickAllPending);
   document.querySelector("#refresh-queue").addEventListener("click", () => Promise.all([loadQueue(),loadFailureOptions()]).then(() => showToast("Final QC queue refreshed.")).catch((error) => setMessage(error.message || "Queue could not be refreshed.")));
-  queueCount.addEventListener("click", openPendingModal);
+  queueCount.addEventListener("click",()=>{openPendingModal();void loadQueue().catch(()=>{});});
+  document.addEventListener("greenloop:workflow-notifications-refreshed",()=>{if(!queueStopped&&!document.hidden)void loadQueue().catch(()=>{});});
+  for(const name of ["greenloop:office-locked","greenloop:signed-out","pagehide"])window.addEventListener(name,()=>{queueStopped=true;queueEpoch++;queueSteps=[];queueCount.textContent="— waiting";pendingListBody.replaceChildren();pendingModal.hidden=true;document.body.classList.remove("qc-modal-open");});
   pendingSearch.addEventListener("input", () => renderPendingJobs(pendingSearch.value));
   pendingModal.addEventListener("click", (event) => { if (event.target.closest("[data-close-pending]")) closePendingModal(); });
   document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !pendingModal.hidden) closePendingModal(); });

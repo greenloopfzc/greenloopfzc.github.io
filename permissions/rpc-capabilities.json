@@ -1,6 +1,8 @@
 {
   "version": "20261105-stock-consistency-1",
   "rpcs": {
+    "get_stock_return_candidates_v1": {"page":"supplier_returns","capability":"entry","read":true},
+    "get_chaman_bulk_return_version": {"read":true},
     "get_stock_activity_reports_v1": {"page":"ready_stock","capability":"view","read":true},
     "get_stock_activity_details_v1": {"page":"ready_stock","capability":"view","read":true},
     "get_stock_activity_grouped_v1": {"page":"ready_stock","capability":"view","read":true},
@@ -3882,5 +3884,7 @@
   },
   "get_issuance_access_version": {
     "read": true
-  }
+  },
+  "get_stock_return_candidates_v1": {"page":"supplier_returns","capability":"entry","read":true},
+  "get_chaman_bulk_return_version": {"read":true}
 }

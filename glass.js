@@ -148,6 +148,7 @@
     const { data, error } = await getClient()
       .from("job_work_order_steps")
       .select("id, step_order, work_order:job_work_orders!inner(work_order_number, job:jobs!inner(id, job_number, device:devices(device_number, imei_1, brand, model, original_grade)))")
+      .in("work_order.job.current_status",["glass_pending","glass_in_progress"])
       .eq("department", "glass")
       .eq("step_status", "in_progress")
       .order("created_at", { ascending: true });
