@@ -82,3 +82,5 @@
 (function(root){const rule={read:true};root.GREENLOOP_RPC_CAPABILITIES.rpcs.get_lab_counter_membership_version=rule;root.GREENLOOP_RPC_CAPABILITIES.get_lab_counter_membership_version=rule;})(typeof window!=="undefined"?window:globalThis);
 
 (function(root){const rule={read:true};root.GREENLOOP_RPC_CAPABILITIES.rpcs.get_lab_transfer_readiness_version=rule;root.GREENLOOP_RPC_CAPABILITIES.get_lab_transfer_readiness_version=rule;})(typeof window!=="undefined"?window:globalThis);
+
+(function(root){const rule={read:true};root.GREENLOOP_RPC_CAPABILITIES.rpcs.get_chaman_custody_notice_version=rule;root.GREENLOOP_RPC_CAPABILITIES.get_chaman_custody_notice_version=rule;})(typeof window!=="undefined"?window:globalThis);

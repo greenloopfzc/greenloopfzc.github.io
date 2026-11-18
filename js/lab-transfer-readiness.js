@@ -4,10 +4,10 @@
   const version='20261118-lab-transfer-readiness-1',labStates=['laboratory_pending','laboratory_in_progress','glass_pending','glass_in_progress'];
   let dialog,finish,stamp=0,opened=0;
   const allowed=()=>window.GREENLOOP_PAGE_ACCESS?.pageKey==='lab_glass'&&window.GREENLOOP_CAN?.('view','lab_glass')===true;
-  const stage=value=>String(value||'Not verified').replace(/â€”|â€“|—|–/g,' - ').replace(/Frame Department/gi,'B-DEPT').replace(/^Shop stock$/i,'Chaman Shop').replace(/^Chaman transfer.*awaiting Greenloop receiving$/i,'Chaman / GL receiving pending');
+  const stage=value=>String(value||'Not verified').replace(/â€”|â€“|—|–/g,' - ').replace(/Frame Department/gi,'B-DEPT').replace(/^Shop stock$/i,'Chaman Shop').replace(/^Chaman transfer.*awaiting Greenloop receiving$/i,'Chaman status not verified');
   function shortReason(value){
     const text=String(value||'Check failed. Retry.'),labels=[];
-    if(/Chaman transfer|outside Greenloop|receive.*back at Greenloop/i.test(text))return 'Chaman receiving pending';
+    if(/Chaman transfer|outside Greenloop|receive.*back at Greenloop/i.test(text))return 'Phone is outside Greenloop';
     if(/services?/i.test(text))labels.push('Services pending');
     if(/parts? return.*(?:review|pending)|return.*waiting.*review/i.test(text))labels.push('Part return pending');
     if(/required parts|parts.*(?:not.*issued|awaiting|fully issue)|parts department/i.test(text))labels.push('Parts pending');
@@ -41,6 +41,8 @@
     }finally{clearTimeout(timer);}
   }
   function issue(phone,imei){
+    const custody={out_pending:['Chaman receiving pending','Chaman receiving pending'],shop:['At Chaman Shop','Chaman Shop'],return_pending:['GL receiving pending','GL receiving pending']}[phone.chaman_phase];
+    if(custody)return{imei:phone.imei||imei,reason:custody[0],stage:custody[1]};
     return{imei:phone.imei||imei,stage:stage(phone.current_stage),reason:shortReason([...new Set(phone.reasons)].join(' '))};
   }
   const errorIssue=(imei,error)=>({imei,stage:/not found/i.test(error?.message||'')?'Not found in software':'Not verified',reason:error?.message||'Phone readiness could not be checked. Scan again to retry.'});

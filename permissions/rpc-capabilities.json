@@ -1,6 +1,7 @@
 {
   "version": "20261105-stock-consistency-1",
   "rpcs": {
+    "get_chaman_custody_notice_version":{"read":true},
     "get_lab_transfer_readiness_version":{"read":true},
     "get_lab_counter_membership_version":{"read":true},
     "get_background_read_speed_version":{"read":true},
@@ -3907,4 +3908,5 @@
 ,
 "get_lab_counter_membership_version":{"read":true}
 ,"get_lab_transfer_readiness_version":{"read":true}
+,"get_chaman_custody_notice_version":{"read":true}
 }
