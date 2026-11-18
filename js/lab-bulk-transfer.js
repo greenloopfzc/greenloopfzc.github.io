@@ -60,7 +60,7 @@
       catch(error){if(!alive(revision))return;checked.push({...row,verification_pending:true});failed=true;issues.push({...readiness().errorIssue(row.imei,error),reason:(error.message||'Could not recheck this phone.')+' Prepared phone retained; recheck before transfer.'});}
     }
     rows=checked;needsRecheck=failed;message(failed?'Readiness could not be confirmed. Recheck before transfer.':issues.length?'Unavailable phones removed. Remaining phones are ready.':'All phones are ready. You can transfer the list.',failed||issues.length>0);render();
-    if(issues.length)await readiness().show(issues,{input:el('scan'),isCurrent:()=>alive(revision),summary:'Recheck results. Confirmed unavailable phones were removed; any unverified prepared phones are retained and transfer is blocked until rechecked.'});
+    if(issues.length)await readiness().show(issues,{input:el('scan'),isCurrent:()=>alive(revision),summary:'Recheck required. Unverified phones are kept.'});
     }finally{if(alive(revision)){processing=false;render();focus();}}
   }
   async function transfer(){
@@ -74,7 +74,7 @@
       if(r.error){
         // A database rejection is rolled back. A lost connection may have committed;
         // keep its exact request key and command for an idempotent retry.
-        if(/^(?:[0-9A-Z]{5})$/.test(r.error.code||'')&&!/^PGRST/.test(r.error.code)&&!['55P03','57014','40003'].includes(r.error.code)){pending=null;needsRecheck=true;message((r.error.message||'Transfer was rejected.')+' Recheck the list before trying again.',true);await readiness().show([readiness().errorIssue((r.error.message||'').match(/\b\d{15}\b/)?.[0]||'Selected phones',r.error)],{input:el('scan'),isCurrent:()=>alive(revision),title:'Transfer rejected',summary:'The server rejected this handover. Prepared phones are retained. Recheck the list before trying again.'});}
+        if(/^(?:[0-9A-Z]{5})$/.test(r.error.code||'')&&!/^PGRST/.test(r.error.code)&&!['55P03','57014','40003'].includes(r.error.code)){pending=null;needsRecheck=true;message((r.error.message||'Transfer was rejected.')+' Recheck the list before trying again.',true);await readiness().show([readiness().errorIssue((r.error.message||'').match(/\b\d{15}\b/)?.[0]||'Selected phones',r.error)],{input:el('scan'),isCurrent:()=>alive(revision),title:'Transfer rejected',summary:'Transfer rejected. Recheck the saved list.'});}
         else message((r.error.message||'Connection interrupted.')+' Retry this same transfer to confirm its result. Keep this page open.',true);
         return;
       }

@@ -1,5 +1,11 @@
-.lab-transfer-notice{width:min(960px,calc(100vw - 32px));max-height:85vh;padding:0;border:1px solid var(--line,#c8d5df);border-radius:22px;background:var(--surface,#f6f9fc);color:var(--ink,#263640);box-shadow:0 18px 70px #16314455}
+.lab-transfer-notice{width:min(760px,calc(100vw - 32px));max-height:85vh;padding:0;border:1px solid var(--line,#c8d5df);border-radius:22px;background:var(--surface,#f6f9fc);color:var(--ink,#263640);box-shadow:0 18px 70px #16314455}
 .lab-transfer-notice::backdrop{background:#152b3c88}.lab-transfer-notice-heading{display:flex;align-items:center;gap:14px;padding:22px 24px;border-bottom:1px solid var(--line,#c8d5df)}
 .lab-transfer-notice-heading>span{display:grid;place-items:center;width:36px;height:36px;flex:none;border-radius:50%;background:#ad3030;color:#fff;font-size:24px;font-weight:800}.lab-transfer-notice h2{margin:0;font-size:22px}.lab-transfer-notice>p{padding:16px 24px;margin:0}
 .lab-transfer-notice-scroll{overflow:auto;max-height:50vh;margin:0 24px}.lab-transfer-notice table{width:100%;border-collapse:collapse;font-size:14px}.lab-transfer-notice th,.lab-transfer-notice td{padding:13px 12px;border:1px solid var(--line,#c8d5df);vertical-align:top}.lab-transfer-notice th{background:var(--surface-inset,#e5edf2);text-align:left}.lab-transfer-notice td{background:#fae3e1;color:#263640}.lab-transfer-notice td:nth-child(2){white-space:nowrap;font-weight:700}.lab-transfer-notice td:nth-child(3){min-width:230px}.lab-transfer-notice td:nth-child(4){min-width:145px}.lab-transfer-notice-actions{display:flex;justify-content:flex-end;padding:20px 24px}.lab-transfer-notice-actions button{min-width:100px}
 html[data-mode="dark"] .lab-transfer-notice{background:#172a32;color:#e3edf1}html[data-mode="dark"] .lab-transfer-notice td{background:#492e32;color:#f5e6e6}html[data-mode="dark"] .lab-transfer-notice th{background:#203944}
+
+.lab-transfer-notice>p[hidden]{display:none!important}
+.lab-transfer-notice-heading{padding:18px 20px}.lab-transfer-notice h2{font-size:20px}
+.lab-transfer-notice-scroll{margin:16px 20px 0}.lab-transfer-notice th,.lab-transfer-notice td{white-space:normal!important;overflow-wrap:anywhere;padding:11px 10px}
+.lab-transfer-notice td:nth-child(2){white-space:nowrap!important}.lab-transfer-notice td:nth-child(3){min-width:140px}.lab-transfer-notice td:nth-child(4){min-width:120px}
+.lab-transfer-notice-actions{padding:16px 20px}

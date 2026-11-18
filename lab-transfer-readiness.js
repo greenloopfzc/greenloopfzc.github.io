@@ -4,7 +4,31 @@
   const version='20261118-lab-transfer-readiness-1',labStates=['laboratory_pending','laboratory_in_progress','glass_pending','glass_in_progress'];
   let dialog,finish,stamp=0,opened=0;
   const allowed=()=>window.GREENLOOP_PAGE_ACCESS?.pageKey==='lab_glass'&&window.GREENLOOP_CAN?.('view','lab_glass')===true;
-  const stage=value=>String(value||'Current stage not verified').replace(/â€”|â€“|—|–/g,' - ').replace(/Frame Department/gi,'B-DEPT').replace(/^Shop stock$/i,'Chaman Shop');
+  const stage=value=>String(value||'Not verified').replace(/â€”|â€“|—|–/g,' - ').replace(/Frame Department/gi,'B-DEPT').replace(/^Shop stock$/i,'Chaman Shop').replace(/^Chaman transfer.*awaiting Greenloop receiving$/i,'Chaman / GL receiving pending');
+  function shortReason(value){
+    const text=String(value||'Check failed. Retry.'),labels=[];
+    if(/Chaman transfer|outside Greenloop|receive.*back at Greenloop/i.test(text))return 'Chaman receiving pending';
+    if(/services?/i.test(text))labels.push('Services pending');
+    if(/parts? return.*(?:review|pending)|return.*waiting.*review/i.test(text))labels.push('Part return pending');
+    if(/required parts|parts.*(?:not.*issued|awaiting|fully issue)|parts department/i.test(text))labels.push('Parts pending');
+    if(labels.length)return labels.join(' / ');
+    if(/already in.*(?:transfer )?list|already prepared/i.test(text))return 'Already in list';
+    if(/duplicate/i.test(text))return 'Duplicate IMEI';
+    if(/(?:IMEI|phone).*not.*found|not found.*(?:stock|software)/i.test(text))return 'IMEI not found';
+    if(/not found/i.test(text))return 'Record not found';
+    if(/15-digit|invalid IMEI/i.test(text))return 'Invalid IMEI';
+    if(/multiple active|multiple.*work lines/i.test(text))return 'Multiple work lines';
+    if(/no active.*(?:Lab|Glass).*work/i.test(text))return 'No active Lab work';
+    if(/no active.*job/i.test(text))return 'No active job';
+    if(/not currently in Lab|not in the current Lab|not.*Lab.*queue/i.test(text))return 'Not in Lab & Glass';
+    if(/assignment changed|phone changed/i.test(text))return 'Phone changed. Recheck.';
+    if(/save or (?:cancel|discard)|unsaved|changed Lab work/i.test(text))return 'Save or cancel your changes first';
+    if(/install.*update|readiness.*update/i.test(text))return 'Update required. Refresh after updating.';
+    if(/office|network.*access/i.test(text))return 'Office access required';
+    if(/permission|access is required|not allowed/i.test(text))return 'Access required';
+    if(/not.*verified|could not.*check|incomplete|timeout|timed out|fetch|connection/i.test(text))return 'Check failed. Retry.';
+    return text.length>100?'Check failed. Refresh and retry.':text;
+  }
   function valid(p){return p&&typeof p.device_id==='string'&&/^\d{15}$/.test(p.imei)&&typeof p.ready==='boolean'&&Array.isArray(p.reasons)&&p.reasons.every(s=>typeof s==='string'&&s.trim())&&typeof p.selection_token==='string'&&p.selection_token&&p.readiness_version===version&&typeof p.current_stage==='string'&&p.current_stage.trim()&&(!p.ready||typeof p.step_id==='string'&&p.step_id&&labStates.includes(p.status)&&!p.reasons.length)&&(!p.ready?p.reasons.length>0:true);}
   async function check(imei,isCurrent=()=>true){
     if(!allowed()||window.GREENLOOP_CAN?.('entry','lab_glass')!==true)throw Error('Lab Job Completed access is required.');
@@ -17,10 +41,7 @@
     }finally{clearTimeout(timer);}
   }
   function issue(phone,imei){
-    const reasons=[...new Set(phone.reasons)],labels=[];
-    if(reasons.some(s=>/services?/i.test(s)))labels.push('Services pending');
-    if(reasons.some(s=>/parts?|initial qc parts/i.test(s)))labels.push(reasons.some(s=>/return.*review/i.test(s))?'Parts return pending':'Parts pending');
-    return{imei:phone.imei||imei,stage:stage(phone.current_stage),reason:(labels.length?labels.join(' / ')+'. ':'')+reasons.join(' ')};
+    return{imei:phone.imei||imei,stage:stage(phone.current_stage),reason:shortReason([...new Set(phone.reasons)].join(' '))};
   }
   const errorIssue=(imei,error)=>({imei,stage:/not found/i.test(error?.message||'')?'Not found in software':'Not verified',reason:error?.message||'Phone readiness could not be checked. Scan again to retry.'});
   function dismiss(){stamp++;const done=finish;finish=null;if(dialog?.open)dialog.close();if(dialog)dialog.querySelector('tbody').replaceChildren();done?.(false);}
@@ -37,9 +58,9 @@
       dialog.addEventListener('keydown',event=>{if(event.key==='Enter'&&performance.now()-opened<180){event.preventDefault();event.stopImmediatePropagation();}});
     }
     dialog.querySelector('h2').textContent=title;
-    dialog.querySelector('[data-transfer-notice-summary]').textContent=summary||(issues.length===1?issues[0].reason+' Current stage: '+stage(issues[0].stage)+'.':`${issues.length} phones were not added to the transfer list. Valid prepared phones are preserved.`);
+    const summaryNode=dialog.querySelector('[data-transfer-notice-summary]');summaryNode.textContent=summary??(issues.length>1?`${issues.length} phones need attention.`:'');summaryNode.hidden=!summaryNode.textContent;
     for(const [i,item]of issues.entries()){
-      const row=document.createElement('tr');for(const value of [i+1,item.imei,item.reason,stage(item.stage)]){const cell=document.createElement('td');cell.textContent=String(value??'');row.append(cell);}dialog.querySelector('tbody').append(row);
+      const row=document.createElement('tr');for(const value of [i+1,item.imei,shortReason(item.reason),stage(item.stage)]){const cell=document.createElement('td');cell.textContent=String(value??'');row.append(cell);}dialog.querySelector('tbody').append(row);
     }
     opened=performance.now();const closed=new Promise(resolve=>finish=resolve);dialog.showModal();dialog.querySelector('[data-transfer-notice-ok]').focus();
     const accepted=await closed;
