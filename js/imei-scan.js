@@ -19,7 +19,7 @@
     if(document.querySelector('.gl-imei-stage-dialog[open]')&&field(lastField))return lastField;
     return null;
   }
-  function clearOldNotice(){locationRevision++;window.GREENLOOP_IMEI_STAGE_NOTICE?.dismiss?.();}
+  function clearOldNotice(){locationRevision++;window.GREENLOOP_IMEI_STAGE_NOTICE?.dismiss?.();window.GREENLOOP_LAB_TRANSFER?.dismiss?.();}
   function replace(input,value){
     if(input.value===value)return;
     input.value=value;input.setSelectionRange(value.length,value.length);
@@ -63,7 +63,7 @@
     return null; // Reports and global IMEI Search intentionally cover every stage.
   }
   function nativeLocationCheck(input){
-    return input.matches('.qc-issuance-imei,.qc-bulk-imei,.final-row-imei,#technician-imei-scan,.batch-row-imei,[data-b-dept-scan],#imei-1,#export-imei');
+    return input.matches('.qc-issuance-imei,.qc-bulk-imei,.final-row-imei,#technician-imei-scan,.batch-row-imei,[data-lbt-scan],[data-b-dept-scan],#imei-1,#export-imei');
   }
   async function checkLocation(input){
     const accepted=expected(input),imei=input.value.trim();

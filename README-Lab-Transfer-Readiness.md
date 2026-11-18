@@ -25,6 +25,13 @@ inside the table. Mixed-paste results retain every rejected IMEI; cells wrap and
 single-phone notices omit an unnecessary repeated summary. OK/Escape returns
 focus to the same empty scanner when its request and access are still valid.
 
+The owned Bulk Transfer scanner does not also launch the generic stage popup.
+Lab and generic IMEI notices dismiss the older notice before showing a newer
+one. Dismissal invalidates its pending response and callbacks, so an older
+warning cannot remain underneath or reopen after OK. A stale notice request
+cannot close the currently relevant popup. Other workflow confirmations remain
+independent.
+
 This correction changes browser behavior only. No new SQL migration is needed;
 the cumulative publisher verifies the existing prerequisites, including the
 previous Lab readiness version `20261118-lab-transfer-readiness-1`. No stock,

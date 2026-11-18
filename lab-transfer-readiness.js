@@ -47,6 +47,7 @@
   function dismiss(){stamp++;const done=finish;finish=null;if(dialog?.open)dialog.close();if(dialog)dialog.querySelector('tbody').replaceChildren();done?.(false);}
   async function show(issues,{input,isCurrent=()=>true,title='Cannot transfer to Final QC',summary}={}){
     if(!issues.length||!allowed()||!isCurrent())return false;
+    window.GREENLOOP_IMEI_STAGE_NOTICE?.dismiss?.();
     dismiss();const ticket=stamp;
     if(!dialog){
       dialog=document.createElement('dialog');dialog.className='lab-transfer-notice';dialog.setAttribute('aria-labelledby','lab-transfer-notice-title');

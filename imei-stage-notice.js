@@ -53,6 +53,8 @@
     return pending.get(value);
   }
   async function show({ imei, title = "Duplicate phone", message = "This phone already exists in the system.", isCurrent = () => true, onlyIfFound = false, knownRecord = null, onClose = null } = {}) {
+    if(!isCurrent())return false;
+    window.GREENLOOP_LAB_TRANSFER?.dismiss?.();
     afterClose=null;
     const ticket = ++revision;
     const valid = () => ticket === revision && isCurrent();
