@@ -58,7 +58,7 @@
   let technicians = [];
   let technicianRows = [];
   let activeTechnicianId = "";
-  let bulkWorkbenchImeis=null;
+  let bulkWorkbenchImeis=null,mainScanReads=0;
   let activePhoneStepId = "";
   let partOptions = [...standardParts];
   const usageCounts = {part: new Map(), service: new Map()};
@@ -278,9 +278,9 @@
   }
   function linePartVisual(row){const p=lineWorkflowState(row);return {className:p.pendingReturns.length?'parts-pending':p.allIssued?'parts-issued':'parts-pending',label:p.pendingReturns.length?'Return pending':!p.hasParts?'No parts required':!p.submitted?'Preparing parts list':p.allIssued?'Parts issued':'Waiting for Parts'};}
   function actionCell(row) {
-    const p=row.pf_plan||{},st=lineWorkflowState(row),d=lineDrafts.get(String(row.step_id))||{},servicesReady=p.services_saved||!p.services?.length,ready=st.allIssued&&!st.pendingReturns.length&&servicesReady&&!d.partsDirty&&!d.servicesDirty;
+    const p=row.pf_plan||{},st=lineWorkflowState(row),d=lineDrafts.get(String(row.step_id))||{},servicesReady=p.services_saved||!p.services?.length,ready=!row.handover_unverified&&st.allIssued&&!st.pendingReturns.length&&servicesReady&&!d.partsDirty&&!d.servicesDirty;
     const send=st.hasParts||st.submitted||d.partsDirty;
-    return `${additionalMode(row)?`<button type="button" class="line-save order-parts" data-order-parts="${escapeHtml(row.step_id)}" ${d.partsDirty&&d.parts?.length?'':'disabled'}>Order Additional Parts</button>`:send?`<button type="button" class="line-save order-parts" data-order-parts="${escapeHtml(row.step_id)}">${st.submitted?'Update Parts list':'Send to Parts'}</button>`:''}<button type="button" class="line-save job-completed" data-complete-lab="${escapeHtml(row.step_id)}" ${ready?'':'disabled'}>Job Completed</button><small class="line-status" data-line-status>${d.partsDirty||d.servicesDirty?'Save the changed list before completing the job':st.pendingReturns.length?'Waiting for Parts return review':!servicesReady?'Save the Lab services list':ready?'Ready to send to Final QC':!st.submitted?'Send the parts list to Parts':'Waiting for required parts'}</small>`;
+    return `${additionalMode(row)?`<button type="button" class="line-save order-parts" data-order-parts="${escapeHtml(row.step_id)}" ${d.partsDirty&&d.parts?.length?'':'disabled'}>Order Additional Parts</button>`:send?`<button type="button" class="line-save order-parts" data-order-parts="${escapeHtml(row.step_id)}">${st.submitted?'Update Parts list':'Send to Parts'}</button>`:''}<button type="button" class="line-save job-completed" data-complete-lab="${escapeHtml(row.step_id)}" ${ready?'':'disabled'}>Job Completed</button><small class="line-status" data-line-status>${row.handover_unverified?'Readiness not verified. Refresh this phone before transfer.':d.partsDirty||d.servicesDirty?'Save the changed list before completing the job':st.pendingReturns.length?'Waiting for Parts return review':!servicesReady?'Save the Lab services list':ready?'Ready to send to Final QC':!st.submitted?'Send the parts list to Parts':'Waiting for required parts'}</small>`;
   }
   function activePartList(row){const parts=row.pf_plan?.parts||[];return parts.length?'<ul class="pp-active-parts">'+parts.map(p=>`<li><span>${escapeHtml(p.name)} × ${escapeHtml(p.quantity)} ${damageBadge(p)} <small>${Number(p.issued)>=Number(p.quantity)?'Issued':'Awaiting issue'}</small></span>${p.can_cancel?`<button type="button" data-cancel-part="${escapeHtml(p.request_id)}" aria-label="Remove unissued ${escapeHtml(p.name)}">Remove</button>`:''}</li>`).join('')+'</ul>':'<small>No active parts.</small>';}
   function returnableParts(row) {
@@ -487,7 +487,7 @@
   }
   async function loadTechnicianRows({quiet=false}={}) {
     if(window.GREENLOOP_BULK_IMEI?.busy)return;
-    if(bulkWorkbenchImeis){await loadBulkWorkbench(bulkWorkbenchImeis);return;}
+    if(bulkWorkbenchImeis){await loadBulkWorkbench(bulkWorkbenchImeis,{replace:true});return;}
     if(!app.isConnected)return;
     const version=++rowLoadVersion,technicianId=activeTechnicianId,editsAtStart=editVersion,scan=focusedImei;
     if(!quiet)setBoardMessage();
@@ -645,10 +645,15 @@
   async function submitPartReturn(button){const row=button.closest('tr'),p=rowData(row)?.pf_plan;if(!p)return;const issueId=row.querySelector('[data-pf-return-issue]').value;if(!issueId){setBoardMessage('Select the part to return.');return;}const quantity=Number(row.querySelector('[data-pf-return-qty]').value);if(!Number.isInteger(quantity)||quantity<1){setBoardMessage('Enter a valid return quantity.');return;}const {error}=await getClient().rpc('request_parts_flow_return_v1',{p_step_id:row.dataset.stepId,p_revision:p.revision,p_issue_id:issueId,p_quantity:quantity,p_notes:null});if(error){setBoardMessage(error.message);return;}row.dataset.saved='yes';showToast('Return sent to Parts for classification.');document.dispatchEvent(new Event('greenloop:notifications-changed'));await refreshAll();}
   async function completeLab(button) {
     if (!editable()) return;
+    const line=button.closest('tr'),saved=rowData(line),current=()=>!labStopped&&line.isConnected&&window.GREENLOOP_CAN?.('entry','lab_glass')===true;
+    try{
+      const phone=await transferReadiness().check(saved.imei,current);if(!phone||!current())return;
+      if(!phone.ready||phone.step_id!==button.dataset.completeLab){await transferReadiness().show([phone.ready?{imei:phone.imei,stage:phone.current_stage,reason:'The Lab assignment changed. Refresh this phone before transfer.'}:transferReadiness().issue(phone,saved.imei)],{input:technicianImeiScan,isCurrent:current});return;}
+    }catch(error){if(current())await transferReadiness().show([transferReadiness().errorIssue(saved.imei,error)],{input:technicianImeiScan,isCurrent:current});return;}
     setSubmitting(button, true, "Completing...");
     const { error } = await getClient().rpc("complete_parts_only_lab_v1", { p_step_id: button.dataset.completeLab,p_revision:rowData(button.closest("tr"))?.pf_plan?.revision??0,p_services_revision:rowData(button.closest("tr"))?.pf_plan?.services_revision??0 });
     setSubmitting(button, false);
-    if (error) { setBoardMessage(error.message); return; }
+    if (error) { setBoardMessage(error.message);await transferReadiness().show([transferReadiness().errorIssue(saved.imei,error)],{input:technicianImeiScan,isCurrent:current,title:'Transfer not completed',summary:'The transfer was not confirmed. Refresh this phone and check its current stage before another attempt.'});return; }
     button.closest("tr").dataset.saved = "yes";
     showToast("Job completed. Phone sent to Final QC.");
     document.dispatchEvent(new CustomEvent("greenloop:notifications-changed"));
@@ -662,63 +667,85 @@
     bulkWorkbenchImeis=null; cancelImeiLookup(); focusedImei = ""; focusedStepId = ""; technicianImeiScan.value = "";
     clearTechnicianImei.hidden = true; setBoardMessage(); if(render)renderTechnicianLines();
   }
-  async function loadBulkWorkbench(imeis,options={}){
-    if(technicianWorkRows.querySelector('tr[data-busy="yes"]'))throw Error('Wait for the current Lab save to finish.');
-    if(technicianEditorIsActive()||options.input&&[...lineDrafts.values()].some(d=>d.partsDirty||d.servicesDirty))throw Error('Save or discard changed Lab work before loading pasted phones.');
-    const version=++rowLoadVersion,loaded=[],issues=[];let next=0,last;
-    bulkWorkbenchImeis=[...imeis];focusedImei="";focusedStepId="";technicianImeiScan.value="";clearTechnicianImei.hidden=false;
-    async function worker(){while(next<imeis.length&&(!options.isCurrent||options.isCurrent())){const imei=imeis[next++];try{const data=await readWorkbench({p_employee_id:null,p_imei:imei});last=data;
-      if(data.identity?.matched_type==='secondary'){issues.push(imei+' — IMEI 2; use '+data.identity.primary_imei);continue;}
-      const rows=data.rows.filter(row=>String(row.imei)===imei&&['laboratory','glass'].includes(String(row.department)));
-      if(!rows.length){issues.push(imei+' — current stage: '+(data.identity?.current_stage||'not pending in Lab & Glass'));continue;}
-      rows.forEach(row=>loaded.push({...row,bulk_technician_name:data.employee_name||'Unassigned'}));
-    }catch(e){issues.push(imei+' — '+e.message);}}}
-    await Promise.all(Array.from({length:Math.min(4,imeis.length)},worker));if(version!==rowLoadVersion||options.isCurrent&&!options.isCurrent())return{loaded:0,issues};
-    activeTechnicianId='__bulk__';renderTechnicianCards();applyWorkbenchRows([...new Map(loaded.map(row=>[row.step_id,row])).values()],{serverTime:last?.server_now,workOptions:last?.work_options});
-    setBoardMessage(loaded.length+' pasted phone lines loaded.',true);return{loaded:new Set(loaded.map(row=>row.imei)).size,issues};
+  const transferReadiness=()=>window.GREENLOOP_LAB_TRANSFER;
+  const mayPrepareHandover=()=>editable()&&window.GREENLOOP_CAN?.('entry','lab_glass')===true;
+  async function checkedWorkbench(imei,current){
+    const preview=mayPrepareHandover()?await transferReadiness().check(imei,current):null;
+    if(!current())return null;
+    if(preview&&!preview.ready)return{issue:transferReadiness().issue(preview,imei)};
+    const canonical=preview?.imei||imei,data=await readWorkbench({p_employee_id:null,p_imei:canonical});
+    if(!current())return null;
+    const matched=data.rows.filter(row=>row.imei===canonical&&(!preview||row.step_id===preview.step_id));
+    if(matched.length!==1)return{issue:{imei:canonical,stage:transferReadiness().stage(data.identity?.current_stage),reason:matched.length?'Multiple active work lines need review.':'This phone is not in the current Lab & Glass work queue. Scan again to check its current assignment.'}};
+    return{data,row:{...matched[0],handover_prepared:!!preview},imei:canonical};
   }
-  window.GREENLOOP_BULK_IMEI?.register({selector:'#technician-imei-scan',capability:'search',load:loadBulkWorkbench});
+  async function loadBulkWorkbench(imeis,options={}){
+    if(!searchable())return;
+    if(window.GREENLOOP_LAB_PENDING_CONTEXT.hasDrafts()||technicianEditorIsActive()){
+      await transferReadiness().show([{imei:'Prepared work',stage:'Lab & Glass',reason:'Save or cancel changed Lab work before loading pasted phones.'}],{input:technicianImeiScan});return;
+    }
+    cancelImeiLookup();
+    const version=++rowLoadVersion,ticket=++imeiLookupVersion,edits=editVersion,loaded=[],issues=(options.rejected||[]).map(r=>({imei:r.imei,reason:r.message,stage:'Not checked'}));let next=0,last;
+    const current=()=>!labStopped&&version===rowLoadVersion&&ticket===imeiLookupVersion&&edits===editVersion&&searchable()&&app.isConnected;
+    const prepared=bulkWorkbenchImeis?technicianRows.slice():focusedImei?technicianRows.filter(row=>row.imei===focusedImei):[];
+    imeis=[...new Set([...prepared.map(row=>row.imei),...imeis])];
+    mainScanReads++;
+    try{
+      async function worker(){while(next<imeis.length&&current()){const imei=imeis[next++];try{
+        const result=await checkedWorkbench(imei,current);if(!result||!current())return;if(result.issue){issues.push(result.issue);continue;}
+        last=result.data;loaded.push({...result.row,bulk_technician_name:result.data.employee_name||'Unassigned'});
+      }catch(error){if(current()){issues.push(transferReadiness().errorIssue(imei,error));const prior=prepared.find(row=>row.imei===imei);if(prior)loaded.push({...prior,handover_unverified:true});}}}}
+      await Promise.all(Array.from({length:Math.min(4,imeis.length)},worker));if(!current())return;
+      if(loaded.length||options.replace||prepared.length){
+        const combined=[...new Map(loaded.map(row=>[row.imei,row])).values()];
+        bulkWorkbenchImeis=combined.map(row=>row.imei);focusedImei='';focusedStepId='';activeTechnicianId='__bulk__';clearTechnicianImei.hidden=false;
+        renderTechnicianCards();if(last)applyWorkbenchRows(combined,{serverTime:last.server_now,workOptions:last.work_options});else{technicianRows=combined;renderTechnicianLines();}
+        setBoardMessage(loaded.length+(mayPrepareHandover()?' ready phone lines loaded.':' phone lines loaded.'),true);
+      }
+      if(issues.length)await transferReadiness().show(issues,{input:technicianImeiScan,isCurrent:current});
+      else if(current())technicianImeiScan.focus({preventScroll:true});
+    }finally{mainScanReads--;}
+  }
+  technicianImeiScan.addEventListener('paste',event=>{
+    const text=event.clipboardData?.getData('text')||'';if(!/[\s,;]+/.test(text.trim()))return;
+    event.preventDefault();window.clearTimeout(imeiTimer);
+    const parsed=window.GREENLOOP_BULK_IMEI.parse(text);technicianImeiScan.value='';
+    void loadBulkWorkbench(parsed.valid,{rejected:parsed.rejected}).catch(error=>transferReadiness().show([transferReadiness().errorIssue('Pasted list',error)],{input:technicianImeiScan}));
+  });
   async function scanTechnicianImei() {
-    bulkWorkbenchImeis=null;
-    if (!searchable()) return;
-    const imei = technicianImeiScan.value.trim();
-    if (!/^\d{15}$/.test(imei)) { setBoardMessage("Enter or scan a valid 15-digit IMEI."); return; }
-    if (pendingImei === imei) return;
-    if (technicianWorkRows.querySelector('tr[data-busy="yes"]')) { setBoardMessage("Wait for the current save to finish, then open the IMEI."); return; }
-    const ticket = ++imeiLookupVersion;
-    const scanCurrent = () => ticket === imeiLookupVersion && technicianImeiScan.value.trim() === imei && searchable() && app.isConnected;
-    pendingImei = imei; focusedImei = imei; focusedStepId = ""; clearTechnicianImei.hidden = false; technicianWorkRows.innerHTML='<tr><td colspan="12" class="technician-lines-empty">Finding phone…</td></tr>';
-    technicianImeiScanWrap.setAttribute("aria-busy", "true"); checkTechnicianImei.textContent = "Opening…";
-    setBoardMessage("Finding the assigned technician…");
-    try {
-      ++rowLoadVersion;
-      const data=await readWorkbench({p_employee_id:null,p_imei:imei});
-      if(!scanCurrent())return;
-      if(data.identity?.matched_type==='secondary'){
-        renderTechnicianLines();setBoardMessage('Duplicate phone — use IMEI 1.');
-        await window.GREENLOOP_IMEI_STAGE_NOTICE.show({imei,knownRecord:data.identity,isCurrent:scanCurrent});return;
+    if(!searchable())return;
+    const imei=technicianImeiScan.value.trim();if(!/^\d{15}$/.test(imei)){setBoardMessage('Enter or scan a valid 15-digit IMEI.');return;}
+    if(pendingImei===imei)return;
+    if(window.GREENLOOP_LAB_PENDING_CONTEXT.hasDrafts()){
+      technicianImeiScan.value='';await transferReadiness().show([{imei,stage:'Lab & Glass',reason:'Save or cancel changed Lab work before opening another phone.'}],{input:technicianImeiScan});return;
+    }
+    const ticket=++imeiLookupVersion,edits=editVersion,rowTicket=++rowLoadVersion;
+    const current=()=>!labStopped&&ticket===imeiLookupVersion&&rowTicket===rowLoadVersion&&technicianImeiScan.value.trim()===imei&&edits===editVersion&&searchable()&&app.isConnected;
+    pendingImei=imei;mainScanReads++;
+    technicianImeiScanWrap.setAttribute('aria-busy','true');checkTechnicianImei.textContent='Checking…';
+    try{
+      const result=await checkedWorkbench(imei,current);if(!result||!current())return;
+      if(result.issue){
+        technicianImeiScan.value='';setBoardMessage('Phone not added. See the readiness message.');
+        await transferReadiness().show([result.issue],{input:technicianImeiScan,isCurrent:()=>!labStopped&&ticket===imeiLookupVersion&&searchable()&&technicianImeiScan.value===''});return;
       }
-      if(!data.step_id||!data.rows.length){
-        technicianRows=[];renderTechnicianLines();setBoardMessage('This IMEI has no pending Lab or Glass work.');
-        if(data.identity?.found)void window.GREENLOOP_IMEI_STAGE_NOTICE.show({imei,title:'Phone unavailable here',message:'This IMEI has no pending Lab or Glass work.',knownRecord:data.identity,isCurrent:scanCurrent});return;
+      const {data,row,imei:canonical}=result;
+      if(bulkWorkbenchImeis){
+        const combined=[...new Map([...technicianRows,{...row,bulk_technician_name:data.employee_name||'Unassigned'}].map(r=>[r.imei,r])).values()];
+        bulkWorkbenchImeis=combined.map(r=>r.imei);renderTechnicianCards();applyWorkbenchRows(combined,{serverTime:data.server_now,workOptions:data.work_options});
+      }else{
+        const technician=technicians.find(t=>String(t.id)===String(data.employee_id))||{id:data.employee_id,full_name:data.employee_name,pending_count:1,unassigned:data.unassigned};
+        if(!technicians.some(t=>String(t.id)===String(technician.id)))technicians.push(technician);
+        activeTechnicianId=String(technician.id);focusedImei=canonical;focusedStepId=String(row.step_id);clearTechnicianImei.hidden=false;
+        renderTechnicianCards();await workFilters.clear();if(!current())return;
+        applyWorkbenchRows([row],{serverTime:data.server_now,workOptions:data.work_options});
       }
-      const technician=technicians.find(t=>String(t.id)===String(data.employee_id))||{id:data.employee_id,full_name:data.employee_name,pending_count:data.rows.length,unassigned:data.unassigned};
-      if(!technicians.some(t=>String(t.id)===String(technician.id)))technicians.push(technician);
-      activeTechnicianId=String(technician.id);focusedStepId=String(data.step_id);
-      renderTechnicianCards();await workFilters.clear();if(!scanCurrent())return;
-      applyWorkbenchRows(data.rows,{serverTime:data.server_now,workOptions:data.work_options});
-      const target = technicianWorkRows.querySelector(`tr[data-step-id="${CSS.escape(focusedStepId)}"]`);
-      if (!target || target.hidden) throw new Error("The phone assignment changed or its line is no longer pending. Search the IMEI again.");
-      setBoardMessage(`IMEI ${imei} · ${technician.full_name}`, true);
-      target.classList.add("scan-match"); target.scrollIntoView({behavior:"smooth",block:"center"});
-      window.setTimeout(() => target.classList.remove("scan-match"), 2600);
-      if (document.activeElement === technicianImeiScan || document.activeElement === checkTechnicianImei) {
-        technicianImeiScan.focus({preventScroll:true}); technicianImeiScan.select();
-      }
-    } catch (error) {
-      if (scanCurrent()) { renderTechnicianLines(); setBoardMessage(error.message || "The IMEI could not be opened. Try again."); }
-    } finally {
-      if (ticket === imeiLookupVersion) { pendingImei = ""; technicianImeiScanWrap.removeAttribute("aria-busy"); checkTechnicianImei.textContent = "Open phone"; }
+      setBoardMessage('IMEI '+canonical+(row.handover_prepared?' · Ready for Final QC':' · Lab & Glass work details'),true);technicianImeiScan.value='';
+      if(document.activeElement===technicianImeiScan||document.activeElement===checkTechnicianImei)technicianImeiScan.focus({preventScroll:true});
+    }catch(error){if(current()){
+      technicianImeiScan.value='';await transferReadiness().show([transferReadiness().errorIssue(imei,error)],{input:technicianImeiScan,isCurrent:()=>!labStopped&&ticket===imeiLookupVersion&&searchable()&&technicianImeiScan.value===''});
+    }}finally{
+      mainScanReads--;if(ticket===imeiLookupVersion){pendingImei='';technicianImeiScanWrap.removeAttribute('aria-busy');checkTechnicianImei.textContent='Open phone';}
     }
   }
   async function completeFrame(button) {
@@ -772,7 +799,7 @@
   }
   async function runBackgroundRefresh(){
     backgroundTimer=null;if(labStopped||document.hidden||app.hidden||backgroundRead)return;
-    if(technicianEditorIsActive()||window.GREENLOOP_LAB_PENDING_CONTEXT.hasDrafts()||window.GREENLOOP_BULK_IMEI?.busy){backgroundQueued=true;backgroundTimer=setTimeout(runBackgroundRefresh,1000);return;}
+    if(mainScanReads||technicianEditorIsActive()||window.GREENLOOP_LAB_PENDING_CONTEXT.hasDrafts()||window.GREENLOOP_BULK_IMEI?.busy){backgroundQueued=true;backgroundTimer=setTimeout(runBackgroundRefresh,1000);return;}
     backgroundQueued=false;
     backgroundRead=refreshAll();
     try{await backgroundRead;}catch(error){if(!labStopped)setBoardMessage(error.message||'Phone details could not refresh. Use Refresh to retry.');}
