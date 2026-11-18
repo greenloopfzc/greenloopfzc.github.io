@@ -119,7 +119,7 @@
       });
       if(stopped||editing!==draft||!can()||!draft.row.isConnected)return;
       const updated=result?.row;
-      if(result.saved!==true||updated?.job_id!==r.job_id||updated?.imei!==r.imei||!Array.isArray(updated.parts)||!Array.isArray(updated.services)||typeof updated.revision!=='string'||updated.supplier_grade!==(draft.supplierGrade||null)||updated.gl_grade!==draft.glGrade)throw Error('Saved changes could not be verified. Retry Save or cancel and reload the phone.');
+      if(result.saved!==true||updated?.job_id!==r.job_id||updated?.imei!==r.imei||!Array.isArray(updated.parts)||!Array.isArray(updated.services)||typeof updated.revision!=='string'||updated.supplier_grade!==null&&typeof updated.supplier_grade!=='string'||typeof updated.gl_grade!=='string'||key(updated.supplier_grade||'')!==key(draft.supplierGrade)||key(updated.gl_grade)!==key(draft.glGrade))throw Error('Saved changes could not be verified. Retry Save or cancel and reload the phone.');
       await window.GREENLOOP_STOCK?.ready();if(stopped||editing!==draft||!can()||!draft.row.isConnected)return;window.GREENLOOP_STOCK?.enrich(updated);
       prepared.clear();populate(draft.row,updated);closeWorkEditor();state(draft.row,'Changes saved · Awaiting Issuance');
       window.dispatchEvent(new CustomEvent('greenloop:workflow-committed',{detail:{source:'qc-issuance-edit',imeis:[r.imei]}}));

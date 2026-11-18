@@ -27,6 +27,8 @@ end if;
 if not exists(select 1 from greenloop_private.qc_grade_options g where g.kind='gc_grade'and g.name=gg)then
  if upper(regexp_replace(btrim(r.gl_grade),'\s+',' ','g'))=gg then gg:=r.gl_grade;else raise exception 'Choose GL Grade from the saved dropdown.'using errcode='22023';end if;
 end if;
+if upper(regexp_replace(btrim(r.supplier_grade),'\s+',' ','g'))=sg then sg:=r.supplier_grade;end if;
+if upper(regexp_replace(btrim(r.gl_grade),'\s+',' ','g'))=gg then gg:=r.gl_grade;end if;
 fingerprint:=md5(jsonb_build_object('job',p_job_id,'revision',p_revision,'parts',parts,'services',services,'supplier_grade',sg,'gl_grade',gg)::text);$replacement$,'g');
 select count(*)into n from regexp_matches(updated,$token$before_work:=jsonb_build_object\('parts',r\.parts,'services',r\.services\);$token$,'g');if n<>1 then raise exception 'Reviewed Issuance boundary changed: %',sig;end if;
 updated:=regexp_replace(updated,$token$before_work:=jsonb_build_object\('parts',r\.parts,'services',r\.services\);$token$,$replacement$before_work:=jsonb_build_object('parts',r.parts,'services',r.services,'supplier_grade',r.supplier_grade,'gl_grade',r.gl_grade);$replacement$,'g');
