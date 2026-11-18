@@ -138,7 +138,7 @@ window.GREENLOOP_CONFIG = Object.freeze({
       }
       // Metadata never needs a complete phone inventory. Share only concurrent
       // reads; completed responses are not cached across workflow/access changes.
-      const leanReads=new Set(['get_stock_return_candidates_v1','get_stock_activity_reports_v1','get_ready_stock_daily_metrics_v2','get_ready_stock_received_activity_v1','get_scan_imei_identities_v1','get_sidebar_notification_counts_v1','get_workflow_notification_counts','get_qc_stage_notification_counts_v1','get_parts_pending_imei_counts_v1','get_shared_employees_v1','get_assignable_technicians','get_ranked_qc_dropdowns_v1','get_qc_work_options_v1','get_qc_issuance_options_v1','get_qc_issuance_choices_v1','get_final_qc_failure_options_v1','get_final_qc_return_context_v1','get_imei_duplicate_stage_v1','get_entry_options','list_entry_options','get_suspicious_summary_v1','get_closing_stock_access_catalog_v1','get_damage_tv_employee_access_v1','get_office_access_settings_v1','get_user_tv_rotation_v1']);
+      const leanReads=new Set(['get_operational_receipt_labels_v1','get_lab_employee_board_v1','get_lab_technician_visibility_v1','get_stock_return_candidates_v1','get_stock_activity_reports_v1','get_ready_stock_daily_metrics_v2','get_ready_stock_received_activity_v1','get_scan_imei_identities_v1','get_sidebar_notification_counts_v1','get_workflow_notification_counts','get_qc_stage_notification_counts_v1','get_parts_pending_imei_counts_v1','get_shared_employees_v1','get_assignable_technicians','get_ranked_qc_dropdowns_v1','get_qc_work_options_v1','get_qc_issuance_options_v1','get_qc_issuance_choices_v1','get_final_qc_failure_options_v1','get_final_qc_return_context_v1','get_imei_duplicate_stage_v1','get_entry_options','list_entry_options','get_suspicious_summary_v1','get_closing_stock_access_catalog_v1','get_damage_tv_employee_access_v1','get_office_access_settings_v1','get_user_tv_rotation_v1']);
       const leanPending=new Map();let leanEpoch=0;
       const clearLean=()=>{leanEpoch++;leanPending.clear();};
       sharedClient.auth.onAuthStateChange(event=>{if(['SIGNED_OUT','SIGNED_IN','USER_UPDATED'].includes(event))clearLean();});
@@ -151,7 +151,7 @@ window.GREENLOOP_CONFIG = Object.freeze({
         if(signal){args[1]={...args[1]};delete args[1].signal;}
         // Versioned RPC requirements distinguish independent page actions.
         // The bootstrap readers must finish before accessReady can resolve.
-        const bootstrap = new Set(['get_my_page_access_v2','get_my_page_access','get_my_page_capabilities_v1','get_my_damage_tv_settings_v1','get_my_partner_name_access','has_role','get_stock_receipt_catalog_v1']);
+        const bootstrap = new Set(['get_my_page_access_v2','get_my_page_access','get_my_page_capabilities_v1','get_my_damage_tv_settings_v1','get_my_partner_name_access','has_role','get_stock_receipt_catalog_v1','get_operational_receipt_labels_v1']);
         if (!bootstrap.has(name)) {
           const requirement = window.GREENLOOP_RPC_CAPABILITY?.(name,args[0] || {});
           if (requirement) {
@@ -161,9 +161,9 @@ window.GREENLOOP_CONFIG = Object.freeze({
         }
         const leanRead=leanReads.has(name);
         const stockRead=!leanRead&&!bootstrap.has(name)&&!name.startsWith('get_my_')&&/^(get_|list_|export_)/.test(name)&&!/_version$/.test(name);
-        const qcRead=stockRead&&['initial_qc','qc_issuance','final_qc'].includes(window.GREENLOOP_PAGE_ACCESS?.pageKey)&&!args[0]?.p_filters&&new Set(['get_initial_qc_fast_rows_v1','get_initial_qc_work_tray_v1','get_qc_issuance_rows_v1','get_qc_issuance_options_v1','get_ranked_qc_dropdowns_v1','get_final_qc_failure_options_v1',...(args[0]?.p_option_group==='grade'?['get_entry_options']:[])]).has(name);
+        const qcRead=stockRead&&['initial_qc','qc_issuance','final_qc','lab_glass','frame_department'].includes(window.GREENLOOP_PAGE_ACCESS?.pageKey)&&!args[0]?.p_filters;
         let stockReady;
-        if(stockRead){await window.GREENLOOP_ACCESS_READY;if(qcRead)stockReady=window.GREENLOOP_STOCK?.ready();else await window.GREENLOOP_STOCK?.ready();}
+        if(stockRead){await window.GREENLOOP_ACCESS_READY;if(qcRead)stockReady=Promise.resolve(window.GREENLOOP_STOCK?.ready()).then(()=>({ok:true}),error=>({error}));else await window.GREENLOOP_STOCK?.ready();}
         if(stockRead&&window.GREENLOOP_BATCH_DISPLAY)args[0]=window.GREENLOOP_BATCH_DISPLAY.readArgs(args[0]);
         if(stockRead&&typeof window.GREENLOOP_STOCK?.readArgs==='function')args[0]=window.GREENLOOP_STOCK.readArgs(args[0]);
         if(signal?.aborted)return {data:null,error:{code:'ABORT_ERR',message:'Report request cancelled.'}};
@@ -176,7 +176,7 @@ window.GREENLOOP_CONFIG = Object.freeze({
         if(signal&&typeof request.abortSignal==='function')request=request.abortSignal(signal);
         const sharedResponse = await request;
         const response=leanRead?structuredClone(sharedResponse):sharedResponse;
-        if(stockReady)await stockReady;
+        if(stockReady){const labels=await stockReady;if(labels.error)throw labels.error;}
         if(stockRead&&response?.data)window.GREENLOOP_STOCK?.enrich(response.data,{name,args:args[0]||{}});
         if (response?.error?.code === '23505') {
           let detail;try { detail=JSON.parse(response.error.details || '{}'); } catch (_) {}

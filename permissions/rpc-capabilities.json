@@ -1,6 +1,8 @@
 {
   "version": "20261105-stock-consistency-1",
   "rpcs": {
+    "get_operational_receipt_labels_v1":{"dynamic":"filter_source","parameter":"p_page","initial_qc":{"page":"initial_qc","capability":"view","read":true},"qc_issuance":{"page":"qc_issuance","capability":"view","read":true},"lab_glass":{"page":"lab_glass","capability":"view","read":true},"final_qc":{"page":"final_qc","capability":"view","read":true},"frame_department":{"page":"frame_department","capability":"view","read":true}},
+    "get_operational_loading_version":{"read":true},
     "get_stock_return_candidates_v1": {"page":"supplier_returns","capability":"entry","read":true},
     "get_chaman_bulk_return_version": {"read":true},
     "get_stock_activity_reports_v1": {"page":"ready_stock","capability":"view","read":true},
@@ -3887,4 +3889,7 @@
   },
   "get_stock_return_candidates_v1": {"page":"supplier_returns","capability":"entry","read":true},
   "get_chaman_bulk_return_version": {"read":true}
+,
+"get_operational_receipt_labels_v1":{"dynamic":"filter_source","parameter":"p_page","initial_qc":{"page":"initial_qc","capability":"view","read":true},"qc_issuance":{"page":"qc_issuance","capability":"view","read":true},"lab_glass":{"page":"lab_glass","capability":"view","read":true},"final_qc":{"page":"final_qc","capability":"view","read":true},"frame_department":{"page":"frame_department","capability":"view","read":true}},
+"get_operational_loading_version":{"read":true}
 }

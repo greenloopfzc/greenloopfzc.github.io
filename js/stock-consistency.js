@@ -1,7 +1,7 @@
 /* Shared receipt labels and return/replacement balances; access remains server-side. */
 (() => {
  'use strict';
- const allowed=new Set(['overview','stock_received','imei_entry','initial_qc','lab_glass','parts','final_qc','frame_department','ready_stock','export_boxes','stock_exported','ready_stock_journey','imei_search','accounts','supplier_returns','supplier_return_approval','supplier_return_handover','reports']);
+ const allowed=new Set(['overview','stock_received','imei_entry','initial_qc','qc_issuance','lab_glass','parts','final_qc','frame_department','ready_stock','export_boxes','stock_exported','ready_stock_journey','imei_search','accounts','supplier_returns','supplier_return_approval','supplier_return_handover','reports']);
  let rows=[],catalogRows=[],pending=null,stamp=0,scope='',generation=0;
  const one=v=>Array.isArray(v)?v[0]:v,esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),num=v=>v==null?'Not recorded':Number(v||0).toLocaleString('en-GB');
  const base=v=>String(v||'').trim().replace(/-\(\d+\)$/,'');
@@ -9,9 +9,11 @@
  function clear(){generation++;rows=[];catalogRows=[];stamp=0;scope='';pending=null;}
  async function ready(){
   let page=window.GREENLOOP_PAGE_ACCESS?.pageKey;if(!allowed.has(page)&&window.GREENLOOP_CAN?.('view','imei_search'))page='imei_search';if(page==='supplier_returns'&&!window.GREENLOOP_CAN?.('view',page))page=['supplier_return_approval','supplier_return_handover'].find(p=>window.GREENLOOP_CAN?.('view',p))||page;if(!allowed.has(page)||!window.GREENLOOP_CAN?.('view',page))return [];
+  const labelsOnly=['initial_qc','qc_issuance','lab_glass','final_qc','frame_department'].includes(page);
   const key=page+':'+names();if(scope===key&&Date.now()-stamp<60000)return catalogRows;if(pending&&scope===key)return pending;
   scope=key;const revision=++generation;
-  pending=(async()=>{const{data,error}=await window.GREENLOOP_GET_CLIENT().rpc('get_stock_receipt_catalog_v1',{p_page:page});if(error)throw Error(error.message||'Stock balances unavailable.');if(!Array.isArray(data)||data.some(x=>!x.batch_id||x.received_quantity!==null&&!Number.isSafeInteger(Number(x.received_quantity))||x.balance_quantity!==null&&!Number.isSafeInteger(Number(x.balance_quantity))))throw Error('Stock balances could not be verified.');if(revision===generation){rows=data;catalogRows=catalogue();stamp=Date.now();window.GREENLOOP_BATCH_DISPLAY?.refresh();}return catalogRows;})().catch(e=>{if(revision===generation){rows=[];catalogRows=[];stamp=0;}window.dispatchEvent(new CustomEvent('greenloop:stock-unavailable',{detail:{message:e.message}}));return catalogRows;}).finally(()=>{if(revision===generation)pending=null;});
+  pending=(async()=>{const{data:response,error}=await window.GREENLOOP_GET_CLIENT().rpc(labelsOnly?'get_operational_receipt_labels_v1':'get_stock_receipt_catalog_v1',{p_page:page});if(error)throw Error(error.message||'Stock receipt details unavailable.');if(labelsOnly&&response?.version!=='20261118-operational-loading-1')throw Error('Install the verified operational loading update.');const data=labelsOnly?response.rows:response;if(!Array.isArray(data)||data.some(x=>!x.batch_id||x.received_quantity!==null&&!Number.isSafeInteger(Number(x.received_quantity))||!labelsOnly&&x.balance_quantity!==null&&!Number.isSafeInteger(Number(x.balance_quantity))))throw Error('Stock balances could not be verified.');if(labelsOnly){const byId=new Map(data.map(r=>[String(r.batch_id),r]));if(byId.size!==data.length)throw Error('Stock receipt identities could not be verified.');for(const row of data){const visited=new Set();let item=row;while(item?.parent_batch_id){if(visited.has(item.batch_id)||!byId.has(String(item.parent_batch_id)))throw Error('Original stock receipt links could not be verified.');visited.add(item.batch_id);item=byId.get(String(item.parent_batch_id));}}}
+  if(revision===generation){rows=data;catalogRows=catalogue();stamp=Date.now();window.GREENLOOP_BATCH_DISPLAY?.refresh();}return catalogRows;})().catch(e=>{if(revision===generation){rows=[];catalogRows=[];stamp=0;}window.dispatchEvent(new CustomEvent('greenloop:stock-unavailable',{detail:{message:e.message}}));if(labelsOnly)throw e;return catalogRows;}).finally(()=>{if(revision===generation)pending=null;});
   return pending;
  }
  function rootReceipt(receipt){
@@ -69,6 +71,7 @@
  function summary(values){
   const chosen=[...new Map((values||[]).map(x=>typeof x==='string'?rows.find(r=>r.batch_id===x):resolve(x)).filter(Boolean).map(x=>[x.batch_id,x])).values()];
   const roots=chosen.map(rootReceipt).filter(Boolean).filter((r,i,a)=>a.findIndex(x=>x.batch_id===r.batch_id)===i).filter(x=>!chosen.some(p=>p.batch_id!==x.batch_id&&p.descendant_ids?.includes(x.batch_id)));
+  if(roots.some(r=>r.labels_only))return {received:roots.some(r=>r.received_quantity===null)?null:roots.reduce((n,r)=>n+Number(r.received_quantity),0),returned:null,replacement_received:null,balance:null,return_pending:null,receipts:roots.length};
   return roots.reduce((s,r)=>({received:s.received===null||r.received_quantity===null?null:s.received+Number(r.received_quantity),returned:s.returned+Number(r.returned_quantity),replacement_received:s.replacement_received+Number(r.replacement_quantity),balance:s.balance===null||r.balance_quantity===null?null:s.balance+Number(r.balance_quantity),return_pending:s.return_pending+Number(r.return_pending),receipts:s.receipts+1}),{received:0,returned:0,replacement_received:0,balance:0,return_pending:0,receipts:0});
  }
  function label(code,quantity,name,fallback='—'){
@@ -95,7 +98,7 @@
     if('invoice_number'in v)v.invoice_number=r.invoice_number;
     if('supplier_name'in v)v.supplier_name=names()?r.supplier_name:null;
     v.original_stock_batch_id=r.batch_id;
-    v.receipt_metrics={received:r.received_quantity,returned:r.returned_quantity,replacement_received:r.replacement_quantity,balance:r.balance_quantity,return_pending:r.return_pending};v.receipt_quantity=r.received_quantity;if(v.supplier_code)v.supplier_code=label(r.supplier_code,r.received_quantity,null);}
+    if(!r.labels_only)v.receipt_metrics={received:r.received_quantity,returned:r.returned_quantity,replacement_received:r.replacement_quantity,balance:r.balance_quantity,return_pending:r.return_pending};v.receipt_quantity=r.received_quantity;if(v.supplier_code)v.supplier_code=label(r.supplier_code,r.received_quantity,null);}
    for(const[key,value]of Object.entries(v))if(key!=='receipt_metrics')visit(value);
   }visit(data);
   // Only selector collections are canonicalized. Row/action IDs, private intake
@@ -127,5 +130,6 @@
  function chamanHtml(s,options={}){if(!s)return '';const values=chamanCells(s),directions=[['Greenloop','Chaman','Outgoing stock'],['Chaman','Greenloop','Return receiving']];return '<section class="chaman-movement-summary" data-chaman-summary aria-label="Greenloop and Chaman Transfer Desk"><header class="chaman-summary-heading"><span class="chaman-summary-mark" aria-hidden="true">↔</span><div><h3>Greenloop &amp; Chaman Transfer Desk</h3><p>Stock Transfer &amp; Return Summary</p></div><span class="chaman-summary-scope">'+esc(options.scope||'Current stock selection')+(options.home?'<span class="chaman-desk-refresh">Updated '+esc(options.updated||'Not recorded')+' <button type="button" data-overview-refresh data-capability="view" class="secondary-button">Refresh</button></span>':'')+'</span></header><table data-no-serial data-preserve-table-layout><thead><tr><th scope="col">Stock movement</th><th scope="col">Sent / Returned</th><th scope="col">Received</th><th scope="col">Balance Pending</th></tr></thead><tbody>'+directions.map(([from,to,note],row)=>'<tr class="chaman-summary-direction-'+row+'"><th scope="row"><b>'+from+' <span aria-hidden="true">→</span> '+to+'</b><small>'+note+'</small></th>'+values.slice(row*3,row*3+3).map(([label,n],col)=>{const contents='<span>'+(col===2?'Balance Pending':label)+'</span><strong>'+esc(num(n))+'</strong>';return '<td class="chaman-movement-cell'+(col===2?' is-pending-balance':'')+'" data-chaman-cell="'+(row*3+col)+'">'+(options.home&&col===2?'<button type="button" data-pending-kind="'+(row?'return':'out')+'" data-capability="view" class="chaman-pending-link" aria-label="View pending '+(row?'Chaman to Greenloop':'Greenloop to Chaman')+' phones">'+contents+'<small>View Pending →</small></button>':contents)+'</td>';}).join('')+'</tr>').join('')+'</tbody></table></section>';}
 
  window.GREENLOOP_STOCK={ready,clear,resolve,catalogue,selectorValues,readArgs,summary,scoped,summaryText,label,labelRow,enrich,summaryHtml,chamanHtml,chamanText,mount,get rows(){return catalogRows;}};
+ document.addEventListener('greenloop:workflow-notifications-refreshed',()=>{stamp=0;});
  window.addEventListener('greenloop:office-locked',clear);window.addEventListener('greenloop:signed-out',clear);window.addEventListener('greenloop:permissions-changed',clear);window.addEventListener('greenloop:workflow-committed',()=>{stamp=0;});document.addEventListener('greenloop:workflow-committed',()=>{stamp=0;});
 })();

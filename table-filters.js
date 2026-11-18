@@ -230,7 +230,8 @@
     for (let start = 0;; start += size) {
       const {data,error} = await query().range(start,start+size-1);
       if (error) return {data:null,error};
-      rows.push(...(data || [])); if (!data || data.length < size) return {data:rows,error:null};
+      if(!Array.isArray(data))return {data:null,error:{message:'Record list could not be verified. Refresh to retry.'}};
+      rows.push(...data); if (data.length < size) return {data:rows,error:null};
     }
   }
   function remote(id, options) {

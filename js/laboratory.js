@@ -71,6 +71,7 @@
   const lineDrafts = new Map();
   const workbenchReads = new Map();
   let boardRead = null;
+  let backgroundRead=null,backgroundQueued=false,backgroundTimer=null,labStopped=false;
   let toastTimer;
   let rowLoadVersion = 0;
   let editVersion = 0;
@@ -240,8 +241,16 @@
     return !issued||(p.reorder_available||[]).some(x=>normalise(x.name)===k&&Number(x.quantity)>0);
   }
   function choiceCell(kind, options, selected, data={}) {
-    return `<div class="lab-choice" data-choice="${kind}"><div class="lab-choice-row"><select>${optionsMarkup(rankChoices(kind,kind==='part'?options.filter(name=>canOrderPart(data,name)):options),kind==='part'?'Select part':'Select service')}</select><button type="button" data-add-choice="${kind}" title="Add">+</button></div><div class="lab-choice-tags">${unique(selected).map(value=>draftChoice(kind,value,data)).join('')}</div></div>`;
+    return `<div class="lab-choice" data-choice="${kind}"><div class="lab-choice-row"><select data-lab-options-deferred><option value="">${kind==='part'?'Select part':'Select service'}</option></select><button type="button" data-add-choice="${kind}" title="Add">+</button></div><div class="lab-choice-tags">${unique(selected).map(value=>draftChoice(kind,value,data)).join('')}</div></div>`;
   }
+  function expandLabOptions(event){
+    const select=event.target.closest?.('select[data-lab-options-deferred]');if(!select||select.disabled)return;
+    const holder=select.closest('[data-choice]'),kind=holder?.dataset.choice,row=rowData(select.closest('tr'));if(!row)return;
+    const value=select.value,choices=kind==='part'?unique([...partOptions,...(row.pf_plan?.part_history||[]).map(p=>p.name)]).filter(name=>canOrderPart(row,name)):standardServices;
+    select.innerHTML=optionsMarkup(rankChoices(kind,choices),kind==='part'?'Select part':'Select service');
+    if(value&&![...select.options].some(o=>o.value===value))select.insertAdjacentHTML('beforeend',`<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`);select.value=value;delete select.dataset.labOptionsDeferred;
+  }
+  for(const event of ['focusin','pointerdown','keydown'])technicianWorkRows.addEventListener(event,expandLabOptions);
   function selectedChoices(row, kind) {
     const tags = [...row.querySelectorAll(`[data-choice="${kind}"] [data-remove-choice]`)].map((button) => button.dataset.value);
     const currentSelection = row.querySelector(`[data-choice="${kind}"] select`)?.value || "";
@@ -447,7 +456,7 @@
 
   let workOptionsFingerprint='';
   function applyWorkOptions(data){const fingerprint=JSON.stringify(data);if(fingerprint===workOptionsFingerprint)return;workOptionsFingerprint=fingerprint;for(const [kind,list] of [['part',data.parts],['service',data.services]])usageCounts[kind]=new Map(list.map(o=>[normalise(o.name),Number(o.usage_count)||0]));partOptions=data.parts.map(o=>o.name);standardServices=data.services.map(o=>o.name);initialQcServices.clear();for(const service of data.services)if(service.initial_qc)initialQcServices.add(normalise(service.name));
-    for(const holder of technicianWorkRows.querySelectorAll('[data-choice]')){const select=holder.querySelector('select');if(!select)continue;const value=select.value;select.innerHTML=optionsMarkup(holder.dataset.choice==='part'?partOptions:standardServices,holder.dataset.choice==='part'?'Select part':'Select service');if(value&&![...select.options].some(o=>o.value===value))select.insertAdjacentHTML('beforeend',`<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`);select.value=value;}
+    for(const holder of technicianWorkRows.querySelectorAll('[data-choice]')){const select=holder.querySelector('select');if(!select)continue;const value=select.value;select.innerHTML=optionsMarkup([],holder.dataset.choice==='part'?'Select part':'Select service');select.dataset.labOptionsDeferred='';if(value&&![...select.options].some(o=>o.value===value))select.insertAdjacentHTML('beforeend',`<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`);select.value=value;}
   }
   async function loadFrameGrades() {
     const { data, error } = await getClient().rpc("get_entry_options", { p_option_group: "grade" });
@@ -481,7 +490,7 @@
     if(!technicianId){technicianRows=[];renderTechnicianLines();return;}
     const employee=technicians.find(t=>String(t.id)===String(technicianId));
     const data=await readWorkbench({p_employee_id:employee?.unassigned?null:technicianId,p_imei:scan||null});
-    if(version!==rowLoadVersion||technicianId!==activeTechnicianId||editsAtStart!==editVersion||scan!==focusedImei)return;
+    if(labStopped||window.GREENLOOP_CAN?.('view','lab_glass')!==true||version!==rowLoadVersion||technicianId!==activeTechnicianId||editsAtStart!==editVersion||scan!==focusedImei)return;
     if(scan&&String(data.employee_id)!==String(technicianId)){setBoardMessage('Phone assignment changed. Scan the IMEI again.');return;}
     applyWorkbenchRows(data.rows,{quiet,serverTime:data.server_now,workOptions:data.work_options});
   }
@@ -504,7 +513,7 @@
       if(!visibility.error && Array.isArray(visibility.data?.hidden_ids) && revision===visibilityRevision && !visibilityBusy)applyVisibility(visibility.data);
       return board;
     }).finally(()=>boardRead=null);}
-    const {data,error}=await boardRead;if(error)throw error;
+    const {data,error}=await boardRead;if(error)throw error;if(labStopped||window.GREENLOOP_CAN?.('view','lab_glass')!==true)return;
     if(activeTechnicianId!==selectionAtStart)preferredId=activeTechnicianId;
     const next=data||[];technicians=next;
     activeTechnicianId = technicians.some((item) => String(item.id) === String(preferredId)) ? String(preferredId) : String(technicians.find((item) => !isHiddenTechnician(item) && Number(item.pending_count || 0) > 0)?.id || technicians.find(item=>!isHiddenTechnician(item))?.id || "");
@@ -751,6 +760,22 @@
     await refreshAll();
   }
 
+  function scheduleBackgroundRefresh(){
+    backgroundQueued=true;
+    if(labStopped||isFrameMode||document.hidden||app.hidden||!app.isConnected||backgroundRead||backgroundTimer)return;
+    backgroundTimer=setTimeout(runBackgroundRefresh,180);
+  }
+  async function runBackgroundRefresh(){
+    backgroundTimer=null;if(labStopped||document.hidden||app.hidden||backgroundRead)return;
+    if(technicianEditorIsActive()||window.GREENLOOP_LAB_PENDING_CONTEXT.hasDrafts()||window.GREENLOOP_BULK_IMEI?.busy){backgroundQueued=true;backgroundTimer=setTimeout(runBackgroundRefresh,1000);return;}
+    backgroundQueued=false;
+    backgroundRead=refreshAll();
+    try{await backgroundRead;}catch(error){if(!labStopped)setBoardMessage(error.message||'Phone details could not refresh. Use Refresh to retry.');}
+    finally{backgroundRead=null;if(backgroundQueued&&!labStopped){clearTimeout(backgroundTimer);backgroundTimer=setTimeout(runBackgroundRefresh,1000);}}
+  }
+  function stopLabReads(){labStopped=true;++rowLoadVersion;++imeiLookupVersion;clearTimeout(backgroundTimer);backgroundQueued=false;technicianRows=[];technicians=[];lineDrafts.clear();technicianWorkRows.replaceChildren();technicianCards.replaceChildren();app.hidden=true;}
+  for(const event of ['greenloop:office-locked','greenloop:signed-out','pagehide'])window.addEventListener(event,stopLabReads);
+  window.addEventListener('greenloop:permissions-changed',()=>{if(window.GREENLOOP_CAN?.('view',isFrameMode?'frame_department':'lab_glass')!==true)stopLabReads();else{++rowLoadVersion;workbenchReads.clear();scheduleBackgroundRefresh();}});
   async function initialize() {
     configureMode();
     if (!config.supabaseUrl || !config.supabaseAnonKey || !window.supabase) throw new Error("Supabase authentication is not configured.");
@@ -759,30 +784,21 @@
     const { data: allowed, error } = await getClient().rpc("has_role", { required_roles: ["super_admin", "owner", "manager", "technician"] });
     if (error) throw error;
     if (!allowed) { permissionMessage.textContent = "Your account does not have Laboratory permission."; permissionMessage.hidden = false; return; }
-    await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();
+    await window.GREENLOOP_ACCESS_READY;
     if (window.GREENLOOP_PAGE_ACCESS?.pageKey !== (isFrameMode ? "frame_department" : "lab_glass")) return;
     app.hidden = false;
-    if (!isFrameMode) {await refreshAll();if(!technicianEditorIsActive())renderTechnicianLines();}
+    if (!isFrameMode) {await refreshAll();}
     else {await loadFrameGrades();await refreshAll();}
     if (!isFrameMode) {
       window.GREENLOOP_EMPLOYEES?.watch(async()=>{if(!app.hidden&&!technicianWorkRows.querySelector('tr[data-busy="yes"]')){const previous=activeTechnicianId;await loadTechnicians(activeTechnicianId);if(previous!==activeTechnicianId&&!technicianEditorIsActive())await loadTechnicianRows();}});
-      const refreshBoard=()=>{if(!document.hidden&&!app.hidden&&app.isConnected){const previous=activeTechnicianId;loadTechnicians(previous).then(()=>{if(previous!==activeTechnicianId&&!technicianEditorIsActive())return loadTechnicianRows();}).catch(()=>{});}};
-      document.addEventListener('greenloop:workflow-notifications-refreshed',refreshBoard);
-      window.setInterval(refreshBoard,5000);
+      // One fallback refresh; workflow signals/focus remain immediate. A signal
+      // arriving during a request is queued, never silently consumed.
+      document.addEventListener('greenloop:workflow-notifications-refreshed',scheduleBackgroundRefresh);
+      window.addEventListener('storage',e=>{if(e.key==='greenloop-qc-work-options-changed')scheduleBackgroundRefresh();});
+      window.setInterval(scheduleBackgroundRefresh,30000);
       window.setInterval(updatePhoneAges,60000);
-      window.addEventListener("storage",e=>{if(e.key==="greenloop-qc-work-options-changed"&&!document.hidden&&!app.hidden&&!technicianEditorIsActive())loadTechnicianRows({quiet:true}).catch(()=>{});});
-      document.addEventListener("visibilitychange",updatePhoneAges);
-      window.addEventListener("focus",updatePhoneAges);
-      window.setInterval(() => {
-        if (
-          document.visibilityState !== "visible"
-          || app.hidden
-          || !app.isConnected
-          || technicianEditorIsActive()
-          || technicianWorkRows.querySelector('tr[data-dirty="true"], tr[data-editing="true"], tr[data-busy="yes"]')
-        ) return;
-        loadTechnicianRows({quiet:true}).catch(() => {});
-      }, 12000);
+      document.addEventListener('visibilitychange',()=>{updatePhoneAges();if(!document.hidden)scheduleBackgroundRefresh();});
+      window.addEventListener('focus',()=>{updatePhoneAges();scheduleBackgroundRefresh();});
     }
   }
 
@@ -801,7 +817,7 @@
   document.querySelector("#open-menu").addEventListener("click", () => setMenu(true));
   document.querySelector("#close-menu").addEventListener("click", () => setMenu(false));
   backdrop.addEventListener("click", () => setMenu(false));
-  document.querySelector("#refresh-lab").addEventListener("click", () => refreshAll().catch((error) => setBoardMessage(error.message)));
+  document.querySelector("#refresh-lab").addEventListener("click", () => {setBoardMessage();refreshAll().catch((error) => setBoardMessage(error.message));});
   refreshFrameButton.addEventListener("click", () => refreshAll().catch((error) => setBoardMessage(error.message)));
   addTechnicianButton.addEventListener("click", () => addTechnician().catch((error) => setBoardMessage(error.message)));
   removeTechnicianButton.addEventListener("click", () => removeTechnician().catch((error) => setBoardMessage(error.message)));
@@ -895,6 +911,6 @@
       event.preventDefault();setBoardMessage('Save or discard the changed Lab lines before opening Bulk Transfer to Final QC.');
     }
   });
-  window.addEventListener('pageshow',event=>{if(event.persisted&&!isFrameMode&&!app.hidden)refreshAll().catch(error=>setBoardMessage(error.message));});
+  window.addEventListener('pageshow',event=>{if(event.persisted)window.location.reload();});
   initialize().catch((error) => { permissionMessage.textContent = error.message || "Laboratory could not be loaded."; permissionMessage.hidden = false; });
 })();

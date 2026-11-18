@@ -4,7 +4,7 @@
   const $=s=>document.querySelector(s),app=$('#issuance-app'),body=$('#issuance-body');
   const client=window.GREENLOOP_GET_CLIENT(),records=new Map(),timers=new WeakMap(),prepared=new Map();
   let stockScope;
-  let technicians=[],sequence=0,busy=false,stopped=false,paste,editing=null,workCatalog=null,catalogAt=0;
+  let technicians=[],sequence=0,busy=false,stopped=false,paste,editing=null,workCatalog=null,catalogAt=0,queueRead=null,queueAgain=false,queueEpoch=0;
   const selectionTemplate={technician:'',destination:'lab_glass'};
   const can=()=>!stopped&&window.GREENLOOP_CAN?.('entry','qc_issuance')===true;
   const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -163,11 +163,13 @@
     finally{if(current()){row.dataset.loading='';sync(row);}}
   }
   async function refresh(){
-    const data=await rpc('get_qc_issuance_options_v1');if(stopped||!window.GREENLOOP_CAN?.('view','qc_issuance'))return;technicians=data.technicians||[];$('#issuance-count').textContent=String(data.awaiting_issuance||0);
+    if(stopped)return;if(queueRead){queueAgain=true;return queueRead;}const ticket=queueEpoch;queueRead=(async()=>{
+    const data=await rpc('get_qc_issuance_options_v1');if(ticket!==queueEpoch||stopped||!window.GREENLOOP_CAN?.('view','qc_issuance'))return;if(!Array.isArray(data?.technicians)||!Number.isSafeInteger(data.awaiting_issuance)||data.awaiting_issuance<0)throw Error('Issuance queue could not be verified. Use Refresh to retry.');technicians=data.technicians;$('#issuance-count').textContent=String(data.awaiting_issuance);
     for(const select of app.querySelectorAll('[data-technician]')){const v=select.value;select.innerHTML=options(v);}
     if(body.firstElementChild)selectionTemplate.technician=body.firstElementChild.querySelector('[data-technician]').value;
     // A successful inspection save in another tab becomes available on Refresh.
     prepared.clear();syncAll();stockScope?.refreshCount();
+    })().finally(()=>{if(ticket===queueEpoch){queueRead=null;if(queueAgain&&!stopped){queueAgain=false;scheduleQueueRefresh();}}});return queueRead;
   }
   function lock(value){busy=value;for(const e of app.querySelectorAll('input,select,button'))e.disabled=value||(!can()&&e.dataset.capability!=='view');window.GREENLOOP_QC_HANDOVER?.setBusy('issuance',value);syncAll();}
   async function transfer(row){
@@ -208,10 +210,10 @@
   $('#issuance-load-all').addEventListener('click',()=>stockScope?.hasSelection()?stockScope.load():void loadAll());$('#issuance-clear').addEventListener('click',reset);$('#issuance-add').addEventListener('click',()=>{if(!editing&&!busy&&!paste?.busy&&can())createRows(10);});
   $('#issuance-refresh').addEventListener('click',()=>{if(editing||busy||paste?.busy)return;workCatalog=null;catalogAt=0;void refresh().catch(e=>message(e.message));});
   window.addEventListener('greenloop:imei-scan',event=>{if(editing||!can()||busy||paste?.busy)return;const imei=String(event.detail?.imei||'');if(!/^\d{15}$/.test(imei))return;const existing=[...body.rows].find(r=>r.querySelector('.qc-issuance-imei').value===imei);if(existing){event.preventDefault();let input=[...body.querySelectorAll('.qc-issuance-imei')].find(e=>!e.disabled&&!e.value);if(!input){createRows(1);input=body.lastElementChild.querySelector('.qc-issuance-imei');}void window.GREENLOOP_SCAN_READY.notice({input,imei,allowed:can,message:'This IMEI is already in the tray.'});return;}let blank=[...body.querySelectorAll('.qc-issuance-imei')].find(e=>!e.disabled&&!e.value);if(!blank){createRows(1);blank=body.lastElementChild.querySelector('.qc-issuance-imei');}event.preventDefault();blank.value=imei;void loadRow(blank.closest('tr')).catch(e=>message(e.message));});
-  function stop(){stopped=true;closeWorkEditor();records.clear();prepared.clear();body.innerHTML='';app.hidden=true;message('Access ended. Reload after signing in.');}
+  function stop(){stopped=true;++queueEpoch;clearTimeout(queueRefresh);queueRead=null;queueAgain=false;closeWorkEditor();records.clear();prepared.clear();body.innerHTML='';app.hidden=true;message('Access ended. Reload after signing in.');}
   window.addEventListener('greenloop:office-locked',stop);window.addEventListener('pagehide',stop);client.auth.onAuthStateChange?.(e=>{if(e==='SIGNED_OUT')stop();});
   window.addEventListener('greenloop:permissions-changed',()=>{if(!window.GREENLOOP_CAN?.('view','qc_issuance'))stop();else{if(!can()&&editing)closeWorkEditor();syncAll();}});
-  let queueRefresh=null;function scheduleQueueRefresh(){if(stopped||document.hidden||busy||editing||paste?.busy)return;clearTimeout(queueRefresh);queueRefresh=setTimeout(()=>{if(!stopped&&!busy&&!editing&&!paste?.busy)void refresh().catch(()=>{});},250);}
+  let queueRefresh=null;function scheduleQueueRefresh(){queueAgain=true;if(stopped||document.hidden||queueRead)return;clearTimeout(queueRefresh);queueRefresh=setTimeout(()=>{if(stopped)return;if(busy||editing||paste?.busy){scheduleQueueRefresh();return;}queueAgain=false;void refresh().catch(e=>message(e.message||'Issuance queue could not refresh. Use Refresh to retry.'));},busy||editing||paste?.busy?1000:250);}
   document.addEventListener('greenloop:workflow-notifications-refreshed',scheduleQueueRefresh);window.addEventListener('focus',scheduleQueueRefresh);
   async function init(){await window.GREENLOOP_ACCESS_READY;if(!window.GREENLOOP_CAN?.('view','qc_issuance'))throw Error('Lab & Glass Issuance page access is required.');await refresh();createRows(10);app.hidden=false;stockScope=window.GREENLOOP_QC_STOCK_SCOPE?.attach({host:app.querySelector('.qc-bulk-toolbar'),stage:'issuance',client,load:imeis=>loadAll(imeis),blocked:()=>busy||paste?.busy||Boolean(editing)});paste=window.GREENLOOP_QC_EXCEL_PASTE.attach({app,tableBody:body,selector:'.qc-issuance-imei',page:'qc_issuance',client,createRows,clearRow,loadRow,prepare,onUnlock:()=>setTimeout(syncAll,0)});window.GREENLOOP_QC_HANDOVER?.refresh();syncAll();window.GREENLOOP_SCAN_READY.focus(body.querySelector('.qc-issuance-imei'),can);}
   void init().catch(e=>{$('#permission-message').textContent=e.message||'Issuance could not load.';$('#permission-message').hidden=false;});

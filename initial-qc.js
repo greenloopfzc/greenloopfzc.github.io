@@ -473,27 +473,28 @@
     queueCount.focus();
   }
 
-  let pendingRefreshTimer,queueEpoch=0,queueStopped=false,queueRead=null;
+  let pendingRefreshTimer,queueEpoch=0,queueStopped=false,queueRead=null,queueAgain=false;
   function refreshPendingAfterSave(){
     window.clearTimeout(pendingRefreshTimer);
     pendingRefreshTimer=window.setTimeout(()=>{
-      void loadPendingCount().catch(()=>{if(!pendingModal.hidden)renderPendingJobs(pendingSearch.value);});
+      void loadPendingCount().catch(error=>{setMessage(error.message||'Initial QC queue could not refresh. Use Refresh to retry.');if(!pendingModal.hidden)renderPendingJobs(pendingSearch.value);});
     },250);
   }
   async function loadPendingCount() {
     if(queueStopped||window.GREENLOOP_CAN?.("view","initial_qc")!==true)return;
-    if(queueRead)return queueRead;
+    if(queueRead){queueAgain=true;return queueRead;}
     const ticket=queueEpoch;queueRead=(async()=>{
     const { data, error } = await getClient().rpc("get_initial_qc_work_tray_v1");
     if(ticket!==queueEpoch||queueStopped||window.GREENLOOP_CAN?.("view","initial_qc")!==true)return;
     if (error) throw error;
+    if(!Array.isArray(data?.pending))throw Error('Initial QC queue could not be verified. Use Refresh to retry.');
     const completed=new Set([...tableBody.rows].filter(row=>row.dataset.completed==="yes").map(row=>rowJobs.get(row.dataset.rowId)?.id));
     pendingJobs = (data?.pending || []).filter(job=>!completed.has(job.id));
     queueCount.textContent = `${pendingJobs.length} QC pending`;
     queueCount.setAttribute("aria-label", `View ${pendingJobs.length} phones waiting for Initial QC`);
     if (!pendingModal.hidden) renderPendingJobs(pendingSearch.value);
     stockScope?.refreshCount();
-    })().finally(()=>{if(ticket===queueEpoch)queueRead=null;});return queueRead;
+    })().finally(()=>{if(ticket===queueEpoch){queueRead=null;if(queueAgain&&!queueStopped){queueAgain=false;refreshPendingAfterSave();}}});return queueRead;
   }
 
   async function autoPickAllPending(selectedImeis = null) {
