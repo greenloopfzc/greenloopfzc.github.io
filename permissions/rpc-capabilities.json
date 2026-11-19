@@ -1744,6 +1744,37 @@
     },
     "get_receipt_supplier_correction_version": {
       "read": true
+    },
+    "get_imei_stage_change_v1": {
+      "page": "reports",
+      "capability": "workflow_correction",
+      "read": true
+    },
+    "apply_imei_stage_change_v1": {
+      "page": "reports",
+      "capability": "workflow_stage_change"
+    },
+    "get_cancelled_parts_phones_v1": {
+      "page": "parts",
+      "capability": "view",
+      "read": true
+    },
+    "get_cancelled_phone_parts_v1": {
+      "page": "parts",
+      "capability": "view",
+      "read": true
+    },
+    "collect_cancelled_phone_part_v1": {
+      "page": "parts",
+      "capability": "return"
+    },
+    "get_parts_pending_counts_v2": {
+      "page": "parts",
+      "capability": "view",
+      "read": true
+    },
+    "get_stage_change_parts_version": {
+      "read": true
     }
   },
   "get_box_status_v1": {

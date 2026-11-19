@@ -15,3 +15,5 @@
 (function(root){const p=root.GREENLOOP_PERMISSION_CATALOG.byPage.chaman_shop;p.description="Greenloop Section by default. Tick Chaman Shop login only for the shop account.";p.capabilities=p.capabilities.filter(c=>c.key!=="greenloop_operations");p.capabilities.find(c=>c.key==="shop_operations").label="This is the Chaman Shop login";})(window);
 
 (function(root){const c=root.GREENLOOP_PERMISSION_CATALOG;c.byPage.reports.capabilities.push({"key": "receipt_supplier_correction", "label": "Correct stock supplier (audited)", "write": true});c.reportSections.stock_receipt_correction.actions.push("receipt_supplier_correction");c.reportDependencies.receipt_supplier_correction="report_receipt_correction";})(typeof window!=="undefined"?window:globalThis);
+
+(function(root){const c=root.GREENLOOP_PERMISSION_CATALOG;c.byPage.reports.capabilities.push({"key": "workflow_stage_change", "label": "Change IMEI workflow stage (audited)", "write": true});c.reportSections.data_correction.actions.push("workflow_stage_change");c.reportDependencies.workflow_stage_change="report_imei_correction";})(typeof window!=="undefined"?window:globalThis);

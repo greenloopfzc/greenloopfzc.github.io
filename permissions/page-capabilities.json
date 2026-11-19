@@ -1120,6 +1120,11 @@
           "key": "receipt_supplier_correction",
           "label": "Correct stock supplier (audited)",
           "write": true
+        },
+        {
+          "key": "workflow_stage_change",
+          "label": "Change IMEI workflow stage (audited)",
+          "write": true
         }
       ]
     },
@@ -1542,7 +1547,8 @@
         "workflow_correction",
         "workflow_delete",
         "workflow_move_back",
-        "bulk_imei_correction"
+        "bulk_imei_correction",
+        "workflow_stage_change"
       ],
       "search": "report_imei_correction_search"
     },
@@ -1665,6 +1671,7 @@
     "parts_usage_search": "parts_usage",
     "parts_usage_download": "parts_usage",
     "receipt_supplier_correction": "report_receipt_correction",
-    "receipt_quantity_correction": "report_receipt_correction"
+    "receipt_quantity_correction": "report_receipt_correction",
+    "workflow_stage_change": "report_imei_correction"
   }
 }

@@ -1,0 +1,152 @@
+{
+  "preview": {
+    "imei": "399100000000000",
+    "job_id": "9e357640-6d46-4355-8177-dc6b9b5e2bc7",
+    "version": "20261119-stage-change-parts-1",
+    "blockers": [],
+    "snapshot": "a86e0132542153ea6a297766aa79ac1a",
+    "device_id": "0cf4f3b0-217a-4b6f-a673-8e830ee50e79",
+    "technicians": [
+      {
+        "id": "b8aea325-a333-451e-a60e-e53638503e25",
+        "name": "LU"
+      }
+    ],
+    "destinations": [
+      {
+        "key": "initial_qc",
+        "label": "Initial QC",
+        "reason": null,
+        "allowed": true
+      },
+      {
+        "key": "issuance",
+        "label": "Lab & Glass Issuance",
+        "reason": null,
+        "allowed": true
+      },
+      {
+        "key": "lab_glass",
+        "label": "Lab & Glass",
+        "reason": null,
+        "allowed": true
+      },
+      {
+        "key": "b_dept",
+        "label": "B-DEPT",
+        "reason": "A current Final QC pass is required. Complete Final QC through its normal inspection.",
+        "allowed": false
+      },
+      {
+        "key": "ready_stock",
+        "label": "Ready Stock",
+        "reason": "A current Final QC pass is required. Complete Final QC through its normal inspection.",
+        "allowed": false
+      }
+    ],
+    "current_label": "Final QC",
+    "current_stage": "final_qc"
+  },
+  "cases": {
+    "rows": [
+      {
+        "at": "2026-11-19T13:29:23.888+00:00",
+        "id": "d74b0297-971b-411c-804d-7776a803739c",
+        "imei": "399100000000002",
+        "color": "Blue",
+        "model": "15",
+        "stage": "Lab & Glass",
+        "reason": "Work order cancelled",
+        "message": "This phone was cancelled from Lab & Glass. Please collect any parts that need to be returned by LU.",
+        "actor_name": "Owner Test",
+        "storage_gb": 128,
+        "technician": "LU",
+        "issued_parts": [
+          "Glass"
+        ],
+        "pending_parts": [
+          "Diagnostic Battery"
+        ]
+      }
+    ],
+    "total": 1,
+    "offset": 0,
+    "version": "20261119-stage-change-parts-1",
+    "snapshot": "f25ea065e5ccdc680e60b2794addbc43",
+    "pending_count": 1
+  },
+  "completed": {
+    "rows": [
+      {
+        "at": "2026-11-19T13:29:23.775+00:00",
+        "id": "be261226-cf27-428f-9418-a8df13f429b4",
+        "imei": "399100000000001",
+        "color": "Blue",
+        "model": "15",
+        "stage": "Final QC",
+        "reason": "Review workflow stage correction",
+        "message": "This phone was cancelled from Final QC. Please collect any parts that need to be returned by LU.",
+        "actor_name": "Owner Test",
+        "storage_gb": 128,
+        "technician": "LU",
+        "issued_parts": [
+          "Glass"
+        ],
+        "pending_parts": []
+      },
+      {
+        "at": "2026-11-19T13:29:22.891+00:00",
+        "id": "199737fd-32e7-43d7-a6e3-6b36faac3515",
+        "imei": "399100000000000",
+        "color": "Blue",
+        "model": "15",
+        "stage": "Final QC",
+        "reason": "Review workflow stage correction",
+        "message": "This phone was cancelled from Final QC. Please collect any parts that need to be returned by LU.",
+        "actor_name": "Owner Test",
+        "storage_gb": 128,
+        "technician": "LU",
+        "issued_parts": [
+          "Glass"
+        ],
+        "pending_parts": []
+      },
+      {
+        "at": "2026-11-19T13:29:21.987+00:00",
+        "id": "a6b4fcc2-39bc-475a-b21d-2a94e5372183",
+        "imei": "399100000000000",
+        "color": "Blue",
+        "model": "15",
+        "stage": "Lab & Glass",
+        "reason": "Review workflow stage correction",
+        "message": "This phone was cancelled from Lab & Glass. Please collect any parts that need to be returned by LU.",
+        "actor_name": "Owner Test",
+        "storage_gb": 128,
+        "technician": "LU",
+        "issued_parts": [
+          "Glass"
+        ],
+        "pending_parts": []
+      }
+    ],
+    "total": 3,
+    "offset": 0,
+    "version": "20261119-stage-change-parts-1",
+    "snapshot": "f25ea065e5ccdc680e60b2794addbc43",
+    "pending_count": 1
+  },
+  "parts": {
+    "parts": [
+      {
+        "pending": 0,
+        "issue_id": "e5e4fad3-e09e-4906-82b7-0768790dd92a",
+        "order_id": "8ef69abc-94b4-4eb6-8f07-e5482bc81709",
+        "available": 1,
+        "part_name": "Glass",
+        "request_id": "2c5f5cce-f6d3-4e2d-9b84-d912634d3df0"
+      }
+    ],
+    "case_id": "d74b0297-971b-411c-804d-7776a803739c",
+    "snapshot": "d2b325ef87892e5bcc09de20a36f3ade"
+  }
+}
