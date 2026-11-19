@@ -1,0 +1,175 @@
+{
+  "detail": {
+    "history": [],
+    "receipt": {
+      "balance": 8,
+      "entered": 5,
+      "planned": 0,
+      "batch_id": "b9b75779-8dd6-45eb-afc8-4243fad60594",
+      "quantity": 10,
+      "reserved": 0,
+      "returned": 1,
+      "snapshot": "e16297cf44728d424552b9ac95c3b4ff",
+      "received_at": "2026-11-19T11:23:52.655+00:00",
+      "supplier_id": "00cab076-e278-427b-a3a0-b10f2f2d319a",
+      "batch_number": "BATCH-RSS-ROOT",
+      "pending_imei": 5,
+      "supplier_code": "SUP-RSS-OLD",
+      "supplier_name": null,
+      "invoice_number": "INV-RSS-ROOT",
+      "parent_batch_id": null,
+      "minimum_quantity": 5,
+      "replacement_received": 0
+    },
+    "history_total": 0
+  },
+  "context": {
+    "limit": 50,
+    "offset": 0,
+    "history": [],
+    "version": "20261119-receipt-supplier-correction-1",
+    "batch_id": "b9b75779-8dd6-45eb-afc8-4243fad60594",
+    "quantity": 10,
+    "snapshot": "bc8d127ccfbdeceaa8a8c438553e3a22",
+    "job_count": 5,
+    "suppliers": [
+      {
+        "supplier_id": "99e01c36-0ed9-46b4-962f-6622b8172706",
+        "supplier_code": "SUP-RSS-NEW",
+        "supplier_name": null
+      },
+      {
+        "supplier_id": "00cab076-e278-427b-a3a0-b10f2f2d319a",
+        "supplier_code": "SUP-RSS-OLD",
+        "supplier_name": null
+      }
+    ],
+    "target_id": null,
+    "batch_count": 1,
+    "phone_count": 5,
+    "supplier_id": "00cab076-e278-427b-a3a0-b10f2f2d319a",
+    "target_code": null,
+    "target_name": null,
+    "batch_number": "BATCH-RSS-ROOT",
+    "return_count": 1,
+    "history_total": 0,
+    "supplier_code": "SUP-RSS-OLD",
+    "supplier_name": null,
+    "invoice_number": "INV-RSS-ROOT",
+    "history_snapshot": "d751713988987e9331980363e24189ce",
+    "replacement_count": 0
+  },
+  "preview": {
+    "limit": 50,
+    "offset": 0,
+    "history": [],
+    "version": "20261119-receipt-supplier-correction-1",
+    "batch_id": "b9b75779-8dd6-45eb-afc8-4243fad60594",
+    "quantity": 10,
+    "snapshot": "b7fb24d56f05bc5d3021b35c35e80d25",
+    "job_count": 5,
+    "suppliers": [
+      {
+        "supplier_id": "99e01c36-0ed9-46b4-962f-6622b8172706",
+        "supplier_code": "SUP-RSS-NEW",
+        "supplier_name": null
+      },
+      {
+        "supplier_id": "00cab076-e278-427b-a3a0-b10f2f2d319a",
+        "supplier_code": "SUP-RSS-OLD",
+        "supplier_name": null
+      }
+    ],
+    "target_id": "99e01c36-0ed9-46b4-962f-6622b8172706",
+    "batch_count": 1,
+    "phone_count": 5,
+    "supplier_id": "00cab076-e278-427b-a3a0-b10f2f2d319a",
+    "target_code": "SUP-RSS-NEW",
+    "target_name": null,
+    "batch_number": "BATCH-RSS-ROOT",
+    "return_count": 1,
+    "history_total": 0,
+    "supplier_code": "SUP-RSS-OLD",
+    "supplier_name": null,
+    "invoice_number": "INV-RSS-ROOT",
+    "history_snapshot": "d751713988987e9331980363e24189ce",
+    "replacement_count": 0
+  },
+  "saved": {
+    "saved": true,
+    "detail": {
+      "history": [],
+      "receipt": {
+        "balance": 8,
+        "entered": 5,
+        "planned": 0,
+        "batch_id": "b9b75779-8dd6-45eb-afc8-4243fad60594",
+        "quantity": 10,
+        "reserved": 0,
+        "returned": 1,
+        "snapshot": "5e354e77a206b9620703124980f60004",
+        "received_at": "2026-11-19T11:23:52.655+00:00",
+        "supplier_id": "99e01c36-0ed9-46b4-962f-6622b8172706",
+        "batch_number": "BATCH-RSS-ROOT",
+        "pending_imei": 5,
+        "supplier_code": "SUP-RSS-NEW",
+        "supplier_name": null,
+        "invoice_number": "INV-RSS-ROOT",
+        "parent_batch_id": null,
+        "minimum_quantity": 5,
+        "replacement_received": 0
+      },
+      "history_total": 0
+    },
+    "request_id": "83026f97-1985-415a-a12e-7977f007e992",
+    "supplier_detail": {
+      "limit": 50,
+      "offset": 0,
+      "history": [
+        {
+          "reason": "Receipt belonged to the new supplier; original supplier was selected by mistake.",
+          "new_code": "SUP-RSS-NEW",
+          "new_name": null,
+          "old_code": "SUP-RSS-OLD",
+          "old_name": null,
+          "quantity": 10,
+          "actor_name": "Owner Test",
+          "created_at": "2026-11-19T11:23:53.027+00:00",
+          "request_id": "83026f97-1985-415a-a12e-7977f007e992"
+        }
+      ],
+      "version": "20261119-receipt-supplier-correction-1",
+      "batch_id": "b9b75779-8dd6-45eb-afc8-4243fad60594",
+      "quantity": 10,
+      "snapshot": "83b2c117db678eac1d64f71f7c4dd8bc",
+      "job_count": 5,
+      "suppliers": [
+        {
+          "supplier_id": "99e01c36-0ed9-46b4-962f-6622b8172706",
+          "supplier_code": "SUP-RSS-NEW",
+          "supplier_name": null
+        },
+        {
+          "supplier_id": "00cab076-e278-427b-a3a0-b10f2f2d319a",
+          "supplier_code": "SUP-RSS-OLD",
+          "supplier_name": null
+        }
+      ],
+      "target_id": null,
+      "batch_count": 1,
+      "phone_count": 5,
+      "supplier_id": "99e01c36-0ed9-46b4-962f-6622b8172706",
+      "target_code": null,
+      "target_name": null,
+      "batch_number": "BATCH-RSS-ROOT",
+      "return_count": 1,
+      "history_total": 1,
+      "supplier_code": "SUP-RSS-NEW",
+      "supplier_name": null,
+      "invoice_number": "INV-RSS-ROOT",
+      "history_snapshot": "c32bcf7d9c72d6b2bb640a21a8b49b2f",
+      "replacement_count": 0
+    },
+    "applied_supplier_id": "99e01c36-0ed9-46b4-962f-6622b8172706"
+  }
+}

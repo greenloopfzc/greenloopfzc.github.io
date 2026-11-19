@@ -1105,6 +1105,21 @@
           "key": "parts_usage_download",
           "label": "Parts Usage: PDF and Excel",
           "write": false
+        },
+        {
+          "key": "report_receipt_correction",
+          "label": "Stock Receipt Correction: view receipt and history",
+          "write": false
+        },
+        {
+          "key": "receipt_quantity_correction",
+          "label": "Correct received stock quantity (audited)",
+          "write": true
+        },
+        {
+          "key": "receipt_supplier_correction",
+          "label": "Correct stock supplier (audited)",
+          "write": true
         }
       ]
     },
@@ -1582,6 +1597,14 @@
         "parts_usage_download"
       ],
       "search": "parts_usage_search"
+    },
+    "stock_receipt_correction": {
+      "label": "Stock Receipt Correction",
+      "view": "report_receipt_correction",
+      "actions": [
+        "receipt_quantity_correction",
+        "receipt_supplier_correction"
+      ]
     }
   },
   "reportDependencies": {
@@ -1640,6 +1663,8 @@
     "chaman_correction": "report_chaman_correction",
     "chaman_delete": "report_chaman_correction",
     "parts_usage_search": "parts_usage",
-    "parts_usage_download": "parts_usage"
+    "parts_usage_download": "parts_usage",
+    "receipt_supplier_correction": "report_receipt_correction",
+    "receipt_quantity_correction": "report_receipt_correction"
   }
 }
