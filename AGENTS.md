@@ -1,5 +1,7 @@
 # Greenloop project policy
 
+- IMEI Search compact visits, Full activity, corrections and selected-phone history show saved UAE date/time to seconds, with actual action users distinguished from assigned/work/timer technicians. Use one chronological order in compact and detailed consumers; preserve sub-millisecond timestamp ordering, repeated visits and exact saved transfer destinations. Equal-time records without a cross-table sequence remain explicitly Same time; never invent order from a generic department rank, timestamps, actors or missing values. Retain every saved activity and direct-to-B-DEPT automatic routing evidence, privacy, correction snapshots/paging and independent permissions. This presentation must not repair business records or create new polling.
+
 ## Supplier code and receipt quantity
 
 Persistent user requirement recorded on 5 November 2026 (Asia/Dubai):

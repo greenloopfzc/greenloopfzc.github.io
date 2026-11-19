@@ -255,7 +255,7 @@ function buildStageSections(sortedRows) {
     return parts.map(part => {
       const qty = number(part.quantity), unit = number(part.unit_cost), total = number(part.total_cost);
       const price = unit === null ? "Price not recorded" : `${money(unit)} each${total === null ? "" : `; total ${money(total)}`}`;
-      return `${fact(action,`${scalar(part.name) || "Part name not recorded"}${qty === null ? "" : ` × ${qty}`}`)} — ${escapeHtml(price)} · ${escapeHtml(moment(row.occurred_at))} · ${fact(row.stage==="assignment"?"Assigned technician":row.automatic_direct_bdept?"Transfer action by":"By",row.actor)}`;
+      return `${fact(action,`${scalar(part.name) || "Part name not recorded"}${qty === null ? "" : ` × ${qty}`}`)} — ${escapeHtml(price)} · ${escapeHtml(moment(row.occurred_at))} · ${fact(window.GREENLOOP_STOCK_JOURNEY.actorLabel(row),row.actor)}`;
     });
   }
   function rowBullets(row, sectionKey) {
@@ -342,8 +342,7 @@ function buildStageSections(sortedRows) {
     return `<section class="history-stage" data-stage="${escapeHtml(section.key)}" aria-labelledby="history-stage-${index}"><h3 id="history-stage-${index}">${escapeHtml(section.title)}</h3><ul class="history-bullets">${bullets}</ul>${supplemental.length ? `<details class="history-other"><summary>Timer records</summary><ul class="history-bullets">${supplemental.map(row=>renderRecord(row,section.key)).join("")}</ul></details>` : ""}</section>`;
   }
   function journeyMoment(value) {
-    const stamp=timestamp(value);
-    return stamp===null ? missing : new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Dubai",day:"2-digit",month:"short",year:"numeric"}).format(new Date(stamp));
+    return window.GREENLOOP_STOCK_JOURNEY.moment(value);
   }
   function currentStage(device) {
     // Match the workflow status names used by Stock Journey. Do not infer the
@@ -360,7 +359,7 @@ function buildStageSections(sortedRows) {
       details.push(`<li>${fact("Part",[scalar(part.name),number(part.quantity)===null ? "" : "× "+part.quantity,number(part.unit_cost)===null ? "Price not recorded" : money(part.unit_cost)+" / part"].filter(Boolean).join(" · "))}</li>`);
     }
     if(number(row.duration_seconds)!==null)details.push(`<li>${fact(row.duration_label || "Recorded time",duration(row.duration_seconds))}</li>`);
-    return `<li class="history-activity-record${row.report_correction===true||row.stage==="correction"?" is-report-correction":""}" data-record-id="${escapeHtml(row.id)}"><h4>${safe(window.GREENLOOP_DEPT_NAME(row.display_title || row.title || stages[row.stage] || row.stage))}</h4><p>${safe(journeyMoment(row.occurred_at))} · ${fact(row.stage==="assignment"?"Assigned technician":row.automatic_direct_bdept?"Transfer action by":"By",row.actor)}${scalar(row.status) ? " · "+fact(row.automatic_direct_bdept?"Original system status":"Status",label(row.status)) : ""}${scalar(row.job_number) ? " · "+fact("Job",row.job_number) : ""}</p>${details.length ? `<ul class="history-bullets">${details.join("")}</ul>` : ""}${children}</li>`;
+    return `<li class="history-activity-record${row.report_correction===true||row.stage==="correction"?" is-report-correction":""}" data-record-id="${escapeHtml(row.id)}"><h4>${safe(window.GREENLOOP_DEPT_NAME(row.display_title || row.title || stages[row.stage] || row.stage))}</h4><p>${safe(journeyMoment(row.occurred_at))}${row.same_time ? ' · <span class="history-same-time">Same time</span>' : ""} · ${fact(window.GREENLOOP_STOCK_JOURNEY.actorLabel(row),row.actor)}${scalar(row.status) ? " · "+fact(row.automatic_direct_bdept?"Original system status":"Status",label(row.status)) : ""}${scalar(row.job_number) ? " · "+fact("Job",row.job_number) : ""}</p>${details.length ? `<ul class="history-bullets">${details.join("")}</ul>` : ""}${children}</li>`;
   }
   function renderActivityList(rows) {
     const attached=new Map(),children=new Set();
@@ -417,7 +416,7 @@ function buildStageSections(sortedRows) {
       money:value=>number(value)===null ? missing : number(value).toLocaleString("en-GB",{minimumFractionDigits:2,maximumFractionDigits:2})
     });
     body.innerHTML=(data.chaman_summary?.sent?'<section class="history-chaman-summary"><h3>Chaman Shop transfers</h3><p>'+escapeHtml('Sent: '+data.chaman_summary.sent+' · Received back at Greenloop: '+data.chaman_summary.returned+' · Outside Greenloop: '+data.chaman_summary.outside_greenloop)+'</p><p>Every dispatch, receiving and return is recorded in the journey below.</p></section>':'')+renderReplacementHistory(data)+window.GREENLOOP_IMEI_CORRECTIONS.render(data.report_corrections,data.device?.imei_1)+(rows.length ? compact+`<details class="history-full-activity"><summary>Full activity (${rows.length} records)</summary><ol class="history-activity-list">${renderActivityList(visibleRows)}</ol></details>` : '<p class="history-missing">No history has been recorded for this phone.</p>');
-    count.textContent="Journey by recorded time · Same-time actions follow workflow order · UAE time";
+    count.textContent="Oldest → newest · UAE date & time · Same time = no separate clock sequence recorded";
     const totals=data.summary || {};
     const unpriced=number(totals.unpriced_manual_part_quantity) || 0;
     summary.innerHTML=unpriced>0

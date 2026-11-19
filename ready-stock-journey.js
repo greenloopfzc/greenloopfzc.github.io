@@ -158,8 +158,7 @@
   }
 
   function journeyDate(value) {
-    const date = value ? new Date(value) : null;
-    return date && Number.isFinite(date.getTime()) ? date.toLocaleString("en-GB", {timeZone:"Asia/Dubai",day:"2-digit",month:"short",year:"numeric"}) : "Not recorded";
+    return window.GREENLOOP_STOCK_JOURNEY.moment(value);
   }
   function renderDetail(data) {
     const device = data.device || {};
@@ -167,11 +166,11 @@
     const row = loadedRows.find(item => item.device_id === selectedDevice);
     const current = window.GREENLOOP_DEPT_NAME(device.current_stage || row?.current_stage || displayValue(device.current_status).replace(/_/g, ' '));
     document.querySelector('#journey-detail-stage').textContent = [device.model, device.storage_gb ? `${device.storage_gb} GB` : '', device.color, `Current stage: ${current}`].filter(Boolean).join(' · ');
-    const records = Array.isArray(data.rows) ? data.rows : [];
+    const records = window.GREENLOOP_STOCK_JOURNEY.activity(data.rows);
     const fullActivity = records.length ? '<ol class="stock-journey-steps">' + records.map(item => {
       const details = (Array.isArray(item.details) ? item.details : []).map(value => `<li><strong>${escapeHtml(value.label)}:</strong> ${escapeHtml(displayValue(value.value))}</li>`);
-      details.unshift(`<li><strong>Date & time:</strong> ${escapeHtml(journeyDate(item.occurred_at))}</li>`);
-      details.push(`<li><strong>${item.stage === 'assignment' ? 'Assigned technician' : 'By'}:</strong> ${escapeHtml(item.actor || 'Not recorded')}</li>`);
+      details.unshift(`<li><strong>Date & time:</strong> ${escapeHtml(journeyDate(item.occurred_at))}${item.same_time ? " · Same time" : ""}</li>`);
+      details.push(`<li><strong>${window.GREENLOOP_STOCK_JOURNEY.actorLabel(item)}:</strong> ${escapeHtml(item.actor || 'Not recorded')}</li>`);
       if (item.job_number) details.push(`<li><strong>Job:</strong> ${escapeHtml(item.job_number)}</li>`);
       if (item.status) details.push(`<li><strong>Status:</strong> ${escapeHtml(window.GREENLOOP_DEPT_NAME(displayValue(item.status).replace(/_/g, ' ')))}</li>`);
       for (const part of Array.isArray(item.parts) ? item.parts : []) details.push(`<li><strong>Part:</strong> ${escapeHtml(part.name || 'Not recorded')} · Qty ${escapeHtml(displayValue(part.quantity))}${part.unit_cost != null ? ' · Unit price AED ' + escapeHtml(formatMoney(part.unit_cost)) : ' · Price not recorded'}</li>`);
