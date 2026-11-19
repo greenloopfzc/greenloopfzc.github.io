@@ -71,7 +71,7 @@
     const more=textElement("button","gl-record-search-more","Show more matches"); more.type="button"; more.dataset.searchReadOnly="true"; more.hidden=true;
     panel.append(status,list,more); document.body.append(panel);
     input.setAttribute("role","combobox"); input.setAttribute("aria-autocomplete","list"); input.setAttribute("aria-controls",list.id); input.setAttribute("aria-expanded","false"); input.autocomplete="off";
-    let timer,version=0,active=-1,items=[],nextOffset=0,lastQuery="",busy=false,destroyed=false;
+    let timer,version=0,active=-1,items=[],nextOffset=0,lastQuery="",busy=false,destroyed=false,composing=false,exactFlight;
     const listeners=[];
     const listen=(target,event,handler,settings)=>{target.addEventListener(event,handler,settings);listeners.push(()=>target.removeEventListener(event,handler,settings));};
     function position() {
@@ -113,7 +113,18 @@
     async function search({append=false,selectExact=false}={}) {
       clearTimeout(timer);
       const term=clean(input.value); if(!term){++version;close();return;}
-      if(!append&&selectExact&&/^\d{15}$/.test(term)&&typeof options.onExactIdentifier==='function'&&window.GREENLOOP_CAN_SEARCH!==false){close();return options.onExactIdentifier(term);}
+      if(!append&&selectExact&&/^\d{15}$/.test(term)&&typeof options.onExactIdentifier==='function'&&window.GREENLOOP_CAN_SEARCH!==false){
+        // Share only a running report read. A scanner's trailing Enter or a
+        // simultaneous form submit must not start the same history twice.
+        if(exactFlight?.term===term)return exactFlight.promise;
+        close();
+        const flight={term};exactFlight=flight;
+        flight.promise=Promise.resolve().then(()=>{
+          if(destroyed||exactFlight!==flight||clean(input.value)!==term||window.GREENLOOP_CAN_SEARCH===false)return;
+          return options.onExactIdentifier(term);
+        }).finally(()=>{if(exactFlight===flight)exactFlight=null;});
+        return flight.promise;
+      }
       const currentVersion=++version;
       if(!append){items=[];list.replaceChildren();active=-1;input.removeAttribute("aria-activedescendant");nextOffset=0;}
       lastQuery=term;busy=true;more.hidden=true;status.textContent="Searching…";show();
@@ -134,8 +145,22 @@
         busy=false;items=[];render();more.hidden=true;status.textContent=error.message || "Search failed. Please try again.";show();
       }
     }
-    listen(input,"input",()=>{++version;clearTimeout(timer);busy=false;items=[];close();if(clean(input.value))timer=setTimeout(()=>search(),250);});
+    function inputChanged(event){
+      ++version;clearTimeout(timer);busy=false;items=[];close();
+      // Every new edit also invalidates the page's history generation, even
+      // when the user pastes the same number again while it is still loading.
+      const term=clean(input.value);exactFlight=null;
+      if(composing||event?.isComposing||!term)return;
+      // Only opted-in report fields auto-open complete IMEIs. Partial and
+      // non-IMEI searches, and other search widgets, keep their dropdown.
+      if(options.autoExactIdentifier&&/^\d{15}$/.test(term)&&typeof options.onExactIdentifier==='function'&&window.GREENLOOP_CAN_SEARCH!==false){void search({selectExact:true});return;}
+      timer=setTimeout(()=>search(),250);
+    }
+    listen(input,"compositionstart",()=>{composing=true;clearTimeout(timer);close();});
+    listen(input,"compositionend",event=>{composing=false;inputChanged(event);});
+    listen(input,"input",inputChanged);
     listen(input,"keydown",event=>{
+      if(composing||event.isComposing)return;
       if(event.key==="Escape"){++version;clearTimeout(timer);close();return;}
       if(event.key==="Tab"){++version;clearTimeout(timer);close();return;}
       if(event.key==="ArrowDown" || event.key==="ArrowUp") {
@@ -151,6 +176,7 @@
     listen(more,"click",()=>{if(!busy && clean(input.value)===lastQuery)search({append:true});});
     listen(document,"pointerdown",event=>{if(event.target!==input && !panel.contains(event.target)){++version;clearTimeout(timer);close();}});
     listen(window,"resize",position);listen(window,"scroll",position,true);
+    for(const name of ['greenloop:office-locked','greenloop:signed-out','greenloop:permissions-changed'])listen(window,name,()=>{exactFlight=null;close();});
     const removalObserver=new MutationObserver(()=>{if(!input.isConnected)api.destroy();});
     const api={search,close,destroy(){if(destroyed)return;destroyed=true;++version;clearTimeout(timer);removalObserver.disconnect();listeners.forEach(remove=>remove());panel.remove();widgets.delete(input);["role","aria-autocomplete","aria-controls","aria-expanded","aria-activedescendant"].forEach(name=>input.removeAttribute(name));}};
     removalObserver.observe(document.body,{childList:true,subtree:true});

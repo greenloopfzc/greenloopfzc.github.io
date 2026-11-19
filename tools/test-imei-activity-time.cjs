@@ -61,7 +61,7 @@ function setup({history,correctionPages,denied}){
  window.GREENLOOP_RECEIPTS={load:async()=>{},label:()=> 'SUP-02-(1400)'};
  window.GREENLOOP_SCAN_READY={focus:e=>e.focus()};
  window.GREENLOOP_BULK_IMEI={register:options=>window.__bulk=options.load,list:()=>null};
- window.GREENLOOP_RECORD_SEARCH={attach:(input,options)=>{window.__select=options.onSelect;return{close(){},search(){}}}};
+ window.GREENLOOP_RECORD_SEARCH={attach:(input,options)=>{window.__select=options.onSelect;return{close(){},search(){return options.onExactIdentifier(input.value.trim());}}}};
  window.GREENLOOP_GET_CLIENT=()=>({auth:{getSession:async()=>({data:{session:{user:{id:'fixture'}}}})},rpc:async(n,a)=>{
   __calls.push({n,a});if(__mode==='error')return{error:{message:'Office access denied'}};
   if(n==='get_imei_activity_journey_v1'){if(__mode==='slow')await new Promise(r=>setTimeout(r,200));return{data:structuredClone(__history)}};
