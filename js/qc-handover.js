@@ -30,7 +30,7 @@
   function setBusy(key, value) { value ? pending.add(key) : pending.delete(key);if(value){revision++;closePdf();}update(); }
   function record(value) {
     if(stopped)return;
-    rows.set(String(value.jobId),{jobId:String(value.jobId),imei:String(value.imei),technicianId:value.technicianId || '',technician:value.technician || 'Unassigned',model:value.model || '',storage:value.storage || '',color:value.color || '',issued:true,grade:value.grade||'',batch:value.batch||'',parts:value.parts.map(p=>({name:p.name,quantity:p.quantity})),services:[...value.services]});
+    rows.set(String(value.jobId),{jobId:String(value.jobId),imei:String(value.imei),technicianId:value.technicianId || '',technician:value.technician || 'Unassigned',model:value.model || '',storage:value.storage || '',color:value.color || '',issued:true,grade:value.grade||'',batch:value.batch||'',batchQuantity:value.batchQuantity??null,parts:value.parts.map(p=>({name:p.name,quantity:p.quantity})),services:[...value.services]});
     changed();
   }
   function warning(text) {

@@ -20,33 +20,180 @@
   }
   const values = (row, i) => [String(i + 1), row.imei, row.model || '-', row.storage || '-', row.color || '-', row.grade || '-', row.batch || 'Not recorded', row.parts.length ? row.parts.map(p => `${p.name} x ${p.quantity}`).join('\n') : 'None', row.services.length ? row.services.join('\n') : 'None'];
 
-  const compactW=595.276,compactH=841.89,compactM=32;
+  const compactW=595.276, compactH=841.89, compactM=30;
+  const issuanceWidths=[25,81,58,39,52,30,43,110,97];
+  const issuanceLabels=['S.No','IMEI','Model','GB','Color','Grade','Batch Qty','Required Parts','Required Services'];
+  const issuanceWidth=issuanceWidths.reduce((sum,width)=>sum+width,0);
+  const tableOffset=97, headerHeight=22, footerReserve=44;
+  const rowsHeight=compactH-compactM-tableOffset-headerHeight-footerReserve;
+  const workStart=7;
+  const emphasis=col=>col===1||col===5||col===6;
+  const clean=value=>String(value??'').replace(/[\u2010-\u2015]/g,'-');
+
+  function batchQty(row){
+    const quantity=row.batchQuantity??String(row.batch??'').match(/-\((\d+)\)$/)?.[1];
+    return /^\d+$/.test(String(quantity))&&Number.isSafeInteger(Number(quantity))?String(Number(quantity)):'-';
+  }
+
+  function wrapIssuanceText(value,width,measure){
+    const lines=[];
+    let line='';
+    for(const word of clean(value).trim().split(/\s+/)){
+      const next=line?line+' '+word:word;
+      if(measure(next)<=width){line=next;continue;}
+      if(line){lines.push(line);line='';}
+      if(measure(word)<=width){line=word;continue;}
+      for(const letter of word){
+        if(line&&measure(line+letter)>width){lines.push(line);line='';}
+        line+=letter;
+      }
+    }
+    return [...lines,line];
+  }
+
   function compactPlan(input,measure){
-    const report=validate(input),pages=[],available=compactW-2*compactM,min=[18,60,26,22,26,22,80,42,44],max=[18,64,52,28,52,30,110,360,360];
-    const widths=min.map((v,col)=>Math.min(max[col],Math.max(v,...report.rows.map((row,i)=>measure(String(values(row,i)[col]).replace(/\n/g,'; '),6.5)+6))));
-    const fixed=widths.slice(0,7).reduce((a,b)=>a+b,0);if(widths.reduce((a,b)=>a+b,0)>available){const extra=available-fixed-min[7]-min[8],a=Math.max(0,widths[7]-min[7]),b=Math.max(0,widths[8]-min[8]),sum=a+b||1;widths[7]=min[7]+extra*a/sum;widths[8]=min[8]+extra*b/sum;}
-    const headers=labels.map((v,i)=>({size:6,lines:wrap(v,widths[i]-4,6)}));
-    function wrap(value,width,size){const lines=[];for(const para of String(value??'').replace(/[\u2010-\u2015]/g,'-').split('\n')){let line='';for(const ch of para){if(line&&measure(line+ch,size)>width){lines.push(line);line='';}line+=ch;}lines.push(line);}return lines;}
-    for(let start=0;start<report.rows.length;start+=50){const rows=report.rows.slice(start,start+50),height=Math.min(26,(compactH-97-18-52-14)/rows.length);pages.push({start,height,rows:rows.map((row,i)=>values(row,start+i).map((value,col)=>{let size=7,lines;do{lines=wrap(String(value).replace(/\n/g,'; '),widths[col]-4,size);if(lines.length*size*1.12<=height-3)break;size-=.1;}while(size>.5);return {size,lines};}))});}
-    return {report,pages,widths,headers,width:widths.reduce((a,b)=>a+b,0)};
+    const report=validate(input);
+    function plan(layout){
+      const {size,leading,padding,minRow}=layout;
+      const lineLimit=Math.floor((rowsHeight-padding)/leading);
+      const pages=[];
+      let page={rows:[],height:0};
+      for(const [index,phone] of report.rows.entries()){
+        const serial=index+1;
+        const fields=[String(serial),phone.imei,phone.model||'-',phone.storage||'-',phone.color||'-',phone.grade||'-',batchQty(phone)];
+        const cells=fields.map((value,col)=>wrapIssuanceText(value,issuanceWidths[col]-6,text=>measure(text,size,emphasis(col))).map(text=>({text})));
+        const lists=[phone.parts.map(part=>part.name+' × '+part.quantity),phone.services];
+        lists.forEach((items,index)=>{
+          const width=issuanceWidths[workStart+index]-18;
+          const lines=items.flatMap(item=>wrapIssuanceText(item,width,text=>measure(text,size)).map((text,line)=>({text,bullet:line===0})));
+          cells.push(lines.length?lines:[{text:'None',muted:true}]);
+        });
+        const count=Math.max(...cells.map(cell=>cell.length));
+        for(let start=0;start<count;start+=lineLimit){
+          const section=cells.map((cell,col)=>start&&col<2?cell:cell.slice(start,start+lineLimit));
+          if(start)section[1]=[...section[1],{text:'(continued)'}];
+          const height=Math.max(minRow,Math.max(...section.map(cell=>cell.length))*leading+padding);
+          if(page.rows.length===50||page.height+height>rowsHeight){
+            pages.push(page);
+            page={rows:[],height:0};
+          }
+          page.rows.push({serial,cells:section,height});
+          page.height+=height;
+        }
+      }
+      if(page.rows.length)pages.push(page);
+      return {...layout,pages};
+    }
+    const comfortable=plan({size:8.7,leading:12,padding:12,minRow:31});
+    const dense=plan({size:8.1,leading:10,padding:2.5,minRow:12.5});
+    const layout=comfortable.pages.length<=dense.pages.length?comfortable:dense;
+    const headers=issuanceLabels.map((label,col)=>wrapIssuanceText(label,issuanceWidths[col]-6,text=>measure(text,7.8,true)));
+    const meta='Technician: '+report.technician+' | Total phones: '+report.total+' | '+date(report.generatedAt);
+    const metaSize=Math.min(9,9*issuanceWidth/measure(meta,9));
+    return {...layout,report,headers,meta,metaSize};
   }
+
   function compactPrintHtml(input,options){
-    const ctx=root.document?.createElement('canvas').getContext('2d'),measure=(s,n)=>{if(ctx){ctx.font=n+'pt Arial';return ctx.measureText(s).width*.75;}return String(s).length*n*.56;},plan=compactPlan(input,measure),r=plan.report;
-    return '<!doctype html><html><head><meta charset="utf-8"><title>Lab &amp; Glass Issuance</title><style>@page{size:A4 portrait;margin:32pt}*{box-sizing:border-box}html,body{margin:0;padding:0;font-family:Arial,sans-serif;color:#17343a;-webkit-print-color-adjust:exact;print-color-adjust:exact}.sheet{width:531.276pt;break-after:page;page-break-after:always}.sheet:last-child{break-after:auto;page-break-after:auto}header{height:65pt;position:relative;text-align:center}header img{position:absolute;left:0;top:0;width:100pt;height:24pt;object-fit:cover;object-position:center}header h1{font-size:13pt;margin:0;padding-top:27pt}header p{font-size:7pt;margin:4pt 0}table{border-collapse:collapse;table-layout:fixed;margin-left:auto;margin-right:auto}th,td{border:.35pt solid #bdced1;text-align:center;vertical-align:middle;padding:0 2pt;overflow-wrap:anywhere}thead th{height:18pt;background:#e5f1eb;font-size:6pt}td div{white-space:pre;line-height:1.12}tbody tr:nth-child(even){background:#f2f7f5}tfoot td{height:14pt;background:#e5f1eb;font-size:7pt;font-weight:bold}footer{font-size:6pt;padding-top:8pt;display:flex;justify-content:space-between}</style></head><body>'+plan.pages.map((p,i)=>'<section class="sheet"><header>'+(options.logoUrl?'<img src="'+escape(options.logoUrl)+'" alt="Greenloop FZC">':'<b style="position:absolute;left:0;top:0;font-size:15pt;color:#087651">GREENLOOP FZC</b>')+'<h1>Lab &amp; Glass Issuance</h1><p>Technician: <b>'+escape(r.technician)+'</b> | Total phones: '+r.total+' | '+escape(date(r.generatedAt))+'</p></header><table style="width:'+plan.width+'pt"><colgroup>'+plan.widths.map(w=>'<col style="width:'+w+'pt">').join('')+'</colgroup><thead><tr>'+labels.map(v=>'<th>'+escape(v)+'</th>').join('')+'</tr></thead><tbody>'+p.rows.map(cells=>'<tr style="height:'+p.height+'pt">'+cells.map(cell=>'<td><div style="font-size:'+cell.size+'pt">'+cell.lines.map(escape).join('\n')+'</div></td>').join('')+'</tr>').join('')+'</tbody><tfoot><tr><td colspan="8">PHONES ON THIS PAGE</td><td>'+p.rows.length+'</td></tr></tfoot></table><footer><span>'+escape(r.phase)+' | S.No '+(p.start+1)+'-'+(p.start+p.rows.length)+'</span><span>Page '+(i+1)+' of '+plan.pages.length+'</span></footer></section>').join('')+'</body></html>';
+    const ctx=root.document?.createElement('canvas').getContext('2d');
+    const measure=(text,size,bold)=>{
+      if(!ctx)return text.length*size*.58;
+      ctx.font=(bold?'bold ':'')+size+'pt Arial';
+      return ctx.measureText(text).width*.75;
+    };
+    const plan=compactPlan(input,measure);
+    const pages=plan.pages.map((page,index)=>{
+      const rows=page.rows.map(row=>{
+        const cells=row.cells.map((cell,col)=>{
+          const work=col>=workStart;
+          const content=cell.map(entry=>'<div class="sheet-line'+(entry.bullet?' has-bullet':'')+(entry.muted?' is-muted':'')+'">'+escape(entry.text)+'</div>').join('');
+          return '<td'+(work?' class="work-cell"':emphasis(col)?' class="emphasis"':'')+'>'+content+'</td>';
+        }).join('');
+        return '<tr style="height:'+row.height+'pt">'+cells+'</tr>';
+      }).join('');
+      const brand=options.logoUrl?'<div class="sheet-logo"><img src="'+escape(options.logoUrl)+'" alt="Greenloop FZC"></div>':'<b class="sheet-logo">GREENLOOP FZC</b>';
+      return '<section class="sheet"><header>'+brand+'<h1>Lab &amp; Glass Issuance</h1><p style="font-size:'+plan.metaSize+'pt">'+escape(plan.meta)+'</p></header>'+
+        '<table style="font-size:'+plan.size+'pt;line-height:'+plan.leading+'pt;--row-padding:'+plan.padding+'pt"><colgroup>'+
+        issuanceWidths.map(width=>'<col style="width:'+width+'pt">').join('')+'</colgroup><thead><tr>'+
+        plan.headers.map(lines=>'<th scope="col">'+lines.map(escape).join('<br>')+'</th>').join('')+'</tr></thead><tbody>'+rows+
+        '</tbody><tfoot><tr><td colspan="9">PHONES ON THIS PAGE: '+page.rows.length+'</td></tr></tfoot></table>'+
+        '<footer><span>'+escape(plan.report.phase)+' | S.No '+page.rows[0].serial+'-'+page.rows.at(-1).serial+'</span><span>Page '+(index+1)+' of '+plan.pages.length+'</span></footer></section>';
+    });
+    return '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Lab &amp; Glass Issuance</title><style>'+
+      '@page{size:A4 portrait;margin:30pt}*{box-sizing:border-box}html,body{margin:0;padding:0;font-family:Arial,sans-serif;color:#17342e;-webkit-print-color-adjust:exact;print-color-adjust:exact}'+
+      '.sheet{width:535pt;margin-inline:auto;break-after:page}.sheet:last-child{break-after:auto}header{height:67pt;position:relative;text-align:center}'+
+      '.sheet-logo{position:absolute;left:0;top:0;width:100pt;height:22pt;overflow:hidden;text-align:left;color:#146448}.sheet-logo img{position:absolute;width:118.519pt;height:39.537pt;left:-10.185pt;top:-9.26pt}'+
+      'header h1{font-size:17pt;margin:0;padding-top:24pt}header p{margin:4pt 0;white-space:nowrap;color:#4c615d}'+
+      'table{width:535pt;border-collapse:collapse;table-layout:fixed}th,td{border:.35pt solid #bdcfc7;text-align:center;vertical-align:middle;padding:0 3pt}'+
+      'thead th{height:22pt;background:#e1f0e8;font-size:7.8pt;line-height:9pt;padding-inline:2pt;white-space:nowrap}tbody tr{break-inside:avoid}tbody tr:nth-child(even){background:#f5f8f6}.sheet-line{white-space:pre}.emphasis{font-weight:bold}'+
+      '.work-cell{text-align:left;vertical-align:top;padding:calc(var(--row-padding) / 2 - .3pt) 3pt 0 15pt}.work-cell .sheet-line{position:relative}'+
+      '.has-bullet::before{content:"";position:absolute;left:-7.5pt;top:50%;width:2.4pt;height:2.4pt;border-radius:50%;background:#146448;transform:translateY(-50%)}'+
+      '.is-muted{color:#4c615d}tfoot td{height:16pt;background:#e1f0e8;font-size:8pt;line-height:9pt;font-weight:bold}footer{font-size:7pt;padding-top:7pt;display:flex;justify-content:space-between}'+
+      '</style></head><body>'+pages.join('')+'</body></html>';
   }
+
   async function compactCreate(input,options){
-    const lib=options.PDFLib||root.PDFLib;if(!lib)throw Error('PDF tools could not load.');
-    const doc=await lib.PDFDocument.create(),font=await doc.embedFont(lib.StandardFonts.Helvetica),bold=await doc.embedFont(lib.StandardFonts.HelveticaBold),clean=s=>String(s).replace(/[\u2010-\u2015]/g,'-'),measure=(s,n)=>font.widthOfTextAtSize(clean(s),n),plan=compactPlan(input,measure),r=plan.report,M=compactM,W=compactW,H=compactH,widths=plan.widths,tableWidth=plan.width,tableX=M+(W-2*M-tableWidth)/2;
-    const ink=lib.rgb(.08,.18,.20),green=lib.rgb(0,.4,.29),line=lib.rgb(.73,.8,.81),pale=lib.rgb(.90,.95,.92);let logo;
-    if(options.logo){const bytes=new Uint8Array(options.logo);logo=bytes[0]===137?await doc.embedPng(bytes):await doc.embedJpg(bytes);}
-    doc.setTitle('Lab & Glass Issuance - '+r.technician);doc.setAuthor('Greenloop FZC');
-    plan.pages.forEach((p,index)=>{const page=doc.addPage([W,H]),text=(s,x,y,n=7,face=font)=>page.drawText(clean(s),{x,y,size:n,font:face,color:ink}),center=(s,x,y,w,n=7,face=font)=>text(s,x+(w-face.widthOfTextAtSize(clean(s),n))/2,y,n,face);
-      if(logo){const scale=100/1080,base=H-M-22;page.pushOperators(lib.pushGraphicsState(),lib.rectangle(M,base,100,22),lib.clip(),lib.endPath());page.drawImage(logo,{x:M-110*scale,y:base-(427-100-230)*scale,width:1280*scale,height:427*scale});page.pushOperators(lib.popGraphicsState());}else text('GREENLOOP FZC',M,H-M-15,15,bold);
-      center('Lab & Glass Issuance',M,H-M-39,W-2*M,13,bold);
-      const meta='Technician: '+r.technician+' | Total phones: '+r.total+' | '+date(r.generatedAt),metaSize=Math.min(7,(W-2*M)/measure(meta,1));center(meta,M,H-M-54,W-2*M,metaSize);
-      let y=H-97,x=tableX;plan.headers.forEach((h,i)=>{page.drawRectangle({x,y:y-18,width:widths[i],height:18,color:pale,borderColor:line,borderWidth:.35});h.lines.forEach((v,j)=>center(v,x,y-(18-h.lines.length*6.72)/2-6-j*6.72,widths[i],6,bold));x+=widths[i];});y-=18;
-      p.rows.forEach((cells,row)=>{x=tableX;cells.forEach((cell,col)=>{page.drawRectangle({x,y:y-p.height,width:widths[col],height:p.height,color:row%2?lib.rgb(.95,.97,.96):lib.rgb(1,1,1),borderColor:line,borderWidth:.35});const top=y-(p.height-cell.lines.length*cell.size*1.12)/2-cell.size;cell.lines.forEach((s,j)=>center(s,x,top-j*cell.size*1.12,widths[col],cell.size));x+=widths[col];});y-=p.height;});
-      page.drawRectangle({x:tableX,y:y-14,width:tableWidth,height:14,color:pale});center('PHONES ON THIS PAGE: '+p.rows.length,M,y-10,W-2*M,7,bold);text(r.phase+' | S.No '+(p.start+1)+'-'+(p.start+p.rows.length),M,y-28,6);const label='Page '+(index+1)+' of '+plan.pages.length;text(label,W-M-measure(label,6),y-28,6);
+    const lib=options.PDFLib||root.PDFLib;
+    if(!lib)throw Error('PDF tools could not load.');
+    const doc=await lib.PDFDocument.create();
+    const font=await doc.embedFont(lib.StandardFonts.Helvetica),bold=await doc.embedFont(lib.StandardFonts.HelveticaBold);
+    const measure=(text,size,heavy)=>{
+      try{return (heavy?bold:font).widthOfTextAtSize(clean(text),size);}
+      catch(_){throw Error('A saved name contains characters the PDF font cannot display. Use Print for this sheet.');}
+    };
+    const plan=compactPlan(input,measure),r=plan.report;
+    const M=compactM,W=compactW,H=compactH,tableX=(W-issuanceWidth)/2;
+    const ink=lib.rgb(.09,.20,.18),green=lib.rgb(.08,.39,.28),line=lib.rgb(.74,.81,.78),pale=lib.rgb(.88,.94,.91);
+    const white=lib.rgb(1,1,1),muted=lib.rgb(.30,.38,.36),stripe=lib.rgb(.96,.97,.96);
+    let logo;
+    if(options.logo){
+      const bytes=new Uint8Array(options.logo);
+      logo=bytes[0]===137?await doc.embedPng(bytes):await doc.embedJpg(bytes);
+    }
+    doc.setTitle('Lab & Glass Issuance - '+r.technician);
+    doc.setAuthor('Greenloop FZC');
+    plan.pages.forEach((sheet,index)=>{
+      const page=doc.addPage([W,H]);
+      const text=(value,x,y,size,heavy=false,color=ink)=>page.drawText(clean(value),{x,y,size,font:heavy?bold:font,color});
+      const center=(value,x,y,width,size,heavy=false)=>text(value,x+(width-measure(value,size,heavy))/2,y,size,heavy);
+      if(logo){
+        const scale=100/1080,base=H-M-22;
+        page.pushOperators(lib.pushGraphicsState(),lib.rectangle(M,base,100,22),lib.clip(),lib.endPath());
+        page.drawImage(logo,{x:M-110*scale,y:base-(427-100-230)*scale,width:1280*scale,height:427*scale});
+        page.pushOperators(lib.popGraphicsState());
+      }else text('GREENLOOP FZC',M,H-M-15,15,true,green);
+      center('Lab & Glass Issuance',M,H-M-40,W-2*M,17,true);
+      center(plan.meta,M,H-M-54,W-2*M,plan.metaSize);
+      let y=H-tableOffset,x=tableX;
+      plan.headers.forEach((lines,col)=>{
+        const width=issuanceWidths[col];
+        page.drawRectangle({x,y:y-headerHeight,width,height:headerHeight,color:pale,borderColor:line,borderWidth:.35});
+        const top=y-(headerHeight-lines.length*9)/2-7.8;
+        lines.forEach((value,index)=>center(value,x,top-index*9,width,7.8,true));
+        x+=width;
+      });
+      y-=headerHeight;
+      for(const row of sheet.rows){
+        x=tableX;
+        row.cells.forEach((cell,col)=>{
+          const width=issuanceWidths[col],work=col>=workStart;
+          page.drawRectangle({x,y:y-row.height,width,height:row.height,color:row.serial%2?white:stripe,borderColor:line,borderWidth:.35});
+          const top=y-(work?plan.padding/2:(row.height-cell.length*plan.leading)/2)-plan.size;
+          cell.forEach((entry,i)=>{
+            const baseline=top-i*plan.leading;
+            if(work){
+              if(entry.bullet)page.drawCircle({x:x+8.5,y:baseline+2.8,size:1.2,color:green});
+              text(entry.text,x+15,baseline,plan.size,false,entry.muted?muted:ink);
+            }else center(entry.text,x,baseline,width,plan.size,emphasis(col));
+          });
+          x+=width;
+        });
+        y-=row.height;
+      }
+      page.drawRectangle({x:tableX,y:y-16,width:issuanceWidth,height:16,color:pale});
+      center('PHONES ON THIS PAGE: '+sheet.rows.length,M,y-11,W-2*M,8,true);
+      text(r.phase+' | S.No '+sheet.rows[0].serial+'-'+sheet.rows.at(-1).serial,M,y-30,7);
+      const label='Page '+(index+1)+' of '+plan.pages.length;
+      text(label,W-M-measure(label,7),y-30,7);
     });
     return {bytes:await doc.save(),pages:plan.pages.length,filename:'Greenloop-Lab-Glass-Issuance-'+r.technician.replace(/[^a-z0-9]+/gi,'-')+'.pdf'};
   }
@@ -140,5 +287,5 @@
     const day = new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Dubai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(report.generatedAt)).replace(/[^0-9-]/g,'-');
     return {bytes:await pdf.save(), pages:pages.length, filename:'Greenloop-'+(report.issuance?'Lab-Glass-Issuance':'Initial-QC-Handover')+'-'+report.technician.replace(/[^a-z0-9]+/gi,'-')+'-'+day+'.pdf'};
   }
-  root.GREENLOOP_QC_HANDOVER_PDF = {version:'20261112-issuance-auto-width-1',validate, create, printHtml};
+  root.GREENLOOP_QC_HANDOVER_PDF = {version:'20261120-issuance-readable-a4-1',validate, create, printHtml};
 })(typeof window !== 'undefined' ? window : globalThis);
