@@ -1,6 +1,12 @@
 .export-box-content { max-width: 1320px; }
 .export-box-heading { align-items: center; }
 .export-box-app { display: grid; gap: 16px; }
+.export-open-boxes { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.export-box-tabs { display: flex; gap: 8px; min-width: 0; overflow-x: auto; padding: 4px; }
+.export-open-boxes button { flex: 0 0 auto; white-space: nowrap; }
+#export-box-tabs > button[aria-pressed="true"] { background: var(--nm-accent-soft, #bcdfd0); border-color: #18765a; color: var(--nm-ink, #143e31); }
+.export-box-tab-count { margin-inline-start: 6px; }
+@media print { .export-open-boxes { display: none !important; } }
 .export-box-control { display: grid; grid-template-columns: minmax(210px, .7fr) minmax(330px, 1fr) auto auto; align-items: center; gap: 15px; border: 1px solid #cfe1d5; border-radius: 14px; padding: 15px 17px; background: linear-gradient(135deg, #f7fcf8, #edf8f1); }
 .export-box-number { display: grid; gap: 4px; }
 .export-box-number span, .export-box-number small { color: #718178; font-size: .67rem; font-weight: 700; }

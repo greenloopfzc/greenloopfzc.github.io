@@ -1586,6 +1586,22 @@
     "get_box_bulk_entry_version": {
       "read": true
     },
+    "list_open_export_box_drafts_v1": {
+      "page": "export_boxes",
+      "capability": "view",
+      "read": true
+    },
+    "create_open_export_box_draft_v1": {
+      "page": "export_boxes",
+      "capability": "scan"
+    },
+    "scan_imeis_to_selected_export_box_v1": {
+      "page": "export_boxes",
+      "capability": "scan"
+    },
+    "get_multiple_open_boxes_version": {
+      "read": true
+    },
     "get_imei_bulk_history_list_v1": {
       "page": "imei_search",
       "capability": "search",

@@ -10,6 +10,8 @@
   const boxStatus = document.querySelector("#export-box-status");
   const boxCount = document.querySelector("#export-box-count");
   const boxRemaining = document.querySelector("#export-box-remaining");
+  const boxTabs = document.querySelector("#export-box-tabs");
+  const newBoxButton = document.querySelector("#export-new-box");
   const progressBar = document.querySelector("#export-progress-bar");
   const startNextButton = document.querySelector("#start-next-box");
   const printButton = document.querySelector("#print-box-sheet");
@@ -27,6 +29,9 @@
   let workflow=null;
   let client;
   let currentBox;
+  let openDrafts = [];
+  let createRequestId;
+  let renderedTabs = "";
   let lines = [];
   let sortField = "", descending = false;
   let issueBoxId=null;
@@ -35,7 +40,6 @@
   let scanning = false;
   let boxBusy = false;
   let scannerLocked=false,scanFocusFrame=0,scanErrorDialog,lastScanFinishedAt=0;
-  let canEdit = false;
   const can = capability => window.GREENLOOP_CAN?.(capability,"export_boxes") === true;
 
   // Disabled identifier mirrors settle on the next animation frame. Restore
@@ -63,14 +67,6 @@
     return String(value ?? "").replace(/[&<>'"]/g, (character) => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;"
     })[character]);
-  }
-
-  function asRow(data) { return Array.isArray(data) ? data[0] : data; }
-
-  function formatDateTime(value) {
-    return new Date(value || Date.now()).toLocaleString("en-GB", {
-      timeZone: "Asia/Dubai", day: "2-digit", month: "short", year: "numeric"
-    });
   }
 
   function setMenu(isOpen) {
@@ -149,32 +145,56 @@
       button.disabled = !canSort || scannerLocked || boxBusy || scanning;
     }
   }
+  function renderTabs() {
+    const disabled = boxBusy || scanning || scannerLocked || Boolean(scanErrorDialog?.open);
+    newBoxButton.hidden = !can("scan") || scannerLocked;
+    newBoxButton.disabled = disabled || !can("scan");
+    const active = currentBox?.box_id;
+    const markup = openDrafts.map(box => `<button type="button" class="secondary-button" data-box-tab="${escapeHtml(box.box_id)}" aria-pressed="${active === box.box_id}" data-capability="view" data-capability-page="export_boxes" data-search-read-only><strong>${escapeHtml(box.box_number)}</strong><span class="export-box-tab-count">${box.item_count} pcs</span></button>`).join("");
+    if (renderedTabs !== markup) {
+      boxTabs.innerHTML = markup;
+      renderedTabs = markup;
+      const selected = boxTabs.querySelector('[aria-pressed="true"]');
+      if (selected) {
+        const tab = selected.getBoundingClientRect(), strip = boxTabs.getBoundingClientRect();
+        if (tab.right > strip.right) boxTabs.scrollLeft += tab.right - strip.right + 4;
+        if (tab.left < strip.left) boxTabs.scrollLeft -= strip.left - tab.left + 4;
+      }
+    }
+    for (const button of boxTabs.children) button.disabled = disabled || !can("view");
+  }
+
   function render(drawRows=true) {
+    renderTabs();
     updateSortHeadings();
     const removable=removableDraft();
     document.querySelector('#export-delete-heading').hidden=!removable;
     if (!currentBox) {
       boxNumber.textContent = "No open export box";
-      boxStatus.textContent = "View only";
+      boxStatus.textContent = can("scan") ? "Use + New Box to begin" : "View only";
       boxCount.textContent = sheetTotal.textContent = "0 phones";
       boxRemaining.textContent = "No open box to display";
+      progressBar.style.width = "0";
+      sheetTitle.textContent = "Export Box";
       startNextButton.disabled = imeiInput.disabled = printButton.disabled = true;
       tableBody.innerHTML = '<tr><td class="export-sheet-empty" colspan="7">No open export box is available.</td></tr>';
       return;
     }
     const count = lines.length,mayRemove=removable;
-    const isFinished = ["full", "closed"].includes(String(currentBox.box_status));
+    const isDraft = workflow?.state === "draft" && !workflow.saved_at;
+    const hasCapacity = currentBox.box_status === "open";
 
     boxNumber.textContent = currentBox.box_number || "Export Box";
-    boxStatus.textContent = isFinished ? "Box finished" : "Open for scanning";
+    boxStatus.textContent = !workflow ? "Select this box again to refresh" :
+      !isDraft ? "Saved to Accounts" : hasCapacity ? "Open for scanning" : "Ready to print and save";
     boxCount.textContent = `${count} phone${count === 1 ? "" : "s"}`;
-    boxRemaining.textContent = isFinished ? "Start a new box" : "Ready to scan";
+    boxRemaining.textContent = isDraft && hasCapacity ? "Ready to scan" : "";
     progressBar.style.width = count ? "100%" : "0";
-    startNextButton.disabled = !(isFinished ? can("scan") : can("save")) || boxBusy || scanning || (!isFinished && (count === 0 || workflow?.printed_revision !== workflow?.revision || !workflow?.printed_at));
-    startNextButton.textContent = isFinished ? "Start next box" : "Save Box";
-    printButton.disabled = !can("print") || count === 0 || scanning || boxBusy;
-    confirmPrintButton.disabled = !can("print") || scanning || boxBusy;
-    imeiInput.disabled = scannerLocked || !can("scan") || boxBusy || isFinished || scanning || !workflow || Boolean(scanErrorDialog?.open);
+    startNextButton.disabled = scannerLocked || !can("save") || !isDraft || boxBusy || scanning || count === 0 ||
+      workflow.printed_revision !== workflow.revision || !workflow.printed_at;
+    printButton.disabled = scannerLocked || !can("print") || !isDraft || count === 0 || scanning || boxBusy;
+    confirmPrintButton.disabled = scannerLocked || !can("print") || scanning || boxBusy;
+    imeiInput.disabled = scannerLocked || !can("scan") || boxBusy || !isDraft || !hasCapacity || scanning || Boolean(scanErrorDialog?.open);
     sheetTitle.textContent = `${currentBox.box_number || "Export Box"} - Export packing list`;
     sheetTotal.textContent = `${count} valid phone${count === 1 ? "" : "s"}`;
     if(!drawRows){tableBody.querySelectorAll('[data-draft-remove]').forEach(b=>b.disabled=boxBusy||scanning);return;}
@@ -185,83 +205,131 @@
   }
 
   async function removeDraftLine(itemId) {
-    if (!removableDraft() || boxBusy || scanning) return;
+    if (scannerLocked || !removableDraft() || boxBusy || scanning) return;
     boxBusy=true;clearTimeout(scanTimer);render();setMessage();
     try {
       const {error}=await getClient().rpc('remove_draft_box_imei_v1',{p_box_id:currentBox.box_id,p_revision:workflow.revision,p_item_id:itemId});
       if(error)throw error;
-      await loadLines();
+      await loadWorkflow();
       setMessage('Phone removed from this draft box and returned to Ready Stock. Print the updated sheet before saving.','success');
     } catch(error) {
       setMessage(error.message||'The phone could not be removed.');
-      try { await loadLines(); } catch (_) {}
+      try { await loadWorkflow(); } catch (_) {}
     } finally { boxBusy=false;render();focusScanner(); }
   }
-  async function loadLines() {
-    if (!currentBox?.box_id) return;
-    const { data, error } = await getClient().rpc("get_export_box_lines", { p_box_id: currentBox.box_id });
-    if (error) throw error;
-    lines = Array.isArray(data) ? data : [];
-    await loadWorkflow();
-    render();
+  function assertBoxAccess() {
+    if (scannerLocked || !can("view")) throw Error("Box Entry access changed. Reload the page to continue.");
   }
 
-  async function loadCurrentBox() {
-    let nextBox;
-    if (!can("scan")) {
-      const { data, error } = await getClient().from("export_boxes").select("id, box_number, box_status, opened_at").eq("box_status", "open").order("opened_at", { ascending: true }).limit(1);
-      if (error) throw error;
-      const row = data?.[0];
-      nextBox = row ? { ...row, box_id: row.id } : null;
-    } else {
-      const { data, error } = await getClient().rpc("get_or_create_open_export_box", { p_capacity: 1000000 });
-      if (error) throw error;
-      nextBox = asRow(data);
-      if (!nextBox) throw new Error("An export box could not be opened.");
+  async function readDrafts() {
+    const { data, error } = await getClient().rpc("list_open_export_box_drafts_v1");
+    if (error) throw error;
+    assertBoxAccess();
+    if (!Array.isArray(data) || new Set(data.map(box => box?.box_id)).size !== data.length ||
+      data.some(box => !box?.box_id || !box.box_number || !Number.isSafeInteger(box.item_count) || box.item_count < 0)) {
+      throw Error("The open box list could not be verified. Refresh Box Entry.");
     }
-    let nextLines = [];
-    if (nextBox) {
-      const { data, error } = await getClient().rpc("get_export_box_lines", { p_box_id: nextBox.box_id });
-      if (error) throw error;
-      nextLines = Array.isArray(data) ? data : [];
+    return data;
+  }
+
+  async function createDraft(forceNew) {
+    const requestId = forceNew ? (createRequestId ||= crypto.randomUUID()) : crypto.randomUUID();
+    const { data, error } = await getClient().rpc("create_open_export_box_draft_v1", {
+      p_request_id: requestId, p_force_new: forceNew
+    });
+    if (error) throw error;
+    assertBoxAccess();
+    if (typeof data !== "string" || !data) throw Error("The new box could not be verified. Try opening it again.");
+    return data;
+  }
+
+  async function readBox(boxId) {
+    const { data, error } = await getClient().rpc("get_box_workflow_v1", { p_box_id: boxId });
+    if (error) throw error;
+    assertBoxAccess();
+    if (data?.box?.box_id !== boxId || !Number.isSafeInteger(data.box.revision) || !Array.isArray(data.lines)) {
+      throw Error("The selected box could not be verified. Refresh Box Entry.");
     }
-    setIssueBox(nextBox?.box_id);
-    currentBox = nextBox;
-    lines = nextLines;
-    await loadWorkflow();
-    render();
-    focusScanner();
+    return data;
+  }
+
+  function applyBox(data) {
+    setIssueBox(data?.box.box_id);
+    currentBox = workflow = data?.box ?? null;
+    lines = data?.lines ?? [];
+    const draft = openDrafts.find(box => box.box_id === currentBox?.box_id);
+    if (draft) draft.item_count = lines.length;
+    invalidatePrint();
+  }
+
+  async function loadCurrentBox(preferredId, createIfEmpty = false) {
+    let drafts = await readDrafts();
+    if (!drafts.length && createIfEmpty && can("scan")) {
+      preferredId = await createDraft(false);
+      drafts = await readDrafts();
+    }
+    const next = preferredId ? drafts.find(box => box.box_id === preferredId) : drafts[0];
+    if (preferredId && !next) {
+      openDrafts = drafts;
+      if (!drafts.some(box => box.box_id === currentBox?.box_id)) applyBox(null);
+      throw Error("That box is no longer open. Select an open box.");
+    }
+    const data = next ? await readBox(next.box_id) : null;
+    if (data && (data.box.state !== "draft" || data.box.saved_at)) {
+      throw Error("This box was already saved. Refresh Box Entry.");
+    }
+    openDrafts = drafts;
+    applyBox(data);
+    imeiInput.value = "";
   }
 
   async function loadWorkflow() {
-    printedSnapshot=null;confirmPrintButton.hidden=true;workflow=null;
     if (!currentBox?.box_id) return;
-    const {data,error}=await getClient().rpc("get_box_workflow_v1",{p_box_id:currentBox.box_id});
-    if(error)throw error;
-    setIssueBox(currentBox.box_id);
-    workflow=data.box;
-    // Print the lines and revision from the same database snapshot. A second
-    // scanner must not make an older sheet qualify as the current printed box.
-    lines=data.lines || [];
-    currentBox={...currentBox,...data.box};
+    invalidatePrint();
+    workflow = null;
+    const data = await readBox(currentBox.box_id);
+    applyBox(data);
+  }
+
+  async function chooseDraft(id, forceNew = false) {
+    if (scannerLocked || !can("view") || boxBusy || scanning || scanErrorDialog?.open ||
+      (forceNew && !can("scan"))) return;
+    boxBusy = true;
+    clearTimeout(scanTimer);
+    setMessage();
+    render(false);
+    try {
+      if (forceNew) id = await createDraft(true);
+      await loadCurrentBox(id);
+      if (forceNew) createRequestId = undefined;
+    } catch (error) {
+      setMessage(error.message || "The selected box could not be opened.");
+    } finally {
+      boxBusy = false;
+      render();
+      if (can("scan")) focusScanner();
+      else boxTabs.querySelector('[aria-pressed="true"]')?.focus({preventScroll:true});
+    }
   }
 
   async function downloadCurrentBox(kind){
-    if(!can('view')||!can('print')||boxBusy||scanning||!lines.length)return;
+    if(scannerLocked||!can('view')||!can('print')||boxBusy||scanning||!lines.length)return;
     const id=currentBox.box_id;boxBusy=true;render();
     const allowed=()=>can('view')&&can('print')&&currentBox?.box_id===id&&!scannerLocked;
-    try{const {data,error}=await getClient().rpc('get_box_workflow_v1',{p_box_id:id});if(error)throw error;await window.GREENLOOP_REPORT_DOWNLOADS.output(kind,window.GREENLOOP_REPORT_DOWNLOADS.boxReport(data),allowed,'export_boxes','print');}catch(e){setMessage(e.message);}finally{boxBusy=false;render();}
+    try{const data=await readBox(id);await window.GREENLOOP_REPORT_DOWNLOADS.output(kind,window.GREENLOOP_REPORT_DOWNLOADS.boxReport(data),allowed,'export_boxes','print');}catch(e){setMessage(e.message);}finally{boxBusy=false;render();}
   }
   const downloadActions=document.createElement('span');downloadActions.className='box-actions';printButton.before(downloadActions);
   Promise.resolve(window.GREENLOOP_ACCESS_READY).then(()=>{downloadActions.innerHTML=window.GREENLOOP_REPORT_DOWNLOADS.buttons('data-export-current','export_boxes','print');});
   downloadActions.addEventListener('click',e=>{const b=e.target.closest('[data-export-current]');if(b)downloadCurrentBox(b.dataset.exportCurrent);});
   async function printBox() {
-    if(!can("print") || boxBusy || scanning || !lines.length)return;
+    if(scannerLocked || !can("print") || boxBusy || scanning || !lines.length || workflow?.state !== "draft")return;
     boxBusy=true;render();setMessage();
     try {
-      await loadLines();
+      await loadWorkflow();
+      if (workflow.state !== "draft" || !lines.length) throw Error("This box is empty or already saved.");
       const snapshot={boxId:currentBox.box_id,revision:workflow.revision};
-      await window.GREENLOOP_BOX_PRINT.open({box:{...workflow},lines:[...lines]},{allowed:()=>can("print")});
+      await window.GREENLOOP_BOX_PRINT.open({box:{...workflow},lines:[...lines]},{allowed:()=>!scannerLocked && can("print") && currentBox?.box_id === snapshot.boxId});
+      assertBoxAccess();
       printedSnapshot=snapshot;
       confirmPrintButton.hidden=!can("print");
       setMessage("Print from the preview. After printing succeeds, close the preview and choose Printing completed.","success");
@@ -269,7 +337,7 @@
     finally{boxBusy=false;render();}
   }
   async function confirmPrint() {
-    if(!can("print") || boxBusy || scanning || !printedSnapshot)return;
+    if(scannerLocked || !can("print") || boxBusy || scanning || !printedSnapshot || printedSnapshot.boxId !== currentBox?.box_id)return;
     boxBusy=true;render();
     try {
       const {error}=await getClient().rpc("mark_box_printed_v1",{p_box_id:printedSnapshot.boxId,p_revision:printedSnapshot.revision});if(error)throw error;
@@ -283,18 +351,18 @@
       data.results.some((r,i)=>r.imei!==imeis[i] || typeof r.ok!=="boolean") ||
       data.loaded!==data.results.filter(r=>r.ok).length ||
       data.results.some(r=>r.ok&&!data.lines.some(line=>line.imei===r.imei)))throw Error("The scan response could not be verified. Check the box before retrying.");
-    workflow=data.box;currentBox={...currentBox,...data.box};lines=data.lines;invalidatePrint();
+    applyBox(data);
   }
   async function scanImei() {
     clearTimeout(scanTimer);
-    if(scannerLocked || !can("scan") || boxBusy || scanning || scanErrorDialog?.open || !currentBox?.box_id || currentBox.box_status!=="open")return;
+    if(scannerLocked || !can("scan") || boxBusy || scanning || scanErrorDialog?.open || workflow?.state!=="draft" || currentBox?.box_status!=="open")return;
     const imei=imeiInput.value.replace(/\D/g,"").slice(0,15);imeiInput.value=imei;
     if(imei.length!==15){if(imei){imeiInput.value="";showScanIssues([{imei,reason:"Use a valid 15-digit IMEI."}]);}return;}
     return pasteImeis([imei],{isCurrent:()=>!scannerLocked});
   }
   async function pasteImeis(imeis,options) {
     clearTimeout(scanTimer);
-    if(scannerLocked || !can("scan") || boxBusy || scanning || scanErrorDialog?.open || !currentBox?.box_id || currentBox.box_status!=="open")throw Error("This box is not available for scanning.");
+    if(scannerLocked || !can("scan") || boxBusy || scanning || scanErrorDialog?.open || workflow?.state!=="draft" || currentBox?.box_status!=="open")throw Error("This box is not available for scanning.");
     if(!options.isCurrent())return {loaded:0,issues:[]};
     const issues=(options.rejected||[]).map(r=>({imei:r.imei,reason:r.message}));
     if(!imeis.length){imeiInput.value="";showScanIssues(issues);return {loaded:0,issues:[]};}
@@ -302,9 +370,9 @@
     try{
       if(!workflow)throw Error("The current box could not be verified. Reload Box Entry before retrying.");
       // One request validates, saves and returns the canonical box/lines snapshot.
-      const {data,error}=await getClient().rpc("scan_imeis_to_export_box_v1",{p_box_id:currentBox.box_id,p_revision:workflow.revision,p_imeis:imeis});
+      const {data,error}=await getClient().rpc("scan_imeis_to_selected_export_box_v1",{p_box_id:currentBox.box_id,p_revision:workflow.revision,p_imeis:imeis});
       if(error)throw error;
-      if(options.isCurrent()){
+      if(options.isCurrent() && !scannerLocked && can("view")){
         applyScanSnapshot(data,imeis);imeiInput.value="";
         issues.push(...data.results.filter(r=>!r.ok).map(r=>({imei:r.imei,reason:r.message})));
         if(issues.length)showScanIssues(issues);
@@ -314,8 +382,8 @@
     }catch(error){
       // The response may be lost after commit. Read once; never repeat the write.
       let verified=false;
-      try{if(options.isCurrent()){await loadWorkflow();verified=true;}}catch(_){}
-      if(options.isCurrent()){
+      try{if(options.isCurrent() && !scannerLocked){await loadWorkflow();verified=true;}}catch(_){}
+      if(options.isCurrent() && !scannerLocked && can("view")){
         const unresolved=verified?imeis.filter(v=>!lines.some(r=>r.imei===v)):imeis;
         for(const imei of unresolved)issues.push({imei,reason:(error.message||"The scan result could not be verified.")+(verified?"":" Reload Box Entry before retrying; the saved result is unknown.")});
         imeiInput.value="";setMessage();showScanIssues(issues);
@@ -326,22 +394,27 @@
   }
 
   async function finishAndStartNext() {
-    if (!currentBox || !(String(currentBox.box_status) === "open" ? can("save") : can("scan")) || scanning || boxBusy) return;
-    if (!lines.length && String(currentBox.box_status) === "open") return;
-    if (String(currentBox.box_status) === "open" && (workflow?.printed_revision !== workflow?.revision || !workflow?.printed_at)) { setMessage("Print and confirm printing before saving this box."); return; }
+    if (scannerLocked || !currentBox || workflow?.state !== "draft" || !can("save") || scanning || boxBusy || !lines.length) return;
+    if (workflow.printed_revision !== workflow.revision || !workflow.printed_at) {
+      setMessage("Print and confirm printing before saving this box.");
+      return;
+    }
     boxBusy = true;
     clearTimeout(scanTimer);
     render();
     try {
-      if (String(currentBox.box_status) === "open") {
-        const { error } = await getClient().rpc("close_export_box", { p_box_id: currentBox.box_id });
-        if (error) throw error;
-        currentBox.box_status = "closed";
+      const { box_id: savedId, box_number: savedNumber } = currentBox;
+      const { error } = await getClient().rpc("close_export_box", { p_box_id: savedId });
+      if (error) throw error;
+      assertBoxAccess();
+      openDrafts = openDrafts.filter(box => box.box_id !== savedId);
+      applyBox(null);
+      try {
+        await loadCurrentBox(undefined, true);
+        setMessage(savedNumber + " saved to Accounts." + (currentBox ? " " + currentBox.box_number + " selected." : ""), "success");
+      } catch (error) {
+        setMessage(savedNumber + " saved to Accounts. " + (error.message || "Refresh Box Entry to load the open boxes."));
       }
-      const savedNumber=currentBox.box_number;
-      await loadCurrentBox();
-      imeiInput.value = "";
-      setMessage(savedNumber + " saved to Accounts." + (currentBox ? " " + currentBox.box_number + " is ready for scanning." : ""), "success");
     } finally { boxBusy = false; render(); focusScanner(); }
   }
 
@@ -362,11 +435,13 @@
       permissionMessage.hidden = false;
       return;
     }
-    await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();
+    await window.GREENLOOP_ACCESS_READY;
     if (window.GREENLOOP_PAGE_ACCESS?.pageKey !== "export_boxes") return;
-    canEdit = window.GREENLOOP_PAGE_ACCESS.canEdit === true;
     app.hidden = false;
-    await loadCurrentBox();
+    boxBusy = true;
+    render();
+    try { await loadCurrentBox(undefined, true); }
+    finally { boxBusy = false; render(); focusScanner(); }
   }
 
   document.querySelector("#open-menu").addEventListener("click", () => setMenu(true));
@@ -386,6 +461,11 @@
   startNextButton.addEventListener("click", () => finishAndStartNext().catch((error) => setMessage(error.message || "The next export box could not be opened.")));
   printButton.addEventListener("click", printBox);
   confirmPrintButton.addEventListener("click", confirmPrint);
+  newBoxButton.addEventListener("click", () => chooseDraft(null, true));
+  boxTabs.addEventListener("click", event => {
+    const tab = event.target.closest("[data-box-tab]");
+    if (tab) void chooseDraft(tab.dataset.boxTab);
+  });
   for (const button of sortButtons) {
     button.addEventListener("click", event => {
       if (button.disabled || !can("sort")) return;
@@ -397,7 +477,7 @@
     });
   }
   tableBody.addEventListener('click',event=>{const button=event.target.closest('[data-draft-remove]');if(button)removeDraftLine(button.dataset.draftRemove);});
-  for(const event of ['greenloop:office-locked','greenloop:signed-out'])window.addEventListener(event,()=>{scannerLocked=true;clearTimeout(scanTimer);cancelAnimationFrame(scanFocusFrame);scanErrorDialog?.close();invalidatePrint();render();});
+  for(const event of ['greenloop:office-locked','greenloop:signed-out','greenloop:permissions-changed'])window.addEventListener(event,()=>{scannerLocked=true;clearTimeout(scanTimer);cancelAnimationFrame(scanFocusFrame);scanErrorDialog?.close();openDrafts=[];applyBox(null);imeiInput.value="";setMessage();render();});
   window.addEventListener("pagehide",()=>{clearTimeout(scanTimer);cancelAnimationFrame(scanFocusFrame);});
   initialize().catch((error) => {
     permissionMessage.textContent = error.message || "Export Boxes could not be loaded.";

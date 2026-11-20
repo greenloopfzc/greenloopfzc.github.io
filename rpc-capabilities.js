@@ -102,3 +102,4 @@
   Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs, rules);
   Object.assign(root.GREENLOOP_RPC_CAPABILITIES, rules);
 })(typeof window!=="undefined"?window:globalThis);
+(function(root){Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,{list_open_export_box_drafts_v1:{page:"export_boxes",capability:"view",read:true},create_open_export_box_draft_v1:{page:"export_boxes",capability:"scan"},scan_imeis_to_selected_export_box_v1:{page:"export_boxes",capability:"scan"},get_multiple_open_boxes_version:{read:true}});})(typeof window!=="undefined"?window:globalThis);
