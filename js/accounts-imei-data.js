@@ -61,6 +61,10 @@
     $('#aid-pdf-frame').removeAttribute('src'); $('#aid-pdf-open').removeAttribute('href');
     if (pdfUrl) URL.revokeObjectURL(pdfUrl); pdfUrl = ''; pdfFilename = '';
   }
+  function canExport() {
+    return visible && !stopped && allowed() && can('imei_download') &&
+      !exporting && !loading && report?.total > 0;
+  }
   function controls() {
     const permitted = allowed();
     $('[data-accounts-view="imei"]').hidden = !permitted;
@@ -71,7 +75,8 @@
     $('#aid-prev').disabled = exporting || loading || !permitted || offset === 0;
     $('#aid-next').disabled = exporting || loading || !permitted || !report || offset + 50 >= report.total;
     $('#aid-refresh').disabled = exporting || loading || !permitted;
-    root.querySelectorAll('[data-aid-export]').forEach(e=>{e.hidden = !can('imei_download');e.disabled = exporting || loading || !report?.total || !detailOpen || !permitted || !can('imei_download');});
+    const exportEnabled = canExport();
+    root.querySelectorAll('[data-aid-export]').forEach(e=>{e.hidden = !can('imei_download');e.disabled = !exportEnabled;});
     if (!permitted || !can('imei_download')) closePdf();
     if (!permitted) { root.hidden = true; report = null; generation++; $('#aid-rows').replaceChildren(); $('#aid-summary').replaceChildren();$('#aid-greenloop-heading').hidden=true; }
     window.GREENLOOP_LOCK_VIEW_ONLY_CONTROLS?.(root);
@@ -137,24 +142,26 @@
     } catch (e) { if (ticket===generation) { report=null;root.querySelector(':scope > [data-chaman-summary]')?.remove();root.querySelector(':scope > [data-stock-balance-summary]')?.remove();$('#aid-rows').replaceChildren();$('#aid-summary').replaceChildren();$('#aid-greenloop-heading').hidden=true;$('#aid-chaman').replaceChildren();$('#aid-count').textContent='Report unavailable';message(e.message || 'IMEI DATA could not load.',true); } }
     finally { if (ticket===generation) {loading=false;controls();} }
   }
-  function changed() { if (!can('search') || exporting) return;detailOpen=metric!=='all'||Object.keys(filters()).length>0;offset=0;generation++;window.GREENLOOP_STOCK_RETURN_DETAILS?.close();closePdf();clearTimeout(searchTimer);searchTimer=setTimeout(load,240); }
+  function changed() { if (!can('search') || exporting) return;detailOpen=metric!=='all'||Object.keys(filters()).length>0;offset=0;generation++;report=null;controls();window.GREENLOOP_STOCK_RETURN_DETAILS?.close();closePdf();clearTimeout(searchTimer);searchTimer=setTimeout(load,240); }
   function download(url,filename) { const a=document.createElement('a');a.href=url;a.download=filename;a.dataset.capability='imei_download';a.dataset.capabilityPage='accounts';document.body.append(a);a.click();a.remove(); }
   async function exportReport(kind) {
-    if (!allowed() || !can('imei_download') || exporting || loading || !report?.total || !detailOpen) return;
-    const snapshot=report.snapshot,sig=signature(),ticket=generation;exporting=true;controls();message('Preparing the complete selected stock…');
+    if (!canExport()) return;
+    const {snapshot,total}=report,sig=signature(),ticket=generation;
+    const selected=()=>sig===signature()&&ticket===generation&&visible&&!stopped&&allowed()&&can('imei_download');
+    exporting=true;controls();message('Preparing the complete selected stock…');
     try {
       const data=await rpc('get_accounts_card_report_v1',{p_kind:'imei',p_filters:filters(),p_metric:metric,p_download:true,p_sort_key:sortKey,p_sort_direction:direction,p_expected_snapshot:snapshot});
-      if (!valid(data,true)||metric==='returned'&&!window.GREENLOOP_EXCHANGE_PAIRS.valid(data,true)) throw Error('The full selected report could not be verified. No partial file was created.');
-      if (sig!==signature() || ticket!==generation || !visible || stopped || !allowed() || !can('imei_download')) return;
-      if(data.receipt_mode){await window.GREENLOOP_REPORT_DOWNLOADS.output(kind,cards.receiptReport(data,cards.labels[metric]),()=>sig===signature()&&ticket===generation&&visible&&!stopped&&allowed()&&can('imei_download'),'accounts','imei_download');return;}
+      if (!selected()) return;
+      if (!valid(data,true)||data.snapshot!==snapshot||data.total!==total||metric==='returned'&&!window.GREENLOOP_EXCHANGE_PAIRS.valid(data,true)) throw Error('The full selected report could not be verified. No partial file was created.');
+      if(data.receipt_mode){await window.GREENLOOP_REPORT_DOWNLOADS.output(kind,cards.receiptReport(data,cards.labels[metric]),selected,'accounts','imei_download');return;}
       data.selection_label=cards.labels[metric]+' | '+$('#aid-scope').textContent;
       const file=await window.GREENLOOP_ACCOUNTS_IMEI_EXPORT[kind==='excel'?'excel':'pdf'](data);
-      if (sig!==signature() || ticket!==generation || !visible || stopped || !allowed() || !can('imei_download')) return;
+      if (!selected()) return;
       const url=URL.createObjectURL(new Blob([file.bytes],{type:kind==='excel'?'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':'application/pdf'}));
       if (kind==='view') { closePdf();pdfUrl=url;pdfFilename=file.filename;$('#aid-pdf-frame').src=url;$('#aid-pdf-open').href=url;$('#aid-pdf-dialog').showModal(); }
       else { download(url,file.filename);setTimeout(()=>URL.revokeObjectURL(url),30000); }
       message(num(data.total)+' records included.');
-    } catch (e) { message(e.message || 'The file could not be prepared.',true); }
+    } catch (e) { if (selected()) message(e.message || 'The file could not be prepared.',true); }
     finally { exporting=false;controls(); }
   }
   async function activate(next) {
