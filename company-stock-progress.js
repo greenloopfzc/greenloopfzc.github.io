@@ -1,13 +1,13 @@
 (() => {
   "use strict";
 
-  const columns = [
+  const stages = [
     ["initial_qc", "Initial QC"], ["issuance", "Issuance"], ["lab_glass", "Lab & Glass"],
     ["parts", "Parts"], ["final_qc", "Final QC"], ["b_dept", "B-DEPT"],
-    ["ready_stock", "Ready Stock"], ["box_entry", "Box Entry"], ["accounts", "Accounts"],
-    ["return_pending", "Return Pending"], ["other", "Other"],
-    ["quantity", "In Company"]
+    ["ready_stock", "Ready · Unboxed"], ["box_entry", "Box Entry"], ["accounts", "Accounts"],
+    ["return_pending", "Return Pending"], ["other", "Other"]
   ];
+  const columns = [...stages, ["quantity", "In Company"], ["ready_total", "Ready Stock Total"]];
   const pageSize = 50;
   const count = value => Number.isSafeInteger(value) && value >= 0;
   const escape = value => String(value ?? "").replace(/[&<>"']/g, character =>
@@ -22,7 +22,9 @@
 
   function validCounts(row) {
     return !!row && columns.every(([key]) => count(row[key])) &&
-      columns.slice(0, -1).reduce((sum, [key]) => sum + row[key], 0) === row.quantity;
+      stages.reduce((sum, [key]) => sum + row[key], 0) === row.quantity &&
+      row.ready_total >= row.ready_stock &&
+      row.ready_total <= row.ready_stock + row.box_entry + row.accounts;
   }
 
   function mount(host, badge) {
@@ -37,7 +39,7 @@
     root.innerHTML = `
       <div class="supplier-scope">
         <div class="supplier-scope-heading">
-          <p>Current company-owned phones with an IMEI</p>
+          <p>Ready Stock Total includes eligible phones in boxes awaiting export.</p>
           <button type="button" class="secondary-button" data-refresh data-capability="view" data-capability-page="reports">Refresh</button>
         </div>
         <div class="supplier-scope-fields">

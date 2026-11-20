@@ -118,7 +118,7 @@
     total.textContent=`${totalQty} phone${totalQty===1?'':'s'}`;
     totalView.dataset.readyImeis=registerScope('Total Ready Stock',flatRows,totalQty);
     totalView.disabled=false;
-    rangeLabel.textContent='All current Ready Stock';
+    rangeLabel.textContent='Includes phones in boxes awaiting export';
   }
 
   async function loadReadyStock() {
