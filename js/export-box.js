@@ -14,6 +14,8 @@
   const startNextButton = document.querySelector("#start-next-box");
   const printButton = document.querySelector("#print-box-sheet");
   const tableBody = document.querySelector("#export-box-lines");
+  const sortButtons = app.querySelectorAll("[data-box-sort]");
+  const collator = new Intl.Collator("en", { numeric: true, sensitivity: "base" });
   const sheetTitle = document.querySelector("#export-sheet-title");
   const sheetTotal = document.querySelector("#export-sheet-total");
   const sidebar = document.querySelector("#sidebar");
@@ -26,6 +28,7 @@
   let client;
   let currentBox;
   let lines = [];
+  let sortField = "", descending = false;
   let issueBoxId=null;
   let scanTimer;
   let toastTimer;
@@ -94,7 +97,14 @@
   }
 
   function invalidatePrint() { printedSnapshot=null;confirmPrintButton.hidden=true; }
-  function setIssueBox(id) { if(issueBoxId!==id){issueBoxId=id;invalidatePrint();} }
+  function setIssueBox(id) {
+    if (issueBoxId !== id) {
+      issueBoxId = id;
+      sortField = "";
+      descending = false;
+      invalidatePrint();
+    }
+  }
   function showScanIssues(issues) {
     if(!issues.length || scannerLocked)return;
     if(!scanErrorDialog){
@@ -118,7 +128,29 @@
   function removableDraft() {
     return can("scan") && currentBox?.box_status === "open" && workflow?.state === "draft" && !workflow?.saved_at;
   }
+  function sortedLines() {
+    if (!sortField || !can("sort")) return lines;
+    return [...lines].sort((a, b) => {
+      const first = String(a[sortField] ?? "").trim();
+      const second = String(b[sortField] ?? "").trim();
+      const firstMissing = !first || first === "-";
+      const secondMissing = !second || second === "-";
+      if (firstMissing || secondMissing) return Number(firstMissing) - Number(secondMissing);
+      const comparison = sortField === "storage_gb" ? Number(first) - Number(second) : collator.compare(first, second);
+      return descending ? -comparison : comparison;
+    });
+  }
+  function updateSortHeadings() {
+    const canSort = can("sort");
+    for (const button of sortButtons) {
+      const active = canSort && button.dataset.boxSort === sortField;
+      button.closest("th").setAttribute("aria-sort", active ? (descending ? "descending" : "ascending") : "none");
+      button.querySelector("span").textContent = active ? (descending ? "↓" : "↑") : "↕";
+      button.disabled = !canSort || scannerLocked || boxBusy || scanning;
+    }
+  }
   function render(drawRows=true) {
+    updateSortHeadings();
     const removable=removableDraft();
     document.querySelector('#export-delete-heading').hidden=!removable;
     if (!currentBox) {
@@ -147,7 +179,7 @@
     sheetTotal.textContent = `${count} valid phone${count === 1 ? "" : "s"}`;
     if(!drawRows){tableBody.querySelectorAll('[data-draft-remove]').forEach(b=>b.disabled=boxBusy||scanning);return;}
 
-    const validRows=lines.map(line=>`<tr><td>${escapeHtml(line.serial_no)}</td><td>${escapeHtml(line.imei)}</td><td>${escapeHtml(line.model||"-")}</td><td>${escapeHtml(line.storage_gb?`${line.storage_gb} GB`:"-")}</td><td>${escapeHtml(line.final_grade||"-")}</td><td>${escapeHtml(line.color||"-")}</td><td>${escapeHtml(line.box_number||currentBox.box_number)}</td>${mayRemove?`<td class="export-line-action">${removable?`<button type="button" class="secondary-button" data-draft-remove="${escapeHtml(line.id)}" data-capability="scan" data-capability-page="export_boxes" ${boxBusy||scanning?'disabled':''} aria-label="Delete ${escapeHtml(line.imei)} from this box">Delete</button>`:''}</td>`:''}</tr>`).join('');
+    const validRows=sortedLines().map(line=>`<tr><td>${escapeHtml(line.serial_no)}</td><td>${escapeHtml(line.imei)}</td><td>${escapeHtml(line.model||"-")}</td><td>${escapeHtml(line.storage_gb?`${line.storage_gb} GB`:"-")}</td><td>${escapeHtml(line.final_grade||"-")}</td><td>${escapeHtml(line.color||"-")}</td><td>${escapeHtml(line.box_number||currentBox.box_number)}</td>${mayRemove?`<td class="export-line-action">${removable?`<button type="button" class="secondary-button" data-draft-remove="${escapeHtml(line.id)}" data-capability="scan" data-capability-page="export_boxes" ${boxBusy||scanning?'disabled':''} aria-label="Delete ${escapeHtml(line.imei)} from this box">Delete</button>`:''}</td>`:''}</tr>`).join('');
     tableBody.innerHTML=validRows||`<tr><td class="export-sheet-empty" colspan="${7+(mayRemove?1:0)}">Scan the first Ready Stock IMEI to add it to this box.</td></tr>`;
 
   }
@@ -354,6 +386,16 @@
   startNextButton.addEventListener("click", () => finishAndStartNext().catch((error) => setMessage(error.message || "The next export box could not be opened.")));
   printButton.addEventListener("click", printBox);
   confirmPrintButton.addEventListener("click", confirmPrint);
+  for (const button of sortButtons) {
+    button.addEventListener("click", event => {
+      if (button.disabled || !can("sort")) return;
+      const field = button.dataset.boxSort;
+      descending = sortField === field && !descending;
+      sortField = field;
+      render();
+      if (event.detail > 0) focusScanner();
+    });
+  }
   tableBody.addEventListener('click',event=>{const button=event.target.closest('[data-draft-remove]');if(button)removeDraftLine(button.dataset.draftRemove);});
   for(const event of ['greenloop:office-locked','greenloop:signed-out'])window.addEventListener(event,()=>{scannerLocked=true;clearTimeout(scanTimer);cancelAnimationFrame(scanFocusFrame);scanErrorDialog?.close();invalidatePrint();render();});
   window.addEventListener("pagehide",()=>{clearTimeout(scanTimer);cancelAnimationFrame(scanFocusFrame);});
