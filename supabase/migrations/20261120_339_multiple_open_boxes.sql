@@ -1,5 +1,6 @@
 -- Route Box Entry writes to the selected open draft.
 begin;
+set local search_path = pg_catalog, public;
 
 do $install$
 declare
@@ -10,19 +11,23 @@ declare
   scanner_impl regprocedure;
   office_name text;
   scanner_name text;
+  api_body text;
+  office_body text;
   scanner_body text;
+  expected_office_body text;
+  scanner_prefix text;
+  selector text[];
   ddl text;
-  target_box_block constant text := replace($from$  where box.box_status = 'open'
-  order by box.opened_at, box.created_at
-  limit 1
-  for update;
-
-  if v_box_id is null then
-    insert into public.export_boxes as new_box (box_number, created_by)
-    values (null, v_actor_id)
-    returning new_box.id, new_box.box_number, new_box.capacity, new_box.box_status
-      into v_box_id, v_box_number, v_capacity, v_box_status;
-  end if;$from$,chr(13),'');
+  -- Recognize the reviewed oldest-open selector across indentation and line endings.
+  -- Only this block changes. Keep the installed scanner's grade source and guards.
+  selector_pattern constant text :=
+    $piece$(select\s+box\.id\s*,\s*box\.box_number\s*,\s*box\.capacity\s*,\s*box\.box_status\s+$piece$ ||
+    $piece$into\s+v_box_id\s*,\s*v_box_number\s*,\s*v_capacity\s*,\s*v_box_status\s+from\s+public\.export_boxes\s+box\s+)$piece$ ||
+    $piece$(where\s+box\.box_status\s*=\s*'open'\s+order\s+by\s+box\.opened_at\s*,\s*box\.created_at\s+limit\s+1\s+for\s+update\s*;\s*$piece$ ||
+    $piece$if\s+v_box_id\s+is\s+null\s+then\s+insert\s+into\s+public\.export_boxes\s+as\s+new_box\s*\(\s*box_number\s*,\s*created_by\s*\)\s*$piece$ ||
+    $piece$values\s*\(\s*null\s*,\s*v_actor_id\s*\)\s*returning\s+new_box\.id\s*,\s*new_box\.box_number\s*,\s*new_box\.capacity\s*,\s*new_box\.box_status\s+$piece$ ||
+    $piece$into\s+v_box_id\s*,\s*v_box_number\s*,\s*v_capacity\s*,\s*v_box_status\s*;\s*end\s+if\s*;)$piece$ ||
+    $piece$(\s*select\s+count\(\*\)::integer\s+into\s+v_item_count)$piece$;
 begin
   if to_regclass('greenloop_private.multiple_open_boxes_installation') is not null
     or to_regprocedure('public.get_multiple_open_boxes_version()') is not null then
@@ -41,38 +46,65 @@ begin
   office_impl := to_regprocedure(office_row.implementation);
   scanner_impl := to_regprocedure(capability_row.implementation);
 
-  select format('%I.%I', n.nspname, p.proname) into strict office_name
+  select format('%I.%I', n.nspname, p.proname), p.prosrc into strict office_name, office_body
   from pg_proc p join pg_namespace n on n.oid = p.pronamespace
   where p.oid = office_impl and n.nspname = 'greenloop_private'
-    and p.pronargs = 1 and p.proargtypes[0] = 'text'::regtype and p.prosecdef;
+    and p.pronargs = 1 and p.proargtypes[0] = 'text'::regtype and p.prosecdef and p.proretset;
   select format('%I.%I', n.nspname, p.proname), replace(p.prosrc, chr(13), '') into strict scanner_name, scanner_body
   from pg_proc p join pg_namespace n on n.oid = p.pronamespace
   where p.oid = scanner_impl and n.nspname = 'greenloop_private'
-    and p.pronargs = 1 and p.proargtypes[0] = 'text'::regtype and p.prosecdef;
+    and p.pronargs = 1 and p.proargtypes[0] = 'text'::regtype and p.proargnames[1]='p_imei'
+    and p.prosecdef and p.proretset;
 
   if office_row.wrapped_hash is distinct from md5(pg_get_functiondef(api))
-    or office_row.original_hash is distinct from md5(pg_get_functiondef(office_impl))
-    or capability_row.wrapped_hash is distinct from md5(pg_get_functiondef(api))
-    or capability_row.original_hash is distinct from md5(pg_get_functiondef(scanner_impl))
-    or strpos(pg_get_functiondef(api), 'from ' || office_name || '($1)') = 0
-    or strpos(pg_get_functiondef(office_impl), 'from ' || scanner_name || '(p_imei)') = 0
-    or md5(scanner_body) <> '9a55990daad91e02e1604f9bf050bdfd'
-    or (select count(*) from regexp_split_to_table(scanner_body, 'where box[.]box_status = ''open''')) <> 2 then
-    raise exception 'Existing Box Entry scanner could not be verified.';
+    or office_row.original_hash is distinct from md5(pg_get_functiondef(office_impl)) then
+    raise exception 'Box Entry: existing scanner Office receipt mismatch.';
+  end if;
+  if capability_row.wrapped_hash is distinct from md5(pg_get_functiondef(api))
+    or capability_row.original_hash is distinct from md5(pg_get_functiondef(scanner_impl)) then
+    raise exception 'Box Entry: existing scanner capability receipt mismatch.';
+  end if;
+  if has_function_privilege('authenticated',office_impl,'EXECUTE') or has_function_privilege('anon',office_impl,'EXECUTE')
+    or has_function_privilege('authenticated',scanner_impl,'EXECUTE') or has_function_privilege('anon',scanner_impl,'EXECUTE')
+    or pg_get_function_result(scanner_impl) is distinct from pg_get_function_result(api) then
+    raise exception 'Box Entry: existing scanner signature or permissions differ.';
+  end if;
+
+  select p.prosrc into strict api_body from pg_proc p where p.oid = api;
+  expected_office_body := 'beginperformgreenloop_private.begin_capability(''scan_imei_to_export_box'',jsonb_build_object(''p_imei'',p_imei));'
+    || 'beginreturnqueryselect*from'||scanner_name||'(p_imei);exceptionwhenothersthenperformgreenloop_private.end_capability();raise;end;'
+    || 'performgreenloop_private.end_capability();return;end;';
+  if regexp_replace(regexp_replace(api_body, $comments$--[^\r\n]*$comments$, '', 'g'), '\s+', '', 'g') is distinct from
+      'beginperformgreenloop_private.require_office_network();returnqueryselect*from'||office_name||'($1);end;'
+    or regexp_replace(regexp_replace(office_body, $comments$--[^\r\n]*$comments$, '', 'g'), '\s+', '', 'g') is distinct from expected_office_body then
+    raise exception 'Box Entry: existing scanner Office and capability call chain differs.';
+  end if;
+
+  select matches into strict selector from regexp_matches(scanner_body, selector_pattern, 'g') matches;
+  if (select count(*) from regexp_matches(scanner_body, $scan$\minsert\s+into\s+public\.export_boxes\M$scan$, 'gi')) <> 1
+    or (select count(*) from regexp_matches(scanner_body, $scan$\mfrom\s+public\.export_boxes\M$scan$, 'gi')) <> 1
+    or strpos(scanner_body, '16320261010') = 0
+    or strpos(scanner_body, 'greenloop_require_entry') = 0
+    or strpos(scanner_body, '''box_entry''') = 0 then
+    raise exception 'Box Entry: existing scanner has a different draft selection or stock guard.';
   end if;
 
   ddl := replace(pg_get_functiondef(scanner_impl), chr(13), '');
-  ddl := replace(ddl, 'FUNCTION ' || scanner_name || '(p_imei text)',
-    'FUNCTION greenloop_private.scan_selected_export_box(p_imei text, p_box_id uuid)');
-  if strpos(ddl, target_box_block) = 0 or strpos(ddl, 'FUNCTION greenloop_private.scan_selected_export_box(') = 0 then
-    raise exception 'Existing Box Entry scanner has an unexpected definition.';
+  scanner_prefix := format('FUNCTION %s(%s)', scanner_name, pg_get_function_arguments(scanner_impl));
+  if strpos(ddl, scanner_prefix) = 0 or strpos(ddl, selector[1]||selector[2]||selector[3]) = 0 then
+    raise exception 'Box Entry: could not isolate the existing scanner draft selection.';
   end if;
-  execute replace(ddl, target_box_block, $to$  where box.id = p_box_id and box.box_status = 'open'
+  ddl := replace(ddl, scanner_prefix,'FUNCTION greenloop_private.scan_selected_export_box(p_imei text, p_box_id uuid)');
+  execute replace(ddl, selector[1]||selector[2]||selector[3],
+    selector[1]||$to$where box.id = p_box_id and box.box_status = 'open'
   for update;
 
   if v_box_id is null then
     raise exception 'The selected box is no longer open.' using errcode = '40001';
-  end if;$to$);
+  end if;$to$||selector[3]);
+exception
+  when no_data_found then raise exception 'Box Entry: existing scanner mapping or draft selection is missing.';
+  when too_many_rows then raise exception 'Box Entry: existing scanner mapping or draft selection is ambiguous.';
 end;
 $install$;
 revoke all on function greenloop_private.scan_selected_export_box(text,uuid) from public,anon,authenticated;
