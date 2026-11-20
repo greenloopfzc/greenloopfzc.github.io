@@ -14,7 +14,7 @@
   let client, catalogue = null, report = null, visible = false, stopped = false, loading = false, exporting = false;
   const cards=window.GREENLOOP_ACCOUNTS_CARDS;
   let detailOpen=false,metric='all';
-  let offset = 0, sortKey = 'imei', direction = 'asc', generation = 0, searchTimer, pdfUrl = '', pdfFilename = '', readController=null,catalogueGeneration=0;
+  let offset = 0, sortKey = 'imei', direction = 'asc', generation = 0, searchTimer, pdfUrl = '', pdfFilename = '', readController=null, exportController=null, catalogueGeneration=0;
 
   root.innerHTML = `<div class="aid-header"><div><p class="panel-kicker">STOCK RECORDS</p><h2>IMEI DATA</h2><p>Choose a supplier, stock/batch or invoice to view its complete phone list.</p></div><span id="aid-updated"></span></div>
     <div class="aid-primary">
@@ -144,16 +144,59 @@
   }
   function changed() { if (!can('search') || exporting) return;detailOpen=metric!=='all'||Object.keys(filters()).length>0;offset=0;generation++;report=null;controls();window.GREENLOOP_STOCK_RETURN_DETAILS?.close();closePdf();clearTimeout(searchTimer);searchTimer=setTimeout(load,240); }
   function download(url,filename) { const a=document.createElement('a');a.href=url;a.download=filename;a.dataset.capability='imei_download';a.dataset.capabilityPage='accounts';document.body.append(a);a.click();a.remove(); }
+  const statementTimedOut=error=>error?.code==='57014'&&/statement timeout/i.test(error.message||'');
+  async function collectExport(selection,selected,signal) {
+    const {snapshot,total}=selection;
+    const args={p_kind:'imei',p_filters:filters(),p_metric:metric,p_download:true,
+      p_sort_key:sortKey,p_sort_direction:direction,p_expected_snapshot:snapshot};
+    const rows=[],pairs=[];
+    let reportPage,limit=500;
+    while(rows.length<total){
+      if(!selected())return null;
+      const start=rows.length;
+      let data;
+      try{
+        data=await rpc('get_accounts_card_report_v1',{...args,p_offset:start,p_limit:limit},signal);
+      }catch(error){
+        if(!selected())return null;
+        if(!statementTimedOut(error)||limit<=125)throw error;
+        limit/=2;
+        continue;
+      }
+      if(!selected())return null;
+      const count=Math.min(limit,total-start);
+      const expectedReceipt=args.p_metric.startsWith('receipt_');
+      const paired=args.p_metric==='returned';
+      if(!valid(data)||data.snapshot!==snapshot||data.total!==total||data.metric!==args.p_metric||
+         data.download_offset!==start||data.download_limit!==limit||data.rows.length!==count||
+         data.receipt_mode!==expectedReceipt||data.names_allowed!==selection.names_allowed||
+         (paired&&(!Array.isArray(data.exchange_rows)||data.exchange_rows.length!==count))){
+        throw Error('The full selected report could not be verified. No partial file was created.');
+      }
+      reportPage??=data;
+      rows.push(...data.rows);
+      if(paired)pairs.push(...data.exchange_rows);
+      if(rows.length<total)message(num(rows.length)+' of '+num(total)+' records loaded…');
+    }
+    const data={...reportPage,rows,...(args.p_metric==='returned'?{exchange_rows:pairs}:{})};
+    if(!valid(data,true)||
+       (data.receipt_mode&&(rows.some(r=>typeof r.batch_id!=='string')||new Set(rows.map(r=>r.batch_id)).size!==total))||
+       (args.p_metric==='returned'&&!window.GREENLOOP_EXCHANGE_PAIRS.valid(data,true))){
+      throw Error('The full selected report could not be verified. No partial file was created.');
+    }
+    return data;
+  }
   async function exportReport(kind) {
     if (!canExport()) return;
-    const {snapshot,total}=report,sig=signature(),ticket=generation;
+    const selection=report,sig=signature(),ticket=generation;
     const selected=()=>sig===signature()&&ticket===generation&&visible&&!stopped&&allowed()&&can('imei_download');
+    exportController=new AbortController();
     exporting=true;controls();message('Preparing the complete selected stock…');
     try {
-      const data=await rpc('get_accounts_card_report_v1',{p_kind:'imei',p_filters:filters(),p_metric:metric,p_download:true,p_sort_key:sortKey,p_sort_direction:direction,p_expected_snapshot:snapshot});
-      if (!selected()) return;
-      if (!valid(data,true)||data.snapshot!==snapshot||data.total!==total||metric==='returned'&&!window.GREENLOOP_EXCHANGE_PAIRS.valid(data,true)) throw Error('The full selected report could not be verified. No partial file was created.');
+      const data=await collectExport(selection,selected,exportController.signal);
+      if (!data||!selected()) return;
       if(data.receipt_mode){await window.GREENLOOP_REPORT_DOWNLOADS.output(kind,cards.receiptReport(data,cards.labels[metric]),selected,'accounts','imei_download');return;}
+      message('Building the file from '+num(data.total)+' records…');
       data.selection_label=cards.labels[metric]+' | '+$('#aid-scope').textContent;
       const file=await window.GREENLOOP_ACCOUNTS_IMEI_EXPORT[kind==='excel'?'excel':'pdf'](data);
       if (!selected()) return;
@@ -161,8 +204,8 @@
       if (kind==='view') { closePdf();pdfUrl=url;pdfFilename=file.filename;$('#aid-pdf-frame').src=url;$('#aid-pdf-open').href=url;$('#aid-pdf-dialog').showModal(); }
       else { download(url,file.filename);setTimeout(()=>URL.revokeObjectURL(url),30000); }
       message(num(data.total)+' records included.');
-    } catch (e) { if (selected()) message(e.message || 'The file could not be prepared.',true); }
-    finally { exporting=false;controls(); }
+    } catch (e) { if (selected()) message(statementTimedOut(e)?'The database timed out while preparing the full export. No file was created. Please retry.':e.message || 'The file could not be prepared.',true); }
+    finally { exportController=null;exporting=false;controls(); }
   }
   async function activate(next) {
     catalogueGeneration++;
@@ -177,6 +220,7 @@
   }
   function clearSensitive() {
     catalogueGeneration++;
+    exportController?.abort();
     readController?.abort();readController=null;stopped=true;visible=false;generation++;loading=false;clearTimeout(searchTimer);closePdf();report=null;catalogue=null;root.hidden=true;
     $('#aid-rows').replaceChildren();$('#aid-summary').replaceChildren();$('#aid-greenloop-heading').hidden=true;$('#aid-chaman').replaceChildren();$('#aid-scope').textContent='';$('#aid-updated').textContent='';
     for(const e of root.querySelectorAll('input,select')) { if(e.tagName==='SELECT')e.replaceChildren(new Option('',''));else e.value=''; }
@@ -196,7 +240,7 @@
     $('#aid-pdf-close').addEventListener('click',closePdf);$('#aid-pdf-download').addEventListener('click',()=>{if(allowed()&&can('imei_download')&&pdfUrl)download(pdfUrl,pdfFilename);});$('#aid-pdf-dialog').addEventListener('cancel',e=>{e.preventDefault();closePdf();});
     document.addEventListener('greenloop:accounts-section',e=>activate(e.detail.view));
     window.addEventListener('greenloop:access-ready',controls);for(const event of ['greenloop:office-locked','greenloop:signed-out','greenloop:permissions-changed'])window.addEventListener(event,clearSensitive);
-    window.addEventListener('pagehide',()=>{stopped=true;generation++;closePdf();});client.auth.onAuthStateChange?.(event=>{if(event==='SIGNED_OUT')clearSensitive();});
+    window.addEventListener('pagehide',()=>{stopped=true;generation++;exportController?.abort();closePdf();});client.auth.onAuthStateChange?.(event=>{if(event==='SIGNED_OUT')clearSensitive();});
   }
   window.GREENLOOP_ACCOUNTS_IMEI={init,isBusy:()=>exporting};
 })();
