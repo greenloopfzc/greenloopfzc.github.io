@@ -94,7 +94,10 @@
 (function(root){
   const rules = {
     get_company_stock_progress_v1: {page:"reports", capability:"report_supplier_progress", read:true},
-    get_company_stock_progress_version: {read:true}
+    get_company_stock_progress_version: {read:true},
+    get_stock_receipt_supplier_name_v1: {page:"reports", capability:"report_receipt_correction", read:true},
+    correct_stock_receipt_supplier_name_v1: {page:"reports", capability:"receipt_supplier_name_correction"},
+    get_supplier_name_correction_version: {read:true}
   };
   Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs, rules);
   Object.assign(root.GREENLOOP_RPC_CAPABILITIES, rules);

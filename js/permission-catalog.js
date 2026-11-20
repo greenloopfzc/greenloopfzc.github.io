@@ -17,3 +17,11 @@
 (function(root){const c=root.GREENLOOP_PERMISSION_CATALOG;c.byPage.reports.capabilities.push({"key": "receipt_supplier_correction", "label": "Correct stock supplier (audited)", "write": true});c.reportSections.stock_receipt_correction.actions.push("receipt_supplier_correction");c.reportDependencies.receipt_supplier_correction="report_receipt_correction";})(typeof window!=="undefined"?window:globalThis);
 
 (function(root){const c=root.GREENLOOP_PERMISSION_CATALOG;c.byPage.reports.capabilities.push({"key": "workflow_stage_change", "label": "Change IMEI workflow stage (audited)", "write": true});c.reportSections.data_correction.actions.push("workflow_stage_change");c.reportDependencies.workflow_stage_change="report_imei_correction";})(typeof window!=="undefined"?window:globalThis);
+
+(function(root){
+  const catalog=root.GREENLOOP_PERMISSION_CATALOG;
+  const key="receipt_supplier_name_correction";
+  catalog.byPage.reports.capabilities.push({key,label:"Edit supplier name (all linked receipts, audited)",write:true});
+  catalog.reportSections.stock_receipt_correction.actions.push(key);
+  catalog.reportDependencies[key]="report_receipt_correction";
+})(typeof window!=="undefined"?window:globalThis);

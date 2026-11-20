@@ -1122,6 +1122,11 @@
           "write": true
         },
         {
+          "key": "receipt_supplier_name_correction",
+          "label": "Edit supplier name (all linked receipts, audited)",
+          "write": true
+        },
+        {
           "key": "workflow_stage_change",
           "label": "Change IMEI workflow stage (audited)",
           "write": true
@@ -1609,7 +1614,8 @@
       "view": "report_receipt_correction",
       "actions": [
         "receipt_quantity_correction",
-        "receipt_supplier_correction"
+        "receipt_supplier_correction",
+        "receipt_supplier_name_correction"
       ]
     }
   },
@@ -1671,6 +1677,7 @@
     "parts_usage_search": "parts_usage",
     "parts_usage_download": "parts_usage",
     "receipt_supplier_correction": "report_receipt_correction",
+    "receipt_supplier_name_correction": "report_receipt_correction",
     "receipt_quantity_correction": "report_receipt_correction",
     "workflow_stage_change": "report_imei_correction"
   }
