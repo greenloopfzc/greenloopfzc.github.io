@@ -378,9 +378,12 @@ function buildStageSections(sortedRows) {
     const receipt=[...rows].reverse().find(row=>row.stage==="stock_received") || {};
     const supplierCode=GREENLOOP_RECEIPTS.label("imei_search",device.imei_1,scalar(device.supplier_code)||field(receipt,"Supplier code","Supplier"),null,null);
     const supplierName=names ? scalar(device.supplier_name) || field(receipt,"Supplier name") : "";
+    const storage=number(device.storage_gb)===null ? "" : `${device.storage_gb} GB`;
+    const bh=(value,unavailable)=>unavailable===true?'Not available':number(value)===null?missing:value+'%';
+    const finalBh=bh(device.final_battery_health,device.final_battery_health_unavailable);
     const values=[
       ["Model",[device.brand,device.model].map(scalar).filter(Boolean).join(" · ")],["Color",device.color],
-      ["GB",number(device.storage_gb)===null ? "" : `${device.storage_gb} GB`],["Supplier",supplierName || supplierCode],
+      ["GB",storage],["Supplier",supplierName || supplierCode],
       ["IMEI 1",device.imei_1],["IMEI 2",device.imei_2],
       ["Serial number",device.serial_number],["Supplier code",supplierCode],
       ["Stock/Batch No",field(receipt,"Receipt","Batch")],["Invoice No",field(receipt,"Invoice")],["Stock received",receipt.occurred_at ? journeyMoment(receipt.occurred_at) : ""]
@@ -390,11 +393,12 @@ function buildStageSections(sortedRows) {
       ? "Returned to Supplier"
       : stage.toLowerCase() === "lab & glass issuance" ? stage : place(device.current_location);
     values.push(["Current location", stage ? place(stage) : currentLocation]);
-    const bh=(value,unavailable)=>unavailable===true?'Not available':number(value)===null?missing:value+'%';
-    values.push(['Initial BH',bh(device.initial_battery_health,device.initial_battery_health_unavailable)],['Final BH',bh(device.final_battery_health,device.final_battery_health_unavailable)],['Supplier Grade',device.supplier_grade],['GL Grade',device.gl_grade],['Final Grade',device.final_grade]);
+    values.push(['Initial BH',bh(device.initial_battery_health,device.initial_battery_health_unavailable)],['Final BH',finalBh],['Supplier Grade',device.supplier_grade],['GL Grade',device.gl_grade],['Final Grade',device.final_grade]);
     if(scalar(device.region))values.push(["Phone region",device.region]);
+    const specifications=[["Model",device.model],["GB",storage],["Grade",device.final_grade],["Final BH",finalBh]];
+    const specs=specifications.map(([name,value])=>`<div><dt>${escapeHtml(name)}</dt><dd>${safe(value)}</dd></div>`).join("");
     const cells=values.map(([name,value],index)=>`<th scope="row">${escapeHtml(name)}</th><td${index===values.length-1 && values.length%2 ? ' colspan="3"' : ""}>${safe(value)}</td>`);
-    header.innerHTML=`<div class="history-basic-heading"><h2 id="history-device-name">Device details</h2>${badge(currentStage(device))}</div><table class="history-basic-table"><caption class="history-sr-only">Basic phone and supplier details</caption><tbody>${cells.reduce((html,cell,index)=>html+(index%2===0 ? "<tr>" : "")+cell+(index%2===1 || index===cells.length-1 ? "</tr>" : ""),"")}</tbody></table>`;
+    header.innerHTML=`<div class="history-basic-heading"><h2 id="history-device-name">Device details</h2>${badge(stage)}<dl class="history-device-specs" aria-label="Phone specifications">${specs}</dl></div><table class="history-basic-table"><caption class="history-sr-only">Basic phone and supplier details</caption><tbody>${cells.reduce((html,cell,index)=>html+(index%2===0 ? "<tr>" : "")+cell+(index%2===1 || index===cells.length-1 ? "</tr>" : ""),"")}</tbody></table>`;
   }
   function renderReplacementHistory(data) {
     if(data.replacement_history_unavailable)return '<p class="history-replacement-warning" role="status">Replacement history could not be loaded. Refresh to check the old/new IMEI link.</p>';

@@ -30,6 +30,10 @@ html:is([data-design="neumorphism"],[data-mode="dark"]) .history-content { --his
 .history-basic-heading { display:flex; flex-wrap:wrap; justify-content:flex-start; align-items:center; gap:12px; padding:22px 26px; }
 .history-basic-heading > .journey-badge { flex:0 1 auto; padding:8px 14px; font-size:1rem; }
 .history-basic-heading h2 { margin:0; color:var(--history-ink); font:750 1.25rem/1.4 "Manrope",Arial,sans-serif; }
+.history-device-specs { display:flex; flex-wrap:wrap; align-items:center; gap:10px clamp(20px,2.4vw,42px); min-width:0; margin:0; margin-inline-start:clamp(4px,1.2vw,20px); }
+.history-device-specs > div { min-width:0; max-width:100%; }
+.history-device-specs dt { margin:0 0 2px; color:var(--history-muted); font-size:.76rem; font-weight:700; }
+.history-device-specs dd { margin:0; color:var(--history-ink); font:800 clamp(1.28rem,1.55vw,1.85rem)/1.18 "Manrope",Arial,sans-serif; overflow-wrap:anywhere; }
 .history-basic-table { width:100%; border-collapse:collapse; table-layout:fixed; color:var(--history-ink); font-size:.89rem; }
 .app-page .history-basic-table th,.app-page .history-basic-table td { text-align:left!important; padding:12px 24px; border:1px solid var(--history-line); overflow-wrap:anywhere; vertical-align:top; }
 .history-basic-table th { width:16%; font-weight:500; color:var(--history-muted); background:var(--history-well); }
@@ -61,6 +65,7 @@ html:is([data-design="neumorphism"],[data-mode="dark"]) .history-content { --his
   .history-basic-table tr { display:grid; grid-template-columns:minmax(105px,.7fr) minmax(0,1.3fr); }
   .app-page .history-basic-table th,.app-page .history-basic-table td { width:auto; min-width:0; padding:11px 15px; border-width:0 0 1px; }
   .history-basic-heading { padding:20px 18px; }
+  .history-device-specs { display:grid; flex-basis:100%; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px 16px; margin-inline-start:0; }
   .history-stage-list { padding:4px 18px 0; }
   .history-bullets { font-size:.88rem; }
   .history-total { padding:16px 18px; }
