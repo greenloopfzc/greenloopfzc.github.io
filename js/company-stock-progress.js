@@ -1,0 +1,188 @@
+(() => {
+  "use strict";
+
+  const columns = [
+    ["initial_qc", "Initial QC"], ["issuance", "Issuance"], ["lab_glass", "Lab & Glass"],
+    ["parts", "Parts"], ["final_qc", "Final QC"], ["b_dept", "B-DEPT"],
+    ["ready_stock", "Ready Stock"], ["box_entry", "Box Entry"], ["accounts", "Accounts"],
+    ["return_pending", "Return Pending"], ["other", "Other"],
+    ["quantity", "In Company"]
+  ];
+  const pageSize = 50;
+  const count = value => Number.isSafeInteger(value) && value >= 0;
+  const escape = value => String(value ?? "").replace(/[&<>"']/g, character =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
+  const format = new Intl.NumberFormat("en-GB");
+  const date = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Dubai", dateStyle: "medium", timeStyle: "short"
+  });
+  const can = permission => window.GREENLOOP_CAN?.(permission, "reports") === true;
+  const canView = () => can("view") && can("report_supplier_progress");
+  let dispose, reload, remount;
+
+  function validCounts(row) {
+    return !!row && columns.every(([key]) => count(row[key])) &&
+      columns.slice(0, -1).reduce((sum, [key]) => sum + row[key], 0) === row.quantity;
+  }
+
+  function mount(host, badge) {
+    unmount();
+    if (!canView()) return;
+    let revision = 0;
+    let current = true;
+    let offset = 0;
+    let receipts = [];
+    const selection = { supplier: "", batch: "", invoice: "" };
+    const root = document.createElement("section");
+    root.innerHTML = `
+      <div class="supplier-scope">
+        <div class="supplier-scope-heading">
+          <p>Current company-owned phones with an IMEI</p>
+          <button type="button" class="secondary-button" data-refresh data-capability="view" data-capability-page="reports">Refresh</button>
+        </div>
+        <div class="supplier-scope-fields">
+          <div class="form-field"><label for="stock-progress-supplier">Supplier</label>
+            <select id="stock-progress-supplier" data-filter="supplier" data-capability="report_supplier_progress_search" data-capability-page="reports"></select></div>
+          <div class="form-field"><label for="stock-progress-batch">Stock / Batch</label>
+            <select id="stock-progress-batch" data-filter="batch" data-capability="report_supplier_progress_search" data-capability-page="reports"></select></div>
+          <div class="form-field"><label for="stock-progress-invoice">Invoice</label>
+            <select id="stock-progress-invoice" data-filter="invoice" data-capability="report_supplier_progress_search" data-capability-page="reports"></select></div>
+        </div>
+      </div>
+      <p data-status role="status"></p>
+      <div class="report-table-wrap" data-table></div>
+      <div class="stock-progress-pager supplier-range-toolbar" data-pager hidden>
+        <button type="button" class="secondary-button" data-previous data-capability="view" data-capability-page="reports">Previous</button>
+        <span data-range></span>
+        <button type="button" class="secondary-button" data-next data-capability="view" data-capability-page="reports">Next</button>
+      </div>`;
+    host.replaceChildren(root);
+    const find = selector => root.querySelector(selector);
+    const filters = Object.fromEntries(Object.keys(selection).map(key => [key, find(`[data-filter="${key}"]`)]));
+    const status = find("[data-status]");
+    const table = find("[data-table]");
+    const pager = find("[data-pager]");
+    const previous = find("[data-previous]");
+    const next = find("[data-next]");
+    const refresh = find("[data-refresh]");
+
+    function options(select, label, pairs, value) {
+      select.replaceChildren(new Option(label, ""), ...pairs.map(([key, text]) => new Option(text, key)));
+      if (value && !pairs.some(([key]) => key === value)) select.add(new Option("Selected value no longer in stock", value));
+      select.value = value;
+      select.disabled = !can("report_supplier_progress_search");
+    }
+
+    function renderFilters() {
+      const suppliers = new Map();
+      for (const receipt of receipts) {
+        if (receipt.supplier_id) {
+          suppliers.set(receipt.supplier_id, [receipt.supplier_code, receipt.supplier_name].filter(Boolean).join(" · "));
+        }
+      }
+      const supplierReceipts = receipts.filter(r => !selection.supplier || r.supplier_id === selection.supplier);
+      const invoiceReceipts = supplierReceipts.filter(r => !selection.batch || r.batch_id === selection.batch);
+      options(filters.supplier, "All suppliers", [...suppliers].sort((a, b) => a[1].localeCompare(b[1])), selection.supplier);
+      options(filters.batch, "All batches", supplierReceipts.map(r => [
+        r.batch_id, window.GREENLOOP_BATCH_LABEL(r.batch_number, r)
+      ]), selection.batch);
+      options(filters.invoice, "All invoices", [...new Set(invoiceReceipts.map(r => r.invoice_number).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).map(invoice => [invoice, invoice]), selection.invoice);
+    }
+
+    function render(data) {
+      const cells = row => columns.map(([key]) => `<td>${format.format(row[key])}</td>`).join("");
+      const rows = data.rows.map((row, index) => `<tr><td>${data.offset + index + 1}</td>
+        <th scope="row">${escape(row.model)}</th><td>${escape(row.storage_gb === null ? "Not recorded" : window.GREENLOOP_STORAGE.label(row.storage_gb))}</td>
+        ${cells(row)}</tr>`).join("");
+      table.innerHTML = `<table class="report-table company-stock-progress-table" data-preserve-table-layout>
+        <thead><tr><th scope="col">S.No</th><th scope="col">Model</th><th scope="col">GB</th>
+        ${columns.map(([, label]) => `<th scope="col">${escape(label)}</th>`).join("")}</tr></thead>
+        <tbody>${rows || `<tr><td colspan="${3 + columns.length}" class="report-empty">No company phones match these filters.</td></tr>`}</tbody>
+        <tfoot><tr><th colspan="3" scope="row">Filtered total</th>${cells(data.totals)}</tr></tfoot></table>`;
+      badge.textContent = `${format.format(data.totals.quantity)} in company`;
+      status.textContent = `Updated ${date.format(new Date(data.checked_at))} · UAE`;
+      pager.hidden = data.row_count <= pageSize;
+      previous.disabled = data.offset === 0;
+      next.disabled = data.offset + data.rows.length >= data.row_count;
+      find("[data-range]").textContent = `${data.offset + 1}–${data.offset + data.rows.length} of ${data.row_count} model / GB rows`;
+    }
+
+    async function load() {
+      if (!current || !canView()) return;
+      const request = ++revision;
+      const page = offset;
+      refresh.disabled = true;
+      table.replaceChildren();
+      pager.hidden = true;
+      status.textContent = "Loading stock progress…";
+      badge.textContent = "Loading…";
+      try {
+        const { data, error } = await window.GREENLOOP_GET_CLIENT().rpc("get_company_stock_progress_v1", {
+          p_supplier_id: selection.supplier || null,
+          p_batch_id: selection.batch || null,
+          p_invoice: selection.invoice || null,
+          p_offset: page
+        });
+        if (!current || request !== revision || !canView()) return;
+        if (error) throw error;
+        if (!data || data.offset !== page || !count(data.row_count) || !Array.isArray(data.receipts) ||
+            !Array.isArray(data.rows) || data.rows.length !== Math.min(pageSize, Math.max(0, data.row_count - page)) ||
+            !validCounts(data.totals) || !data.rows.every(row => validCounts(row) && typeof row.model === "string" &&
+              (row.storage_gb === null || count(row.storage_gb))) ||
+            !columns.every(([key]) => {
+              const subtotal = data.rows.reduce((sum, row) => sum + row[key], 0);
+              return data.row_count <= pageSize && page === 0 ? subtotal === data.totals[key] : subtotal <= data.totals[key];
+            }) || !Number.isFinite(Date.parse(data.checked_at))) {
+          throw new Error("Stock Progress totals could not be verified.");
+        }
+        if (page > 0 && page >= data.row_count) {
+          offset = Math.max(0, Math.floor((data.row_count - 1) / pageSize) * pageSize);
+          return await load();
+        }
+        receipts = data.receipts;
+        renderFilters();
+        render(data);
+      } catch (error) {
+        if (!current || request !== revision || !canView()) return;
+        status.textContent = `${error.message || "Stock Progress could not be loaded."} Use Refresh to retry.`;
+        badge.textContent = "Unavailable";
+      } finally {
+        if (current && request === revision) refresh.disabled = false;
+      }
+    }
+
+    for (const [key, select] of Object.entries(filters)) {
+      select.addEventListener("change", () => {
+        if (!can("report_supplier_progress_search")) return;
+        selection[key] = select.value;
+        if (key === "supplier") selection.batch = "";
+        if (key !== "invoice") selection.invoice = "";
+        offset = 0;
+        renderFilters();
+        void load();
+      });
+    }
+    refresh.addEventListener("click", () => void load());
+    previous.addEventListener("click", () => { offset -= pageSize; void load(); });
+    next.addEventListener("click", () => { offset += pageSize; void load(); });
+    dispose = () => { current = false; root.remove(); badge.textContent = ""; };
+    reload = load;
+    remount = () => mount(host, badge);
+    renderFilters();
+    void load();
+  }
+
+  function unmount() {
+    dispose?.();
+    dispose = undefined;
+    reload = undefined;
+    remount = undefined;
+  }
+  for (const event of ["greenloop:signed-out", "greenloop:office-locked"]) window.addEventListener(event, unmount);
+  window.addEventListener("greenloop:permissions-changed", () => {
+    if (canView()) remount?.();
+    else unmount();
+  });
+  window.GREENLOOP_COMPANY_STOCK_PROGRESS = { mount, unmount, refresh: () => reload?.() };
+})();

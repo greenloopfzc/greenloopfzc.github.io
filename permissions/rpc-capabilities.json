@@ -1776,6 +1776,14 @@
     "get_stage_change_parts_version": {
       "read": true
     },
+    "get_company_stock_progress_v1": {
+      "page": "reports",
+      "capability": "report_supplier_progress",
+      "read": true
+    },
+    "get_company_stock_progress_version": {
+      "read": true
+    },
     "get_parts_queue_membership_version": {
       "read": true
     }

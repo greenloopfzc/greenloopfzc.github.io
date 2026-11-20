@@ -16,13 +16,13 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css?v=20261016-strict-view-only-1">
-    <link rel="stylesheet" href="css/reports.css?v=20261118-supplier-chaman-card-1">
+    <link rel="stylesheet" href="css/reports.css?v=20261120-company-stock-progress-1">
     <link rel="stylesheet" href="css/production-correction.css?v=20261021-production-delete-all-1">
     <link rel="stylesheet" href="css/damage-management.css?v=20261007-damage-payable-1">
     <link rel="stylesheet" href="css/complete-device-details.css?v=20261001-android-support-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script defer src="js/permission-catalog.js?v=20261119-stage-change-parts-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261119-parts-queue-membership-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261120-company-stock-progress-1"></script>
 <script defer src="js/page-capabilities.js?v=20261104-report-permissions-1"></script>
 <script defer src="js/imei-canonical.js?v=20261117-primary-imei-1"></script>
 <script defer src="js/imei-scan.js?v=20261118-lab-single-notice-1"></script>
@@ -60,7 +60,9 @@
     <link rel="stylesheet" href="css/parts-usage-report.css?v=20261117-parts-damage-1">
     <script defer src="js/report-downloads.js?v=20261117-parts-damage-1"></script>
     <script defer src="js/parts-usage-report.js?v=20261117-parts-damage-1"></script>
-    <script defer src="js/reports.js?v=20261118-supplier-chaman-card-1"></script>
+    <script defer src="js/storage-options.js?v=20261027-iphone-entry-options-1"></script>
+    <script defer src="js/company-stock-progress.js?v=20261120-company-stock-progress-1"></script>
+    <script defer src="js/reports.js?v=20261120-company-stock-progress-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261111-ruby-obsidian-1">
     <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
   <link rel="stylesheet" href="css/sidebar-compact.css?v=20261009-sidebar-pdf-1">
@@ -110,6 +112,7 @@
             <nav id="report-tabs" class="report-tabs" aria-label="Report categories">
               <button class="report-tab" type="button" data-report="complete_device_details" aria-pressed="false" hidden data-capability="report_device_details" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">▣</span><span class="report-tab-label">Complete Device Details</span></button>
               <button class="report-tab" type="button" data-report="supplier_progress" aria-pressed="false" hidden data-capability="report_supplier_progress" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">⇄</span><span class="report-tab-label">Supplier Progress</span></button>
+              <button class="report-tab" type="button" data-report="stock_progress" aria-pressed="false" hidden data-capability="report_supplier_progress" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">▥</span><span class="report-tab-label">Stock Progress</span></button>
               <button class="report-tab" type="button" data-report="stock_receipt_correction" aria-pressed="false" hidden data-capability="report_receipt_correction" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">&#9998;</span><span class="report-tab-label">Stock Receipt Correction</span></button>
               <button class="report-tab" type="button" data-report="stock_grade_analysis" aria-pressed="false" hidden data-capability="stock_grade_analysis" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">▥</span><span class="report-tab-label">Stock Grade Analysis</span></button>
               <button class="report-tab" type="button" data-report="parts_usage" aria-pressed="false" hidden data-capability="parts_usage" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">&#9638;</span><span class="report-tab-label">Parts Usage Report</span></button>

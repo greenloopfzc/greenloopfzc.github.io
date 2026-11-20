@@ -53,6 +53,12 @@ html[data-design="neumorphism"] .report-tab-icon { box-shadow: var(--nm-shadow-x
 .supplier-report-summary span { display: block; color: #78877e; font-size: .58rem; font-weight: 900; letter-spacing: .07em; text-transform: uppercase; }
 .supplier-report-summary strong { display: block; margin-top: 6px; color: #173f2e; font: 800 1.25rem/1 Manrope, sans-serif; }
 .supplier-progress-table { min-width: 1780px; }
+.company-stock-progress-table { min-width: 1200px; }
+.company-stock-progress-table tbody th { color: var(--nm-ink, #23323b); }
+.company-stock-progress-table tfoot th,
+.company-stock-progress-table tfoot td { background: var(--nm-surface, #e7ecef); font-weight: 800; }
+.stock-progress-pager { margin-top: 12px; }
+.stock-progress-pager[hidden] { display: none; }
 .supplier-progress-table td { padding: 11px 12px; }
 .supplier-progress-table td:first-child strong, .supplier-progress-table td:first-child small { display: block; }
 .supplier-progress-table td:first-child small { margin-top: 3px; color: #7a8980; font-size: .62rem; }

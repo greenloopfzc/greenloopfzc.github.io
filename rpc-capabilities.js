@@ -90,3 +90,12 @@
 (function(root){Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,{"get_imei_stage_change_v1": {"page": "reports", "capability": "workflow_correction", "read": true}, "apply_imei_stage_change_v1": {"page": "reports", "capability": "workflow_stage_change"}, "get_cancelled_parts_phones_v1": {"page": "parts", "capability": "view", "read": true}, "get_cancelled_phone_parts_v1": {"page": "parts", "capability": "view", "read": true}, "collect_cancelled_phone_part_v1": {"page": "parts", "capability": "return"}, "get_parts_pending_counts_v2": {"page": "parts", "capability": "view", "read": true}, "get_stage_change_parts_version": {"read": true}});})(typeof window!=="undefined"?window:globalThis);
 
 (function(root){root.GREENLOOP_RPC_CAPABILITIES.rpcs.get_parts_queue_membership_version={read:true};})(typeof window!=="undefined"?window:globalThis);
+
+(function(root){
+  const rules = {
+    get_company_stock_progress_v1: {page:"reports", capability:"report_supplier_progress", read:true},
+    get_company_stock_progress_version: {read:true}
+  };
+  Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs, rules);
+  Object.assign(root.GREENLOOP_RPC_CAPABILITIES, rules);
+})(typeof window!=="undefined"?window:globalThis);

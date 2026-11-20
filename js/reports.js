@@ -22,8 +22,8 @@
   let loadedReport = "";
   const reportSections = window.GREENLOOP_PERMISSION_CATALOG?.reportSections || {};
   const removedReportKeys = new Set(["overview", "stock_received", "work_in_progress", "parts_requests", "parts_inventory", "technicians", "final_qc", "costs"]);
-  const allowedReport = key => !removedReportKeys.has(key) && (key==="chaman_correction" ? Boolean(canResetData&&window.GREENLOOP_CAN?.("report_chaman_correction","reports")) : key==="bulk_imei_correction" ? Boolean(window.GREENLOOP_CAN?.("report_imei_correction","reports")&&window.GREENLOOP_CAN?.("workflow_correction","reports")&&window.GREENLOOP_CAN?.("bulk_imei_correction","reports")) : Boolean(reportSections[key] && window.GREENLOOP_CAN?.(reportSections[key].view,"reports")));
-  const selfLoadedReports = new Set(["chaman_correction","stock_receipt_correction","bulk_imei_correction","supplier_progress","stock_grade_analysis","parts_usage","stock_parts_cost","manual_damage","production_correction","complete_device_details","data_correction","restricted_data"]);
+  const allowedReport = key => !removedReportKeys.has(key) && (key==="stock_progress" ? Boolean(window.GREENLOOP_CAN?.("view","reports")&&window.GREENLOOP_CAN?.("report_supplier_progress","reports")) : key==="chaman_correction" ? Boolean(canResetData&&window.GREENLOOP_CAN?.("report_chaman_correction","reports")) : key==="bulk_imei_correction" ? Boolean(window.GREENLOOP_CAN?.("report_imei_correction","reports")&&window.GREENLOOP_CAN?.("workflow_correction","reports")&&window.GREENLOOP_CAN?.("bulk_imei_correction","reports")) : Boolean(reportSections[key] && window.GREENLOOP_CAN?.(reportSections[key].view,"reports")));
+  const selfLoadedReports = new Set(["chaman_correction","stock_receipt_correction","bulk_imei_correction","supplier_progress","stock_progress","stock_grade_analysis","parts_usage","stock_parts_cost","manual_damage","production_correction","complete_device_details","data_correction","restricted_data"]);
   let selectedExportBox = "";
   let exportBoxImeiFilter = "";
   let correctionRecord = null;
@@ -130,6 +130,11 @@
       title: "Stock received",
       description: "Every incoming IMEI received during the selected date range.",
       columns: [["Received", "received_at", "date"], ["IMEI", "imei"], ["Serial number", "serial_number"], ["Region", "specification_region"], ["Model", "model"], ["Memory", "memory"], ["Color", "color"], ["Battery", "battery", "percent"], ["Source", "source"], ["Job", "job_number"]]
+    },
+    stock_progress: {
+      title: "Stock Progress Report",
+      description: "Current company stock by model, storage and workflow stage.",
+      columns: []
     },
     supplier_progress: {
       title: "Supplier stock progress",
@@ -932,6 +937,7 @@
   function renderActiveReport() {
     if(!allowedReport(activeReport))activeReport='';
     window.GREENLOOP_ACTIVE_REPORT=activeReport;
+    if(activeReport!=="stock_progress")window.GREENLOOP_COMPANY_STOCK_PROGRESS?.unmount();
     if(activeReport!=='chaman_correction')window.GREENLOOP_CHAMAN_CORRECTION?.unmount();
     filterForm.querySelectorAll('input,button').forEach(control=>{const allowed=Boolean(activeReport&&window.GREENLOOP_CAN?.('search','reports'));control.disabled=!allowed;if(allowed){control.removeAttribute('aria-disabled');control.removeAttribute('data-view-only-locked');if(control.title==='Access not granted')control.removeAttribute('title');}});
     if(!activeReport){
@@ -958,6 +964,17 @@
     const supplierControls=document.getElementById("supplier-progress-controls");if(supplierControls)supplierControls.hidden=activeReport!=="supplier_progress";
     filterForm.hidden = activeReport === "parts_usage" || activeReport === "supplier_progress" || activeReport === "stock_parts_cost" || activeReport === "stock_grade_analysis" || liveDetails || activeReport === "restricted_data" || activeReport === "data_correction" || activeReport === "manual_damage" || activeReport === "production_correction";
     window.GREENLOOP_PRODUCTION_CORRECTION?.unmount();
+    if(activeReport==="stock_progress"){
+      filterForm.hidden=true;
+      window.GREENLOOP_DAMAGE_MANAGEMENT?.unmount();
+      window.GREENLOOP_COMPLETE_DEVICE_DETAILS?.unmount();
+      panelKicker.textContent="Reports";
+      panelTitle.textContent=reports.stock_progress.title;
+      panelDescription.textContent=reports.stock_progress.description;
+      if(window.GREENLOOP_COMPANY_STOCK_PROGRESS)window.GREENLOOP_COMPANY_STOCK_PROGRESS.mount(reportContent,rowCount);
+      else reportContent.textContent="Stock Progress could not be loaded. Reload this page to try again.";
+      return;
+    }
     if(activeReport==='bulk_imei_correction'){
       filterForm.hidden=true;window.GREENLOOP_DAMAGE_MANAGEMENT?.unmount();window.GREENLOOP_COMPLETE_DEVICE_DETAILS?.unmount();
       panelKicker.textContent='Reports';panelTitle.textContent=reports.bulk_imei_correction.title;panelDescription.textContent=reports.bulk_imei_correction.description;rowCount.textContent='Reports only';
@@ -1033,6 +1050,7 @@
     if(activeReport==='chaman_correction'){await window.GREENLOOP_CHAMAN_CORRECTION?.refresh();return;}
     if(activeReport==='stock_receipt_correction'){await window.GREENLOOP_STOCK_RECEIPT_CORRECTION?.refresh();return;}
     if(activeReport==='supplier_progress'){await loadSupplierProgress({refresh:true});return;}
+    if(activeReport==='stock_progress'){await window.GREENLOOP_COMPANY_STOCK_PROGRESS?.refresh();return;}
     if(activeReport==='stock_grade_analysis'){await window.GREENLOOP_STOCK_GRADE_ANALYSIS?.refresh();return;}
     if(activeReport==='parts_usage'){await window.GREENLOOP_PARTS_USAGE?.refresh();return;}
     if(activeReport==='stock_parts_cost'){await window.GREENLOOP_STOCK_PARTS_COST?.refresh();return;}
