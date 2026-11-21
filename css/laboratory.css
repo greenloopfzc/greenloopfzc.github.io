@@ -268,3 +268,10 @@ body.app-page.frame-mode #frame-pending-panel table.technician-lines-table .line
 .lab-card-imei .lab-final-qc-return{font-size:1.25rem;font-weight:850;line-height:1.35;color:#bd2924!important;overflow-wrap:normal}
 html[data-mode=dark] .lab-card-imei .lab-final-qc-return{color:#ff9b90!important}
 @media(max-width:650px){.lab-card-imei .lab-final-qc-return{font-size:1.1rem}}
+
+.lab-stock-pages { display: flex; align-items: center; gap: 12px; margin: 10px 0; }
+.lab-stock-pages[hidden] { display: none; }
+.lab-stock-pages [data-stock-range] { font-size: .85rem; }
+@media (min-width: 1201px) {
+  .lab-stock-lines .lab-static-grid { grid-template-columns: 1.15fr .85fr .7fr .55fr .7fr .5fr 1.25fr 1.1fr 1.1fr; }
+}

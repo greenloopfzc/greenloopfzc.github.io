@@ -4348,5 +4348,13 @@
   },
   "get_chaman_custody_notice_version": {
     "read": true
+  },
+  "get_lab_stock_workbench_v1": {
+    "page": "lab_glass",
+    "capability": "search",
+    "read": true
+  },
+  "get_lab_stock_workbench_version": {
+    "read": true
   }
 }

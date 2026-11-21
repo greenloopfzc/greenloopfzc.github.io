@@ -59,6 +59,8 @@
   let technicianRows = [];
   let activeTechnicianId = "";
   let bulkWorkbenchImeis=null,mainScanReads=0;
+  let stockSelector,activeStockScope=null,stockPending=false;
+  const stockPages=document.querySelector('#lab-stock-pages');
   let activePhoneStepId = "";
   let partOptions = [...standardParts];
   const usageCounts = {part: new Map(), service: new Map()};
@@ -166,12 +168,13 @@
     document.querySelector('#lab-total-pending-unit').textContent=pendingTotal===1?'phone':'phones';
     technicianCards.innerHTML = visibleTechnicians().length ? visibleTechnicians().map((technician) => {
       const count = Number(technician.pending_count || 0);
-      const active = String(technician.id) === String(activeTechnicianId);
+      const active = !activeStockScope && String(technician.id) === String(activeTechnicianId);
       return `<button class="technician-card${active ? " is-active" : ""}${isHiddenTechnician(technician) ? " is-hidden-technician" : ""}" type="button" data-capability="view" data-capability-page="lab_glass" data-search-read-only data-technician-id="${escapeHtml(technician.id)}" aria-pressed="${active}"><span class="technician-avatar">${escapeHtml(initials(technician.full_name))}</span><span class="technician-card-copy"><strong>${escapeHtml(technician.full_name)}</strong>${isHiddenTechnician(technician)?'<small class="technician-hidden-label">Hidden card</small>':''}<span>${count} ${technician.unassigned?'unassigned':'assigned'} IMEI${count === 1 ? "" : "s"}</span></span><span class="technician-card-count${count ? "" : " is-zero"}" aria-label="${count} pending phone${count===1?'':'s'}">${count.toLocaleString('en-US')}</span></button>`;
     }).join("") : '<p class="technician-lines-empty">No visible technician cards. Choose Show hidden to view hidden cards.</p>';
-    const selected = bulkWorkbenchImeis?{full_name:"Pasted IMEIs",pending_count:technicianRows.length}:technicians.find((item) => String(item.id) === String(activeTechnicianId));
-    technicianBoardTitle.textContent = selected?.unassigned?'Phones awaiting employee assignment':selected ? `${selected.full_name}'s assigned work` : "Select a technician";
-    technicianLinesTitle.textContent = selected?.unassigned?'Unassigned phones':selected ? `${selected.full_name}'s phone lines` : "Assigned phone lines";
+    const selected = activeStockScope?null:bulkWorkbenchImeis?{full_name:"Pasted IMEIs",pending_count:technicianRows.length}:technicians.find((item) => String(item.id) === String(activeTechnicianId));
+    technicianBoardTitle.textContent = activeStockScope?'Technicians':selected?.unassigned?'Phones awaiting employee assignment':selected ? `${selected.full_name}'s assigned work` : "Select a technician";
+    document.querySelector('#lines-kicker').textContent=activeStockScope?'Stock selection':'Selected technician';
+    technicianLinesTitle.textContent = activeStockScope?'Selected stock phones':selected?.unassigned?'Unassigned phones':selected ? `${selected.full_name}'s phone lines` : "Assigned phone lines";
     removeTechnicianButton.disabled = !selected || !!selected.unassigned;
     const hiddenCount=technicians.filter(isHiddenTechnician).length;
     if(!hiddenCount)showHiddenTechnicians=false;
@@ -305,21 +308,24 @@
     for(const item of technicianWorkRows.querySelectorAll('.lab-phone-row')){const active=item.dataset.stepId===activePhoneStepId;item.querySelector('.lab-phone-card')?.classList.toggle('is-active',active);const badge=item.querySelector('.lab-active-indicator');if(badge)badge.hidden=!active;}
   }
   function renderTechnicianLines() {
-    technicianWorkRows.closest("table").classList.toggle("lab-separated-phones",!isFrameMode);
+    const table=technicianWorkRows.closest('table');
+    table.classList.toggle('lab-separated-phones',!isFrameMode);
+    table.classList.toggle('lab-stock-lines',!!activeStockScope);
     const selectedTech = technicians.find((item) => String(item.id) === String(activeTechnicianId));
     const assignedRows = technicianRows.filter((row) => isFrameMode ? String(row.department) === "frame" : ["laboratory", "glass"].includes(String(row.department)));
     const filtered = assignedRows.filter(row => !focusedImei || (String(row.imei) === focusedImei && (!focusedStepId || String(row.step_id) === focusedStepId)));
+    technicianLinesCount.hidden=!!activeStockScope;
     technicianLinesCount.textContent = focusedImei ? `${filtered.length} matching phone${filtered.length === 1 ? "" : "s"}` : `${filtered.length} phone${filtered.length === 1 ? "" : "s"}`;
-    if (!activeTechnicianId) { technicianWorkRows.innerHTML = '<tr><td colspan="12" class="technician-lines-empty">Select a technician.</td></tr>'; return; }
+    if (!activeTechnicianId && !activeStockScope) { technicianWorkRows.innerHTML = '<tr><td colspan="12" class="technician-lines-empty">Select a technician.</td></tr>'; return; }
     if (!filtered.length) {
-      technicianWorkRows.innerHTML = `<tr><td colspan="12" class="technician-lines-empty">${focusedImei ? `No pending line for IMEI ${escapeHtml(focusedImei)}. Use Show all to return to this technician’s phones.` : `${escapeHtml(selectedTech?.full_name || "This technician")} has no ${isFrameMode ? "B-DEPT" : "Laboratory"} phones pending.`}</td></tr>`;
+      technicianWorkRows.innerHTML = `<tr><td colspan="12" class="technician-lines-empty">${focusedImei ? `No pending line for IMEI ${escapeHtml(focusedImei)}. Use Show all to return to this technician’s phones.` : activeStockScope?'No Lab & Glass phones match this stock.':`${escapeHtml(selectedTech?.full_name || "This technician")} has no ${isFrameMode ? "B-DEPT" : "Laboratory"} phones pending.`}</td></tr>`;
       return;
     }
     if(focusedStepId&&filtered.some(row=>String(row.step_id)===String(focusedStepId)))activePhoneStepId=String(focusedStepId);
     technicianWorkRows.innerHTML = filtered.map((row,index) => {
       const qcParts = initialNames(row.initial_parts);
       const qcServices = initialServiceNames(row);
-      const supplier = typeof window.GREENLOOP_SUPPLIER_RECEIPT_LABEL === "function"
+      const supplier = activeStockScope ? window.GREENLOOP_STOCK.labelRow(row) : typeof window.GREENLOOP_SUPPLIER_RECEIPT_LABEL === "function"
         ? GREENLOOP_RECEIPTS.label(isFrameMode?"frame_department":"lab_glass",row.imei,row.supplier_code,row.planned_quantity,row.supplier_name,"—")
         : (row.supplier_code || "—");
       const saveCell = isFrameMode
@@ -330,7 +336,7 @@
       }
       const staticLine = [
         labelledStatic("IMEI", `<strong class="line-imei">${escapeHtml(row.imei || "—")}</strong>`, "imei"),
-        ...(bulkWorkbenchImeis?[labelledStatic("Technician",escapeHtml(row.bulk_technician_name||"Unassigned"))]:[]),
+        ...(bulkWorkbenchImeis||activeStockScope?[labelledStatic("Technician",escapeHtml(row.bulk_technician_name||row.technician_name||"Unassigned"))]:[]),
         labelledStatic("Model", escapeHtml(row.model || "—")),
         labelledStatic("GB", escapeHtml(row.storage_gb == null ? "—" : `${row.storage_gb} GB`)),
         labelledStatic("Color", escapeHtml(row.color || "—")),
@@ -464,10 +470,19 @@
   async function labRead(promise){
     let timer;try{return await Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Phone data is taking too long. Check the connection and refresh.')),12000);})]);}finally{clearTimeout(timer);}
   }
+  function validateWorkbench(data){
+    const rows=data?.rows,parts=data?.work_options?.parts,services=data?.work_options?.services;
+    if(data?.damage_version!=='20261117-parts-request-damage-1'||!Array.isArray(rows)||
+       !rows.every(row=>typeof row.returned_from_final_qc==='boolean'&&typeof row.step_id==='string'&&row.step_id&&typeof row.job_id==='string'&&/^[0-9]{15}$/.test(row.imei)&&['laboratory','glass'].includes(row.department))||
+       new Set(rows.map(row=>row.step_id)).size!==rows.length||new Set(rows.map(row=>row.imei)).size!==rows.length||
+       !Number.isFinite(Date.parse(data.server_now))||!Array.isArray(parts)||!Array.isArray(services)||
+       ![...parts,...services].every(o=>typeof o.name==='string'&&o.name.trim()))throw new Error('Phone lines could not be verified.');
+    return data;
+  }
   async function readWorkbench(args) {
     const key=JSON.stringify(args);
     if(!workbenchReads.has(key)){
-      const request=labRead(getClient().rpc('get_lab_damage_workbench_v1',args)).then(({data,error})=>{if(error)throw error;if(!data||data.damage_version!=='20261117-parts-request-damage-1'||!Array.isArray(data.rows)||!data.rows.every(row=>typeof row.returned_from_final_qc==='boolean'&&typeof row.step_id==='string'&&row.step_id&&typeof row.job_id==='string'&&/^[0-9]{15}$/.test(row.imei)&&['laboratory','glass'].includes(row.department))||new Set(data.rows.map(row=>row.step_id)).size!==data.rows.length||new Set(data.rows.map(row=>row.imei)).size!==data.rows.length||!Number.isFinite(Date.parse(data.server_now))||!Array.isArray(data.work_options?.parts)||!Array.isArray(data.work_options?.services)||![...data.work_options.parts,...data.work_options.services].every(o=>typeof o.name==='string'&&o.name.trim()))throw new Error('Phone lines could not be verified.');return data;}).finally(()=>workbenchReads.delete(key));
+      const request=labRead(getClient().rpc('get_lab_damage_workbench_v1',args)).then(({data,error})=>{if(error)throw error;return validateWorkbench(data);}).finally(()=>workbenchReads.delete(key));
       workbenchReads.set(key,request);
     }
     return workbenchReads.get(key);
@@ -480,13 +495,70 @@
     technicianRows=rows;renderTechnicianLines();
   }
   function alignSelectedCounter(){
-    if(isFrameMode||focusedImei||bulkWorkbenchImeis||window.GREENLOOP_LAB_PENDING_CONTEXT?.hasDrafts())return;
+    if(isFrameMode||focusedImei||bulkWorkbenchImeis||activeStockScope||window.GREENLOOP_LAB_PENDING_CONTEXT?.hasDrafts())return;
     const selected=technicians.find(t=>String(t.id)===String(activeTechnicianId));if(!selected)return;
     const count=new Set(technicianRows.map(row=>row.imei)).size;
     if(selected.pending_count!==count){selected.pending_count=count;renderTechnicianCards();}
   }
+  function stockChangeBlocked(){
+    return stockPending||mainScanReads||technicianEditorIsActive()||window.GREENLOOP_LAB_PENDING_CONTEXT.hasDrafts()||window.GREENLOOP_BULK_IMEI?.busy;
+  }
+  function renderStockPages(){
+    if(!stockPages)return;
+    stockPages.hidden=!activeStockScope;
+    if(!activeStockScope)return;
+    const {page,total}=activeStockScope,first=(page-1)*50;
+    stockPages.querySelector('[data-stock-range]').textContent=total?`${first+1}–${Math.min(first+50,total)} of ${total} matching phones`:'0 matching phones';
+    stockPages.querySelector('[data-stock-prev]').disabled=stockPending||page<=1;
+    stockPages.querySelector('[data-stock-next]').disabled=stockPending||first+50>=total;
+  }
+  function leaveStockScope(){
+    if(!activeStockScope)return;
+    activeStockScope=null;
+    stockSelector?.reset();
+    renderStockPages();
+  }
+  async function loadStockRows(filters,page=1,{newSelection=false,quiet=false}={}){
+    if(stockChangeBlocked()||labStopped||!searchable()||!app.isConnected)return;
+    stockPending=true;renderStockPages();
+    const version=++rowLoadVersion,editsAtStart=editVersion;
+    const current=()=>!labStopped&&searchable()&&version===rowLoadVersion&&editsAtStart===editVersion&&app.isConnected
+      &&!technicianEditorIsActive()&&!window.GREENLOOP_LAB_PENDING_CONTEXT.hasDrafts();
+    try{
+      const {data,error}=await labRead(getClient().rpc('get_lab_stock_workbench_v1',{p_filters:filters,p_page:page}));
+      if(!current())return;
+      if(error)throw error;
+      validateWorkbench(data);
+      const {total,page:loadedPage,rows}=data;
+      if(!Number.isSafeInteger(total)||total<0||loadedPage!==Math.min(page,Math.max(1,Math.ceil(total/50)))||
+         rows.length!==Math.min(50,Math.max(0,total-(loadedPage-1)*50)))throw new Error('Selected stock page could not be verified.');
+      if(newSelection){await workFilters.clear();if(!current())return;clearImeiFocus(false);activePhoneStepId='';}
+      activeStockScope={filters,page:loadedPage,total};
+      renderTechnicianCards();
+      applyWorkbenchRows(rows,{quiet:quiet&&!newSelection,serverTime:data.server_now,workOptions:data.work_options});
+      setBoardMessage();
+      return total;
+    }finally{stockPending=false;renderStockPages();}
+  }
+  async function clearStockRows(){
+    if(!activeStockScope)return;
+    leaveStockScope();
+    setBoardMessage();
+    technicianRows=[];
+    renderTechnicianCards();
+    renderTechnicianLines();
+    await loadTechnicianRows();
+  }
+  stockPages?.addEventListener('click',event=>{
+    const button=event.target.closest('button');
+    if(!button||!activeStockScope)return;
+    if(stockChangeBlocked()){setBoardMessage('Save or cancel your phone changes before changing pages.');return;}
+    const {filters,page}=activeStockScope;
+    loadStockRows(filters,page+(button.hasAttribute('data-stock-prev')?-1:1)).catch(error=>setBoardMessage(error.message||'Selected stock could not load.'));
+  });
   async function loadTechnicianRows({quiet=false}={}) {
-    if(window.GREENLOOP_BULK_IMEI?.busy)return;
+    if(stockPending||window.GREENLOOP_BULK_IMEI?.busy)return;
+    if(activeStockScope){await loadStockRows(activeStockScope.filters,activeStockScope.page,{quiet});return;}
     if(bulkWorkbenchImeis){await loadBulkWorkbench(bulkWorkbenchImeis,{replace:true});return;}
     if(!app.isConnected)return;
     const version=++rowLoadVersion,technicianId=activeTechnicianId,editsAtStart=editVersion,scan=focusedImei;
@@ -534,12 +606,13 @@
     }
   }
   window.GREENLOOP_LAB_PENDING_CONTEXT = Object.freeze({
-    hasDrafts: () => [...lineDrafts.values()].some(d => d.partsDirty || d.servicesDirty) || !!technicianWorkRows.querySelector('tr[data-dirty="true"], tr[data-editing="true"], tr[data-busy="yes"]'),
+    hasDrafts: () => [...lineDrafts.values()].some(d => d.partsDirty || d.servicesDirty) || !!technicianWorkRows.querySelector('tr[data-dirty="true"]:not([data-saved="yes"]), tr[data-editing="true"]:not([data-saved="yes"]), tr[data-busy="yes"]'),
     onTransferred: () => refreshAll()
   });
   async function refreshAll() {
     if (isFrameMode) { await loadFrameRows(); return; }
     const previous=activeTechnicianId;
+    if(activeStockScope||stockPending){await Promise.all([loadTechnicians(previous),loadTechnicianRows({quiet:true})]);return;}
     if(previous){const results=await Promise.all([loadTechnicians(previous),loadTechnicianRows({quiet:true})]);if(previous!==activeTechnicianId)await loadTechnicianRows();else if(results[1]===true)alignSelectedCounter();}
     else{await loadTechnicians();await loadTechnicianRows();}
   }
@@ -629,6 +702,7 @@
         button.textContent = label;
       } else {
         controls.forEach(([control]) => { control.disabled = true; });
+        if(activeStockScope)scheduleBackgroundRefresh();
       }
     }
   }
@@ -698,6 +772,7 @@
       await Promise.all(Array.from({length:Math.min(4,imeis.length)},worker));if(!current())return;
       if(loaded.length||options.replace||prepared.length){
         const combined=[...new Map(loaded.map(row=>[row.imei,row])).values()];
+        leaveStockScope();
         bulkWorkbenchImeis=combined.map(row=>row.imei);focusedImei='';focusedStepId='';activeTechnicianId='__bulk__';clearTechnicianImei.hidden=false;
         renderTechnicianCards();if(last)applyWorkbenchRows(combined,{serverTime:last.server_now,workOptions:last.work_options});else{technicianRows=combined;renderTechnicianLines();}
         setBoardMessage(loaded.length+' phone lines loaded.',true);
@@ -732,6 +807,7 @@
       const {data,row,imei:canonical}=result;
       const technician=technicians.find(t=>String(t.id)===String(data.employee_id))||{id:data.employee_id,full_name:data.employee_name,pending_count:1,unassigned:data.unassigned};
       if(!technicians.some(t=>String(t.id)===String(technician.id)))technicians.push(technician);
+      leaveStockScope();
       bulkWorkbenchImeis=null;activeTechnicianId=String(technician.id);focusedImei=canonical;focusedStepId=String(row.step_id);clearTechnicianImei.hidden=false;
       renderTechnicianCards();await workFilters.clear();if(!current())return;
       applyWorkbenchRows([row],{serverTime:data.server_now,workOptions:data.work_options});
@@ -794,7 +870,7 @@
   }
   async function runBackgroundRefresh(){
     backgroundTimer=null;if(labStopped||document.hidden||app.hidden||backgroundRead)return;
-    if(mainScanReads||technicianEditorIsActive()||window.GREENLOOP_LAB_PENDING_CONTEXT.hasDrafts()||window.GREENLOOP_BULK_IMEI?.busy){backgroundQueued=true;backgroundTimer=setTimeout(runBackgroundRefresh,1000);return;}
+    if(stockChangeBlocked()){backgroundQueued=true;backgroundTimer=setTimeout(runBackgroundRefresh,1000);return;}
     backgroundQueued=false;
     backgroundRead=refreshAll();
     try{await backgroundRead;}catch(error){if(!labStopped)setBoardMessage(error.message||'Phone details could not refresh. Use Refresh to retry.');}
@@ -802,7 +878,18 @@
   }
   function stopLabReads(){labStopped=true;++rowLoadVersion;++imeiLookupVersion;clearTimeout(backgroundTimer);backgroundQueued=false;technicianRows=[];technicians=[];lineDrafts.clear();technicianWorkRows.replaceChildren();technicianCards.replaceChildren();app.hidden=true;}
   for(const event of ['greenloop:office-locked','greenloop:signed-out','pagehide'])window.addEventListener(event,stopLabReads);
-  window.addEventListener('greenloop:permissions-changed',()=>{if(window.GREENLOOP_CAN?.('view',isFrameMode?'frame_department':'lab_glass')!==true)stopLabReads();else{++rowLoadVersion;workbenchReads.clear();scheduleBackgroundRefresh();}});
+  window.addEventListener('greenloop:permissions-changed',()=>{
+    if(window.GREENLOOP_CAN?.('view',isFrameMode?'frame_department':'lab_glass')!==true){stopLabReads();return;}
+    ++rowLoadVersion;
+    workbenchReads.clear();
+    if(activeStockScope&&!searchable()){
+      leaveStockScope();
+      technicianRows=[];
+      renderTechnicianCards();
+      renderTechnicianLines();
+    }
+    scheduleBackgroundRefresh();
+  });
   async function initialize() {
     configureMode();
     if (!config.supabaseUrl || !config.supabaseAnonKey || !window.supabase) throw new Error("Supabase authentication is not configured.");
@@ -814,7 +901,13 @@
     await window.GREENLOOP_ACCESS_READY;
     if (window.GREENLOOP_PAGE_ACCESS?.pageKey !== (isFrameMode ? "frame_department" : "lab_glass")) return;
     app.hidden = false;
-    if (!isFrameMode) {await refreshAll();}
+    if (!isFrameMode) {
+      stockSelector=window.GREENLOOP_QC_STOCK_SCOPE.attach({
+        host:document.querySelector('#technician-board'),stage:'lab_glass',client:getClient(),
+        blocked:stockChangeBlocked,load:filters=>loadStockRows(filters,1,{newSelection:true}),clear:clearStockRows
+      });
+      await refreshAll();
+    }
     else {await loadFrameGrades();await refreshAll();}
     if (!isFrameMode) {
       window.GREENLOOP_EMPLOYEES?.watch(scheduleBackgroundRefresh);
@@ -862,7 +955,9 @@
   document.addEventListener('greenloop:permissions-changed',()=>{if(!isFrameMode)renderTechnicianCards();});
   technicianCards.addEventListener("click", (event) => {
     const card = event.target.closest("[data-technician-id]"); if (!card) return;
-    if(card.dataset.technicianId===activeTechnicianId&&!focusedImei)return;
+    if((activeStockScope||stockPending)&&stockChangeBlocked()){setBoardMessage('Save or cancel your phone changes before opening a technician list.');return;}
+    if(card.dataset.technicianId===activeTechnicianId&&!focusedImei&&!activeStockScope)return;
+    leaveStockScope();
     bulkWorkbenchImeis=null; clearImeiFocus(false); activePhoneStepId=""; activeTechnicianId = card.dataset.technicianId; technicianRows = [];
     renderTechnicianCards(); technicianWorkRows.innerHTML='<tr><td colspan="12" class="technician-lines-empty">Loading phone lines…</td></tr>';
     workFilters.clear().then(() => loadTechnicianRows()).catch(error => setBoardMessage(error.message));

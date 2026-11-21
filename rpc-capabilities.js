@@ -123,3 +123,5 @@
   Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,rules);
   Object.assign(root.GREENLOOP_RPC_CAPABILITIES,rules);
 })(typeof window!=="undefined"?window:globalThis);
+
+(function(root){const rules={"get_lab_stock_workbench_v1":{"page":"lab_glass","capability":"search","read":true},"get_lab_stock_workbench_version":{"read":true}};Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,rules);Object.assign(root.GREENLOOP_RPC_CAPABILITIES,rules);})(typeof window!=="undefined"?window:globalThis);
