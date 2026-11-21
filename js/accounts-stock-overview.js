@@ -7,9 +7,12 @@
   const can=cap=>window.GREENLOOP_CAN?.(cap,'accounts')===true;
   const allowed=()=>!stopped&&can('view')&&can('supplier_stock');
   const modes={
-    in:{label:'In Stock',metrics:[['original_received','Original received'],['replacement_received','Replacement received'],['total_received','Total received']]},
-    out:{label:'Out Stock',metrics:[['exported','Exported'],['supplier_returned','Returned to supplier'],['outside_chaman','Outside Greenloop (Chaman)'],['total_out','Total out']]},
-    balance:{label:'Balance Stock',metrics:[['in_company','In company'],['ready','Ready Stock'],['in_process','In process'],['receipt_balance','Receipt balance (incl. exports & Chaman)']]}
+    in:{label:'In Stock',metrics:[['original_received','Total Received'],['replacement_received','Replacements Received']],
+      supporting:['total_received']},
+    out:{label:'Out Stock',metrics:[['exported','Exported'],['net_returned','Net Returned to Supplier'],['outside_chaman','At Chaman'],['net_out','Total Out']],
+      supporting:['supplier_returned','replacement_received','total_out']},
+    balance:{label:'Balance Stock',metrics:[['original_received','Total Received'],['exported','Exported'],['net_returned','Net Returned'],['outside_chaman','At Chaman'],['in_company','Balance in Company']],
+      supporting:['supplier_returned','replacement_received','calculated_balance']}
   };
   const phoneHeaders=['S.No','IMEI','Model','GB','Color','Grade','Status','Supplier','Stock / Batch','Invoice'];
   const fields=['Supplier','Stock / Batch','Invoice','Date received'];
@@ -28,8 +31,8 @@
     '<form id="aso-search" class="aso-search" role="search" hidden><label for="aso-imei">Search IMEI</label><input type="search" id="aso-imei" placeholder="IMEI 1 or IMEI 2" inputmode="numeric" autocomplete="off" data-capability="search" data-capability-page="accounts">'+
     '<button type="submit" class="secondary-button" data-capability="search" data-capability-page="accounts">Search</button><button type="button" id="aso-clear-imei" class="secondary-button" data-capability="search" data-capability-page="accounts" hidden>Clear</button></form>'+
     '<div class="aid-export-actions" id="aso-exports"></div></div>'+
-    '<p id="aso-status" role="status" hidden></p><h3 class="greenloop-stock-heading" id="aso-summary-title">In Stock</h3><div class="aso-summary" id="aso-summary"></div>'+
-    '<section id="aso-details" aria-label="Stock details" hidden><p id="aso-phone-note" hidden></p><div class="aid-table-wrap" tabindex="0" role="region" aria-label="Stock details table"><table class="aid-table" data-preserve-table-layout><thead></thead><tbody></tbody></table></div>'+
+    '<p id="aso-status" role="status" hidden></p><h3 class="greenloop-stock-heading" id="aso-summary-title">In Stock</h3><div class="aso-summary" id="aso-summary"></div><p id="aso-balance-note" class="aso-note" role="status" hidden></p>'+
+    '<section id="aso-details" aria-label="Stock details" hidden><p id="aso-phone-note" class="aso-note" hidden></p><div class="aid-table-wrap" tabindex="0" role="region" aria-label="Stock details table"><table class="aid-table" data-preserve-table-layout><thead></thead><tbody></tbody></table></div>'+
     '<div class="aid-footer"><span id="aso-count" aria-live="polite"></span><div><button type="button" class="secondary-button" id="aso-prev" data-capability="supplier_stock" data-capability-page="accounts">Previous</button><button type="button" class="secondary-button" id="aso-next" data-capability="supplier_stock" data-capability-page="accounts">Next</button></div></div></section>';
 
   const element=id=>$('#aso-'+id);
@@ -82,7 +85,8 @@
     $('thead').replaceChildren();$('tbody').replaceChildren();element('count').textContent='';
   }
   function clearReport(){
-    report=null;phoneReport=null;element('summary').replaceChildren();clearDetails();
+    report=null;phoneReport=null;element('summary').replaceChildren();
+    element('balance-note').hidden=true;element('balance-note').textContent='';clearDetails();
   }
   function fillSelect(select,options,value=select.value){
     const first=new Option(select.options[0].textContent,'');
@@ -106,8 +110,10 @@
     if(data?.mode!==requestedMode||data.offset!==start||!Number.isSafeInteger(data.total)||data.total<0||
       !/^[a-f0-9]{32}$/.test(data.snapshot)||!Array.isArray(data.rows)||data.rows.length!==Math.max(0,Math.min(size,data.total-start))||
       !data.summary||new Set(data.rows.map(row=>row.batch_id)).size!==data.rows.length)throw Error('Stock Overview data could not be verified. Refresh and try again.');
-    const keys=modes[requestedMode].metrics.map(([key])=>key);
-    const isQuantity=(value,key)=>value===null||(Number.isSafeInteger(value)&&(value>=0||key==='receipt_balance'));
+    const {metrics,supporting}=modes[requestedMode];
+    const keys=[...metrics.map(([key])=>key),...supporting];
+    const isQuantity=(value,key)=>value===null||(Number.isSafeInteger(value)&&
+      (value>=0||['net_returned','net_out','calculated_balance'].includes(key)));
     if((data.total&&keys.some(key=>!isQuantity(data.summary[key],key)))||
       data.rows.some(row=>!row.batch_id||keys.some(key=>!isQuantity(row[key],key))))throw Error('Stock quantities could not be verified. Refresh and try again.');
     return data;
@@ -115,9 +121,19 @@
   function headers(){
     return ['S.No',...fields,...modes[mode].metrics.map(([,label])=>label)];
   }
-  function rowCells(r,index,format){
+  function rowCells(r,index){
     return [index+1,supplierLabel(r,true),batchLabel(r),textCell(r.invoice_number),downloads.date(r.received_at),
-      ...metricKeys().map(key=>format?number(r[key]):r[key]??'Not recorded')];
+      ...metricKeys().map(key=>number(r[key]))];
+  }
+  function addBreakdown(cell,row){
+    const small=document.createElement('small');
+    small.className='aso-return-breakdown';
+    small.textContent='(Total returned '+number(row.supplier_returned)+' · Replacements received '+number(row.replacement_received)+')';
+    cell.append(small);
+  }
+  function receiptBalanceNote(row){
+    if(!Number.isSafeInteger(row.calculated_balance)||row.calculated_balance===row.in_company)return '';
+    return 'Receipt calculation '+number(row.calculated_balance)+' · Count in company '+number(row.in_company)+'.';
   }
   function phoneCells(r,index){
     return [index+1,r.imei,textCell(r.model),r.storage_gb==null?'Not recorded':r.storage_gb+' GB',
@@ -135,17 +151,27 @@
   function phoneNote(total){
     if(query)return 'IMEI search '+query+' · '+number(total)+' matching IMEI '+(total===1?'record':'records');
     const count=report.summary[{in:'total_received',out:'total_out',balance:'in_company'}[mode]];
-    if(!Number.isSafeInteger(count)||count===total)return '';
-    if(count<total)return 'The recorded IMEI count differs from the stock total by '+number(total-count)+'.';
+    const historyNote=report.summary.replacement_received>0
+      ? {in:'The IMEI list includes original and replacement receipts.',
+        out:'The IMEI list includes all actual returns. Replacements are deducted in Net Returned.'}[mode]
+      : '';
+    if(!Number.isSafeInteger(count)||count===total)return historyNote||'';
     const missing=count-total;
-    return number(missing)+' '+(missing===1?'phone in the stock total has':'phones in the stock total have')+' no matching IMEI record.';
+    const gap=missing<0
+      ? 'The recorded IMEI count differs from the stock total by '+number(-missing)+'.'
+      : number(missing)+' '+(missing===1?'phone in the stock total has':'phones in the stock total have')+' no matching IMEI record.';
+    return [historyNote,gap].filter(Boolean).join(' ');
   }
   function render(){
     const summary=element('summary');
     summary.replaceChildren(...modes[mode].metrics.map(([key,label])=>{
       const div=document.createElement('div'),name=document.createElement('span'),value=document.createElement('strong');
-      name.textContent=label;value.textContent=number(report.total?report.summary[key]:0);div.append(name,value);return div;
+      name.textContent=label;value.textContent=number(report.total?report.summary[key]:0);div.append(name,value);
+      if(key==='net_returned')addBreakdown(div,report.total?report.summary:{supplier_returned:0,replacement_received:0});
+      return div;
     }));
+    const balanceNotice=element('balance-note'),balanceMessage=mode==='balance'?receiptBalanceNote(report.summary):'';
+    balanceNotice.textContent=balanceMessage;balanceNotice.hidden=!balanceMessage;
     const isPhone=details==='imei',selected=isPhone?phoneReport:report;
     if(!details||!selected){clearDetails();return;}
     const labels=isPhone?phoneHeaders:headers(),head=$('thead'),body=$('tbody');
@@ -159,8 +185,11 @@
     body.replaceChildren();
     for(const [index,record] of selected.rows.entries()){
       const line=body.insertRow();
-      const cells=isPhone?phoneCells(record,offset+index):rowCells(record,offset+index,true);
-      for(const value of cells)line.insertCell().textContent=value;
+      const cells=isPhone?phoneCells(record,offset+index):rowCells(record,offset+index);
+      for(const [column,value] of cells.entries()){
+        const cell=line.insertCell();cell.textContent=value;
+        if(!isPhone&&modes[mode].metrics[column-fields.length-1]?.[0]==='net_returned')addBreakdown(cell,record);
+      }
     }
     if(!selected.total){
       const cell=body.insertRow().insertCell();cell.colSpan=labels.length;

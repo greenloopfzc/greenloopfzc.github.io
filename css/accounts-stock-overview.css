@@ -48,7 +48,9 @@
 .aso-search {flex:1 1 330px}
 .aso-search label {font-weight:700;font-size:13px}
 .aso-search input {flex:1;min-width:125px}
-#aso-phone-note {font-size:13px;color:var(--nm-muted,#526b79)}
+.aso-note,.aso-return-breakdown {font-size:13px;color:var(--nm-muted,#526b79)}
+.aso-return-breakdown {display:block}
+.aid-table .aso-return-breakdown {margin-top:4px;font-size:11px;white-space:normal}
 #aso-details .aid-table :is(th,td) {overflow-wrap:anywhere}
 @media (max-width:600px) {
   #accounts-overview-panel {padding:14px}
