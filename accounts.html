@@ -22,7 +22,7 @@
 <script defer src="js/imei-scan.js?v=20261118-lab-single-notice-1"></script>
 <script defer src="js/imei-stage-notice.js?v=20261118-lab-single-notice-1"></script>
   <script defer src="js/permission-catalog.js?v=20261119-stage-change-parts-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261119-parts-queue-membership-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261121-accounts-stock-overview-1"></script>
 <script defer src="js/page-capabilities.js?v=20261104-report-permissions-1"></script>
 <link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
 <script defer src="js/office-access.js?v=20261024-office-access-1"></script>
@@ -31,7 +31,7 @@
 <script defer src="js/stock-consistency.js?v=20261118-operational-loading-1"></script>
 <script defer src="js/batch-quantity-display.js?v=20261107-batch-quantity-labels-1"></script>
 <script src="complete-lists.js?v=20261113-stock-units-1" defer></script>
-  <script defer src="js/config.js?v=20261118-issuance-grade-edit-1"></script>
+  <script defer src="js/config.js?v=20261121-accounts-stock-overview-1"></script>
 <link rel="stylesheet" href="css/cable-workspace.css?v=20261111-replacement-cable-1">
 <script defer src="js/reader-connection.js?v=20261106-reader-port-fallback-1"></script>
 <script defer src="js/device-reader.js?v=20261117-primary-imei-1"></script>
@@ -42,6 +42,7 @@
   <script defer src="js/record-search.js?v=20261105-stock-consistency-1"></script>
     <script defer src="js/part-notifications.js?v=20261118-background-read-speed-1"></script>
     <link rel="stylesheet" href="css/accounts-imei-data.css?v=20261113-stock-units-1">
+    <link rel="stylesheet" href="css/accounts-stock-overview.css?v=20261121-accounts-stock-overview-1">
     <script defer src="js/report-downloads.js?v=20261117-parts-damage-1"></script>
     <link rel="stylesheet" href="css/exchange-pairs.css?v=20261113-stock-units-1">
 <script defer src="js/exchange-pairs.js?v=20261113-stock-units-1"></script>
@@ -50,7 +51,8 @@
     <script defer src="js/accounts-cards.js?v=20261113-stock-units-1"></script>
     <script defer src="js/accounts-imei-data.js?v=20261120-imei-bounded-export-1"></script>
 
-    <script defer src="js/accounts-stock.js?v=20261113-mint-models-speed-1"></script>
+    <script defer src="js/accounts-stock-overview.js?v=20261121-accounts-stock-overview-1"></script>
+    <script defer src="js/accounts-stock.js?v=20261121-accounts-stock-overview-1"></script>
     <script defer src="js/box-workflow.js?v=20261112-summary-cards-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261111-ruby-obsidian-1">
     <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261102-imei-scan-location-1">
@@ -81,6 +83,7 @@
               <button type="button" class="accounts-section-card" data-accounts-view="supplier" data-search-read-only aria-pressed="false"><span class="accounts-card-icon" aria-hidden="true">▦</span><strong>Supplier Stock</strong><small>All suppliers in one stock table.</small></button>
               <button type="button" class="accounts-section-card" data-accounts-view="customer" data-search-read-only aria-pressed="false"><span class="accounts-card-icon" aria-hidden="true">↗</span><strong>Customer Stock</strong><small>All customers and their exported phones.</small></button>
               <button type="button" class="accounts-section-card" data-accounts-view="imei" data-capability="imei_data" data-capability-page="accounts" data-search-read-only aria-pressed="false" hidden><span class="accounts-card-icon" aria-hidden="true">▤</span><strong>IMEI DATA</strong><small>Stock phone lists, returns and PDF / Excel downloads.</small></button>
+              <button type="button" class="accounts-section-card" data-accounts-view="overview" data-capability="supplier_stock" data-capability-page="accounts" data-search-read-only aria-pressed="false" hidden><span class="accounts-card-icon" aria-hidden="true">▥</span><strong>Stock Overview</strong><small>In, out and balance stock.</small></button>
             </nav>
             <section id="accounts-verify-panel" aria-label="Verify Box">
             <form id="box-queue-filter" class="box-queue-filter"><label>From date<input name="from" type="date"></label><label>To date<input name="to" type="date"></label><button class="primary-button" type="submit" data-search-read-only>Show boxes</button><button id="clear-box-dates" class="secondary-button" type="button" data-search-read-only>All dates</button></form>
@@ -89,6 +92,7 @@
             <section id="box-queue-detail" class="box-queue-card" hidden></section>
             </section>
             <section id="accounts-imei-panel" hidden aria-label="IMEI DATA"></section>
+            <section id="accounts-overview-panel" hidden aria-label="Stock Overview"></section>
             <section id="accounts-stock-panel" hidden aria-labelledby="accounts-stock-title">
               <div class="accounts-stock-heading"><h2 id="accounts-stock-title">Supplier Stock</h2><span id="accounts-stock-updated" class="live-chip" role="status"></span></div>
               <div id="accounts-stock-downloads" class="box-actions"></div>

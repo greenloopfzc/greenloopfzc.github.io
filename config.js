@@ -147,7 +147,8 @@ window.GREENLOOP_CONFIG = Object.freeze({
       const rpc = sharedClient.rpc.bind(sharedClient);
       sharedClient.rpc = async (name, ...args) => {
         // Keep the existing access and office checks when cancelling obsolete Accounts reads.
-        const signal=name==='get_accounts_card_report_v1'?args[1]?.signal:null;
+        const overviewRead=name==='get_accounts_stock_overview_v1'||name==='export_accounts_stock_overview_v1';
+        const signal=name==='get_accounts_card_report_v1'||overviewRead?args[1]?.signal:null;
         if(signal){args[1]={...args[1]};delete args[1].signal;}
         // Versioned RPC requirements distinguish independent page actions.
         // The bootstrap readers must finish before accessReady can resolve.
@@ -160,7 +161,7 @@ window.GREENLOOP_CONFIG = Object.freeze({
           }
         }
         const leanRead=leanReads.has(name);
-        const stockRead=!leanRead&&!bootstrap.has(name)&&!name.startsWith('get_my_')&&/^(get_|list_|export_)/.test(name)&&!/_version$/.test(name);
+        const stockRead=!overviewRead&&!leanRead&&!bootstrap.has(name)&&!name.startsWith('get_my_')&&/^(get_|list_|export_)/.test(name)&&!/_version$/.test(name);
         const qcRead=stockRead&&['initial_qc','qc_issuance','final_qc','lab_glass','frame_department'].includes(window.GREENLOOP_PAGE_ACCESS?.pageKey)&&!args[0]?.p_filters;
         let stockReady;
         if(stockRead){await window.GREENLOOP_ACCESS_READY;if(qcRead)stockReady=Promise.resolve(window.GREENLOOP_STOCK?.ready()).then(()=>({ok:true}),error=>({error}));else await window.GREENLOOP_STOCK?.ready();}

@@ -103,3 +103,14 @@
   Object.assign(root.GREENLOOP_RPC_CAPABILITIES, rules);
 })(typeof window!=="undefined"?window:globalThis);
 (function(root){Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,{list_open_export_box_drafts_v1:{page:"export_boxes",capability:"view",read:true},create_open_export_box_draft_v1:{page:"export_boxes",capability:"scan"},scan_imeis_to_selected_export_box_v1:{page:"export_boxes",capability:"scan"},get_multiple_open_boxes_version:{read:true}});})(typeof window!=="undefined"?window:globalThis);
+
+(function(root){
+  const access=[{page:"accounts",capability:"view"},{page:"accounts",capability:"supplier_stock"}];
+  const rules={
+    get_accounts_stock_overview_v1:{all:access,read:true},
+    export_accounts_stock_overview_v1:{all:[...access,{page:"accounts",capability:"print"}],read:true},
+    get_accounts_stock_overview_version:{read:true}
+  };
+  Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,rules);
+  Object.assign(root.GREENLOOP_RPC_CAPABILITIES,rules);
+})(typeof window!=="undefined"?window:globalThis);

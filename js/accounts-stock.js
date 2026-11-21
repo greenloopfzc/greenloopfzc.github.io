@@ -140,14 +140,15 @@
     } finally { if(token===stockGeneration){loadingStock=false;readController=null;stockFilters.setBusy(false);pagination();} }
   }
   function showView(next) {
-    if (context.isBusy() || window.GREENLOOP_ACCOUNTS_IMEI?.isBusy() || !['verify','supplier','customer','imei'].includes(next)) return;
+    if (context.isBusy() || window.GREENLOOP_ACCOUNTS_IMEI?.isBusy() || !['verify','supplier','customer','imei','overview'].includes(next)) return;
     if(['supplier','customer'].includes(next)&&!mayReadStock(next))return;
+    if(next==='overview'&&!mayReadStock('supplier'))return;
     readController?.abort();readController=null;stockGeneration++;loadingStock=false;hideDetails();view=next;stockFilters.setBusy(false);
     document.querySelectorAll('[data-accounts-view]').forEach(b=>{const active=b.dataset.accountsView===view;b.classList.toggle('is-active',active);b.setAttribute('aria-pressed',String(active));});
     $('#accounts-verify-panel').hidden = view !== 'verify';
-    $('#accounts-stock-panel').hidden = view === 'verify' || view === 'imei';
+    $('#accounts-stock-panel').hidden = !['supplier','customer'].includes(view);
     document.dispatchEvent(new CustomEvent('greenloop:accounts-section',{detail:{view}}));
-    if (view === 'verify' || view === 'imei') return;
+    if ($('#accounts-stock-panel').hidden) return;
     offset = 0; query = {from:null,to:null,search:null}; $('#accounts-stock-filter').reset();
     const supplier = view === 'supplier';
     stockFilters.setSortFields((supplier ? supplierColumns : customerColumns).map(([label,key])=>[key,label,key.endsWith('_at')?'date':undefined]));
