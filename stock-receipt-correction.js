@@ -89,7 +89,10 @@
    `<tr><td>${data.offset+i+1}</td><td>${esc(date(h.changed_at))}</td><td>${esc(h.actor_name)}</td><td>${esc(h.old_name||'Not recorded')}</td><td>${esc(h.new_name)}</td><td>${esc(h.reason)}</td></tr>`
   ).join(''):'<tr><td colspan="6">No supplier name corrections recorded.</td></tr>';
   $('#src-name-history-range').textContent=data.history_total?`${data.offset+1}–${Math.min(data.offset+50,data.history_total)} of ${num(data.history_total)}`:'0 corrections';
-  nameStatus(data.can_rename?'':'This supplier is archived.');
+  if(!data.can_rename)nameStatus('This supplier is archived.');
+  else if(!data.may_edit&&can('receipt_supplier_name_correction'))
+   nameStatus('Supplier & Customer Names needs Edit access. Ask an authorized admin to enable Edit names in User Access.');
+  else nameStatus();
  }
  async function readName(next=0,review=null){
   if(busy||!receipt||!window.GREENLOOP_CAN_VIEW_PARTNER_NAMES)return;

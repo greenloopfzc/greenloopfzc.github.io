@@ -145,6 +145,7 @@
 
   function pageCheckboxes(selected = {}, partnerAccess = "none", isNew = false) {
     const permitted = can(isNew ? "create_users" : "manage_access");
+    const namesView = partnerAccess === "view" || partnerAccess === "edit";
     const pages = isNew && !currentUserIsSuperAdmin ? pageGuideData.filter(page => page.key !== "user_access") : pageGuideData;
     return pages.map(page => {
       const values = Array.isArray(selected[page.key]) ? selected[page.key] : [];
@@ -156,7 +157,10 @@
         <div class="permission-page-heading"><label class="permission-check"><input type="checkbox" data-page-view value="${escapeHtml(page.key)}" aria-label="${escapeHtml(page.label)}: View"${visible ? " checked" : ""}${locked ? " disabled" : ""}><strong>${escapeHtml(page.label)}</strong><span class="permission-view-label">View</span></label><small>${escapeHtml(page.description)}</small><span class="permission-selection-count">${visible ? values.length - 1 : 0} additional actions selected</span></div>
         <div class="permission-capabilities" role="group" aria-label="${escapeHtml(page.label)} permissions">${page.key === "reports" ? reportPermissionGroups(page,values,visible,locked) : actions.map(item => capabilityCheckbox(page, item, values, visible, locked, payableEnabled)).join("")}</div>
       </article>`;
-    }).join("") + `<article class="role-option${partnerAccess !== "none" ? " is-selected" : ""}" data-partner-name-option><div class="permission-page-heading"><label class="permission-check"><input type="checkbox" data-partner-names${partnerAccess !== "none" ? " checked" : ""}${permitted ? "" : " disabled"}><strong>Supplier &amp; Customer Names</strong></label><small>Show confidential names. Supplier and customer codes remain visible on allowed pages.</small></div></article>`;
+    }).join("") + `<article class="role-option${namesView ? " is-selected" : ""}" data-partner-name-option>
+      <div class="permission-page-heading"><label class="permission-check"><input type="checkbox" data-partner-names${namesView ? " checked" : ""}${permitted ? "" : " disabled"}><strong>Supplier &amp; Customer Names</strong><span class="permission-view-label">View</span></label><small>Show confidential names. Supplier and customer codes remain visible on allowed pages.</small></div>
+      <div class="permission-capabilities"><label class="permission-capability"><input type="checkbox" data-partner-names-edit aria-label="Supplier and Customer Names: Edit"${partnerAccess === "edit" ? " checked" : ""}${permitted && namesView ? "" : " disabled"}><span><strong>Edit names</strong><small>Supplier name correction also requires its Reports action.</small></span></label></div>
+    </article>`;
   }
 
   function renderAppearance(container, selected = {}, isNew = false) {
@@ -198,12 +202,25 @@
     const contentContainer = document.getElementById(container === newRoleOptions ? "new-content-permissions" : "content-permissions");
     const content = [...contentContainer.querySelectorAll("[data-content-permission]:checked")].map(field => field.dataset.contentPermission);
     capabilities.content_access = content.length ? ["view", ...content] : [];
-    return {capabilities, pagePermissions, partnerNamesAccess:container.querySelector("[data-partner-names]")?.checked ? "view" : "none"};
+    const namesView = container.querySelector("[data-partner-names]")?.checked;
+    const namesEdit = container.querySelector("[data-partner-names-edit]")?.checked;
+    const partnerNamesAccess = namesView ? (namesEdit ? "edit" : "view") : "none";
+    return {capabilities, pagePermissions, partnerNamesAccess};
   }
 
   function syncPermissionCard(checkbox) {
     const card = checkbox.closest("[data-page-permission]");
-    if (!card) { checkbox.closest("[data-partner-name-option]")?.classList.toggle("is-selected", checkbox.checked); return; }
+    if (!card) {
+      const option = checkbox.closest("[data-partner-name-option]");
+      if (option) {
+        const view = option.querySelector("[data-partner-names]");
+        const edit = option.querySelector("[data-partner-names-edit]");
+        if (!view.checked) edit.checked = false;
+        edit.disabled = view.disabled || !view.checked;
+        option.classList.toggle("is-selected", view.checked);
+      }
+      return;
+    }
     const isNew = newRoleOptions.contains(card);
     if (!can(isNew ? "create_users" : "manage_access")) return;
     const view = card.querySelector("[data-page-view]");
@@ -358,7 +375,9 @@
         payable.disabled = pageLocked || !view.checked || !priced;
       }
     });
-    roleOptions.querySelector("[data-partner-names]").disabled = locked || !can("manage_access");
+    const namesView = roleOptions.querySelector("[data-partner-names]");
+    namesView.disabled = locked || !can("manage_access");
+    roleOptions.querySelector("[data-partner-names-edit]").disabled = namesView.disabled || !namesView.checked;
   }
   tvOnly.addEventListener("change", tvModeChanged);
 
@@ -398,7 +417,7 @@
     const rotationSettings=new Map(rotationResult.data.map(s=>[String(s.user_id),s]));
     const tvSettings = new Map((tvResult.data || []).map(row => [String(row.user_id), row]));
     const capabilitySettings = new Map((capabilityResult.data || []).map(row => [String(row.user_id), capabilityObject(row.capabilities)]));
-    const partnerSettings = new Map((partnerResult.data || []).map(row => [String(row.user_id), ["view", "edit"].includes(row.access_level) || row.can_view === true ? "view" : "none"]));
+    const partnerSettings = new Map((partnerResult.data || []).map(row => [String(row.user_id), ["none", "view", "edit"].includes(row.access_level) ? row.access_level : row.can_view === true ? "view" : "none"]));
     const nextUsers = (matrixResult.data || []).map(user => ({...user, tv_rotation:rotationSettings.get(String(user.user_id)), office_access:officeAccounts.get(String(user.user_id)), tv_employee_keys:employeeSettings.get(String(user.user_id)), tv_display:tvSettings.get(String(user.user_id)), capabilities:capabilitySettings.get(String(user.user_id)), partner_names_access:partnerSettings.get(String(user.user_id)) || "none"}));
     if (nextUsers.some(user => user.tv_employee_keys !== null && (!Array.isArray(user.tv_employee_keys) || user.tv_employee_keys.some(key => typeof key !== "string")))) throw new Error("TV employee selections could not be verified. Refresh before saving.");
     if (nextUsers.some(user => !user.tv_display || !user.capabilities || !user.tv_rotation)) throw new Error("Account permissions could not be verified. Refresh the account list.");
