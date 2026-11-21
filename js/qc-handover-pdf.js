@@ -106,14 +106,14 @@
     const fields=report.rows.map((phone,index)=>
       [String(index+1),phone.imei,phone.model||'-',phone.storage||'-',phone.color||'-',phone.grade||'-',batchQty(phone)]);
     const fieldValues=issuanceLabels.slice(0,workStart).map((_,col)=>new Set(fields.map(row=>row[col])));
-    const comfortable={size:8.7,leading:12,padding:12,minRow:31,partsSize:9,partsLeading:12,partsPadding:10,partsMinRow:24,inline:false};
-    const compact={size:8.1,leading:9,padding:1.4,minRow:10.4,partsSize:8.7,partsLeading:10,partsPadding:3,partsMinRow:14,inline:true};
+    const comfortable={size:8.7,leading:12,padding:12,minRow:31,partsSize:9,partsLeading:12,partsPadding:10,partsMinRow:24,dense:false};
+    const compact={size:8.1,leading:9,padding:1.4,minRow:10.4,partsSize:8.7,partsLeading:10,partsPadding:3,partsMinRow:14,dense:true};
 
     function layout(style,scale=1){
       const size=style.size*scale,leading=style.leading*scale,padding=style.padding*scale;
       const partsSize=style.partsSize*scale,partsLeading=style.partsLeading*scale;
       const widths=issuanceWidths.slice();
-      if(style.inline){
+      if(style.dense){
         let available=0;
         for(const [col,values] of fieldValues.entries()){
           let widest=measure(issuanceLabels[col],7.8,true);
@@ -129,8 +129,10 @@
       const rows=report.rows.map((phone,index)=>{
         const serial=index+1;
         const cells=fields[index].map((value,col)=>wrapIssuanceText(value,widths[col]-6,text=>measure(text,size,emphasis(col))).map(text=>({text})));
-        const lists=[phone.parts.map(part=>part.name+' × '+part.quantity),phone.services];
-        lists.forEach((items,index)=>cells.push(workLines(items,widths[workStart+index]-18,text=>measure(text,size),style.inline)));
+        const measureLine=text=>measure(text,size);
+        const parts=phone.parts.map(part=>part.name+' × '+part.quantity);
+        cells.push(workLines(parts,widths[workStart]-18,measureLine,false));
+        cells.push(workLines(phone.services,widths[workStart+1]-18,measureLine,style.dense));
         const height=Math.max(style.minRow*scale,Math.max(...cells.map(cell=>cell.length))*leading+padding);
         return {serial,cells,height};
       });
@@ -150,6 +152,9 @@
     // Keep the page title and table headers readable. Fit the table bodies in the remaining space.
     const bodyHeight=rowsHeight-partsGap-partsHeadingHeight-6;
     let fitted=layout(comfortable);
+    if(fitted.height>bodyHeight){
+      fitted=layout({...comfortable,padding:5,minRow:24,partsPadding:7,partsMinRow:21});
+    }
     if(fitted.height>bodyHeight){
       fitted=layout(compact);
       if(fitted.height>bodyHeight){
@@ -208,7 +213,7 @@
       '.sheet-logo{position:absolute;left:0;top:0;width:100pt;height:22pt;overflow:hidden;text-align:left;color:#146448}.sheet-logo img{position:absolute;width:118.519pt;height:39.537pt;left:-10.185pt;top:-9.26pt}'+
       'header h1{font-size:17pt;margin:0;padding-top:24pt}header p{margin:4pt 0;white-space:nowrap;color:#4c615d}'+
       'table{width:535pt;border-collapse:collapse;table-layout:fixed}th,td{border:.35pt solid #bdcfc7;text-align:center;vertical-align:middle;padding:0 3pt}'+
-      'thead th{height:22pt;background:#e1f0e8;font-size:7.8pt;line-height:9pt;padding-inline:2pt;white-space:nowrap}tbody tr{break-inside:avoid}tbody tr:nth-child(even){background:#f5f8f6}.sheet-line{white-space:pre}.emphasis{font-weight:bold}'+
+      'thead th{height:22pt;background:#e1f0e8;font-size:7.8pt;line-height:9pt;padding-inline:2pt;white-space:nowrap}tbody tr{break-inside:avoid}tbody td{border-block:0;box-shadow:inset 0 -.5pt #bdcfc7}tbody tr:nth-child(even){background:#f5f8f6}.sheet-line{white-space:pre}.emphasis{font-weight:bold}'+
       '.work-cell{text-align:left;vertical-align:top;padding:max(0pt,calc(var(--row-padding) / 2 - .3pt)) 3pt 0 15pt}.work-cell .sheet-line{position:relative}'+
       '.has-bullet::before{content:"";position:absolute;left:-7.5pt;top:50%;width:var(--bullet-size);height:var(--bullet-size);border-radius:50%;background:#146448;transform:translateY(-50%)}'+
       '.is-muted{color:#4c615d}tfoot td{height:16pt;background:#e1f0e8;font-size:8pt;line-height:9pt;font-weight:bold}footer{font-size:7pt;padding-top:7pt;display:flex;justify-content:space-between}'+
@@ -403,5 +408,5 @@
     const day = new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Dubai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(report.generatedAt)).replace(/[^0-9-]/g,'-');
     return {bytes:await pdf.save(), pages:pages.length, filename:'Greenloop-'+(report.issuance?'Lab-Glass-Issuance':'Initial-QC-Handover')+'-'+report.technician.replace(/[^a-z0-9]+/gi,'-')+'-'+day+'.pdf'};
   }
-  root.GREENLOOP_QC_HANDOVER_PDF = {version:'20261121-issuance-one-page-1',validate, create, printHtml};
+  root.GREENLOOP_QC_HANDOVER_PDF = {version:'20261121-issuance-separate-parts-1',validate, create, printHtml};
 })(typeof window !== 'undefined' ? window : globalThis);
