@@ -141,11 +141,13 @@
   }
   const movementKeys=['exported','supplier_returned','replacement_received','outside_chaman'];
   const grossOut=summary=>summary.exported+summary.supplier_returned+summary.outside_chaman;
-  function validPhones(data,requested,start,size,term){
+  function validPhones(data,requested,start,size,term,netExport=false){
     const isOut=requested==='out'&&!term;
     if(data?.mode!==requested||data.offset!==start||!Number.isSafeInteger(data.total)||data.total<0||
       !Number.isSafeInteger(data.missing_imei)||data.missing_imei<0||data.missing_imei>data.total||
       (isOut?movementKeys.some(key=>!Number.isSafeInteger(data.out_summary?.[key])||data.out_summary[key]<0):data.missing_imei!==0)||
+      (isOut&&netExport&&(!Number.isSafeInteger(data.out_summary.unreplaced_returned)||
+        data.out_summary.unreplaced_returned<0||data.out_summary.unreplaced_returned>data.out_summary.supplier_returned))||
       !/^[a-f0-9]{32}$/.test(data.snapshot)||!Array.isArray(data.rows)||data.rows.length!==Math.max(0,Math.min(size,data.total-start))||
       new Set(data.rows.map(row=>row.row_key)).size!==data.rows.length||
       data.rows.some(row=>!row.row_key||!row.status||
@@ -174,15 +176,22 @@
   function outExportSummary(data){
     const out=data.out_summary;
     if(!out)return [];
-    const gross=grossOut(out);
-    return [
+    const netReturned=out.supplier_returned-out.replacement_received;
+    const netTotal=grossOut(out)-out.replacement_received;
+    const lines=[
       'Exported '+number(out.exported)+' | At Chaman '+number(out.outside_chaman)+
-        ' | Total Returned '+number(out.supplier_returned)+' | Replacements Received '+number(out.replacement_received),
-      'Net Returned '+number(out.supplier_returned-out.replacement_received)+
-        ' | Total Out (net) '+number(gross-out.replacement_received)+' | Gross Movements '+number(gross),
+        ' | Returned without replacement '+number(out.unreplaced_returned),
+      'Net Returned '+number(netReturned)+' | Total Out (net) '+number(netTotal),
       number(data.total)+' movement rows | '+number(data.total-data.missing_imei)+' with recorded IMEI | '+
         number(data.missing_imei)+' IMEI not recorded'
     ];
+    if(out.unreplaced_returned!==netReturned){
+      lines.push('The supplier return rows use saved replacement links. Receipt quantities give a different net return count.');
+    }
+    if(out.exported+out.outside_chaman+out.unreplaced_returned!==data.total){
+      lines.push('Some stock movements have no matching IMEI record.');
+    }
+    return lines;
   }
   function render(){
     const summary=element('summary');
@@ -231,6 +240,7 @@
     downloads.close();
   }
   const phoneRpc='get_accounts_stock_overview_imeis_v2';
+  const outExportRpc='get_accounts_stock_overview_out_export_v1';
   const phoneArgs=()=>({...args(),p_imei:query});
   async function load({refresh=false,snapshot=null,scopeChanged=false}={}){
     if(!current())return;
@@ -278,15 +288,16 @@
     controls();status('Preparing IMEI export…');
     const permit=()=>current()&&canExport()&&!controller.signal.aborted&&report===selected;
     try{
-      const initial=details==='imei'&&phoneReport?phoneReport:validPhones(
-        await rpc(phoneRpc,{...params,p_offset:0,p_summary_only:true},controller.signal),params.p_mode,0,0,params.p_imei);
+      const netExport=params.p_mode==='out',exportRpc=netExport?outExportRpc:phoneRpc;
+      const initial=!netExport&&details==='imei'&&phoneReport?phoneReport:validPhones(
+        await rpc(exportRpc,{...params,p_offset:0,p_summary_only:true},controller.signal),params.p_mode,0,0,params.p_imei,netExport);
       if(!permit())return;
       if(!initial.total){status('No IMEIs match this selection.');return;}
       const rows=[],seen=new Set();
       while(rows.length<initial.total){
         const start=rows.length;
-        const data=validPhones(await rpc(phoneRpc,{...params,p_offset:start,p_export:true,
-          p_expected_snapshot:initial.snapshot},controller.signal),params.p_mode,start,250,params.p_imei);
+        const data=validPhones(await rpc(exportRpc,{...params,p_offset:start,p_export:true,
+          p_expected_snapshot:initial.snapshot},controller.signal),params.p_mode,start,250,params.p_imei,netExport);
         if(!permit())return;
         if(data.snapshot!==initial.snapshot||data.total!==initial.total||data.missing_imei!==initial.missing_imei||data.rows.some(row=>seen.has(row.row_key))){
           throw Error('The IMEI list changed. Refresh Stock Overview before exporting.');
@@ -294,11 +305,11 @@
         for(const row of data.rows){seen.add(row.row_key);rows.push(row);}
       }
       if(rows.filter(row=>row.imei===null).length!==initial.missing_imei)throw Error('The missing IMEI count could not be verified. Refresh and try again.');
-      const note=phoneNote(initial),summaryRows=outExportSummary(initial);
+      const summaryRows=outExportSummary(initial),note=summaryRows.length?'':phoneNote(initial);
       await downloads.output(kind,{
         title:'Stock Overview - '+modes[mode].label+' - IMEI List',
         subtitle:summaryRows.length?selectedScope:[selectedScope,number(initial.total)+' IMEI records',note].filter(Boolean).join(' | '),
-        summaryRows:summaryRows.length?[...summaryRows,note]:undefined,
+        summaryRows:summaryRows.length?summaryRows:undefined,
         headers:phoneHeaders,rows:rows.map(phoneCells),numericColumns:[0],wrapWords:true
       },permit,'accounts','imei_download');
       if(permit())status();

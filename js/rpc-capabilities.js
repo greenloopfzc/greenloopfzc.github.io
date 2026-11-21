@@ -112,6 +112,8 @@
     get_accounts_stock_overview_version:{read:true},
     get_accounts_stock_overview_imeis_v1:{all:[...access,{page:"accounts",capability:"imei_data"}],read:true},
     get_accounts_stock_overview_imeis_v2:{all:[...access,{page:"accounts",capability:"imei_data"}],read:true},
+    get_accounts_stock_overview_out_export_v1:{all:[...access,{page:"accounts",capability:"imei_data"},{page:"accounts",capability:"imei_download"},{page:"accounts",capability:"print"}],read:true},
+    get_accounts_stock_overview_net_export_version:{read:true},
     get_accounts_stock_overview_export_counts_version:{read:true},
     get_accounts_stock_overview_imeis_version:{read:true}
   };
