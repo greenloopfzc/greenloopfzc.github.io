@@ -111,6 +111,8 @@
     export_accounts_stock_overview_v1:{all:[...access,{page:"accounts",capability:"print"}],read:true},
     get_accounts_stock_overview_version:{read:true},
     get_accounts_stock_overview_imeis_v1:{all:[...access,{page:"accounts",capability:"imei_data"}],read:true},
+    get_accounts_stock_overview_imeis_v2:{all:[...access,{page:"accounts",capability:"imei_data"}],read:true},
+    get_accounts_stock_overview_export_counts_version:{read:true},
     get_accounts_stock_overview_imeis_version:{read:true}
   };
   Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,rules);

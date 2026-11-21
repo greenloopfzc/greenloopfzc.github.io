@@ -147,7 +147,7 @@ window.GREENLOOP_CONFIG = Object.freeze({
       const rpc = sharedClient.rpc.bind(sharedClient);
       sharedClient.rpc = async (name, ...args) => {
         // Keep the existing access and office checks when cancelling obsolete Accounts reads.
-        const overviewRead=['get_accounts_stock_overview_v1','export_accounts_stock_overview_v1','get_accounts_stock_overview_imeis_v1'].includes(name);
+        const overviewRead=['get_accounts_stock_overview_v1','export_accounts_stock_overview_v1','get_accounts_stock_overview_imeis_v1','get_accounts_stock_overview_imeis_v2'].includes(name);
         const signal=name==='get_accounts_card_report_v1'||overviewRead?args[1]?.signal:null;
         if(signal){args[1]={...args[1]};delete args[1].signal;}
         // Versioned RPC requirements distinguish independent page actions.

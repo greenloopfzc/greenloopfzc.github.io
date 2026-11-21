@@ -136,31 +136,53 @@
     return 'Receipt calculation '+number(row.calculated_balance)+' · Count in company '+number(row.in_company)+'.';
   }
   function phoneCells(r,index){
-    return [index+1,r.imei,textCell(r.model),r.storage_gb==null?'Not recorded':r.storage_gb+' GB',
+    return [index+1,textCell(r.imei),textCell(r.model),r.storage_gb==null?'Not recorded':r.storage_gb+' GB',
       textCell(r.color),textCell(r.grade),r.status,supplierLabel(r,true),batchLabel(r),textCell(r.invoice_number)];
   }
-  function validPhones(data,requested,start,size){
+  const movementKeys=['exported','supplier_returned','replacement_received','outside_chaman'];
+  const grossOut=summary=>summary.exported+summary.supplier_returned+summary.outside_chaman;
+  function validPhones(data,requested,start,size,term){
+    const isOut=requested==='out'&&!term;
     if(data?.mode!==requested||data.offset!==start||!Number.isSafeInteger(data.total)||data.total<0||
+      !Number.isSafeInteger(data.missing_imei)||data.missing_imei<0||data.missing_imei>data.total||
+      (isOut?movementKeys.some(key=>!Number.isSafeInteger(data.out_summary?.[key])||data.out_summary[key]<0):data.missing_imei!==0)||
       !/^[a-f0-9]{32}$/.test(data.snapshot)||!Array.isArray(data.rows)||data.rows.length!==Math.max(0,Math.min(size,data.total-start))||
       new Set(data.rows.map(row=>row.row_key)).size!==data.rows.length||
-      data.rows.some(row=>!row.row_key||!/^\d{15}$/.test(row.imei)||!row.status)){
+      data.rows.some(row=>!row.row_key||!row.status||
+        (!/^\d{15}$/.test(row.imei)&&!(isOut&&row.imei===null&&row.status==='Returned to Supplier')))){
       throw Error('The IMEI list could not be verified. Refresh and try again.');
     }
     return data;
   }
-  function phoneNote(total){
+  function phoneNote(data){
+    const {total,missing_imei:missingImei,out_summary:out}=data;
     if(query)return 'IMEI search '+query+' · '+number(total)+' matching IMEI '+(total===1?'record':'records');
-    const count=report.summary[{in:'total_received',out:'total_out',balance:'in_company'}[mode]];
-    const historyNote=report.summary.replacement_received>0
-      ? {in:'The IMEI list includes original and replacement receipts.',
-        out:'The IMEI list includes all actual returns. Replacements are deducted in Net Returned.'}[mode]
-      : '';
-    if(!Number.isSafeInteger(count)||count===total)return historyNote||'';
-    const missing=count-total;
-    const gap=missing<0
-      ? 'The recorded IMEI count differs from the stock total by '+number(-missing)+'.'
-      : number(missing)+' '+(missing===1?'phone in the stock total has':'phones in the stock total have')+' no matching IMEI record.';
-    return [historyNote,gap].filter(Boolean).join(' ');
+    const count=out?grossOut(out):report.summary[{in:'total_received',balance:'in_company'}[mode]];
+    const historyNote=out
+      ? 'The list shows actual stock movements. Total Out on the cards deducts received replacements.'
+      : mode==='in'&&report.summary.replacement_received>0?'The IMEI list includes original and replacement receipts.':'';
+    const included=missingImei?number(missingImei)+(missingImei===1?' return has':' returns have')+' no recorded IMEI and '+(missingImei===1?'is':'are')+' included.':'';
+    let gap='';
+    if(Number.isSafeInteger(count)&&count!==total){
+      const missing=count-total;
+      gap=missing<0
+        ? 'The listed count differs from the stock total by '+number(-missing)+'.'
+        : number(missing)+(missing===1?' phone in the stock total has':' phones in the stock total have')+' no matching IMEI record.';
+    }
+    return [historyNote,included,gap].filter(Boolean).join(' ');
+  }
+  function outExportSummary(data){
+    const out=data.out_summary;
+    if(!out)return [];
+    const gross=grossOut(out);
+    return [
+      'Exported '+number(out.exported)+' | At Chaman '+number(out.outside_chaman)+
+        ' | Total Returned '+number(out.supplier_returned)+' | Replacements Received '+number(out.replacement_received),
+      'Net Returned '+number(out.supplier_returned-out.replacement_received)+
+        ' | Total Out (net) '+number(gross-out.replacement_received)+' | Gross Movements '+number(gross),
+      number(data.total)+' movement rows | '+number(data.total-data.missing_imei)+' with recorded IMEI | '+
+        number(data.missing_imei)+' IMEI not recorded'
+    ];
   }
   function render(){
     const summary=element('summary');
@@ -175,7 +197,7 @@
     const isPhone=details==='imei',selected=isPhone?phoneReport:report;
     if(!details||!selected){clearDetails();return;}
     const labels=isPhone?phoneHeaders:headers(),head=$('thead'),body=$('tbody');
-    const note=element('phone-note'),message=isPhone?phoneNote(selected.total):'';
+    const note=element('phone-note'),message=isPhone?phoneNote(selected):'';
     note.hidden=!message;note.textContent=message;
     element('details').dataset.view=details;
     element('details').setAttribute('aria-label',isPhone?'IMEI data':'Stock by receipt');
@@ -195,7 +217,7 @@
       const cell=body.insertRow().insertCell();cell.colSpan=labels.length;
       cell.textContent=isPhone?'No IMEIs match this selection.':'No receipts match this selection.';
     }
-    const unit=isPhone?'IMEI records':'receipts';
+    const unit=isPhone?(mode==='out'&&!query?'stock movements':'IMEI records'):'receipts';
     element('count').textContent=selected.total?number(offset+1)+'–'+number(offset+selected.rows.length)+' of '+number(selected.total)+' '+unit:'0 '+unit;
     element('details').hidden=false;
   }
@@ -208,7 +230,7 @@
     read?.abort();read=null;exportJob?.abort();exportJob=null;
     downloads.close();
   }
-  const phoneRpc='get_accounts_stock_overview_imeis_v1';
+  const phoneRpc='get_accounts_stock_overview_imeis_v2';
   const phoneArgs=()=>({...args(),p_imei:query});
   async function load({refresh=false,snapshot=null,scopeChanged=false}={}){
     if(!current())return;
@@ -239,7 +261,7 @@
         const data=await rpc(phoneRpc,{...phoneArgs(),p_offset:start,p_expected_snapshot:snapshot},controller.signal);
         if(read!==controller||!current())return;
         if(snapshot&&data?.snapshot!==snapshot)throw Error('The IMEI list changed. Refresh Stock Overview before trying again.');
-        phoneReport=validPhones(data,requested,start,50);
+        phoneReport=validPhones(data,requested,start,50,query);
       }
       render();status();
     }catch(error){
@@ -257,24 +279,26 @@
     const permit=()=>current()&&canExport()&&!controller.signal.aborted&&report===selected;
     try{
       const initial=details==='imei'&&phoneReport?phoneReport:validPhones(
-        await rpc(phoneRpc,{...params,p_offset:0,p_summary_only:true},controller.signal),params.p_mode,0,0);
+        await rpc(phoneRpc,{...params,p_offset:0,p_summary_only:true},controller.signal),params.p_mode,0,0,params.p_imei);
       if(!permit())return;
       if(!initial.total){status('No IMEIs match this selection.');return;}
       const rows=[],seen=new Set();
       while(rows.length<initial.total){
         const start=rows.length;
         const data=validPhones(await rpc(phoneRpc,{...params,p_offset:start,p_export:true,
-          p_expected_snapshot:initial.snapshot},controller.signal),params.p_mode,start,250);
+          p_expected_snapshot:initial.snapshot},controller.signal),params.p_mode,start,250,params.p_imei);
         if(!permit())return;
-        if(data.snapshot!==initial.snapshot||data.total!==initial.total||data.rows.some(row=>seen.has(row.row_key))){
+        if(data.snapshot!==initial.snapshot||data.total!==initial.total||data.missing_imei!==initial.missing_imei||data.rows.some(row=>seen.has(row.row_key))){
           throw Error('The IMEI list changed. Refresh Stock Overview before exporting.');
         }
         for(const row of data.rows){seen.add(row.row_key);rows.push(row);}
       }
-      const note=phoneNote(initial.total);
+      if(rows.filter(row=>row.imei===null).length!==initial.missing_imei)throw Error('The missing IMEI count could not be verified. Refresh and try again.');
+      const note=phoneNote(initial),summaryRows=outExportSummary(initial);
       await downloads.output(kind,{
         title:'Stock Overview - '+modes[mode].label+' - IMEI List',
-        subtitle:[selectedScope,number(initial.total)+' IMEI records',note].filter(Boolean).join(' | '),
+        subtitle:summaryRows.length?selectedScope:[selectedScope,number(initial.total)+' IMEI records',note].filter(Boolean).join(' | '),
+        summaryRows:summaryRows.length?[...summaryRows,note]:undefined,
         headers:phoneHeaders,rows:rows.map(phoneCells),numericColumns:[0],wrapWords:true
       },permit,'accounts','imei_download');
       if(permit())status();
