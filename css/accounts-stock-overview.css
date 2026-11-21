@@ -36,7 +36,19 @@
 .aso-summary span {color:var(--nm-muted,#526b79);font-size:13px}
 #aso-status {color:var(--nm-muted,#526b79)}
 #aso-status.is-error {color:#a43a30}
-#aso-details .aid-table {min-width:760px}
+#accounts-overview-panel #aso-details .aid-table {
+  display:table!important;
+  width:100%!important;
+  min-width:760px;
+  table-layout:auto!important;
+}
+#accounts-overview-panel #aso-details[data-view="imei"] .aid-table {min-width:1000px}
+.aso-toolbar,.aso-view-actions,.aso-search {display:flex;align-items:center;flex-wrap:wrap;gap:10px}
+.aso-view-actions .primary-button {white-space:nowrap}
+.aso-search {flex:1 1 330px}
+.aso-search label {font-weight:700;font-size:13px}
+.aso-search input {flex:1;min-width:125px}
+#aso-phone-note {font-size:13px;color:var(--nm-muted,#526b79)}
 #aso-details .aid-table :is(th,td) {overflow-wrap:anywhere}
 @media (max-width:600px) {
   #accounts-overview-panel {padding:14px}

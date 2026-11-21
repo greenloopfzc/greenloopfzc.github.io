@@ -9,6 +9,11 @@
       "all": [{"page":"accounts","capability":"view"},{"page":"accounts","capability":"supplier_stock"},{"page":"accounts","capability":"print"}],
       "read": true
     },
+    "get_accounts_stock_overview_imeis_v1": {
+      "all": [{"page":"accounts","capability":"view"},{"page":"accounts","capability":"supplier_stock"},{"page":"accounts","capability":"imei_data"}],
+      "read": true
+    },
+    "get_accounts_stock_overview_imeis_version": {"read": true},
     "get_accounts_stock_overview_version": {"read": true},
     "get_chaman_custody_notice_version": {
       "read": true
