@@ -822,6 +822,16 @@
           "write": false
         },
         {
+          "key": "report_technician_work_sort",
+          "label": "Technician Work Report: Sort table headings",
+          "write": false
+        },
+        {
+          "key": "report_technician_work_download",
+          "label": "Technician Work Report: PDF View / Download and Excel",
+          "write": false
+        },
+        {
           "key": "stock_grade_analysis",
           "label": "View Stock Grade & Work Analysis",
           "write": false
@@ -1502,9 +1512,13 @@
       "label": "Technician Work Report",
       "view": "report_technician_work",
       "actions": [
-        "report_technician_work_search"
+        "report_technician_work_search",
+        "report_technician_work_sort",
+        "report_technician_work_download"
       ],
-      "search": "report_technician_work_search"
+      "search": "report_technician_work_search",
+      "sort": "report_technician_work_sort",
+      "download": "report_technician_work_download"
     },
     "stock_grade_analysis": {
       "label": "Stock Grade & Work Analysis",
@@ -1656,6 +1670,8 @@
     "report_device_cost_search": "report_device_cost",
     "report_device_cost_sort": "report_device_cost",
     "report_technician_work_search": "report_technician_work",
+    "report_technician_work_sort": "report_technician_work",
+    "report_technician_work_download": "report_technician_work",
     "stock_grade_analysis_search": "stock_grade_analysis",
     "stock_grade_analysis_sort": "stock_grade_analysis",
     "stock_grade_download": "stock_grade_analysis",

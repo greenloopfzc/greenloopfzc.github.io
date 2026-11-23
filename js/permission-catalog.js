@@ -32,3 +32,11 @@
   catalog.reportSections.technician_work = {"label": "Technician Work Report", "view": "report_technician_work", "actions": ["report_technician_work_search"], "search": "report_technician_work_search"};
   catalog.reportDependencies.report_technician_work_search = "report_technician_work";
 })(typeof window !== "undefined" ? window : globalThis);
+
+(function(root){
+  const catalog = root.GREENLOOP_PERMISSION_CATALOG;
+  catalog.byPage.reports.capabilities.push(...[{"key": "report_technician_work_sort", "label": "Technician Work Report: Sort table headings", "write": false}, {"key": "report_technician_work_download", "label": "Technician Work Report: PDF View / Download and Excel", "write": false}]);
+  catalog.reportSections.technician_work = {"label": "Technician Work Report", "view": "report_technician_work", "actions": ["report_technician_work_search", "report_technician_work_sort", "report_technician_work_download"], "search": "report_technician_work_search", "sort": "report_technician_work_sort", "download": "report_technician_work_download"};
+  catalog.reportDependencies.report_technician_work_sort = "report_technician_work";
+  catalog.reportDependencies.report_technician_work_download = "report_technician_work";
+})(typeof window !== "undefined" ? window : globalThis);

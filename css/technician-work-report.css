@@ -1,82 +1,129 @@
 .technician-work-report {
   padding: clamp(12px, 1.15vw, 22px);
+  min-width: 0;
 }
 
-.twr-dates, .twr-presets, .twr-pager {
+.twr-dates, .twr-presets, .twr-pager, .twr-options, .twr-exports {
   display: flex;
   flex-wrap: wrap;
   gap: .65rem;
 }
+
 .twr-dates { align-items: end; margin-bottom: .8rem; }
 .twr-dates label { display: grid; gap: .3rem; }
 .twr-dates input { min-width: 9.5rem; min-height: 38px; }
-.twr-pager {
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 1rem;
-}
+.twr-pager, .twr-options { align-items: center; justify-content: space-between; }
+.twr-pager { margin-top: 1rem; }
 .twr-options { margin-bottom: .85rem; }
 .twr-options label { display: inline-flex; align-items: center; gap: .45rem; }
 .twr-options input { accent-color: var(--nm-accent, #0f7451); }
 
 .technician-work-report .report-table-wrap {
+  max-width: 100%;
   border: 1px solid var(--nm-line, #ccd9df);
   border-radius: 14px;
+  overscroll-behavior-x: contain;
 }
-.technician-work-report .twr-summary { min-width: 38rem; }
-.technician-work-report .twr-summary :is(th,td) { vertical-align: middle; }
-.technician-work-report .twr-summary :is(th:nth-child(2),th[scope="row"]) {
-  text-align: start;
-  padding-inline-start: 1rem;
+
+.technician-work-report .twr-matrix {
+  --twr-no-width: 3.5rem;
+  --twr-name-width: 13rem;
+  --twr-jobs-width: 7rem;
+  --twr-fixed-width: calc(var(--twr-no-width) + var(--twr-name-width) + var(--twr-jobs-width));
+  width: 100%;
+  min-width: var(--twr-fixed-width);
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
 }
-.technician-work-report .twr-summary th[scope="row"] { font-size: .9rem; font-weight: 700; }
-.technician-work-report .twr-summary .twr-count {
+
+.technician-work-report .twr-matrix.twr-has-items {
+  min-width: calc(var(--twr-fixed-width) + var(--twr-items) * 7.5rem);
+}
+
+.technician-work-report .twr-col-number { width: var(--twr-no-width); }
+.technician-work-report .twr-col-name { width: var(--twr-name-width); }
+.technician-work-report .twr-col-jobs { width: var(--twr-jobs-width); }
+
+.technician-work-report .twr-matrix :is(th,td) {
+  padding: .55rem .5rem;
+  vertical-align: middle;
   text-align: center;
-  font-size: 1rem;
+}
+
+.technician-work-report .twr-matrix thead th {
+  background: var(--nm-control, #e4ebef);
+  color: var(--nm-muted, #415666);
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: .76rem;
+}
+
+.technician-work-report .twr-matrix .twr-groups th[scope="colgroup"] {
+  background: var(--nm-green-bg, #e5f3ec);
+  color: var(--nm-green, #09674c);
+  font-size: .84rem;
+}
+
+.technician-work-report .twr-matrix tbody :is(th,td) {
+  background: var(--nm-card, #f5f8fa);
+  border-bottom: 1px solid var(--nm-line, #ccd9df);
+}
+
+.technician-work-report .twr-matrix tbody tr:nth-child(even) :is(th,td) {
+  background: var(--nm-control, #e4ebef);
+}
+
+.technician-work-report .twr-matrix th[scope="row"] {
+  text-align: start;
+  font-size: .86rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.technician-work-report .twr-matrix .twr-count {
+  font-size: .95rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
-.technician-work-report .twr-summary td:nth-child(3) {
-  background: var(--nm-green-bg, #e5f3ec);
-  color: var(--nm-green, #09674c);
+.technician-work-report .twr-matrix .twr-zero {
+  color: var(--nm-muted, #50626c);
+  font-weight: 400;
 }
-.twr-open-work { min-height: 34px; padding: .35rem .75rem; white-space: nowrap; }
+.technician-work-report .twr-matrix td.twr-fixed-3 { color: var(--nm-green, #09674c); }
 
-.twr-work-dialog {
-  box-sizing: border-box;
-  width: min(52rem, calc(100vw - 2rem));
-  max-height: calc(100dvh - 2rem);
-  margin: auto;
-  padding: clamp(1rem, 3vw, 1.5rem);
-  border: 1px solid var(--nm-line, #ccd9df);
-  border-radius: 18px;
-  background: var(--nm-card, #f5f8fa);
-  color: var(--nm-ink, #223442);
-  overflow: auto;
+.technician-work-report .twr-has-items .twr-fixed { position: sticky; z-index: 1; }
+.technician-work-report .twr-has-items thead .twr-fixed { z-index: 2; }
+.technician-work-report .twr-fixed-1 { inset-inline-start: 0; }
+.technician-work-report .twr-fixed-2 { inset-inline-start: var(--twr-no-width); }
+.technician-work-report .twr-has-items .twr-fixed-3 {
+  inset-inline-start: calc(var(--twr-no-width) + var(--twr-name-width));
+  border-inline-end: 1px solid var(--nm-line, #ccd9df);
+  box-shadow: 4px 0 5px -4px rgb(38 63 74 / 36%);
 }
-.twr-work-dialog::backdrop { background: rgb(23 40 52 / 56%); }
-.twr-work-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: start;
-  gap: .75rem;
-}
-.twr-work-header h3, .twr-work-columns h4 { margin: 0; }
-.twr-work-header h3 { font-size: 1.3rem; }
-.twr-work-header p { margin: .3rem 0 1.1rem; }
-.twr-work-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
-.twr-work-columns h4 { margin-bottom: .55rem; }
-.twr-detail-table { width: 100%; border-collapse: collapse; }
-.twr-detail-table :is(th,td) {
-  border-bottom: 1px solid var(--nm-line, #ccd9df);
-  padding: .55rem .4rem;
-  text-align: start;
-}
-.twr-detail-table :is(th,td):last-child { text-align: end; }
-.twr-detail-table th[scope="row"] { font-weight: 500; overflow-wrap: anywhere; }
-.twr-detail-table td { font-weight: 700; font-variant-numeric: tabular-nums; }
-.twr-no-items { margin: 0; }
 
-@media (max-width: 600px) {
-  .twr-work-columns { grid-template-columns: 1fr; }
+.technician-work-report .twr-sort {
+  width: 100%;
+  min-height: 2rem;
+  padding: .25rem 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.technician-work-report .twr-sort[hidden], .technician-work-report [data-twr-label][hidden] { display: none; }
+.technician-work-report [aria-sort]:not([aria-sort="none"]) .twr-sort { color: var(--nm-green, #09674c); }
+.technician-work-report .twr-sort:hover:enabled { text-decoration: underline; }
+
+@media (max-width: 760px) {
+  .technician-work-report .twr-matrix {
+    --twr-no-width: 2.5rem;
+    --twr-name-width: 7rem;
+    --twr-jobs-width: 4.5rem;
+  }
+  .technician-work-report .twr-matrix :is(th,td) { padding-inline: .3rem; }
 }

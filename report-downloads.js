@@ -14,14 +14,59 @@
   function validate(r){if(!r||!Array.isArray(r.headers)||r.headers[0]!=='S.No'||!Array.isArray(r.rows)||r.rows.some(row=>row.length!==r.headers.length))throw Error('Invalid report columns.');}
   async function pdf(r){
     validate(r);const lib=await library('PDFLib','js/vendor/pdf-lib-1.17.1.min.js'),doc=await lib.PDFDocument.create(),font=await doc.embedFont(lib.StandardFonts.Helvetica),bold=await doc.embedFont(lib.StandardFonts.HelveticaBold);
-    const W=841.89,H=595.28,M=25,size=7,line=10,available=W-M*2,weights=Array.isArray(r.columnWeights)&&r.columnWeights.length===r.headers.length&&r.columnWeights.every(n=>Number.isFinite(n)&&n>0)?r.columnWeights:r.headers.map((h,i)=>i===0?0.48:/IMEI|Batch|Invoice|Supplier|Customer|Code|Date|Received|Exported/.test(h)?1.5:1),sum=weights.reduce((a,b)=>a+b,0),widths=weights.map(v=>available*v/sum),canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');let page,y,pages=[];
+    const W=841.89,H=595.28,M=25,size=7,line=10,available=W-M*2;
+    const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d'),pages=[];
+    let page,y,widths;
+    const fixed=[0,1,2],maxItems=10,sections=[];
+    for(const group of r.pdfColumnGroups||[]){
+      for(let i=0;i<group.columns.length;i+=maxItems){
+        const label=group.columns.length>maxItems
+          ? group.label+' ('+(i+1)+'-'+Math.min(i+maxItems,group.columns.length)+' of '+group.columns.length+')'
+          : group.label;
+        sections.push({label,indices:[...fixed,...group.columns.slice(i,i+maxItems)]});
+      }
+    }
+    if(!sections.length)sections.push({label:'',indices:r.headers.map((_,i)=>i)});
     doc.setTitle(r.title);doc.setAuthor('Greenloop FZC');
     function measure(s,n=size){if(r.wrapWords){try{return Math.max(font.widthOfTextAtSize(s,n),bold.widthOfTextAtSize(s,n));}catch(_){}}ctx.font=n+'px Arial';return ctx.measureText(s).width;}
     function wrap(v,w,n=size){if(r.wrapWords){const result=[];for(const para of clean(v).split('\n')){let current='';for(const word of para.split(/\s+/)){if(measure(word,n)>w){if(current){result.push(current);current='';}for(const ch of word){if(current&&measure(current+ch,n)>w){result.push(current);current='';}current+=ch;}}else if(current&&measure(current+' '+word,n)>w){result.push(current);current=word;}else current+=(current?' ':'')+word;}result.push(current);}return result;}const lines=[];for(const para of clean(v).split('\n')){let s='';for(const ch of para){if(s&&measure(s+ch,n)>w){lines.push(s);s='';}s+=ch;}lines.push(s);}return lines;}
     function text(v,x,top,n=size,heavy=false,color=lib.rgb(.14,.23,.25)){const s=clean(v).replace(/[–—‑]/g,'-'),face=heavy?bold:font;try{face.encodeText(s);page.drawText(s,{x,y:top-n,size:n,font:face,color});}catch(_){canvas.width=Math.ceil(measure(s,n)*2+4);canvas.height=Math.ceil(n*3);ctx.font=(heavy?'bold ':'')+(n*2)+'px Arial';ctx.fillStyle='#233b40';ctx.textBaseline='top';ctx.fillText(s,0,0);pages.push({page,data:canvas.toDataURL('image/png'),x,y:top-n*1.5,width:canvas.width/2,height:canvas.height/2});}}
     function cells(values,height,header=false){let x=M;values.forEach((parts,i)=>{page.drawRectangle({x,y:y-height,width:widths[i],height,color:header?lib.rgb(.87,.94,.90):lib.rgb(1,1,1),borderColor:lib.rgb(.78,.84,.86),borderWidth:.4});parts.forEach((v,j)=>text(v,x+(widths[i]-measure(clean(v)))/2,y-(height-parts.length*line)/2-j*line,size,header));x+=widths[i];});y-=height;}
-    function start(){page=doc.addPage([W,H]);text('GREENLOOP FZC',M,H-20,16,true);text(r.title,M,H-43,12,true);text('Date: '+date(new Date())+' | '+r.rows.length+' records',M,H-63,8);y=H-80;for(const summary of [r.subtitle||'',...(r.summaryRows||[])])for(const s of wrap(summary,available,8)){text(s,M,y,8);y-=11;}const heads=r.headers.map((h,i)=>wrap(h,widths[i]-8));cells(heads,Math.max(...heads.map(v=>v.length))*line+10,true);}
-    start();for(const row of r.rows){const parts=row.map((v,i)=>wrap(v,widths[i]-8)),count=Math.max(...parts.map(v=>v.length));let pos=0;while(pos<count){let fit=Math.floor((y-35-10)/line);if(fit<1){start();fit=Math.floor((y-35-10)/line);}if(pos===0&&count<=40&&count>fit){start();fit=Math.floor((y-35-10)/line);}const take=Math.min(count-pos,fit);cells(parts.map(v=>v.slice(pos,pos+take)),take*line+10);pos+=take;if(pos<count)start();}}
+    for(const {label,indices} of sections){
+      const headers=indices.map(i=>r.headers[i]);
+      const weights=Array.isArray(r.columnWeights)&&r.columnWeights.length===r.headers.length
+        &&r.columnWeights.every(n=>Number.isFinite(n)&&n>0)
+        ?indices.map(i=>r.columnWeights[i])
+        :headers.map((h,i)=>i===0?.48:r.pdfColumnGroups&&i===1?1.85
+          :/IMEI|Batch|Invoice|Supplier|Customer|Code|Date|Received|Exported/.test(h)?1.5:1);
+      const sum=weights.reduce((a,b)=>a+b,0);
+      widths=weights.map(v=>available*v/sum);
+      const startPage=()=>{
+        page=doc.addPage([W,H]);
+        text('GREENLOOP FZC',M,H-20,16,true);
+        text(r.title,M,H-43,12,true);
+        text('Date: '+date(new Date())+' | '+r.rows.length+' records',M,H-63,8);
+        y=H-80;
+        for(const summary of [r.subtitle||'',...(r.summaryRows||[]),...(label?[label]:[])]){
+          for(const s of wrap(summary,available,8)){text(s,M,y,8,!!label&&summary===label);y-=11;}
+        }
+        const heads=headers.map((h,i)=>wrap(h,widths[i]-8));
+        cells(heads,Math.max(...heads.map(v=>v.length))*line+10,true);
+      };
+      startPage();
+      for(const row of r.rows){
+        const parts=indices.map((i,j)=>wrap(row[i],widths[j]-8)),count=Math.max(...parts.map(v=>v.length));
+        let pos=0;
+        while(pos<count){
+          let fit=Math.floor((y-35-10)/line);
+          if(fit<1||(pos===0&&count<=40&&count>fit)){startPage();fit=Math.floor((y-35-10)/line);}
+          const take=Math.min(count-pos,fit);
+          cells(parts.map(v=>v.slice(pos,pos+take)),take*line+10);
+          pos+=take;
+          if(pos<count)startPage();
+        }
+      }
+    }
     for(const item of pages){const image=await doc.embedPng(item.data);item.page.drawImage(image,item);}const all=doc.getPages();all.forEach((p,i)=>{page=p;text('Page '+(i+1)+' of '+all.length,M,22,8);});return {bytes:await doc.save(),filename:filename(r,'pdf')};
   }
   const filename=(r,ext)=>'Greenloop-'+r.title.replace(/[^a-z0-9_-]+/gi,'-')+'.'+ext;
