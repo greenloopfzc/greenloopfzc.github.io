@@ -14,7 +14,7 @@
   function validate(r){if(!r||!Array.isArray(r.headers)||r.headers[0]!=='S.No'||!Array.isArray(r.rows)||r.rows.some(row=>row.length!==r.headers.length)||(r.footerRow&&r.footerRow.length!==r.headers.length))throw Error('Invalid report columns.');}
   async function pdf(r){
     validate(r);const lib=await library('PDFLib','js/vendor/pdf-lib-1.17.1.min.js'),doc=await lib.PDFDocument.create(),font=await doc.embedFont(lib.StandardFonts.Helvetica),bold=await doc.embedFont(lib.StandardFonts.HelveticaBold);
-    const W=841.89,H=595.28,M=25,size=7,line=10,available=W-M*2;
+    const W=841.89,H=595.28,M=25,available=W-M*2;
     const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d'),pages=[];
     let page,y,widths;
     const fixed=[0,1,2],maxItems=10,sections=[];
@@ -27,6 +27,8 @@
       }
     }
     if(!sections.length)sections.push({label:'',indices:r.headers.map((_,i)=>i)});
+    const singlePage=r.pdfSinglePage===true&&sections.length===1;
+    let size=singlePage?8.6:7,line=singlePage?9.2:10;
     doc.setTitle(r.title);doc.setAuthor('Greenloop FZC');
     function measure(s,n=size){if(r.wrapWords){try{return Math.max(font.widthOfTextAtSize(s,n),bold.widthOfTextAtSize(s,n));}catch(_){}}ctx.font=n+'px Arial';return ctx.measureText(s).width;}
     function wrap(v,w,n=size){if(r.wrapWords){const result=[];for(const para of clean(v).split('\n')){let current='';for(const word of para.split(/\s+/)){if(measure(word,n)>w){if(current){result.push(current);current='';}for(const ch of word){if(current&&measure(current+ch,n)>w){result.push(current);current='';}current+=ch;}}else if(current&&measure(current+' '+word,n)>w){result.push(current);current=word;}else current+=(current?' ':'')+word;}result.push(current);}return result;}const lines=[];for(const para of clean(v).split('\n')){let s='';for(const ch of para){if(s&&measure(s+ch,n)>w){lines.push(s);s='';}s+=ch;}lines.push(s);}return lines;}
@@ -43,28 +45,50 @@
       widths=weights.map(v=>available*v/sum);
       const startPage=()=>{
         page=doc.addPage([W,H]);
-        text('GREENLOOP FZC',M,H-20,16,true);
-        text(r.title,M,H-43,12,true);
-        text('Date: '+date(new Date())+' | '+r.rows.length+' records',M,H-63,8);
-        y=H-80;
+        text('GREENLOOP FZC',M,H-(singlePage?16:20),singlePage?13:16,true);
+        text(r.title,M,H-(singlePage?34:43),singlePage?11:12,true);
+        text('Date: '+date(new Date())+' | '+r.rows.length+' records',M,H-(singlePage?49:63),8);
+        y=H-(singlePage?62:80);
         for(const summary of [r.subtitle||'',...(r.summaryRows||[]),...(label?[label]:[])]){
           for(const s of wrap(summary,available,8)){text(s,M,y,8,!!label&&summary===label);y-=11;}
         }
-        const heads=headers.map((h,i)=>wrap(h,widths[i]-8));
-        cells(heads,Math.max(...heads.map(v=>v.length))*line+10,true);
       };
-      startPage();
       const rows=r.footerRow?[...r.rows,r.footerRow]:r.rows;
+      const wrapCells=values=>values.map((v,i)=>wrap(v,widths[i]-8));
+      const lineCount=cells=>Math.max(...cells.map(c=>c.length));
+      if(singlePage){
+        startPage();
+        const layout=()=>[wrapCells(headers),...rows.map(row=>wrapCells(indices.map(i=>row[i])))];
+        const height=(grid,padding)=>grid.reduce((sum,row)=>sum+lineCount(row)*line+padding,0);
+        const original=layout(), room=y-34;
+        let padding=1.55;
+        const scale=Math.min(1,room/height(original,padding));
+        if(scale<=0)throw Error('The PDF report heading is too tall to fit.');
+        size*=scale;
+        line*=scale;
+        padding*=scale;
+        const rewrapped=layout();
+        const grid=height(rewrapped,padding)<=room?rewrapped:original;
+        grid.forEach((row,i)=>cells(row,lineCount(row)*line+padding,
+          i===0||(i===grid.length-1&&!!r.footerRow)));
+        continue;
+      }
+      const startTablePage=()=>{
+        startPage();
+        const heads=wrapCells(headers);
+        cells(heads,lineCount(heads)*line+10,true);
+      };
+      startTablePage();
       for(const [index,row] of rows.entries()){
         const parts=indices.map((i,j)=>wrap(row[i],widths[j]-8)),count=Math.max(...parts.map(v=>v.length));
         let pos=0;
         while(pos<count){
           let fit=Math.floor((y-35-10)/line);
-          if(fit<1||(pos===0&&count<=40&&count>fit)){startPage();fit=Math.floor((y-35-10)/line);}
+          if(fit<1||(pos===0&&count<=40&&count>fit)){startTablePage();fit=Math.floor((y-35-10)/line);}
           const take=Math.min(count-pos,fit);
           cells(parts.map(v=>v.slice(pos,pos+take)),take*line+10,index===r.rows.length);
           pos+=take;
-          if(pos<count)startPage();
+          if(pos<count)startTablePage();
         }
       }
     }

@@ -217,7 +217,9 @@
           footerRow: ["", "Filtered total", "", ...counters(data.totals)],
           numericColumns: [0, ...columns.map((_, index) => index + 3)],
           wrapWords: true,
-          columnWeights: [.65, 2, 1.15, ...columns.map(([, label]) => label.length > 12 ? 1.35 : 1)]
+          pdfSinglePage: true,
+          columnWeights: [.65, 2, 1.15, ...columns.map(([, label]) =>
+            label.length > 12 ? 1.35 : label.split(" ").some(word => word.length >= 7) ? 1.2 : 1)]
         }, permitted, "reports", downloadCap);
         if (permitted()) status.textContent = checked(data);
       } catch (error) {
