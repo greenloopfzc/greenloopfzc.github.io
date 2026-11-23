@@ -25,3 +25,10 @@
   catalog.reportSections.stock_receipt_correction.actions.push(key);
   catalog.reportDependencies[key]="report_receipt_correction";
 })(typeof window!=="undefined"?window:globalThis);
+
+(function(root){
+  const catalog = root.GREENLOOP_PERMISSION_CATALOG;
+  catalog.byPage.reports.capabilities.push(...[{"key": "report_technician_work", "label": "View Technician Work Report", "write": false}, {"key": "report_technician_work_search", "label": "Change Technician Work report dates", "write": false}]);
+  catalog.reportSections.technician_work = {"label": "Technician Work Report", "view": "report_technician_work", "actions": ["report_technician_work_search"], "search": "report_technician_work_search"};
+  catalog.reportDependencies.report_technician_work_search = "report_technician_work";
+})(typeof window !== "undefined" ? window : globalThis);

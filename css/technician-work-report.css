@@ -1,0 +1,34 @@
+.twr-dates, .twr-presets, .twr-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: .75rem;
+}
+.twr-dates {
+  margin-bottom: 1rem;
+}
+.twr-dates label {
+  display: grid;
+  gap: .3rem;
+}
+.twr-dates input { min-width: 9.5rem; }
+.twr-pager {
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1rem;
+}
+.technician-work-report .report-table th[scope="row"],
+.technician-work-report .report-table td:nth-child(n+4) {
+  text-align: start;
+  vertical-align: top;
+}
+.twr-items {
+  display: flex;
+  gap: .3rem 1rem;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.twr-items li { max-width: 100%; }
+.twr-items strong { white-space: nowrap; }
