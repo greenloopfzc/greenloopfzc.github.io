@@ -143,3 +143,9 @@
   Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs, rules);
   Object.assign(root.GREENLOOP_RPC_CAPABILITIES, rules);
 })(typeof window !== "undefined" ? window : globalThis);
+
+(function(root){
+  const rules = {"get_technician_work_report_v4": {"page": "reports", "capability": "report_technician_work", "read": true}, "get_technician_work_bdept_version": {"read": true}};
+  Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs, rules);
+  Object.assign(root.GREENLOOP_RPC_CAPABILITIES, rules);
+})(typeof window !== "undefined" ? window : globalThis);

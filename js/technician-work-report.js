@@ -120,8 +120,9 @@
       + groups + '</tr>' + (grouped ? '<tr>' + data.columns.map((col, index) => head(col, index + 2)).join('') + '</tr>' : '');
     const rowHtml = data.rows.map((row, index) => {
       const [serial, name, jobs, ...items] = values(row, data.columns, offset + index + 1);
-      return '<tr><td class="twr-fixed twr-fixed-1">' + serial + '</td><th scope="row" class="twr-fixed twr-fixed-2">'
-        + esc(name) + '</th><td class="twr-count twr-fixed twr-fixed-3">' + number.format(jobs) + '</td>'
+      const departmentLabel = row.employee_key === 'unrecorded:b_dept' ? ' twr-department-label' : '';
+      return '<tr><td class="twr-fixed twr-fixed-1">' + serial + '</td><th scope="row" class="twr-fixed twr-fixed-2'
+        + departmentLabel + '">' + esc(name) + '</th><td class="twr-count twr-fixed twr-fixed-3">' + number.format(jobs) + '</td>'
         + items.map(qty => '<td class="twr-count' + (qty === 0 ? ' twr-zero' : '') + '">' + number.format(qty) + '</td>').join('') + '</tr>';
     });
     $('#twr-rows').innerHTML = rowHtml.join('') || '<tr><td class="report-empty" colspan="3">No technician work recorded for these dates.</td></tr>';
@@ -137,7 +138,7 @@
 
   async function read(start, full = false, expected = null) {
     const [from, to] = range;
-    const { data, error } = await window.GREENLOOP_GET_CLIENT().rpc('get_technician_work_report_v3', {
+    const { data, error } = await window.GREENLOOP_GET_CLIENT().rpc('get_technician_work_report_v4', {
       p_from: from, p_to: to, p_offset: start, p_include_zero: includeZero,
       p_sort: sort.kind, p_item: sort.key, p_desc: sort.desc, p_export: full, p_expected: expected
     });
