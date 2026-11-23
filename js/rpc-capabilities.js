@@ -149,3 +149,9 @@
   Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs, rules);
   Object.assign(root.GREENLOOP_RPC_CAPABILITIES, rules);
 })(typeof window !== "undefined" ? window : globalThis);
+
+(function(root){
+  const rules = {"get_company_stock_progress_v2": {"page": "reports", "capability": "report_supplier_progress", "read": true}, "get_company_stock_progress_download_version": {"read": true}};
+  Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs, rules);
+  Object.assign(root.GREENLOOP_RPC_CAPABILITIES, rules);
+})(typeof window !== "undefined" ? window : globalThis);

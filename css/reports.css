@@ -53,10 +53,70 @@ html[data-design="neumorphism"] .report-tab-icon { box-shadow: var(--nm-shadow-x
 .supplier-report-summary span { display: block; color: #78877e; font-size: .58rem; font-weight: 900; letter-spacing: .07em; text-transform: uppercase; }
 .supplier-report-summary strong { display: block; margin-top: 6px; color: #173f2e; font: 800 1.25rem/1 Manrope, sans-serif; }
 .supplier-progress-table { min-width: 1780px; }
-.company-stock-progress-table { min-width: 1200px; }
-.company-stock-progress-table tbody th { color: var(--nm-ink, #23323b); }
-.company-stock-progress-table tfoot th,
-.company-stock-progress-table tfoot td { background: var(--nm-surface, #e7ecef); font-weight: 800; }
+.stock-progress-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .55rem; }
+.company-stock-progress [data-status] { padding-inline: 1rem; }
+.company-stock-progress .stock-progress-scroll {
+  max-block-size: clamp(14rem, 53dvh, 38rem);
+  max-inline-size: 100%;
+  overflow: auto;
+}
+.stock-progress-scroll[hidden] { display: none; }
+.company-stock-progress .company-stock-progress-table {
+  --sp-number: 3.25rem;
+  --sp-model: 9rem;
+  --sp-gb: 5.25rem;
+  min-width: 1240px;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.company-stock-progress-table .stock-progress-number { width: var(--sp-number); }
+.company-stock-progress-table .stock-progress-model { width: var(--sp-model); }
+.company-stock-progress-table .stock-progress-gb { width: var(--sp-gb); }
+.company-stock-progress .company-stock-progress-table :is(th,td) {
+  text-align: center;
+  overflow-wrap: anywhere;
+  padding-inline: .4rem;
+}
+.company-stock-progress .company-stock-progress-table thead th {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 2;
+  background: var(--nm-control, #e4ebef);
+}
+.company-stock-progress .company-stock-progress-table tbody :is(th,td) {
+  background: var(--nm-card, #f5f8fa);
+}
+.company-stock-progress .company-stock-progress-table tbody tr:nth-child(even) :is(th,td) {
+  background: var(--nm-control, #e4ebef);
+}
+.company-stock-progress .company-stock-progress-table tbody th { color: var(--nm-ink, #23323b); }
+.company-stock-progress .company-stock-progress-table :is(thead th:nth-child(-n+3), tbody :is(th,td:not([colspan])):nth-child(-n+3), tfoot th) {
+  position: sticky;
+  z-index: 1;
+}
+.company-stock-progress .company-stock-progress-table :is(thead th:first-child, tbody td:first-child:not([colspan]), tfoot th) {
+  inset-inline-start: 0;
+}
+.company-stock-progress .company-stock-progress-table :is(thead th:nth-child(2), tbody th:nth-child(2)) {
+  inset-inline-start: var(--sp-number);
+}
+.company-stock-progress .company-stock-progress-table :is(thead th:nth-child(3), tbody td:nth-child(3)) {
+  inset-inline-start: calc(var(--sp-number) + var(--sp-model));
+  box-shadow: 4px 0 5px -4px rgb(38 63 74 / 36%);
+}
+.company-stock-progress .company-stock-progress-table thead th:nth-child(-n+3) { z-index: 3; }
+.company-stock-progress .company-stock-progress-table tfoot :is(th,td) {
+  background: var(--nm-surface, #e7ecef);
+  font-weight: 800;
+}
+@media (max-width: 700px) {
+  .company-stock-progress .company-stock-progress-table {
+    --sp-number: 2.65rem;
+    --sp-model: 6.25rem;
+    --sp-gb: 4.3rem;
+  }
+}
 .stock-progress-pager { margin-top: 12px; }
 .stock-progress-pager[hidden] { display: none; }
 .supplier-progress-table td { padding: 11px 12px; }

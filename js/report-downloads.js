@@ -11,7 +11,7 @@
     async function read(){let rows=[],total=null,metadata;do{check(allowed);const page=await fetchPage(rows.length);check(allowed);if(!Array.isArray(page?.rows)||!Number.isSafeInteger(Number(page.total))||Number(page.total)<0)throw Error('Invalid report response.');if(total!==null&&total!==Number(page.total))throw Error('Stock changed during download. Retry.');total=Number(page.total);metadata=page;if(!page.rows.length&&rows.length<total)throw Error('Incomplete report. Retry.');rows.push(...page.rows);if(rows.length>total)throw Error('Invalid report row count.');}while(rows.length<total);return {...metadata,rows};}
     const a=await read(),b=await read();if(JSON.stringify(a.rows)!==JSON.stringify(b.rows)||JSON.stringify(a.totals)!==JSON.stringify(b.totals)||a.names_allowed!==b.names_allowed)throw Error('Stock changed during download. Retry.');return b;
   }
-  function validate(r){if(!r||!Array.isArray(r.headers)||r.headers[0]!=='S.No'||!Array.isArray(r.rows)||r.rows.some(row=>row.length!==r.headers.length))throw Error('Invalid report columns.');}
+  function validate(r){if(!r||!Array.isArray(r.headers)||r.headers[0]!=='S.No'||!Array.isArray(r.rows)||r.rows.some(row=>row.length!==r.headers.length)||(r.footerRow&&r.footerRow.length!==r.headers.length))throw Error('Invalid report columns.');}
   async function pdf(r){
     validate(r);const lib=await library('PDFLib','js/vendor/pdf-lib-1.17.1.min.js'),doc=await lib.PDFDocument.create(),font=await doc.embedFont(lib.StandardFonts.Helvetica),bold=await doc.embedFont(lib.StandardFonts.HelveticaBold);
     const W=841.89,H=595.28,M=25,size=7,line=10,available=W-M*2;
@@ -54,14 +54,15 @@
         cells(heads,Math.max(...heads.map(v=>v.length))*line+10,true);
       };
       startPage();
-      for(const row of r.rows){
+      const rows=r.footerRow?[...r.rows,r.footerRow]:r.rows;
+      for(const [index,row] of rows.entries()){
         const parts=indices.map((i,j)=>wrap(row[i],widths[j]-8)),count=Math.max(...parts.map(v=>v.length));
         let pos=0;
         while(pos<count){
           let fit=Math.floor((y-35-10)/line);
           if(fit<1||(pos===0&&count<=40&&count>fit)){startPage();fit=Math.floor((y-35-10)/line);}
           const take=Math.min(count-pos,fit);
-          cells(parts.map(v=>v.slice(pos,pos+take)),take*line+10);
+          cells(parts.map(v=>v.slice(pos,pos+take)),take*line+10,index===r.rows.length);
           pos+=take;
           if(pos<count)startPage();
         }
@@ -73,12 +74,12 @@
   async function excel(r){
     validate(r);const Zip=await library('JSZip','js/vendor/jszip-3.10.1.min.js'),zip=new Zip(),ns='http://schemas.openxmlformats.org/',letter=i=>{let s='';for(i++;i;i=Math.floor((i-1)/26))s=String.fromCharCode(65+(i-1)%26)+s;return s;};
     const summaryRows=r.summaryRows||[],headerRow=4+summaryRows.length,lastColumn=letter(r.headers.length-1);
-    const layoutRows=[[r.title],[r.subtitle||''],['Date: '+date(new Date())],...summaryRows.map(value=>[value]),r.headers,...r.rows];
+    const layoutRows=[[r.title],[r.subtitle||''],['Date: '+date(new Date())],...summaryRows.map(value=>[value]),r.headers,...r.rows,...(r.footerRow?[r.footerRow]:[])];
     const rows=layoutRows.map((row,i)=>{
-      const rowNumber=i+1,bold=rowNumber===1||rowNumber===headerRow;
+      const rowNumber=i+1,bold=rowNumber===1||rowNumber===headerRow||(r.footerRow&&rowNumber===layoutRows.length);
       const attributes=summaryRows.length&&rowNumber<headerRow?' ht="30" customHeight="1"':'';
       return '<row r="'+rowNumber+'"'+attributes+'>'+row.map((v,j)=>rowNumber>headerRow&&r.numericColumns?.includes(j)&&typeof v==='number'&&Number.isFinite(v)
-        ? '<c r="'+letter(j)+rowNumber+'" t="n" s="0"><v>'+v+'</v></c>'
+        ? '<c r="'+letter(j)+rowNumber+'" t="n" s="'+(bold?1:0)+'"><v>'+v+'</v></c>'
         : '<c r="'+letter(j)+rowNumber+'" t="inlineStr" s="'+(bold?1:0)+'"><is><t xml:space="preserve">'+xml(v)+'</t></is></c>').join('')+'</row>';
     }).join('');
     const merged=summaryRows.length?'<mergeCells count="'+(headerRow-1)+'">'+layoutRows.slice(0,headerRow-1)

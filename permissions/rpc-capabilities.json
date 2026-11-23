@@ -1,6 +1,14 @@
 {
   "version": "20261105-stock-consistency-1",
   "rpcs": {
+    "get_company_stock_progress_v2": {
+      "page": "reports",
+      "capability": "report_supplier_progress",
+      "read": true
+    },
+    "get_company_stock_progress_download_version": {
+      "read": true
+    },
     "get_technician_work_report_v4": {
       "page": "reports",
       "capability": "report_technician_work",

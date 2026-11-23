@@ -40,3 +40,11 @@
   catalog.reportDependencies.report_technician_work_sort = "report_technician_work";
   catalog.reportDependencies.report_technician_work_download = "report_technician_work";
 })(typeof window !== "undefined" ? window : globalThis);
+
+(function(root){
+  const catalog = root.GREENLOOP_PERMISSION_CATALOG;
+  const key = "stock_progress_download";
+  catalog.byPage.reports.capabilities.push({"key": "stock_progress_download", "label": "Stock Progress: Download PDF and Excel", "write": false});
+  catalog.reportSections.supplier_progress.actions.push(key);
+  catalog.reportDependencies[key] = "report_supplier_progress";
+})(typeof window !== "undefined" ? window : globalThis);

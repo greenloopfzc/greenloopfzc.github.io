@@ -882,6 +882,11 @@
           "write": false
         },
         {
+          "key": "stock_progress_download",
+          "label": "Stock Progress: Download PDF and Excel",
+          "write": false
+        },
+        {
           "key": "report_supplier_progress_sort",
           "label": "Sort table headings",
           "write": false
@@ -1443,7 +1448,8 @@
       "view": "report_supplier_progress",
       "actions": [
         "report_supplier_progress_search",
-        "report_supplier_progress_sort"
+        "report_supplier_progress_sort",
+        "stock_progress_download"
       ],
       "search": "report_supplier_progress_search",
       "sort": "report_supplier_progress_sort"
@@ -1657,6 +1663,7 @@
     "report_stock_received_sort": "report_stock_received",
     "report_supplier_progress_search": "report_supplier_progress",
     "report_supplier_progress_sort": "report_supplier_progress",
+    "stock_progress_download": "report_supplier_progress",
     "report_work_in_progress_search": "report_work_in_progress",
     "report_work_in_progress_sort": "report_work_in_progress",
     "report_parts_required_search": "report_parts_required",
