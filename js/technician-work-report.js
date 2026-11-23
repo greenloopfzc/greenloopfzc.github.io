@@ -8,10 +8,13 @@
   const dayFormatter = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Dubai', year: 'numeric', month: '2-digit', day: '2-digit'
   });
+  const displayDay = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'UTC', year: 'numeric', month: 'short', day: 'numeric'
+  });
   const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   })[ch]);
-  let host, root, range, offset = 0, total = 0, epoch = 0, busy = false;
+  let host, root, range, visibleRows = [], offset = 0, total = 0, epoch = 0, busy = false, includeZero = false;
   const $ = selector => root.querySelector(selector);
 
   function todayUae() {
@@ -49,41 +52,73 @@
     $('#twr-dates').querySelectorAll('input,button').forEach(el => { el.disabled = busy || !dateAccess(); });
     $('#twr-prev').disabled = busy || offset === 0;
     $('#twr-next').disabled = busy || offset + pageSize >= total;
+    $('#twr-include-zero').disabled = busy;
     $('#twr-range').textContent = total
       ? (offset + 1) + '–' + Math.min(offset + pageSize, total) + ' of ' + number.format(total) + ' technicians'
       : '0 technicians';
     root.setAttribute('aria-busy', String(busy));
   }
 
-  function items(lines) {
-    if (!lines.length) return '—';
-    return '<ul class="twr-items">' + lines.map(line =>
-      '<li>' + esc(line.name) + ' <strong>× ' + number.format(line.quantity) + '</strong></li>'
-    ).join('') + '</ul>';
+  function partTotals(parts) {
+    const totals = { housing: 0, glass: 0, mic: 0 };
+    for (const part of parts) {
+      const name = part.name.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+      if (/^housing(?:4g|5g|esim|withoutbackcover)?$/.test(name)) totals.housing += part.quantity;
+      if (/^(?:glass|glassdamagedglass|glassglassdamage|frontglass|screenglass|frontglassreplacement|glassreplacement|glasschange|glassonly)$/.test(name)) totals.glass += part.quantity;
+      if (/^(?:bottom|top|front|rear|main|secondary)?(?:mic|microphone)$/.test(name)) totals.mic += part.quantity;
+    }
+    return totals;
+  }
+
+  function detailTable(lines, label) {
+    if (!lines.length) return '<p class="twr-no-items">No ' + label.toLowerCase() + ' recorded.</p>';
+    return '<table class="twr-detail-table" aria-label="' + label + '"><thead><tr><th scope="col">Item</th><th scope="col">Qty</th></tr></thead><tbody>'
+      + lines.map(line => '<tr><th scope="row">' + esc(line.name) + '</th><td>' + number.format(line.quantity) + '</td></tr>').join('')
+      + '</tbody></table>';
+  }
+
+  function showWork(row) {
+    if (!row || !allowed() || busy) return;
+    $('#twr-work-title').textContent = row.name;
+    $('#twr-work-range').textContent = [...new Set(range)].map(day => displayDay.format(new Date(day))).join(' – ');
+    $('#twr-work-parts').innerHTML = detailTable(row.parts, 'Installed parts');
+    $('#twr-work-services').innerHTML = detailTable(row.services, 'Completed services');
+    $('#twr-work-dialog').showModal();
   }
 
   function render(rows) {
-    $('#twr-rows').innerHTML = rows.map((row, index) =>
-      '<tr><td>' + (offset + index + 1) + '</td><th scope="row">' + esc(row.name) + '</th><td>'
-      + number.format(row.completed_jobs) + '</td><td>' + items(row.parts) + '</td><td>' + items(row.services) + '</td></tr>'
-    ).join('') || '<tr><td class="report-empty" colspan="5">No technician records for these dates.</td></tr>';
+    visibleRows = rows;
+    const count = value => '<td class="twr-count">' + number.format(value) + '</td>';
+    $('#twr-rows').innerHTML = rows.map((row, index) => {
+      const totals = partTotals(row.parts);
+      return '<tr><td>' + (offset + index + 1) + '</td><th scope="row">' + esc(row.name) + '</th>'
+        + count(row.completed_jobs) + count(totals.housing) + count(totals.glass) + count(totals.mic)
+        + '<td><button type="button" class="secondary-button twr-open-work" data-twr-work="' + index
+        + '" aria-label="View work for ' + esc(row.name) + '" data-capability="report_technician_work" data-capability-page="reports">View Work</button></td></tr>';
+    }).join('') || '<tr><td class="report-empty" colspan="7">No technician work recorded for these dates.</td></tr>';
   }
 
   async function refresh() {
     if (!root || !allowed()) return;
     const token = ++epoch;
     const [from, to] = range;
+    const dialog = $('#twr-work-dialog');
+    if (dialog.open) dialog.close();
+    visibleRows = [];
     busy = true;
     controls();
     $('#twr-results').hidden = true;
     showStatus('Loading technician work…');
     try {
       const client = window.GREENLOOP_GET_CLIENT();
-      const { data, error } = await client.rpc('get_technician_work_report_v1', { p_from: from, p_to: to, p_offset: offset });
+      const { data, error } = await client.rpc('get_technician_work_report_v2', {
+        p_from: from, p_to: to, p_offset: offset, p_include_zero: includeZero
+      });
       if (token !== epoch || !root?.isConnected || !allowed()) return;
       if (error) throw error;
       if (!data || !Array.isArray(data.rows) || !Number.isSafeInteger(data.total) || data.offset !== offset
-          || data.from !== from || data.to !== to || data.rows.length !== Math.min(pageSize, Math.max(0, data.total - offset))) {
+          || data.from !== from || data.to !== to || data.include_zero !== includeZero
+          || data.rows.length !== Math.min(pageSize, Math.max(0, data.total - offset))) {
         throw Error('The technician work report could not be verified.');
       }
       if (offset >= data.total && offset > 0) {
@@ -108,7 +143,8 @@
     epoch++;
     root?.remove();
     root = host = null;
-    busy = false;
+    visibleRows = [];
+    busy = includeZero = false;
     total = offset = 0;
   }
 
@@ -125,12 +161,18 @@
       + '<div class="twr-presets"><button class="secondary-button" type="button" data-twr-cut="today">Today</button>'
       + '<button class="secondary-button" type="button" data-twr-cut="week">Last 7 days</button>'
       + '<button class="secondary-button" type="button" data-twr-cut="month">This month</button></div></form>'
+      + '<div class="twr-options"><label><input type="checkbox" id="twr-include-zero" data-capability="report_technician_work" data-capability-page="reports"> Show technicians with no work</label></div>'
       + '<p id="twr-status" role="status" hidden></p><div id="twr-results" hidden>'
-      + '<div class="report-table-wrap"><table class="report-table" data-preserve-table-layout>'
+      + '<div class="report-table-wrap"><table class="report-table twr-summary" data-preserve-table-layout>'
       + '<thead><tr><th scope="col">S.No</th><th scope="col">Technician</th><th scope="col">Completed jobs</th>'
-      + '<th scope="col">Installed parts</th><th scope="col">Completed services</th></tr></thead><tbody id="twr-rows"></tbody></table></div>'
+      + '<th scope="col">Housing</th><th scope="col">Glass</th><th scope="col">Mic</th><th scope="col">Details</th></tr></thead><tbody id="twr-rows"></tbody></table></div>'
       + '<div class="twr-pager" data-capability="report_technician_work" data-capability-page="reports"><button id="twr-prev" class="secondary-button" type="button">Previous</button>'
-      + '<span id="twr-range" role="status"></span><button id="twr-next" class="secondary-button" type="button">Next</button></div></div>';
+      + '<span id="twr-range" role="status"></span><button id="twr-next" class="secondary-button" type="button">Next</button></div></div>'
+      + '<dialog id="twr-work-dialog" class="twr-work-dialog" aria-labelledby="twr-work-title" data-capability="report_technician_work" data-capability-page="reports">'
+      + '<header class="twr-work-header"><div><h3 id="twr-work-title"></h3><p id="twr-work-range"></p></div>'
+      + '<button class="secondary-button" id="twr-work-close" type="button" autofocus>Close</button></header>'
+      + '<div class="twr-work-columns"><section><h4>Installed parts</h4><div id="twr-work-parts"></div></section>'
+      + '<section><h4>Completed services</h4><div id="twr-work-services"></div></section></div></dialog>';
     target.replaceChildren(root);
     setRange(dateRange('today'));
     $('#twr-from').max = $('#twr-to').max = range[1];
@@ -152,6 +194,16 @@
     }));
     $('#twr-prev').addEventListener('click', () => { offset -= pageSize; refresh(); });
     $('#twr-next').addEventListener('click', () => { offset += pageSize; refresh(); });
+    $('#twr-include-zero').addEventListener('change', event => {
+      includeZero = event.target.checked;
+      offset = total = 0;
+      refresh();
+    });
+    $('#twr-rows').addEventListener('click', event => {
+      const button = event.target.closest('[data-twr-work]');
+      if (button) showWork(visibleRows[Number(button.dataset.twrWork)]);
+    });
+    $('#twr-work-close').addEventListener('click', () => $('#twr-work-dialog').close());
     refresh();
   }
 

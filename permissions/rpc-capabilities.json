@@ -1,6 +1,14 @@
 {
   "version": "20261105-stock-consistency-1",
   "rpcs": {
+    "get_technician_work_report_v2": {
+      "page": "reports",
+      "capability": "report_technician_work",
+      "read": true
+    },
+    "get_technician_work_summary_version": {
+      "read": true
+    },
     "get_technician_work_report_v1": {
       "page": "reports",
       "capability": "report_technician_work",
