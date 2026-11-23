@@ -13,7 +13,8 @@
 .export-box-number span { letter-spacing: .08em; text-transform: uppercase; }
 .export-box-number strong { color: #135e42; font-family: Manrope, sans-serif; font-size: 1.12rem; }
 .export-box-progress { display: grid; gap: 9px; }
-.export-box-progress-top { display: flex; justify-content: space-between; gap: 15px; color: #385746; font-size: .75rem; }
+.export-box-progress-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 15px; color: #385746; font-size: .75rem; }
+#export-box-count { font-size: clamp(2rem, 3vw, 3.5rem); font-weight: 800; line-height: 1.05; font-variant-numeric: tabular-nums; }
 .export-box-progress-top span { color: #687d6f; font-weight: 700; }
 .export-progress-track { height: 10px; overflow: hidden; border-radius: 999px; background: #dcebe0; }
 .export-progress-track span { display: block; width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #12835a, #39a572); transition: width .25s ease; }
