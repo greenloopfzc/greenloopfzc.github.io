@@ -144,6 +144,14 @@
       "capability": "view",
       "read": true
     },
+    "get_stock_activity_range_v1": {
+      "page": "ready_stock",
+      "capability": "search",
+      "read": true
+    },
+    "get_stock_activity_range_version": {
+      "read": true
+    },
     "get_stock_activity_reports_version": {
       "read": true
     },

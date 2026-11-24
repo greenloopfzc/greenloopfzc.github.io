@@ -155,3 +155,4 @@
   Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs, rules);
   Object.assign(root.GREENLOOP_RPC_CAPABILITIES, rules);
 })(typeof window !== "undefined" ? window : globalThis);
+(function(root){const rules={get_stock_activity_range_v1:{page:"ready_stock",capability:"search",read:true},get_stock_activity_range_version:{read:true}};Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,rules);Object.assign(root.GREENLOOP_RPC_CAPABILITIES,rules);})(typeof window!=="undefined"?window:globalThis);
