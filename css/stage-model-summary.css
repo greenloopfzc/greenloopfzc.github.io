@@ -4,12 +4,14 @@
 
 .stage-model-dialog {
   box-sizing: border-box;
-  width: max-content;
-  max-width: min(44rem, calc(100% - 1rem));
+  width: min(72rem, calc(100% - 1rem));
+  max-width: calc(100% - 1rem);
+  min-height: min(44rem, 76vh);
+  min-height: min(44rem, 76dvh);
   max-height: calc(100vh - 1rem);
   max-height: calc(100dvh - 1rem);
   margin: auto;
-  padding: 1rem;
+  padding: 1.25rem;
   overflow: auto;
   border: 1px solid var(--nm-line, #cbd8df);
   border-radius: 18px;
@@ -41,10 +43,14 @@
 
 .stage-model-heading h2 {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: 1.25rem;
 }
 
 .stage-model-scroll {
+  align-self: center;
+  width: max-content;
+  min-width: min(36rem, 100%);
+  max-width: min(54rem, 100%);
   min-height: 0;
   margin-top: .7rem;
   overflow: auto;
@@ -58,7 +64,7 @@
 }
 .stage-model-scroll :is(th, td) {
   padding: .16rem .65rem;
-  font-size: .875rem;
+  font-size: .9375rem;
   line-height: 1.2;
   border-bottom: 1px solid var(--nm-line, #cbd8df);
   text-align: center;
@@ -84,12 +90,22 @@
 .stage-model-pages {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
+  align-self: center;
+  width: min(36rem, 100%);
   margin-top: .65rem;
 }
 .stage-model-pages span { text-align: center; }
 .stage-model-dialog [hidden] { display: none !important; }
 
+@media (min-width: 800px) and (min-height: 720px) {
+  .stage-model-scroll:not(:has(tbody tr:nth-child(13))) :is(th, td) {
+    padding-block: .45rem;
+    font-size: 1.0625rem;
+  }
+}
+
 @media (max-width: 440px) {
   .stage-model-dialog { padding: .8rem; }
+  .stage-model-heading h2 { font-size: 1.15rem; }
   .stage-model-scroll :is(th, td) { padding-inline: .3rem; font-size: .84rem; }
 }
