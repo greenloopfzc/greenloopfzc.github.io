@@ -411,6 +411,25 @@ function buildStageSections(sortedRows) {
       return `<article class="history-replacement-pair"><p class="history-replacement-explanation">${escapeHtml(message)}</p><div class="history-replacement-identities"><div class="history-replacement-old"><span>Returned IMEI</span><strong${old?' data-gl-copy-identifier':''}>${escapeHtml(old||missing)}</strong></div><span class="history-replacement-arrow" aria-label="replaced by">→</span><div class="history-replacement-new"><span>Replacement IMEI</span><strong data-gl-copy-identifier>${escapeHtml(incoming)}</strong></div></div><p class="history-replacement-meta">${[batch,scalar(link.invoice_number),scalar(link.supplier_code)].filter(Boolean).map(escapeHtml).join(' · ')}</p><p class="history-replacement-meta">${escapeHtml([scalar(link.model),link.storage_gb?link.storage_gb+' GB':'',scalar(link.color)].filter(Boolean).join(' · '))} · Received: ${escapeHtml(journeyMoment(link.received_at))} · ${link.entered?'Entered in IMEI Entry':'Awaiting IMEI Entry'}</p></article>`;
     }).join('')}</section>`;
   }
+  function renderTechnicianHistory(periods) {
+    if (!Array.isArray(periods) || !periods.length) return "";
+    const rows = periods.map((period, index) => {
+      const start = safe(journeyMoment(period.started_at));
+      const end = period.running === true ? "Timer running" : safe(journeyMoment(period.stopped_at));
+      const elapsed = safe(duration(period.elapsed_seconds));
+      return `<tr><td>${index + 1}</td><td>${safe(period.technician)}</td><td>${start}</td><td>${end}</td><td>${elapsed}</td></tr>`;
+    }).join("");
+    return `<section class="history-technician" aria-labelledby="history-technician-title">
+      <h3 id="history-technician-title">Technician History</h3>
+      <p>Timer duration includes waiting time.</p>
+      <div class="history-technician-scroll" role="region" aria-labelledby="history-technician-title" tabindex="0">
+        <table data-no-table-filters data-preserve-table-layout>
+          <thead><tr><th scope="col">S.No</th><th scope="col">Technician</th><th scope="col">Started · UAE</th><th scope="col">Ended · UAE</th><th scope="col">Duration</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </section>`;
+  }
   function renderHistory(data) {
     const rows=window.GREENLOOP_STOCK_JOURNEY.activity(data.rows);
     renderBasicTable(data.device || {},rows);
@@ -419,7 +438,7 @@ function buildStageSections(sortedRows) {
       escape:escapeHtml,date:journeyMoment,currentStage:currentStage(data.device || {}),
       money:value=>number(value)===null ? missing : number(value).toLocaleString("en-GB",{minimumFractionDigits:2,maximumFractionDigits:2})
     });
-    body.innerHTML=(data.chaman_summary?.sent?'<section class="history-chaman-summary"><h3>Chaman Shop transfers</h3><p>'+escapeHtml('Sent: '+data.chaman_summary.sent+' · Received back at Greenloop: '+data.chaman_summary.returned+' · Outside Greenloop: '+data.chaman_summary.outside_greenloop)+'</p><p>Every dispatch, receiving and return is recorded in the journey below.</p></section>':'')+renderReplacementHistory(data)+window.GREENLOOP_IMEI_CORRECTIONS.render(data.report_corrections,data.device?.imei_1)+(rows.length ? compact+`<details class="history-full-activity"><summary>Full activity (${rows.length} records)</summary><ol class="history-activity-list">${renderActivityList(visibleRows)}</ol></details>` : '<p class="history-missing">No history has been recorded for this phone.</p>');
+    body.innerHTML=(data.chaman_summary?.sent?'<section class="history-chaman-summary"><h3>Chaman Shop transfers</h3><p>'+escapeHtml('Sent: '+data.chaman_summary.sent+' · Received back at Greenloop: '+data.chaman_summary.returned+' · Outside Greenloop: '+data.chaman_summary.outside_greenloop)+'</p><p>Every dispatch, receiving and return is recorded in the journey below.</p></section>':'')+renderReplacementHistory(data)+renderTechnicianHistory(data.technician_history)+window.GREENLOOP_IMEI_CORRECTIONS.render(data.report_corrections,data.device?.imei_1)+(rows.length ? compact+`<details class="history-full-activity"><summary>Full activity (${rows.length} records)</summary><ol class="history-activity-list">${renderActivityList(visibleRows)}</ol></details>` : '<p class="history-missing">No history has been recorded for this phone.</p>');
     count.textContent="Oldest → newest · UAE date & time · Same time = no separate clock sequence recorded";
     const totals=data.summary || {};
     const unpriced=number(totals.unpriced_manual_part_quantity) || 0;
@@ -579,6 +598,6 @@ function buildStageSections(sortedRows) {
   document.querySelector("#open-menu").addEventListener("click", () => setMenu(true));
   document.querySelector("#close-menu").addEventListener("click", () => setMenu(false));
   backdrop.addEventListener("click", () => setMenu(false));
-  for(const name of ['greenloop:office-locked','greenloop:signed-out','greenloop:permissions-changed'])window.addEventListener(name,()=>{searchVersion++;bulkVersion++;closeHistoryPopup();result.hidden=true;receiptResult.hidden=true;bulkSearchResult?.remove();});
+  for(const name of ['greenloop:office-locked','greenloop:signed-out','greenloop:permissions-changed'])window.addEventListener(name,()=>{searchVersion++;bulkVersion++;closeHistoryPopup();result.hidden=true;body.replaceChildren();receiptResult.hidden=true;bulkSearchResult?.remove();});
   initialize().catch(error => { permissionMessage.textContent = error.message || "IMEI Search could not be loaded."; permissionMessage.hidden = false; });
 })();

@@ -135,3 +135,15 @@ html[data-mode="dark"] .journey-summary-step.is-report-correction {background:#4
 
 .app-page .history-corrections-table tbody tr[data-correction-record] > td {background:#f8dddd!important;color:#382529!important;}
 html[data-mode="dark"] .app-page .history-corrections-table tbody tr[data-correction-record] > td {background:#48272e!important;color:#f8e7eb!important;}
+
+.history-technician { margin: 18px 0; padding: 16px; border: 1px solid var(--history-line); border-radius: 16px; min-width: 0; }
+.history-technician h3 { margin: 0 0 4px; }
+.history-technician p { margin: 0 0 12px; font-size: .85rem; color: var(--history-muted); }
+.history-technician-scroll { overflow: auto; border: 1px solid var(--history-line); border-radius: 10px; max-height: 22rem; }
+.history-technician table { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 38rem; }
+.history-technician :is(th,td) { padding: 9px 12px; text-align: start; }
+.history-technician th { position: sticky; top: 0; background: var(--history-well); }
+.history-technician td { border-top: 1px solid var(--history-line); }
+.history-technician th:first-child { width: 4rem; }
+.history-technician td:nth-child(2) { font-weight: 700; }
+.history-technician td:nth-child(n+3) { white-space: nowrap; font-variant-numeric: tabular-nums; }
