@@ -233,7 +233,7 @@
       const item = (data || []).find((entry) => String(entry.option_value).trim().toLocaleLowerCase() === String(select.value).trim().toLocaleLowerCase());
       if (!item) { window.alert("This option could not be found."); return; }
       const code = window.prompt("Enter deletion code to remove this option:");
-      if (code !== "1213") return;
+      if (code === null) return;
       const { error } = await api().rpc("delete_entry_option", { p_option_id: item.id, p_deletion_code: code });
       if (error) { window.alert(error.message || "The option could not be removed."); return; }
       await reloadOptionGroup(group);

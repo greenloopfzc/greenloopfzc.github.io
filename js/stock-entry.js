@@ -113,7 +113,7 @@
     if (!supplier.value) { setMessage("Select a supplier company before removing it."); return; }
     const selected = supplierRecords.find((record) => String(record.id) === String(supplier.value));
     const code = window.prompt(`Enter deletion code to remove ${supplierCompanyLabel(selected)}:`);
-    if (code !== "1213") { showToast("Supplier company was not removed. Deletion code is incorrect."); return; }
+    if (code === null) return;
     const { error } = await api().rpc("archive_supplier_company", { p_supplier_id: supplier.value, p_deletion_code: code });
     if (error) { setMessage(error.message || "Supplier company could not be removed."); return; }
     await loadSuppliers();

@@ -165,10 +165,7 @@
       return;
     }
     const code = window.prompt("Enter deletion code to remove this option:");
-    if (code !== "1213") {
-      showToast("Option was not removed. Deletion code is incorrect.");
-      return;
-    }
+    if (code === null) return;
     const { error } = await getClient().rpc("delete_entry_option", {
       p_option_id: optionId,
       p_deletion_code: code

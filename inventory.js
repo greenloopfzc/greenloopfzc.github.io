@@ -84,7 +84,7 @@
     const optionId = partName.selectedOptions[0]?.dataset.optionId;
     if (!optionId) { setMessage("Select a part name before removing it."); return; }
     const code = window.prompt("Enter deletion code to remove this part name:");
-    if (code !== "1213") { showToast("Part name was not removed. Deletion code is incorrect."); return; }
+    if (code === null) return;
     const { error } = await api().rpc("delete_entry_option", { p_option_id: optionId, p_deletion_code: code });
     if (error) throw error;
     await loadPartNames();

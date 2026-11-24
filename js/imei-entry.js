@@ -218,7 +218,7 @@
     const optionId = target.selectedOptions[0]?.dataset.optionId;
     if (!optionId) { setMessage("Select an option before removing it."); return; }
     const code = window.prompt("Enter deletion code to remove this option:");
-    if (code !== "1213") { showToast("Option was not removed. Deletion code is incorrect."); return; }
+    if (code === null) return;
     const { error } = await api().rpc("delete_entry_option", { p_option_id: optionId, p_deletion_code: code });
     if (error) { setMessage(error.message || "The option could not be removed."); return; }
     const field = masterFields.find(([itemGroup, select]) => itemGroup === group && select === target);

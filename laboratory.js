@@ -707,8 +707,9 @@
     const technician = technicians.find((item) => String(item.id) === String(activeTechnicianId));
     if (!technician) return;
     if (Number(technician.pending_count || 0) > 0) throw new Error("Complete or move this technician's pending IMEIs first.");
-    if (window.prompt(`Enter deletion code to remove ${technician.full_name}:`) !== "1213") return;
-    const { error } = await getClient().rpc("remove_lab_technician", { p_technician_id: technician.id, p_deletion_code: "1213" });
+    const code = window.prompt(`Enter deletion code to remove ${technician.full_name}:`);
+    if (code === null) return;
+    const { error } = await getClient().rpc("remove_lab_technician", { p_technician_id: technician.id, p_deletion_code: code });
     if (error) throw error;
     window.GREENLOOP_EMPLOYEES?.changed();
     activeTechnicianId = "";

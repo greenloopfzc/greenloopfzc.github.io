@@ -420,8 +420,9 @@
   async function removeTechnician(row) {
     const select = row.querySelector('[data-carry-field="technician"]');
     if (!select.value) return;
-    if (window.prompt("Enter deletion code to remove this technician:") !== "1213") return;
-    const { error } = await getClient().rpc("delete_technician_roster", { p_technician_id: select.value, p_deletion_code: "1213" });
+    const code = window.prompt("Enter deletion code to remove this technician:");
+    if (code === null) return;
+    const { error } = await getClient().rpc("delete_technician_roster", { p_technician_id: select.value, p_deletion_code: code });
     if (error) throw error;
     window.GREENLOOP_EMPLOYEES?.changed();
     await loadTechnicians();
@@ -830,7 +831,7 @@
     }
   });
 
-  tableBody.addEventListener("click", (event) => {
+  tableBody.addEventListener("click", async (event) => {
     const row = event.target.closest("tr");
     if (!row || row.dataset.completed === "yes") return;
     if (event.target.closest("[data-save-row]")) {
@@ -850,7 +851,21 @@
       const list = row.querySelector(`[data-requirement-group="${kind}"] .qc-bulk-requirement-list`);
       const selects = list.querySelectorAll("select");
       if (selects.length === 1 && !selects[0].value) return;
-      if (window.prompt(`Enter deletion code to remove this ${kind}:`) !== "1213") return;
+      if (removeRequirement.disabled) return;
+      const code = window.prompt(`Enter deletion code to remove this ${kind}:`);
+      if (code === null) return;
+      removeRequirement.disabled = true;
+      try {
+        const { data, error } = await getClient().rpc("get_initial_qc_deletion_code_valid_v1", { p_code: code });
+        if (error) throw error;
+        if (data !== true) { setMessage("Incorrect deletion code."); return; }
+        if (!row.isConnected || row.dataset.completed === "yes" || !removeRequirement.isConnected) return;
+      } catch (error) {
+        setMessage(error.message || "The deletion code could not be checked.");
+        return;
+      } finally {
+        removeRequirement.disabled = false;
+      }
       if (selects.length > 1) selects[selects.length - 1].remove(); else selects[0].value = "";
       if (kind === "part") applyGradeRouting(row);
       row.dataset[manualKey(kind === "part" ? "parts" : "services")] = "yes";
