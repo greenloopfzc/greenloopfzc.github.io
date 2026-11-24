@@ -1,0 +1,31 @@
+.activity-log { padding: 16px; }
+.activity-log-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+}
+.activity-log-filters label {
+  display: grid;
+  gap: 5px;
+  flex: 1 1 9rem;
+  min-width: 0;
+  font-size: .85rem;
+  font-weight: 700;
+}
+.activity-log-filters label:has([type="datetime-local"]) { flex-basis: 14rem; }
+.activity-log-filters :is(input, select) { width: 100%; min-height: 43px; }
+.activity-log-actions, .activity-log-pages { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.activity-log-status { margin: 12px 0; color: var(--nm-muted,#576774); }
+.activity-log-status:empty { margin: 0; }
+.activity-log-status.is-error { color: var(--nm-red,#a23737); }
+.activity-log-scroll { margin-top: 16px; overflow: auto; max-height: 65vh; }
+.activity-log table { width: 100%; min-width: 960px; }
+.activity-log th { position: sticky; top: 0; z-index: 1; background: var(--nm-well,#e4ebf0); }
+.activity-log td { vertical-align: top; }
+.activity-log :is(td, th) { text-align: start; }
+.activity-log td:nth-child(2) { min-width: 11rem; font-variant-numeric: tabular-nums; }
+.activity-log td:nth-child(5) { font-weight: 700; }
+.activity-log td:last-child { min-width: 12rem; }
+.activity-log small { display: block; margin-top: 3px; color: var(--nm-muted,#576774); overflow-wrap: anywhere; }
+.activity-log-pages { justify-content: space-between; margin-top: 12px; }

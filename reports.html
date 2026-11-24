@@ -21,8 +21,8 @@
     <link rel="stylesheet" href="css/damage-management.css?v=20261007-damage-payable-1">
     <link rel="stylesheet" href="css/complete-device-details.css?v=20261001-android-support-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script defer src="js/permission-catalog.js?v=20261123-stock-progress-download-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261123-stock-progress-download-1"></script>
+    <script defer src="js/permission-catalog.js?v=20261124-activity-log-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261124-activity-log-1"></script>
 <script defer src="js/page-capabilities.js?v=20261104-report-permissions-1"></script>
 <script defer src="js/imei-canonical.js?v=20261117-primary-imei-1"></script>
 <script defer src="js/imei-scan.js?v=20261118-lab-single-notice-1"></script>
@@ -64,7 +64,9 @@
     <script defer src="js/company-stock-progress.js?v=20261123-stock-progress-pdf-one-page-1"></script>
     <link rel="stylesheet" href="css/technician-work-report.css?v=20261123-technician-work-bdept-1">
     <script defer src="js/technician-work-report.js?v=20261123-technician-work-bdept-1"></script>
-    <script defer src="js/reports.js?v=20261123-technician-work-report-1"></script>
+    <link rel="stylesheet" href="css/activity-log.css?v=20261124-activity-log-1">
+    <script defer src="js/activity-log.js?v=20261124-activity-log-1"></script>
+    <script defer src="js/reports.js?v=20261124-activity-log-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261111-ruby-obsidian-1">
     <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
   <link rel="stylesheet" href="css/sidebar-compact.css?v=20261009-sidebar-pdf-1">
@@ -117,6 +119,7 @@
               <button class="report-tab" type="button" data-report="stock_progress" aria-pressed="false" hidden data-capability="report_supplier_progress" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">▥</span><span class="report-tab-label">Stock Progress</span></button>
               <button class="report-tab" type="button" data-report="stock_receipt_correction" aria-pressed="false" hidden data-capability="report_receipt_correction" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">&#9998;</span><span class="report-tab-label">Stock Receipt Correction</span></button>
               <button class="report-tab" type="button" data-report="stock_grade_analysis" aria-pressed="false" hidden data-capability="stock_grade_analysis" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">▥</span><span class="report-tab-label">Stock Grade Analysis</span></button>
+              <button class="report-tab" type="button" data-report="activity_log" aria-pressed="false" hidden data-capability="report_activity_log" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">▤</span><span class="report-tab-label">Activity Log</span></button>
               <button class="report-tab" type="button" data-report="technician_work" aria-pressed="false" hidden data-capability="report_technician_work" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">&#9638;</span><span class="report-tab-label">Technician Work Report</span></button>
               <button class="report-tab" type="button" data-report="parts_usage" aria-pressed="false" hidden data-capability="parts_usage" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">&#9638;</span><span class="report-tab-label">Parts Usage Report</span></button>
               <button class="report-tab" type="button" data-report="stock_parts_cost" aria-pressed="false" hidden data-capability="stock_parts_cost" data-capability-page="reports"><span class="report-tab-icon" aria-hidden="true">$</span><span class="report-tab-label">Stock Parts Cost</span></button>

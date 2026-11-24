@@ -48,3 +48,9 @@
   catalog.reportSections.supplier_progress.actions.push(key);
   catalog.reportDependencies[key] = "report_supplier_progress";
 })(typeof window !== "undefined" ? window : globalThis);
+
+(function(root){
+  const catalog = root.GREENLOOP_PERMISSION_CATALOG;
+  catalog.byPage.reports.capabilities.push({key:"report_activity_log",label:"View Activity Log",write:false});
+  catalog.reportSections.activity_log = {label:"Activity Log",view:"report_activity_log",actions:[]};
+})(typeof window !== "undefined" ? window : globalThis);

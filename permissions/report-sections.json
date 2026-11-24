@@ -95,6 +95,11 @@
       "search": "report_device_cost_search",
       "sort": "report_device_cost_sort"
     },
+    "activity_log": {
+      "label": "Activity Log",
+      "view": "report_activity_log",
+      "actions": []
+    },
     "technician_work": {
       "label": "Technician Work Report",
       "view": "report_technician_work",
