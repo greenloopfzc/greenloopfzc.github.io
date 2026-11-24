@@ -27,6 +27,7 @@
   const minimumGap = 1000; // One leading read plus a bounded trailing read for committed changes.
   let autoPickTimer;
   let manualImeiAction = false;
+  let countsRequestStarted = false;
   let lastCountsKey="",forceDispatch=false;
 
   function getClient() {
@@ -97,7 +98,7 @@
     if (stopped || document.hidden) return;
     // Office access keeps its independent network checks; badge polling is 30s.
     const delay = failures ? Math.min(30000, 10000 * 2 ** Math.min(failures - 1, 2)) : 30000;
-    pollTimer = window.setTimeout(refreshWorkflowNotifications, delay);
+    pollTimer = window.setTimeout(requestPassiveRefresh, delay);
   }
 
   function connect(client) {
@@ -106,19 +107,33 @@
     try {
       const next = client.channel('greenloop-workflow-notifications-v1');
       channel = next;
+      let hasSubscribed = false;
       next.on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'workflow_notification_signal' }, () => {
-        if (channel === next) {forceDispatch=true;refreshWorkflowNotifications();}
+        if (channel === next) refreshWorkflowNotifications();
       }).subscribe((status) => {
         if (channel !== next) return;
+        const wasConnected = connected;
         connected = status === 'SUBSCRIBED';
-        if (connected) refreshWorkflowNotifications(); // Catch changes during connection/reconnection.
+        if (connected && !wasConnected) {
+          if (hasSubscribed) refreshWorkflowNotifications();
+          else requestPassiveRefresh();
+          hasSubscribed = true;
+        }
         pollLater();
       });
     } catch (_) { disconnect(); }
   }
 
-  function refreshWorkflowNotifications(event) {
-    if(event?.type)forceDispatch=true;
+  function requestPassiveRefresh() {
+    if (!inFlight) queueRefresh();
+  }
+
+  function refreshWorkflowNotifications() {
+    forceDispatch = true;
+    if (!inFlight || countsRequestStarted) queueRefresh();
+  }
+
+  function queueRefresh() {
     dirty = true;
     if (stopped || document.hidden || inFlight || refreshTimer) return;
     refreshTimer = window.setTimeout(runRefresh, Math.max(0, minimumGap - (performance.now() - lastStarted)));
@@ -139,7 +154,7 @@
     const client = getClient();
     if (!client) { pollLater(); return; }
     inFlight = true; dirty = false; lastStarted = performance.now();
-    const requestEpoch = epoch,notifyAfterRead=forceDispatch;forceDispatch=false;
+    const requestEpoch = epoch;
     try {
       const { data: sessionData } = await withDeadline(client.auth.getSession());
       if (requestEpoch !== epoch || stopped || document.hidden) return;
@@ -148,6 +163,10 @@
       if (!userId) { hideAllBadges(); return; }
       connect(client);
       await window.GREENLOOP_ACCESS_READY;
+      if (requestEpoch !== epoch || stopped || document.hidden) return;
+      countsRequestStarted = true;
+      const notifyAfterRead = forceDispatch;
+      forceDispatch = false;
       const {data,error}=await withDeadline(client.rpc('get_sidebar_notification_counts_v1'));
       if(requestEpoch!==epoch||stopped||document.hidden)return;
       if(error)throw error;
@@ -167,9 +186,10 @@
         });
       }
     } finally {
+      countsRequestStarted = false;
       inFlight = false;
       pollLater();
-      if (dirty) refreshWorkflowNotifications();
+      if (dirty) queueRefresh();
     }
   }
 
@@ -224,32 +244,31 @@
     reorderSidebar();
     updateDashboardGreeting();
     startManualImeiOnlyMode();
-    refreshWorkflowNotifications();
+    queueRefresh();
     window.GREENLOOP_REFRESH_NOTIFICATIONS = refreshWorkflowNotifications;
     document.addEventListener("greenloop:notifications-changed", refreshWorkflowNotifications);
     document.addEventListener('greenloop:workflow-committed', refreshWorkflowNotifications);
     window.addEventListener('storage', (event) => {
-      if (event.key === 'greenloop-workflow-commit-v1') {forceDispatch=true;refreshWorkflowNotifications();}
+      if (event.key === 'greenloop-workflow-commit-v1') refreshWorkflowNotifications();
     });
-    window.addEventListener('greenloop:permissions-changed',()=>{epoch++;lastCountsKey='';hideAllBadges();refreshWorkflowNotifications();});
+    window.addEventListener('greenloop:permissions-changed',()=>{epoch++;lastCountsKey='';hideAllBadges();queueRefresh();});
     window.addEventListener('greenloop:office-locked',()=>{stopped=true;epoch++;disconnect();hideAllBadges();window.clearTimeout(pollTimer);});
     window.addEventListener('online', refreshWorkflowNotifications);
-    window.addEventListener('focus', refreshWorkflowNotifications);
+    window.addEventListener('focus', requestPassiveRefresh);
     const auth = getClient()?.auth;
     authSubscription = auth?.onAuthStateChange?.((event, session) => {
       // Never call Supabase from inside its auth lock.
       if ((session?.user?.id || null) !== userId || event === 'SIGNED_OUT') {
         epoch += 1; userId = session?.user?.id || null;lastCountsKey="";
-        disconnect(); hideAllBadges();
+        disconnect(); hideAllBadges(); queueRefresh();
       }
-      refreshWorkflowNotifications();
     })?.data?.subscription;
     document.addEventListener("visibilitychange", () => {
       epoch += 1;
       if (document.hidden) {
         window.clearTimeout(refreshTimer); refreshTimer = null;
         window.clearTimeout(pollTimer); disconnect();
-      } else { updateDashboardGreeting(); refreshWorkflowNotifications(); }
+      } else { updateDashboardGreeting(); queueRefresh(); }
     });
     window.addEventListener('pagehide', () => {
       stopped = true; epoch += 1;
@@ -257,7 +276,7 @@
       window.clearTimeout(pollTimer); window.clearInterval(autoPickTimer);
       disconnect();
     });
-    window.addEventListener('pageshow', () => { stopped = false; refreshWorkflowNotifications(); });
+    window.addEventListener('pageshow', () => { stopped = false; requestPassiveRefresh(); });
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initialize);

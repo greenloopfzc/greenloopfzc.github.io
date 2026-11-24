@@ -419,29 +419,91 @@
     return defaults;
   }
 
-  let queueEpoch=0,queueStopped=false,queueRead=null,queueAgain=false,queueRefreshTimer=null;
-  function scheduleQueueRefresh(){if(queueStopped||document.hidden)return;if(queueRead){queueAgain=true;return;}clearTimeout(queueRefreshTimer);queueRefreshTimer=setTimeout(()=>{void loadQueue().catch(error=>setMessage(error.message||'Final QC queue could not refresh. Use Refresh to retry.'));},250);}
-  async function loadQueue() {
-    if(queueStopped)return;if(queueRead){queueAgain=true;return queueRead;}
-    const ticket=++queueEpoch;queueRead=(async()=>{
-    const { data, error } = await window.GREENLOOP_FILTERS.all(()=>getClient()
-      .from("job_work_order_steps")
-      .select("id, work_order:job_work_orders!inner(work_order_number, job:jobs!inner(id, job_number, supplier_grade, supplier:greenloop_suppliers(supplier_code, company_name), receiving_batch:receiving_batches(planned_quantity, invoice_number, batch_number), device:devices(device_number, imei_1, imei_2, serial_number, brand, model, storage_gb, color, battery_health, device_platform, battery_health_unavailable, gc_grade)))")
-      .in("work_order.job.current_status", ["final_qc_pending","qc_failed"])
+  let queueEpoch = 0;
+  let queueStopped = false;
+  let queueRead = null;
+  let queueAgain = false;
+  let queueRefreshTimer;
+  let queueDetailsLoaded = false;
+  let queueDetailsError = "";
+
+  function scheduleQueueRefresh() {
+    if (queueStopped || document.hidden) return;
+    if (queueRead) {
+      queueAgain = true;
+      return;
+    }
+    clearTimeout(queueRefreshTimer);
+    queueRefreshTimer = setTimeout(() => {
+      void loadQueue().catch(error => setMessage(error.message || "Final QC queue could not refresh. Use Refresh to retry."));
+    }, 250);
+  }
+
+  function waitingSteps(selection, options) {
+    return getClient().from("job_work_order_steps").select(selection, options)
+      .in("work_order.job.current_status", ["final_qc_pending", "qc_failed"])
       .eq("department", "final_qc")
-      .eq("step_status", "in_progress")
-      .order("created_at", { ascending: true }).order("id"));
-    if (error) throw error;
-    if(queueStopped||ticket!==queueEpoch||window.GREENLOOP_CAN?.("view","final_qc")!==true)return;
-    if(!Array.isArray(data))throw Error('Final QC queue could not be verified. Use Refresh to retry.');
-    const nextSteps = data;
-    // Queue summaries need only their joined phone/receipt fields. Fresh BH and
-    // return context arrive in the targeted receive snapshot when a row loads.
-    queueSteps = nextSteps;
-    queueCount.textContent = `${queueSteps.length} waiting`;
-    queueCount.setAttribute("aria-label", `View ${queueSteps.length} phones waiting for Final QC`);
-    if (!pendingModal.hidden) renderPendingJobs(pendingSearch.value);
-    })().finally(()=>{if(ticket===queueEpoch){queueRead=null;if(queueAgain&&!queueStopped){queueAgain=false;scheduleQueueRefresh();}}});return queueRead;
+      .eq("step_status", "in_progress");
+  }
+
+  function updateQueueCount(count) {
+    queueCount.textContent = `${count} waiting`;
+    queueCount.setAttribute("aria-label", `View ${count} phones waiting for Final QC`);
+  }
+
+  async function loadQueue(details = !pendingModal.hidden) {
+    if (queueStopped) return;
+    if (queueRead) {
+      if (details && !queueRead.details) {
+        await queueRead.promise.catch(() => {});
+        return loadQueue(true);
+      }
+      return queueRead.promise;
+    }
+
+    clearTimeout(queueRefreshTimer);
+    const ticket = ++queueEpoch;
+    const canApply = () => !queueStopped && ticket === queueEpoch && window.GREENLOOP_CAN?.("view", "final_qc") === true;
+    const request = (async () => {
+      if (details) {
+        const { data, error } = await window.GREENLOOP_FILTERS.all(() =>
+          waitingSteps("id, work_order:job_work_orders!inner(work_order_number, job:jobs!inner(id, job_number, supplier_grade, supplier:greenloop_suppliers(supplier_code, company_name), receiving_batch:receiving_batches(planned_quantity, invoice_number, batch_number), device:devices(device_number, imei_1, imei_2, serial_number, brand, model, storage_gb, color, battery_health, device_platform, battery_health_unavailable, gc_grade)))")
+            .order("created_at", { ascending: true }).order("id"));
+        if (error) throw error;
+        if (!Array.isArray(data)) throw new Error("Final QC queue could not be verified. Use Refresh to retry.");
+        if (!canApply()) return;
+        queueSteps = data;
+        queueDetailsLoaded = true;
+        queueDetailsError = "";
+        updateQueueCount(data.length);
+        if (!pendingModal.hidden) renderPendingJobs(pendingSearch.value);
+      } else {
+        const { count, error } = await waitingSteps(
+          "id, work_order:job_work_orders!inner(job:jobs!inner(id))",
+          { count: "exact", head: true }
+        );
+        if (error) throw error;
+        if (!Number.isSafeInteger(count) || count < 0) {
+          throw new Error("Final QC count could not be verified. Use Refresh to retry.");
+        }
+        if (canApply()) updateQueueCount(count);
+      }
+    })().catch(error => {
+      if (details && canApply()) {
+        queueDetailsError = "Waiting phones could not be loaded. Use Refresh to retry.";
+        if (!pendingModal.hidden) renderPendingJobs(pendingSearch.value);
+      }
+      throw error;
+    }).finally(() => {
+      if (ticket !== queueEpoch) return;
+      queueRead = null;
+      if (queueAgain && !queueStopped) {
+        queueAgain = false;
+        scheduleQueueRefresh();
+      }
+    });
+    queueRead = { details, promise: request };
+    return request;
   }
 
   async function autoPickAllPending() {
@@ -450,7 +512,7 @@
     setMessage();
     setSubmitting(autoPickButton, true, "Loading...");
     try {
-      await loadQueue();
+      await loadQueue(true);
       const pending = queueSteps
         .map((step) => ({ step, imei: String(getDevice(step)?.imei_1 || "").trim() }))
         .filter((item) => /^\d{15}$/.test(item.imei));
@@ -524,6 +586,11 @@
     onSelect:item=>{pendingSearch.value=item.imei_1;renderPendingJobs(item.imei_1);}
   });
   function renderPendingJobs(filter = "") {
+    if (!queueDetailsLoaded || queueDetailsError) {
+      pendingListBody.innerHTML = '<tr><td colspan="9" class="final-pending-empty">' +
+        escapeHtml(queueDetailsError || "Loading waiting phones…") + '</td></tr>';
+      return;
+    }
     const search = String(filter || "").trim().toLocaleLowerCase();
     const sourceRows = search ? window.GREENLOOP_RECORD_SEARCH.localLookup(pendingSearchItems(),search).items : pendingSearchItems();
     const rows = window.GREENLOOP_FILTERS.use('qc-pending-filters', sourceRows, {before:pendingListBody.closest('div'),fields:[['supplier','Supplier code'],['model','Model'],['storage','GB'],['color','Color']],onChange:()=>renderPendingJobs(pendingSearch.value),search:false,highlightQuery:()=>pendingSearch.value});
@@ -645,7 +712,7 @@
       ? `Passed - Attempt ${response?.attempt_number || "-"}`
       : result === "frame" ? "Sent to B-DEPT - Grade pending" : `Failed - ${response?.technician_name||"Lab / Glass rework"} · ${response?.failure_reason||""}`, "is-completed");
     queueSteps = queueSteps.filter((candidate) => candidate.id !== step.id);
-    queueCount.textContent = `${queueSteps.length} waiting`;
+    scheduleQueueRefresh();
     return { ok: true, result };
     } catch (error) {
       setRowState(row, error.message || "Could not save", "is-error");
@@ -768,11 +835,12 @@
     if (!canInspect) throw new Error("Your account does not have Final QC permission.");
     await window.GREENLOOP_ACCESS_READY;
     if (window.GREENLOOP_PAGE_ACCESS?.pageKey !== "final_qc") return;
-    await Promise.all([loadFinalGrades(), loadQueue(), loadFailureOptions()]);
+    await Promise.all([loadFinalGrades(), loadFailureOptions()]);
     createRows(10);
     app.hidden = false;
     setupHorizontalScroll();
     tableBody.querySelector(".final-row-imei")?.focus();
+    void loadQueue().catch(error => setMessage(error.message || "Final QC count could not refresh. Use Refresh to retry."));
   }
 
   tableBody.addEventListener("input", (event) => {
@@ -842,9 +910,36 @@
   document.querySelector("#clear-tray").addEventListener("click", resetTray);
   autoPickButton.addEventListener("click", autoPickAllPending);
   document.querySelector("#refresh-queue").addEventListener("click", () => Promise.all([loadQueue(),loadFailureOptions()]).then(() => showToast("Final QC queue refreshed.")).catch((error) => setMessage(error.message || "Queue could not be refreshed.")));
-  queueCount.addEventListener("click",()=>{openPendingModal();void loadQueue().catch(()=>{});});
+  queueCount.addEventListener("click", () => {
+    queueDetailsLoaded = false;
+    queueDetailsError = "";
+    queueSteps = [];
+    openPendingModal();
+    void loadQueue(true).catch(() => {});
+  });
   document.addEventListener("greenloop:workflow-notifications-refreshed",scheduleQueueRefresh);
-  for(const name of ["greenloop:office-locked","greenloop:signed-out","pagehide"])window.addEventListener(name,()=>{queueStopped=true;queueEpoch++;queueRead=null;queueAgain=false;clearTimeout(queueRefreshTimer);queueSteps=[];queueCount.textContent="— waiting";pendingListBody.replaceChildren();pendingModal.hidden=true;document.body.classList.remove("qc-modal-open");});
+  for (const name of ["greenloop:office-locked", "greenloop:signed-out", "pagehide"]) {
+    window.addEventListener(name, () => {
+      queueStopped = true;
+      queueEpoch++;
+      queueRead = null;
+      queueAgain = false;
+      clearTimeout(queueRefreshTimer);
+      queueSteps = [];
+      queueDetailsLoaded = false;
+      queueDetailsError = "";
+      queueCount.textContent = "— waiting";
+      queueCount.removeAttribute("aria-label");
+      pendingListBody.replaceChildren();
+      pendingModal.hidden = true;
+      document.body.classList.remove("final-modal-open");
+    });
+  }
+  window.addEventListener("pageshow", event => {
+    if (!event.persisted) return;
+    queueStopped = false;
+    scheduleQueueRefresh();
+  });
   pendingSearch.addEventListener("input", () => renderPendingJobs(pendingSearch.value));
   pendingModal.addEventListener("click", (event) => { if (event.target.closest("[data-close-pending]")) closePendingModal(); });
   document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !pendingModal.hidden) closePendingModal(); });
