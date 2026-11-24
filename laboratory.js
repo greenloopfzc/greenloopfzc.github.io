@@ -64,7 +64,7 @@
   let stockSelector,activeStockScope=null,stockPending=false;
   const stockPages=document.querySelector('#lab-stock-pages');
   let activePhoneStepId = "";
-  let workbenchTechnicianId = "", summaryTechnicianId = "", expandedSummaryStepId = "";
+  let workbenchTechnicianId = "", summaryTechnicianId = "";
   let partOptions = [...standardParts];
   const usageCounts = {part: new Map(), service: new Map()};
   function rankChoices(kind, options) { return [...options].sort((a,b) => (usageCounts[kind].get(normalise(b)) || 0) - (usageCounts[kind].get(normalise(a)) || 0) || (normalise(a) < normalise(b) ? -1 : normalise(a) > normalise(b) ? 1 : 0)); }
@@ -111,7 +111,6 @@
     technicianSummary.hidden = true;
     summaryRows.replaceChildren();
     summaryTechnicianId = "";
-    expandedSummaryStepId = "";
   }
 
   function renderTechnicianSummary(rows, technician) {
@@ -120,9 +119,7 @@
       clearTechnicianSummary();
       return;
     }
-    if (summaryTechnicianId !== technician.id) expandedSummaryStepId = "";
     summaryTechnicianId = technician.id;
-    if (!rows.some(row => row.step_id === expandedSummaryStepId)) expandedSummaryStepId = "";
     const now = phoneNow();
     const sorted = rows.map(row => {
       const assigned = Date.parse(row.technician_assigned_at);
@@ -131,41 +128,19 @@
     }).sort((a,b) => (a.start === b.start ? a.row.imei.localeCompare(b.row.imei) : a.start - b.start));
     summaryRows.innerHTML = sorted.length ? sorted.map(({row,start}, index) => {
       const step = escapeHtml(row.step_id);
-      const shown = row.step_id === expandedSummaryStepId;
       const time = Number.isFinite(start)
         ? '<span data-lab-assigned-age="'+escapeHtml(new Date(start).toISOString())+'">'+escapeHtml(elapsedPhoneTime(start))+'</span>'
         : 'Not recorded';
-      return `<tr><td>${index + 1}</td><td>
-        <button class="lab-summary-model" type="button" data-lab-summary-model="${step}" aria-expanded="${shown}"
-          aria-controls="lab-summary-imei-${step}" data-capability="view" data-capability-page="lab_glass" data-search-read-only>${escapeHtml(row.model || "Unknown model")}</button>
-        <div id="lab-summary-imei-${step}" class="lab-summary-imei" ${shown ? "" : "hidden"}>
-          <span>IMEI</span>
-          <button type="button" data-lab-summary-phone="${step}" data-capability="view" data-capability-page="lab_glass"
-            data-search-read-only title="Go to phone details"><bdi data-gl-copy-identifier>${escapeHtml(row.imei)}</bdi></button>
-        </div></td>
+      return `<tr><td>${index + 1}</td><td>${escapeHtml(row.model || "Unknown model")}</td>
+        <td><button type="button" data-lab-summary-phone="${step}" data-capability="view" data-capability-page="lab_glass"
+          data-search-read-only title="Go to phone details"><bdi data-gl-copy-identifier>${escapeHtml(row.imei)}</bdi></button></td>
         <td>${escapeHtml(row.storage_gb == null ? "—" : row.storage_gb+" GB")}</td>
         <td>${escapeHtml(row.color || "—")}</td><td>${time}</td></tr>`;
-    }).join("") : '<tr><td colspan="5" class="technician-lines-empty">No pending phones.</td></tr>';
+    }).join("") : '<tr><td colspan="6" class="technician-lines-empty">No pending phones.</td></tr>';
     technicianSummary.hidden = false;
   }
 
   summaryRows.addEventListener("click", async event => {
-    const model = event.target.closest("[data-lab-summary-model]");
-    if (model) {
-      const previous = summaryRows.querySelector('[data-lab-summary-model][aria-expanded="true"]');
-      if (previous) {
-        previous.setAttribute("aria-expanded", "false");
-        document.getElementById(previous.getAttribute("aria-controls")).hidden = true;
-      }
-      if (previous === model) {
-        expandedSummaryStepId = "";
-        return;
-      }
-      expandedSummaryStepId = model.dataset.labSummaryModel;
-      model.setAttribute("aria-expanded", "true");
-      document.getElementById(model.getAttribute("aria-controls")).hidden = false;
-      return;
-    }
     const phone = event.target.closest("[data-lab-summary-phone]");
     if (!phone) return;
     const technicianId = activeTechnicianId;
