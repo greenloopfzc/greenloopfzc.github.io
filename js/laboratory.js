@@ -19,6 +19,8 @@
   const technicianLinesHelp = document.querySelector("#technician-lines-help");
   const technicianLinesCount = document.querySelector("#technician-lines-count");
   const technicianWorkRows = document.querySelector("#technician-work-rows");
+  const technicianSummary = document.querySelector("#lab-technician-summary");
+  const summaryRows = document.querySelector("#lab-technician-summary-rows");
   const technicianImeiScanWrap = document.querySelector("#technician-imei-scan-wrap");
   const technicianImeiScan = document.querySelector("#technician-imei-scan");
   const checkTechnicianImei = document.querySelector("#check-technician-imei");
@@ -62,6 +64,7 @@
   let stockSelector,activeStockScope=null,stockPending=false;
   const stockPages=document.querySelector('#lab-stock-pages');
   let activePhoneStepId = "";
+  let workbenchTechnicianId = "", summaryTechnicianId = "", expandedSummaryStepId = "";
   let partOptions = [...standardParts];
   const usageCounts = {part: new Map(), service: new Map()};
   function rankChoices(kind, options) { return [...options].sort((a,b) => (usageCounts[kind].get(normalise(b)) || 0) - (usageCounts[kind].get(normalise(a)) || 0) || (normalise(a) < normalise(b) ? -1 : normalise(a) > normalise(b) ? 1 : 0)); }
@@ -97,7 +100,88 @@
     }
     return '<div class="lab-phone-time is-unrecorded"><span>Time in Lab &amp; Glass</span><strong>Time not recorded</strong></div>';
   }
-  function updatePhoneAges(){if(isFrameMode||document.hidden||app.hidden||!app.isConnected)return;for(const el of technicianWorkRows.querySelectorAll('[data-lab-phone-age]')){const start=Date.parse(el.dataset.startedAt),text=elapsedPhoneTime(start);if(el.textContent!==text)el.textContent=text;el.closest('.lab-phone-time').classList.toggle('is-overdue',phoneNow()-start>=172800000);}}
+  function updatePhoneAges(){if(isFrameMode||document.hidden||app.hidden||!app.isConnected)return;for(const el of technicianWorkRows.querySelectorAll('[data-lab-phone-age]')){const start=Date.parse(el.dataset.startedAt),text=elapsedPhoneTime(start);if(el.textContent!==text)el.textContent=text;el.closest('.lab-phone-time').classList.toggle('is-overdue',phoneNow()-start>=172800000);}
+    if (!technicianSummary.hidden) for (const age of summaryRows.querySelectorAll("[data-lab-assigned-age]")) {
+      const value = elapsedPhoneTime(Date.parse(age.dataset.labAssignedAge));
+      if (age.textContent !== value) age.textContent = value;
+    }
+  }
+  function clearTechnicianSummary() {
+    if (technicianSummary.hidden) return;
+    technicianSummary.hidden = true;
+    summaryRows.replaceChildren();
+    summaryTechnicianId = "";
+    expandedSummaryStepId = "";
+  }
+
+  function renderTechnicianSummary(rows, technician) {
+    if (isFrameMode || !technician || workbenchTechnicianId !== technician.id ||
+        activeStockScope || focusedImei || bulkWorkbenchImeis) {
+      clearTechnicianSummary();
+      return;
+    }
+    if (summaryTechnicianId !== technician.id) expandedSummaryStepId = "";
+    summaryTechnicianId = technician.id;
+    if (!rows.some(row => row.step_id === expandedSummaryStepId)) expandedSummaryStepId = "";
+    const now = phoneNow();
+    const sorted = rows.map(row => {
+      const assigned = Date.parse(row.technician_assigned_at);
+      const start = !row.unassigned && Number.isFinite(assigned) && assigned <= now ? assigned : Infinity;
+      return {row, start};
+    }).sort((a,b) => (a.start === b.start ? a.row.imei.localeCompare(b.row.imei) : a.start - b.start));
+    summaryRows.innerHTML = sorted.length ? sorted.map(({row,start}, index) => {
+      const step = escapeHtml(row.step_id);
+      const shown = row.step_id === expandedSummaryStepId;
+      const time = Number.isFinite(start)
+        ? '<span data-lab-assigned-age="'+escapeHtml(new Date(start).toISOString())+'">'+escapeHtml(elapsedPhoneTime(start))+'</span>'
+        : 'Not recorded';
+      return `<tr><td>${index + 1}</td><td>
+        <button class="lab-summary-model" type="button" data-lab-summary-model="${step}" aria-expanded="${shown}"
+          aria-controls="lab-summary-imei-${step}" data-capability="view" data-capability-page="lab_glass" data-search-read-only>${escapeHtml(row.model || "Unknown model")}</button>
+        <div id="lab-summary-imei-${step}" class="lab-summary-imei" ${shown ? "" : "hidden"}>
+          <span>IMEI</span>
+          <button type="button" data-lab-summary-phone="${step}" data-capability="view" data-capability-page="lab_glass"
+            data-search-read-only title="Go to phone details"><bdi data-gl-copy-identifier>${escapeHtml(row.imei)}</bdi></button>
+        </div></td>
+        <td>${escapeHtml(row.storage_gb == null ? "—" : row.storage_gb+" GB")}</td>
+        <td>${escapeHtml(row.color || "—")}</td><td>${time}</td></tr>`;
+    }).join("") : '<tr><td colspan="5" class="technician-lines-empty">No pending phones.</td></tr>';
+    technicianSummary.hidden = false;
+  }
+
+  summaryRows.addEventListener("click", async event => {
+    const model = event.target.closest("[data-lab-summary-model]");
+    if (model) {
+      const previous = summaryRows.querySelector('[data-lab-summary-model][aria-expanded="true"]');
+      if (previous) {
+        previous.setAttribute("aria-expanded", "false");
+        document.getElementById(previous.getAttribute("aria-controls")).hidden = true;
+      }
+      if (previous === model) {
+        expandedSummaryStepId = "";
+        return;
+      }
+      expandedSummaryStepId = model.dataset.labSummaryModel;
+      model.setAttribute("aria-expanded", "true");
+      document.getElementById(model.getAttribute("aria-controls")).hidden = false;
+      return;
+    }
+    const phone = event.target.closest("[data-lab-summary-phone]");
+    if (!phone) return;
+    const technicianId = activeTechnicianId;
+    const heading = document.getElementById("lab-phone-" + phone.dataset.labSummaryPhone);
+    const row = heading?.closest(".lab-phone-row");
+    if (!row) return;
+    if (row.hidden) {
+      try { await workFilters.clear(); }
+      catch (error) { setBoardMessage(error.message || "This phone could not be opened."); return; }
+    }
+    if (labStopped || technicianId !== activeTechnicianId || row.hidden || !technicianWorkRows.contains(row)) return;
+    heading.tabIndex = -1;
+    heading.focus({preventScroll:true});
+    heading.scrollIntoView({block:"start"});
+  });
+
   function normalise(value) { return String(value || "").trim().replace(/\s+/g, " ").toLowerCase(); }
   function unique(values) { const seen = new Set(); return values.map((value) => String(value || "").trim()).filter((value) => value && !seen.has(normalise(value)) && seen.add(normalise(value))); }
   function asList(value) { if (Array.isArray(value)) return value; if (!value) return []; try { return JSON.parse(value); } catch { return []; } }
@@ -163,6 +247,9 @@
   }
 
   function renderTechnicianCards() {
+    if (summaryTechnicianId !== activeTechnicianId || activeStockScope || focusedImei || bulkWorkbenchImeis) {
+      clearTechnicianSummary();
+    }
     const pendingTotal=technicians.reduce((sum,t)=>sum+Math.max(0,Number(t.pending_count)||0),0);
     document.querySelector('#lab-total-pending-count').textContent=pendingTotal.toLocaleString('en-US');
     document.querySelector('#lab-total-pending-unit').textContent=pendingTotal===1?'phone':'phones';
@@ -313,6 +400,7 @@
     table.classList.toggle('lab-stock-lines',!!activeStockScope);
     const selectedTech = technicians.find((item) => String(item.id) === String(activeTechnicianId));
     const assignedRows = technicianRows.filter((row) => isFrameMode ? String(row.department) === "frame" : ["laboratory", "glass"].includes(String(row.department)));
+    renderTechnicianSummary(assignedRows, selectedTech);
     const filtered = assignedRows.filter(row => !focusedImei || (String(row.imei) === focusedImei && (!focusedStepId || String(row.step_id) === focusedStepId)));
     technicianLinesCount.hidden=!!activeStockScope;
     technicianLinesCount.textContent = focusedImei ? `${filtered.length} matching phone${filtered.length === 1 ? "" : "s"}` : `${filtered.length} phone${filtered.length === 1 ? "" : "s"}`;
@@ -487,11 +575,12 @@
     }
     return workbenchReads.get(key);
   }
-  function applyWorkbenchRows(rows,{quiet=false,serverTime,workOptions}={}){
+  function applyWorkbenchRows(rows,{quiet=false,serverTime,workOptions,technicianId=""}={}){
     applyWorkOptions(workOptions);
     if(Number.isFinite(Date.parse(serverTime)))phoneClock={server:Date.parse(serverTime),local:performance.now()};
     for(const row of rows){const p=row.pf_plan;if(!p)continue;const id=String(row.step_id),d=lineDrafts.get(id);if(d&&d.cycle!==p.cycle)lineDrafts.delete(id);else if(d?.partsDirty&&d.modeLocked!==additionalMode(row))clearDraftKind(id,'parts');}
-    if(quiet&&JSON.stringify(technicianRows)===JSON.stringify(rows))return;
+    if(quiet&&workbenchTechnicianId===technicianId&&JSON.stringify(technicianRows)===JSON.stringify(rows))return;
+    workbenchTechnicianId=technicianId;
     technicianRows=rows;renderTechnicianLines();
   }
   function alignSelectedCounter(){
@@ -568,7 +657,8 @@
     const data=await readWorkbench({p_employee_id:employee?.unassigned?null:technicianId,p_imei:scan||null});
     if(labStopped||window.GREENLOOP_CAN?.('view','lab_glass')!==true||version!==rowLoadVersion||technicianId!==activeTechnicianId||editsAtStart!==editVersion||scan!==focusedImei)return;
     if(scan&&String(data.employee_id)!==String(technicianId)){setBoardMessage('Phone assignment changed. Scan the IMEI again.');return;}
-    applyWorkbenchRows(data.rows,{quiet,serverTime:data.server_now,workOptions:data.work_options});alignSelectedCounter();return true;
+    applyWorkbenchRows(data.rows,{quiet,serverTime:data.server_now,workOptions:data.work_options,technicianId:scan?"":technicianId});
+    alignSelectedCounter();return true;
   }
   async function loadFrameRows(skipHistory=false) {
     setBoardMessage();
@@ -876,7 +966,7 @@
     try{await backgroundRead;}catch(error){if(!labStopped)setBoardMessage(error.message||'Phone details could not refresh. Use Refresh to retry.');}
     finally{backgroundRead=null;if(backgroundQueued&&!labStopped){clearTimeout(backgroundTimer);backgroundTimer=setTimeout(runBackgroundRefresh,1000);}}
   }
-  function stopLabReads(){labStopped=true;++rowLoadVersion;++imeiLookupVersion;clearTimeout(backgroundTimer);backgroundQueued=false;technicianRows=[];technicians=[];lineDrafts.clear();technicianWorkRows.replaceChildren();technicianCards.replaceChildren();app.hidden=true;}
+  function stopLabReads(){labStopped=true;++rowLoadVersion;++imeiLookupVersion;clearTimeout(backgroundTimer);backgroundQueued=false;technicianRows=[];technicians=[];lineDrafts.clear();technicianWorkRows.replaceChildren();technicianCards.replaceChildren();clearTechnicianSummary();app.hidden=true;}
   for(const event of ['greenloop:office-locked','greenloop:signed-out','pagehide'])window.addEventListener(event,stopLabReads);
   window.addEventListener('greenloop:permissions-changed',()=>{
     if(window.GREENLOOP_CAN?.('view',isFrameMode?'frame_department':'lab_glass')!==true){stopLabReads();return;}
