@@ -32,7 +32,7 @@
 <script defer src="js/stock-consistency.js?v=20261118-operational-loading-1"></script>
 <script defer src="js/batch-quantity-display.js?v=20261107-batch-quantity-labels-1"></script>
 <script src="complete-lists.js?v=20261113-stock-units-1" defer></script>
-  <script defer src="js/config.js?v=20261118-issuance-grade-edit-1"></script>
+  <script defer src="js/config.js?v=20261124-pending-model-summary-1"></script>
 <link rel="stylesheet" href="css/cable-workspace.css?v=20261111-replacement-cable-1">
 <script defer src="js/reader-connection.js?v=20261106-reader-port-fallback-1"></script>
 <script defer src="js/device-reader.js?v=20261124-cable-reader-latency-1"></script>
@@ -61,6 +61,8 @@
   <script defer src="js/qc-fast-loader.js?v=20261117-scanner-loading-1"></script>
   <script defer src="js/qc-issuance.js?v=20261120-issuance-readable-a4-1"></script>
   <link rel="stylesheet" href="css/qc-stock-scope.css?v=20261105-qc-direct-ready-1">
+  <link rel="stylesheet" href="css/stage-model-summary.css?v=20261124-pending-model-summary-1">
+  <script defer src="js/stage-model-summary.js?v=20261124-pending-model-summary-1"></script>
 </head>
   <body class="app-page">
     <div class="app-shell">
@@ -91,7 +93,7 @@
           <section class="page-heading"><div><p class="eyebrow">Initial QC / Handover</p><h1>Lab &amp; Glass Issuance</h1><p class="heading-subtitle">Assign and transfer phones with saved Initial QC inspections.</p></div><a class="secondary-button" href="initial-qc.html">← Initial QC</a></section>
           <p id="permission-message" class="access-message" role="alert" hidden></p>
           <section id="issuance-app" hidden>
-            <section class="qc-bulk-toolbar"><div><p class="panel-kicker">Saved inspections</p><h2>Scan phones to prepare the handover</h2><p>Saved grades, parts and services are shown below.</p></div><div class="qc-bulk-toolbar-actions"><span class="queue-count"><strong id="issuance-count">0</strong> awaiting</span><button id="issuance-load-all" type="button" class="secondary-button" data-capability="view">Load all awaiting</button><button id="issuance-refresh" type="button" class="secondary-button" data-capability="view">Refresh</button><span id="issuance-lines" class="queue-count tray-count">10 lines</span><button id="issuance-add" type="button" class="secondary-button" data-capability="entry">+ Add 10 lines</button><button id="issuance-clear" type="button" class="secondary-button" data-capability="entry">Clear tray</button></div></section>
+            <section class="qc-bulk-toolbar"><div><p class="panel-kicker">Saved inspections</p><h2>Scan phones to prepare the handover</h2><p>Saved grades, parts and services are shown below.</p></div><div class="qc-bulk-toolbar-actions"><span class="queue-count"><strong id="issuance-count">0</strong> awaiting</span><button type="button" class="secondary-button stage-model-trigger" data-stage-model-summary="qc_issuance" data-capability="view" data-capability-page="qc_issuance" data-search-read-only aria-haspopup="dialog">Model Summary</button><button id="issuance-load-all" type="button" class="secondary-button" data-capability="view">Load all awaiting</button><button id="issuance-refresh" type="button" class="secondary-button" data-capability="view">Refresh</button><span id="issuance-lines" class="queue-count tray-count">10 lines</span><button id="issuance-add" type="button" class="secondary-button" data-capability="entry">+ Add 10 lines</button><button id="issuance-clear" type="button" class="secondary-button" data-capability="entry">Clear tray</button></div></section>
             <p class="qc-excel-paste-help">Paste an IMEI column from Excel into an empty IMEI line to load the whole list.</p>
             <p id="issuance-message" class="form-message" role="status" aria-live="polite" hidden></p>
             <p class="qc-excel-paste-help issuance-carry-help">First-line technician and destination selections carry down automatically. Change any other line individually when needed.</p>

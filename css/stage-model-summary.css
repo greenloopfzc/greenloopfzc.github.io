@@ -1,0 +1,73 @@
+.stage-model-trigger {
+  white-space: nowrap;
+}
+
+.stage-model-dialog {
+  box-sizing: border-box;
+  width: min(42rem, calc(100% - 1.25rem));
+  max-height: 85vh;
+  margin: auto;
+  padding: 1rem;
+  overflow: auto;
+  border: 1px solid var(--nm-line, #cbd8df);
+  border-radius: 18px;
+  background: var(--nm-card, #f4f7fa);
+  color: var(--nm-ink, #203540);
+  box-shadow: 0 16px 50px #152a3c55;
+}
+
+.stage-model-dialog::backdrop {
+  background: #1d334b80;
+}
+
+.stage-model-heading, .stage-model-actions, .stage-model-pages {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+}
+
+.stage-model-heading, .stage-model-pages {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.stage-model-heading h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.stage-model-scroll {
+  max-height: min(28rem, 53vh);
+  margin-top: 1rem;
+  overflow: auto;
+  border: 1px solid var(--nm-line, #cbd8df);
+  border-radius: 10px;
+}
+.stage-model-scroll table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.stage-model-scroll :is(th, td) {
+  padding: .55rem .7rem;
+  border-bottom: 1px solid var(--nm-line, #cbd8df);
+  text-align: center;
+}
+.stage-model-scroll :is(thead th, tfoot th, tfoot td) {
+  position: sticky;
+  background: var(--nm-well, #e5edf2);
+  font-weight: 750;
+}
+.stage-model-scroll thead th { top: 0; }
+.stage-model-scroll tfoot :is(th, td) { bottom: 0; }
+.stage-model-scroll :is(th, td):first-child { width: 3.3rem; }
+.stage-model-scroll tbody td:not(:nth-child(2)) { white-space: nowrap; }
+.stage-model-scroll :is(td:last-child, tfoot td) { font-variant-numeric: tabular-nums; }
+.stage-model-status { margin: 1rem 0 0; }
+.stage-model-pages { margin-top: .8rem; }
+.stage-model-dialog [hidden] { display: none !important; }
+
+@media (max-width: 440px) {
+  .stage-model-dialog { padding: .8rem; }
+  .stage-model-scroll :is(th, td) { padding-inline: .35rem; font-size: .85rem; }
+}

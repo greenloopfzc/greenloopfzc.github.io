@@ -32,7 +32,7 @@
 <script defer src="js/stock-consistency.js?v=20261118-operational-loading-1"></script>
 <script defer src="js/batch-quantity-display.js?v=20261107-batch-quantity-labels-1"></script>
 <script src="complete-lists.js?v=20261113-stock-units-1" defer></script>
-  <script defer src="js/config.js?v=20261118-issuance-grade-edit-1"></script>
+  <script defer src="js/config.js?v=20261124-pending-model-summary-1"></script>
 <link rel="stylesheet" href="css/cable-workspace.css?v=20261111-replacement-cable-1">
 <script defer src="js/reader-connection.js?v=20261106-reader-port-fallback-1"></script>
 <script defer src="js/device-reader.js?v=20261124-cable-reader-latency-1"></script>
@@ -57,6 +57,8 @@
   <script defer src="js/clean-layout.js?v=20261118-remove-workflow-help-2"></script>
   <script defer src="js/suspicious-badge.js?v=20261117-reader-battery-performance-1"></script>
   <link rel="stylesheet" href="css/qc-stock-scope.css?v=20261105-qc-direct-ready-1">
+  <link rel="stylesheet" href="css/stage-model-summary.css?v=20261124-pending-model-summary-1">
+  <script defer src="js/stage-model-summary.js?v=20261124-pending-model-summary-1"></script>
 </head>
   <body class="app-page">
     <div class="app-shell">
@@ -89,7 +91,7 @@
           <section id="qc-app" class="qc-app" hidden>
             <section class="qc-bulk-toolbar">
               <div><p class="panel-kicker">Initial QC work tray</p><h2>Scan IMEIs first, then inspect every row</h2><p>Only scanned IMEIs are processed. Pending IMEIs are never loaded automatically.</p></div>
-              <div class="qc-bulk-toolbar-actions"><button id="qc-manage-options" class="secondary-button" type="button" data-capability="manage_options" data-capability-page="initial_qc" hidden>Manage Dropdowns</button><button id="queue-count" class="queue-count queue-count-button" type="button">0 waiting</button><button id="auto-pick-pending" class="secondary-button auto-pick-button" type="button">Auto pick all</button><span id="tray-count" class="queue-count tray-count">10 lines</span><button id="show-imei-columns" class="secondary-button" type="button">&larr; IMEI</button><button id="show-technician-columns" class="secondary-button" type="button">Save &rarr;</button><button id="add-ten-rows" class="secondary-button" type="button">+ Add 10 lines</button><button id="clear-tray" class="secondary-button" type="button">Clear tray</button></div>
+              <div class="qc-bulk-toolbar-actions"><button id="qc-manage-options" class="secondary-button" type="button" data-capability="manage_options" data-capability-page="initial_qc" hidden>Manage Dropdowns</button><button id="queue-count" class="queue-count queue-count-button" type="button">0 waiting</button><button type="button" class="secondary-button stage-model-trigger" data-stage-model-summary="initial_qc" data-capability="view" data-capability-page="initial_qc" data-search-read-only aria-haspopup="dialog">Model Summary</button><button id="auto-pick-pending" class="secondary-button auto-pick-button" type="button">Auto pick all</button><span id="tray-count" class="queue-count tray-count">10 lines</span><button id="show-imei-columns" class="secondary-button" type="button">&larr; IMEI</button><button id="show-technician-columns" class="secondary-button" type="button">Save &rarr;</button><button id="add-ten-rows" class="secondary-button" type="button">+ Add 10 lines</button><button id="clear-tray" class="secondary-button" type="button">Clear tray</button></div>
             </section>
             <p class="qc-excel-paste-help">Paste an IMEI column from Excel into an empty IMEI line to load the whole list.</p>
             <p id="qc-message" class="form-message receiving-message" role="status" aria-live="polite"></p>

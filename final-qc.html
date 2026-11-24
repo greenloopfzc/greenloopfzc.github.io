@@ -32,7 +32,7 @@
 <script defer src="js/stock-consistency.js?v=20261118-operational-loading-1"></script>
 <script defer src="js/batch-quantity-display.js?v=20261107-batch-quantity-labels-1"></script>
 <script src="complete-lists.js?v=20261113-stock-units-1" defer></script>
-  <script defer src="js/config.js?v=20261118-issuance-grade-edit-1"></script>
+  <script defer src="js/config.js?v=20261124-pending-model-summary-1"></script>
 <link rel="stylesheet" href="css/cable-workspace.css?v=20261111-replacement-cable-1">
 <script defer src="js/reader-connection.js?v=20261106-reader-port-fallback-1"></script>
 <script defer src="js/device-reader.js?v=20261124-cable-reader-latency-1"></script>
@@ -54,6 +54,8 @@
   <link rel="stylesheet" href="css/clean-layout.css?v=20261118-remove-workflow-help-2">
   <script defer src="js/clean-layout.js?v=20261118-remove-workflow-help-2"></script>
   <script defer src="js/suspicious-badge.js?v=20261117-reader-battery-performance-1"></script>
+  <link rel="stylesheet" href="css/stage-model-summary.css?v=20261124-pending-model-summary-1">
+  <script defer src="js/stage-model-summary.js?v=20261124-pending-model-summary-1"></script>
 </head>
   <body class="app-page">
     <div class="app-shell">
@@ -83,7 +85,7 @@
           <section id="final-qc-app" class="final-bulk-app" hidden>
             <section class="final-bulk-toolbar">
               <div><p class="panel-kicker">Final QC work tray</p><h2>Scan IMEIs, then tick the correct result</h2><p>Direct Pass requires Final Grade. B-DEPT sends the phone without a grade; B-DEPT decides its Final Grade. Fail returns to Laboratory.</p></div>
-              <div class="final-bulk-toolbar-actions"><button id="queue-count" class="final-queue-count" type="button">0 waiting</button><button id="auto-pick-pending" class="secondary-button auto-pick-button" type="button">Auto pick all</button><span id="tray-count" class="final-tray-count">10 lines</span><button id="add-ten-rows" class="secondary-button" type="button">+ Add 10 lines</button><button id="clear-tray" class="secondary-button" type="button">Clear tray</button><button id="refresh-queue" class="secondary-button" type="button">Refresh</button></div>
+              <div class="final-bulk-toolbar-actions"><button id="queue-count" class="final-queue-count" type="button">0 waiting</button><button type="button" class="secondary-button stage-model-trigger" data-stage-model-summary="final_qc" data-capability="view" data-capability-page="final_qc" data-search-read-only aria-haspopup="dialog">Model Summary</button><button id="auto-pick-pending" class="secondary-button auto-pick-button" type="button">Auto pick all</button><span id="tray-count" class="final-tray-count">10 lines</span><button id="add-ten-rows" class="secondary-button" type="button">+ Add 10 lines</button><button id="clear-tray" class="secondary-button" type="button">Clear tray</button><button id="refresh-queue" class="secondary-button" type="button">Refresh</button></div>
             </section>
             <p class="qc-excel-paste-help">Paste an IMEI column from Excel into an empty IMEI line to load the whole list.</p>
             <p id="final-qc-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
