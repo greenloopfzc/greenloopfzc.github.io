@@ -4,8 +4,8 @@
 
 .stage-model-dialog {
   box-sizing: border-box;
-  width: min(74rem, calc(100% - 1rem));
-  max-width: calc(100% - 1rem);
+  width: max-content;
+  max-width: min(44rem, calc(100% - 1rem));
   max-height: calc(100vh - 1rem);
   max-height: calc(100dvh - 1rem);
   margin: auto;
@@ -53,7 +53,6 @@
 }
 .stage-model-scroll table {
   width: 100%;
-  table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
 }
@@ -71,9 +70,14 @@
 }
 .stage-model-scroll thead th { top: 0; }
 .stage-model-scroll tfoot :is(th, td) { bottom: 0; }
-.stage-model-scroll thead th:first-child { width: 4rem; }
-.stage-model-scroll thead th:nth-child(n+3) { width: 16%; }
-.stage-model-scroll td:nth-child(2) { overflow-wrap: anywhere; }
+.stage-model-scroll thead th:not(:nth-child(2)) {
+  width: 1px;
+  white-space: nowrap;
+}
+.stage-model-scroll td:nth-child(2) {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 .stage-model-scroll tbody td:not(:nth-child(2)) { white-space: nowrap; }
 .stage-model-scroll :is(td:last-child, tfoot td) { font-variant-numeric: tabular-nums; }
 .stage-model-status { margin: 1rem 0 0; }
@@ -87,7 +91,5 @@
 
 @media (max-width: 440px) {
   .stage-model-dialog { padding: .8rem; }
-  .stage-model-scroll thead th:first-child { width: 3rem; }
-  .stage-model-scroll thead th:nth-child(n+3) { width: 22%; }
   .stage-model-scroll :is(th, td) { padding-inline: .3rem; font-size: .84rem; }
 }

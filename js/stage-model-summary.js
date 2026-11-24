@@ -28,7 +28,7 @@
     </header>
     <p class="stage-model-status" role="status" hidden></p>
     <div class="stage-model-scroll" role="region" aria-label="Pending phones by model and storage" tabindex="0" hidden>
-      <table data-no-table-filters data-preserve-table-layout>
+      <table data-no-table-filters data-preserve-table-layout data-no-serial>
         <thead><tr><th scope="col">S.No</th><th scope="col">Model</th><th scope="col">GB</th><th scope="col">Quantity</th></tr></thead>
         <tbody></tbody>
         <tfoot><tr><th scope="row" colspan="3">Total</th><td></td></tr></tfoot>
