@@ -4,14 +4,12 @@
 
 .stage-model-dialog {
   box-sizing: border-box;
-  width: min(72rem, calc(100% - 1rem));
+  width: min(56rem, calc(100% - 1rem));
   max-width: calc(100% - 1rem);
-  min-height: min(44rem, 76vh);
-  min-height: min(44rem, 76dvh);
   max-height: calc(100vh - 1rem);
   max-height: calc(100dvh - 1rem);
   margin: auto;
-  padding: 1.25rem;
+  padding: 1.5rem;
   overflow: auto;
   border: 1px solid var(--nm-line, #cbd8df);
   border-radius: 18px;
@@ -47,10 +45,7 @@
 }
 
 .stage-model-scroll {
-  align-self: center;
-  width: max-content;
-  min-width: min(36rem, 100%);
-  max-width: min(54rem, 100%);
+  min-width: 0;
   min-height: 0;
   margin-top: .7rem;
   overflow: auto;
@@ -90,8 +85,6 @@
 .stage-model-pages {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  align-self: center;
-  width: min(36rem, 100%);
   margin-top: .65rem;
 }
 .stage-model-pages span { text-align: center; }
@@ -99,8 +92,8 @@
 
 @media (min-width: 800px) and (min-height: 720px) {
   .stage-model-scroll:not(:has(tbody tr:nth-child(13))) :is(th, td) {
-    padding-block: .45rem;
-    font-size: 1.0625rem;
+    padding: .6rem .9rem;
+    font-size: 1.125rem;
   }
 }
 
