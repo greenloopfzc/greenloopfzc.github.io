@@ -4,12 +4,17 @@
   const endpoint = "http://127.0.0.1:51892/v1/device";
   const threeUToolsEndpoint = "http://127.0.0.1:51894/v1/device";
   let lastFingerprint = "";
-  const nextThreeUToolsAttemptAt = new Map();
   let polling = false;
   let forceReaderRead = false;
-  let failedReads = 0;
   let readerState = "";
-  let cableIdentityCheck = null;
+  let legacyIdentityCheck = null;
+  let usbKey = "";
+  let revision = 0;
+  let colorRequest = null;
+  let nextColorAttempt = 0;
+  const canRead = () => !stopped && ["view", "edit"].includes(window.GREENLOOP_PAGE_ACCESS?.accessLevel) &&
+    (!window.GREENLOOP_CAN || window.GREENLOOP_CAN("view", window.GREENLOOP_PAGE_ACCESS?.pageKey) === true);
+  const current = ticket => ticket === revision && canRead();
   window.GREENLOOP_GET_CONNECTED_DEVICE = () =>
     Date.now() - (window.GREENLOOP_LAST_DEVICE_AT || 0) < 30000 ? window.GREENLOOP_LAST_DEVICE : null;
   const appleSalesRegions = new Map([
@@ -66,30 +71,33 @@
     return /^\d{15}$/.test(device.imei) ? device : null;
   }
 
-  async function fillMissingColorFrom3uTools(device) {
-    if (device.platform === "android" || device.color || !device.imei) return device;
+  function fillMissingColorFrom3uTools(device, ticket) {
     const now = Date.now();
-    if (now < (nextThreeUToolsAttemptAt.get(device.imei) || 0)) return device;
-    // 3uTools can finish reading a newly connected iPhone a moment after its IMEI.
-    // Retry automatically instead of requiring a cable reconnect.
-    nextThreeUToolsAttemptAt.set(device.imei, now + 1500);
-    try {
-      const fallback = await readThreeUToolsDevice();
-      if (!fallback) return device;
-      if (fallback.imei !== device.imei) return device;
-      return {
-        ...device,
-        color: fallback.color || device.color,
-        imei2: device.imei2 || fallback.imei2,
-        serialNumber: device.serialNumber || fallback.serialNumber,
-        phoneRegion: device.phoneRegion || fallback.phoneRegion
-      };
-    } catch (_) {
-      return device;
-    }
+    if (device.platform === "android" || !device.imei || window.GREENLOOP_LAST_DEVICE?.color ||
+        colorRequest || now < nextColorAttempt) return;
+    nextColorAttempt = now + 1500;
+    const request = readThreeUToolsDevice();
+    colorRequest = request;
+    void request.then(fallback => {
+      if (!current(ticket) || colorRequest !== request || fallback?.imei !== device.imei) return;
+      const active = window.GREENLOOP_LAST_DEVICE;
+      if (!active || active.connectionId !== device.connectionId || active.imei !== device.imei ||
+          Date.now() - window.GREENLOOP_LAST_DEVICE_AT >= 30000) return;
+      publishDevice({
+        ...active,
+        color: active.color || fallback.color,
+        imei2: active.imei2 || fallback.imei2,
+        serialNumber: active.serialNumber || fallback.serialNumber,
+        phoneRegion: active.phoneRegion || fallback.phoneRegion
+      }, false);
+    }).catch(() => {
+      // Color can still be read in a later USB response or entered manually.
+    }).finally(() => {
+      if (colorRequest === request) colorRequest = null;
+    });
   }
 
-  function publishDevice(device) {
+  function publishDevice(device, fresh = true) {
     const previous = window.GREENLOOP_LAST_DEVICE;
     const samePhone = previous?.connectionId && previous.connectionId === device.connectionId && (!previous.imei || !device.imei || previous.imei === device.imei);
     if (!samePhone) window.GREENLOOP_CABLE_CONNECTION_ID = (window.GREENLOOP_CABLE_CONNECTION_ID || 0) + 1;
@@ -104,7 +112,7 @@
     }
     if (device.batteryHealth !== "" && device.batteryHealth != null) device.batteryHealthUnavailable = false;
     const fingerprint = JSON.stringify(device);
-    window.GREENLOOP_LAST_DEVICE_AT = Date.now();
+    if (fresh) window.GREENLOOP_LAST_DEVICE_AT = Date.now();
     if (fingerprint === lastFingerprint) return false;
     lastFingerprint = fingerprint;
     window.GREENLOOP_LAST_DEVICE = device;
@@ -124,69 +132,111 @@
     window.GREENLOOP_LAST_DEVICE_AT = 0;
   }
 
+  function resetReader() {
+    revision += 1;
+    usbKey = "";
+    legacyIdentityCheck = null;
+    colorRequest = null;
+    nextColorAttempt = 0;
+    forgetConnection();
+  }
+
   async function poll() {
-    if (stopped || document.hidden || polling || !['view','edit'].includes(window.GREENLOOP_PAGE_ACCESS?.accessLevel)) return;
+    if (document.hidden || polling || !canRead()) return;
     polling = true;
+    let ticket = revision;
+    let verifyingIdentity = false;
     try {
       let device = null;
       let readerResponded = false;
       let readerMessage = "";
       if (!window.GREENLOOP_LAST_DEVICE) publishReaderState("reading", "Reading connected phone...");
+      const readerPath = forceReaderRead ? "/v1/device?refresh=1" : "/v1/device";
+      forceReaderRead = false;
       try {
-        const readerPath=forceReaderRead?"/v1/device?refresh=1":"/v1/device";forceReaderRead=false;
-        // USB startup + optional diagnostics are bounded by the helper. Do not
-        // abort a healthy first read after only 2.5 seconds.
-        const response = await (window.GREENLOOP_READER_CONNECTION?.fetch || ((p, o) => fetch(new URL(p, endpoint).href, o)))(readerPath, { cache: "no-store", signal: AbortSignal.timeout(20000) });
+        // USB startup and optional diagnostics are bounded by the local helper.
+        const request = window.GREENLOOP_READER_CONNECTION?.fetch || ((path, options) => fetch(new URL(path, endpoint).href, options));
+        const response = await request(readerPath, { cache: "no-store", signal: AbortSignal.timeout(20000) });
         const payload = await response.json();
         readerResponded = true;
         readerMessage = payload?.message || "Connect one unlocked phone and accept Trust if asked.";
-        if (response.ok) {
-          if (payload?.ok !== false) device = normalise(payload);
-        }
+        if (response.ok && payload?.ok !== false) device = normalise(payload);
       } catch (_) {
-        // A 3uTools-only receiving PC does not run the Apple driver reader.
+        // A 3uTools-only receiving PC may not run the local Greenloop helper.
       }
-      // A known disconnected/locked phone must not be replaced with stale OCR.
+      if (!current(ticket)) return;
+      // A known disconnected or locked phone must never be replaced with old OCR.
       if (!readerResponded && (!device || !/^\d{15}$/.test(device.imei))) {
         try { device = await readThreeUToolsDevice(); } catch (_) { device = null; }
       }
+      if (!current(ticket)) return;
       if (!device || (!/^\d{15}$/.test(device.imei) && !(device.platform === "android" && device.connectionId))) {
-        failedReads += 1;
-        cableIdentityCheck = null;
-        forgetConnection();
+        resetReader();
         publishReaderState(readerResponded ? "waiting" : "offline", readerResponded ? readerMessage : "Cable reader unavailable. Start Greenloop Cable Reader; allow local-network access if your browser asks.");
         return;
       }
-      if(stopped||!['view','edit'].includes(window.GREENLOOP_PAGE_ACCESS?.accessLevel)){forgetConnection();return;}
-      failedReads = 0;
-      if(window.GREENLOOP_IMEI_CANONICAL&&/^\d{15}$/.test(device.imei)){
-        const scanned=device.imei,identities=await window.GREENLOOP_IMEI_CANONICAL.resolve([scanned],()=>!stopped),identity=identities.get(scanned);
-        if(!identity||stopped)return;
-        if(identity.imei!==scanned)device={...device,imei:identity.imei,imei2:scanned};
+
+      const physicalKey = JSON.stringify([device.platform, device.connectionId, device.imei]);
+      if (usbKey !== physicalKey) {
+        resetReader();
+        usbKey = physicalKey;
+        ticket = revision;
       }
-      if (window.GREENLOOP_IMEI_STAGE_NOTICE?.checkPrimary && cableIdentityCheck?.imei !== device.imei) cableIdentityCheck={imei:device.imei,allowed:await window.GREENLOOP_IMEI_STAGE_NOTICE.checkPrimary(device.imei)};
-      if (cableIdentityCheck?.allowed === false) {
-        forgetConnection();publishReaderState("waiting","Duplicate phone — the cable IMEI belongs to this phone's main IMEI. Use IMEI 1.");return;
+      if (/^\d{15}$/.test(device.imei)) {
+        verifyingIdentity = true;
+        const scanned = device.imei;
+        const isCurrent = () => current(ticket);
+        if (window.GREENLOOP_IMEI_CANONICAL) {
+          // This protected lookup already verifies the saved primary IMEI.
+          const identities = await window.GREENLOOP_IMEI_CANONICAL.resolve([scanned], isCurrent);
+          if (!isCurrent()) return;
+          const identity = identities.get(scanned);
+          if (!identity) throw new Error("Phone identity unavailable.");
+          if (identity.imei !== scanned) device = { ...device, imei: identity.imei, imei2: scanned };
+        } else if (window.GREENLOOP_IMEI_STAGE_NOTICE?.checkPrimary) {
+          // Older pages may have only the stage lookup.
+          if (legacyIdentityCheck?.imei !== scanned) {
+            const allowed = await window.GREENLOOP_IMEI_STAGE_NOTICE.checkPrimary(scanned, { isCurrent });
+            if (!isCurrent()) return;
+            legacyIdentityCheck = { imei: scanned, allowed };
+          }
+          if (!legacyIdentityCheck.allowed) {
+            forgetConnection();
+            publishReaderState("waiting", "Duplicate phone - the cable IMEI belongs to this phone's main IMEI. Use IMEI 1.");
+            return;
+          }
+        }
+        verifyingIdentity = false;
       }
+      if (!current(ticket)) return;
       publishReaderState("ready");
       publishDevice(device);
-      if (device.platform !== "android" && !device.color) {
-        const enriched = await fillMissingColorFrom3uTools(device);
-        publishDevice(enriched);
-      }
+      fillMissingColorFrom3uTools(device, ticket);
     } catch (_) {
-      failedReads += 1;
-      forgetConnection();
-      publishReaderState("offline", "Cable reader could not respond. Start Greenloop Cable Reader, then retry.");
+      if (!current(ticket)) return;
+      resetReader();
+      publishReaderState(verifyingIdentity ? "waiting" : "offline", verifyingIdentity
+        ? "Phone read, but its IMEI could not be verified. Read again."
+        : "Cable reader could not respond. Start Greenloop Cable Reader, then retry.");
     } finally {
       polling = false;
+      if (forceReaderRead && canRead() && !document.hidden) queueMicrotask(poll);
     }
   }
 
-  for(const name of ['greenloop:office-locked','greenloop:signed-out'])window.addEventListener(name,()=>{stopped=true;forgetConnection();});
-  window.addEventListener("beforeunload", () => { stopped = true; });
+  function stopReader() { stopped = true; resetReader(); }
+  for (const name of ["pagehide", "beforeunload", "greenloop:office-locked", "greenloop:signed-out"]) {
+    window.addEventListener(name, stopReader);
+  }
+  window.addEventListener("greenloop:permissions-changed", () => { resetReader(); void poll(); });
+  document.addEventListener("greenloop:workflow-committed", () => { legacyIdentityCheck = null; });
   window.addEventListener("focus", poll);
-  window.addEventListener("greenloop:retry-device", () => { forceReaderRead = true; cableIdentityCheck = null; lastFingerprint = ""; window.GREENLOOP_CABLE_CONNECTION_ID = (window.GREENLOOP_CABLE_CONNECTION_ID || 0) + 1; poll(); });
+  window.addEventListener("greenloop:retry-device", () => {
+    forceReaderRead = true;
+    resetReader();
+    publishReaderState("reading", "Reading connected phone...");
+    void poll();
+  });
   document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
   window.setInterval(poll, 900);
   window.setTimeout(poll, 100);
