@@ -83,6 +83,15 @@
   overflow-wrap: anywhere;
 }
 .stage-model-scroll tbody td:not(:nth-child(2)) { white-space: nowrap; }
+.stage-model-dialog[data-technician-stock] .stage-model-scroll tbody td:nth-child(3) {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.stage-model-dialog[data-technician-stock] .stage-model-scroll thead th:last-child { white-space: normal; }
+.stage-model-dialog[data-technician-stock] .stage-model-scroll tbody td:last-child {
+  color: var(--nm-green, #087b57);
+  font-weight: 750;
+}
 .stage-model-scroll :is(td:last-child, tfoot td) { font-variant-numeric: tabular-nums; }
 .stage-model-status { margin: 1rem 0 0; }
 .stage-model-pages {

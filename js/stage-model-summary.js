@@ -9,11 +9,13 @@
     initial_qc: "Initial QC",
     qc_issuance: "Lab & Glass Issuance",
     lab_glass: "Lab & Glass",
+    lab_technician_stock: "Lab & Glass Technician Stock",
     frame_department: "B-DEPT",
     final_qc: "Final QC"
   };
   const amount = value => value.toLocaleString("en-US");
-  const canView = stage => window.GREENLOOP_CAN?.("view", stage) === true;
+  const isTechnicianStock = stage => stage === "lab_technician_stock";
+  const canView = stage => window.GREENLOOP_CAN?.("view", isTechnicianStock(stage) ? "lab_glass" : stage) === true;
 
   const dialog = document.createElement("dialog");
   dialog.className = "stage-model-dialog";
@@ -76,9 +78,16 @@
     pageIndex = index;
     const start = pageStarts[index];
     const end = pageStarts[index + 1] ?? rows.length;
-    for (let i = 0; i < body.rows.length; i++) body.rows[i].hidden = i < start || i >= end;
+    for (let i = 0; i < body.rows.length; i++) {
+      const row = body.rows[i];
+      row.hidden = i < start || i >= end;
+      if (!row.hidden && isTechnicianStock(stage)) {
+        const firstForTechnician = i === start || rows[i].technician_id !== rows[i - 1].technician_id;
+        row.cells[5].textContent = firstForTechnician ? amount(rows[i].technician_total) : "";
+      }
+    }
     scroll.scrollTop = 0;
-    pager.hidden = offset === 0 && end === groupCount;
+    pager.hidden = offset === 0 && start === 0 && end === groupCount;
     range.textContent = (offset + start + 1) + "–" + (offset + end) + " of " + groupCount + " groups";
     previous.disabled = offset === 0 && start === 0;
     next.disabled = offset + end >= groupCount;
@@ -111,10 +120,15 @@
   function render(lastPage) {
     body.replaceChildren();
     const { offset, rows } = summary;
-    rows.forEach(({model, storage_gb, quantity}, index) => {
+    rows.forEach(({model, storage_gb, quantity, technician, technician_total}, index) => {
       const line = body.insertRow();
-      for (const value of [offset + index + 1, model || "Not recorded",
-        storage_gb == null ? "Not recorded" : amount(storage_gb) + " GB", amount(quantity)]) {
+      const cells = [offset + index + 1, model || "Not recorded",
+        storage_gb == null ? "Not recorded" : amount(storage_gb) + " GB", amount(quantity)];
+      if (isTechnicianStock(stage)) {
+        cells.splice(1, 0, technician);
+        cells.push(amount(technician_total));
+      }
+      for (const value of cells) {
         line.insertCell().textContent = value;
       }
     });
@@ -130,7 +144,12 @@
       data.rows.length === Math.min(pageSize, Math.max(0, data.group_count - offset)) &&
       data.rows.every(row => row && (row.model === null || typeof row.model === "string") &&
         (row.storage_gb === null || (Number.isSafeInteger(row.storage_gb) && row.storage_gb >= 0)) &&
-        Number.isSafeInteger(row.quantity) && row.quantity > 0) &&
+        Number.isSafeInteger(row.quantity) && row.quantity > 0 &&
+        (!isTechnicianStock(expectedStage) ||
+          (typeof row.technician_id === "string" && row.technician_id &&
+            typeof row.technician === "string" && row.technician.trim() &&
+            Number.isSafeInteger(row.technician_total) && row.technician_total >= row.quantity &&
+            row.technician_total <= data.total))) &&
       (data.group_count <= pageSize && offset === 0
         ? data.rows.reduce((sum, row) => sum + row.quantity, 0) === data.total
         : data.rows.reduce((sum, row) => sum + row.quantity, 0) <= data.total);
@@ -145,7 +164,10 @@
     refresh.disabled = true;
     message("Loading pending phones…");
     try {
-      const result = await window.GREENLOOP_GET_CLIENT().rpc("get_pending_model_summary_v1", { p_stage: activeStage, p_offset: offset });
+      const client = window.GREENLOOP_GET_CLIENT();
+      const result = isTechnicianStock(activeStage)
+        ? await client.rpc("get_lab_technician_stock_summary_v1", { p_offset: offset })
+        : await client.rpc("get_pending_model_summary_v1", { p_stage: activeStage, p_offset: offset });
       if (!current()) return;
       if (result.error || !isValid(result.data, activeStage, offset)) throw new Error("Pending model summary could not be verified.");
       summary = result.data;
@@ -156,7 +178,9 @@
       message("");
       render(lastPage);
     } catch {
-      if (current()) message("Model summary could not be loaded. Select Refresh to try again.");
+      if (current()) message(isTechnicianStock(activeStage)
+        ? "Technician stock could not be loaded. Select Refresh to try again."
+        : "Model summary could not be loaded. Select Refresh to try again.");
     } finally {
       if (current()) refresh.disabled = false;
     }
@@ -167,7 +191,23 @@
       const target = button.dataset.stageModelSummary;
       if (dialog.open || !Object.hasOwn(stageNames, target) || !canView(target)) return;
       stage = target;
-      title.textContent = stageNames[target] + " Model Summary";
+      const technicianStock = isTechnicianStock(target);
+      title.textContent = technicianStock ? stageNames[target] : stageNames[target] + " Model Summary";
+      dialog.toggleAttribute("data-technician-stock", technicianStock);
+      scroll.setAttribute("aria-label", technicianStock
+        ? "Pending phones by technician, model and storage"
+        : "Pending phones by model and storage");
+      const headings = technicianStock
+        ? ["S.No", "Technician", "Model", "GB", "Quantity", "Tech Total"]
+        : ["S.No", "Model", "GB", "Quantity"];
+      const header = table.tHead.rows[0];
+      header.replaceChildren(...headings.map(label => {
+        const column = document.createElement("th");
+        column.scope = "col";
+        column.textContent = label;
+        return column;
+      }));
+      table.tFoot.hidden = technicianStock;
       dialog.showModal();
       void load();
     });
