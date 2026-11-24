@@ -4,17 +4,23 @@
 
 .stage-model-dialog {
   box-sizing: border-box;
-  width: min(52rem, calc(100% - 1.25rem));
-  max-height: 90vh;
-  max-height: 90dvh;
+  width: min(74rem, calc(100% - 1rem));
+  max-width: calc(100% - 1rem);
+  max-height: calc(100vh - 1rem);
+  max-height: calc(100dvh - 1rem);
   margin: auto;
-  padding: 1.25rem;
+  padding: 1rem;
   overflow: auto;
   border: 1px solid var(--nm-line, #cbd8df);
   border-radius: 18px;
   background: var(--nm-card, #f4f7fa);
   color: var(--nm-ink, #203540);
   box-shadow: 0 16px 50px #152a3c55;
+}
+
+.stage-model-dialog[open] {
+  display: flex;
+  flex-direction: column;
 }
 
 .stage-model-dialog::backdrop {
@@ -30,6 +36,7 @@
 .stage-model-heading, .stage-model-pages {
   justify-content: space-between;
   flex-wrap: wrap;
+  flex: none;
 }
 
 .stage-model-heading h2 {
@@ -38,20 +45,22 @@
 }
 
 .stage-model-scroll {
-  max-height: min(36rem, 65vh);
-  max-height: min(36rem, 65dvh);
-  margin-top: 1rem;
+  min-height: 0;
+  margin-top: .7rem;
   overflow: auto;
   border: 1px solid var(--nm-line, #cbd8df);
   border-radius: 10px;
 }
 .stage-model-scroll table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
 }
 .stage-model-scroll :is(th, td) {
-  padding: .55rem .7rem;
+  padding: .16rem .65rem;
+  font-size: .875rem;
+  line-height: 1.2;
   border-bottom: 1px solid var(--nm-line, #cbd8df);
   text-align: center;
 }
@@ -62,14 +71,23 @@
 }
 .stage-model-scroll thead th { top: 0; }
 .stage-model-scroll tfoot :is(th, td) { bottom: 0; }
-.stage-model-scroll :is(th, td):first-child { width: 3.3rem; }
+.stage-model-scroll thead th:first-child { width: 4rem; }
+.stage-model-scroll thead th:nth-child(n+3) { width: 16%; }
+.stage-model-scroll td:nth-child(2) { overflow-wrap: anywhere; }
 .stage-model-scroll tbody td:not(:nth-child(2)) { white-space: nowrap; }
 .stage-model-scroll :is(td:last-child, tfoot td) { font-variant-numeric: tabular-nums; }
 .stage-model-status { margin: 1rem 0 0; }
-.stage-model-pages { margin-top: .8rem; }
+.stage-model-pages {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  margin-top: .65rem;
+}
+.stage-model-pages span { text-align: center; }
 .stage-model-dialog [hidden] { display: none !important; }
 
 @media (max-width: 440px) {
   .stage-model-dialog { padding: .8rem; }
-  .stage-model-scroll :is(th, td) { padding-inline: .35rem; font-size: .85rem; }
+  .stage-model-scroll thead th:first-child { width: 3rem; }
+  .stage-model-scroll thead th:nth-child(n+3) { width: 22%; }
+  .stage-model-scroll :is(th, td) { padding-inline: .3rem; font-size: .84rem; }
 }

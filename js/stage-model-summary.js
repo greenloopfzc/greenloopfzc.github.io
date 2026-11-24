@@ -44,7 +44,8 @@
   const title = dialog.querySelector("h2");
   const status = dialog.querySelector(".stage-model-status");
   const scroll = dialog.querySelector(".stage-model-scroll");
-  const body = dialog.querySelector("tbody");
+  const table = scroll.querySelector("table");
+  const body = table.tBodies[0];
   const totalCell = dialog.querySelector("tfoot td");
   const pager = dialog.querySelector(".stage-model-pages");
   const range = pager.querySelector("span");
@@ -52,6 +53,7 @@
   const next = pager.querySelector("[data-model-next]");
   const refresh = dialog.querySelector("[data-model-refresh]");
   let stage = "", readVersion = 0, summary = null;
+  let pageStarts = [], pageIndex = 0;
 
   function message(text) {
     status.textContent = text;
@@ -60,6 +62,8 @@
 
   function clear() {
     summary = null;
+    pageStarts = [];
+    pageIndex = 0;
     body.replaceChildren();
     totalCell.textContent = "";
     range.textContent = "";
@@ -67,10 +71,46 @@
     pager.hidden = true;
   }
 
-  function render() {
-    body.replaceChildren();
+  function showPage(index) {
     const { offset, group_count: groupCount, rows } = summary;
-    const end = offset + rows.length;
+    pageIndex = index;
+    const start = pageStarts[index];
+    const end = pageStarts[index + 1] ?? rows.length;
+    for (let i = 0; i < body.rows.length; i++) body.rows[i].hidden = i < start || i >= end;
+    scroll.scrollTop = 0;
+    pager.hidden = offset === 0 && end === groupCount;
+    range.textContent = (offset + start + 1) + "–" + (offset + end) + " of " + groupCount + " groups";
+    previous.disabled = offset === 0 && start === 0;
+    next.disabled = offset + end >= groupCount;
+  }
+
+  function fitRows(visibleRow = pageStarts[pageIndex] ?? 0) {
+    if (!dialog.open || !summary?.rows.length) return;
+    for (const row of body.rows) row.hidden = false;
+    const longestRange = summary.group_count;
+    range.textContent = longestRange + "–" + longestRange + " of " + longestRange + " groups";
+    pager.hidden = summary.offset === 0 && summary.rows.length === summary.group_count;
+    pageStarts = [0];
+    if (table.offsetHeight > scroll.clientHeight) {
+      pager.hidden = false;
+      const available = scroll.clientHeight - table.tHead.getBoundingClientRect().height
+        - table.tFoot.getBoundingClientRect().height - 4;
+      let used = 0;
+      for (let i = 0; i < body.rows.length; i++) {
+        const height = body.rows[i].getBoundingClientRect().height;
+        if (used > 0 && used + height > available) {
+          pageStarts.push(i);
+          used = 0;
+        }
+        used += height;
+      }
+    }
+    showPage(pageStarts.findLastIndex(start => start <= visibleRow));
+  }
+
+  function render(lastPage) {
+    body.replaceChildren();
+    const { offset, rows } = summary;
     rows.forEach(({model, storage_gb, quantity}, index) => {
       const line = body.insertRow();
       for (const value of [offset + index + 1, model || "Not recorded",
@@ -79,12 +119,8 @@
       }
     });
     totalCell.textContent = amount(summary.total);
-    scroll.scrollTop = 0;
     scroll.hidden = false;
-    pager.hidden = groupCount <= pageSize;
-    range.textContent = (offset + 1) + "–" + end + " of " + groupCount + " groups";
-    previous.disabled = offset === 0;
-    next.disabled = end >= groupCount;
+    fitRows(lastPage ? rows.length - 1 : 0);
   }
 
   function isValid(data, expectedStage, offset) {
@@ -100,7 +136,7 @@
         : data.rows.reduce((sum, row) => sum + row.quantity, 0) <= data.total);
   }
 
-  async function load(offset = 0) {
+  async function load(offset = 0, lastPage = false) {
     const activeStage = stage;
     const version = ++readVersion;
     const current = () => dialog.open && version === readVersion && canView(activeStage);
@@ -118,7 +154,7 @@
         return;
       }
       message("");
-      render();
+      render(lastPage);
     } catch {
       if (current()) message("Model summary could not be loaded. Select Refresh to try again.");
     } finally {
@@ -139,11 +175,16 @@
 
   refresh.addEventListener("click", () => void load());
   previous.addEventListener("click", () => {
-    if (summary?.offset > 0) void load(summary.offset - pageSize);
+    if (pageIndex > 0) showPage(pageIndex - 1);
+    else if (summary?.offset > 0) void load(summary.offset - pageSize, true);
   });
   next.addEventListener("click", () => {
-    if (summary && summary.offset + pageSize < summary.group_count) void load(summary.offset + pageSize);
+    if (pageIndex + 1 < pageStarts.length) showPage(pageIndex + 1);
+    else if (summary && summary.offset + pageSize < summary.group_count) void load(summary.offset + pageSize);
   });
+  window.addEventListener("resize", () => fitRows());
+  window.visualViewport?.addEventListener("resize", () => fitRows());
+  document.fonts?.ready.then(() => fitRows());
   dialog.querySelector("[data-model-close]").addEventListener("click", () => dialog.close());
   dialog.addEventListener("close", () => {
     if (dialog.open) return;
