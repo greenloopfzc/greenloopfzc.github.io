@@ -2,6 +2,7 @@
 begin;
 set local statement_timeout='120s';
 set local lock_timeout='5s';
+set local search_path=pg_catalog,public;
 
 create index if not exists gl_final_qc_waiting_order_idx
  on public.job_work_order_steps(created_at,id) include(work_order_id)
@@ -21,7 +22,21 @@ declare
  seal record;
  installed text;
  current_source text;
+ current_body text;
+ new_body text;
+ body_delimiter text;
+ sidebar_query text;
+ matches integer;
  new_hash text;
+ -- The two shipped IMEI Entry query spellings use s or sp for suppliers.
+ sidebar_pattern constant text := $query$
+(select\s+coalesce\s*\(\s*sum\s*\(\s*remaining\s*\)\s*,\s*0\s*\)\s*into\s+n\s+from\s*\(\s*
+select\s+\(\s*greenloop_private\.supplier_return_batch\s*\(\s*b\.id\s*\)\s*->>\s*'remaining_quantity'\s*\)\s*::\s*integer\s+(?:as\s+)?remaining\s+
+from\s+public\.receiving_batches\s+(?:as\s+)?b\s+join\s+public\.stock_channels\s+(?:as\s+)?c\s+on\s+c\.id\s*=\s*b\.stock_channel_id\s+
+join\s+public\.suppliers\s+(?:as\s+)?(sp|s)\s+on\s+\2\.id\s*=\s*b\.supplier_id\s+
+where\s+b\.planned_quantity\s+is\s+not\s+null\s+and\s+c\.is_active\s+and\s+\2\.is_active\s+and\s+\2\.deleted_at\s+is\s+null\s+offset\s+0\s*
+\)\s*(?:as\s+)?x\s+where\s+remaining\s*>\s*0\s*;)\s*result\s*:=\s*result\s*\|\|\s*jsonb_build_object\s*\(\s*'imei_entry'\s*,\s*n\s*\)
+$query$;
  reviewed jsonb:='[]';
 begin
  if to_regprocedure('public.get_workflow_read_load_version()') is not null then
@@ -37,26 +52,7 @@ begin
  end if;
 
  for item in select * from (values
-  ('greenloop_private.sbn_counts()','93861453ac24dfdc438c81c4cd3e172b',$ddl$
-CREATE OR REPLACE FUNCTION greenloop_private.sbn_counts()
- RETURNS jsonb
- LANGUAGE plpgsql
- STABLE SECURITY DEFINER
- SET search_path TO 'pg_catalog', 'public'
-AS $function$
--- greenloop-shared-ready-count-276
-declare result jsonb:='{}';qc jsonb;n bigint;
-begin
- perform greenloop_private.require_office_network();
- if auth.uid()is null or not coalesce(public.is_active_staff(),false)or greenloop_private.damage_tv_only(auth.uid())then raise exception 'Active staff access required.'using errcode='42501';end if;
- if greenloop_private.sbn_can('stock_received')then
-  select coalesce(sum(planned_quantity),0)into n from public.receiving_batches b where not exists(select 1 from greenloop_private.srp_receipts r where r.replacement_batch_id=b.id);
-  result:=result||jsonb_build_object('stock_received',n);
- end if;
- if greenloop_private.sbn_can('imei_entry')then
-  -- Use the same eligible receipts and return-adjusted balance as the IMEI Entry selector.
-  if not public.is_active_staff()or not(public.has_page_access('imei_entry')or public.has_page_access('stock_received'))then raise exception 'Stock Received or IMEI Entry view permission is required.'using errcode='42501';end if;
-  with receipts as materialized (
+  ('greenloop_private.sbn_counts()',null,$body$with receipts as materialized (
    select b.id, b.planned_quantity
    from public.receiving_batches b
    join public.stock_channels c on c.id=b.stock_channel_id and c.is_active
@@ -80,74 +76,8 @@ begin
   )
   select coalesce(sum(greatest(r.planned_quantity-coalesce(e.quantity,0)-coalesce(t.quantity,0),0)),0)
   into n from receipts r
-  left join entered e on e.batch_id=r.id left join unentered_returns t on t.batch_id=r.id;
-  result:=result||jsonb_build_object('imei_entry',n);
- end if;
- if greenloop_private.sbn_can('initial_qc')then
-  qc:=greenloop_private.qcn_counts();result:=result||qc;
- end if;
- if greenloop_private.sbn_can('qc_issuance')then
- select count(*)into n from greenloop_private.qc_saved_issuance s
- join public.initial_qc_inspections i on i.id=s.inspection_id and i.job_id=s.job_id
- join public.jobs j on j.id=s.job_id and j.deleted_at is null and greenloop_private.company_job_available(j.id)and j.current_status='initial_qc_pending'
- join public.devices d on d.id=s.device_id and d.deleted_at is null where s.state='awaiting_issuance';result:=result||jsonb_build_object('qc_issuance',n);
- elsif not greenloop_private.sbn_can('initial_qc')then result:=result-'qc_issuance';end if;
- if greenloop_private.sbn_can('lab_glass')then
-  select count(distinct d.id)into n from public.job_work_order_steps s join public.job_work_orders w on w.id=s.work_order_id join public.jobs j on j.id=w.job_id and j.deleted_at is null and greenloop_private.company_job_available(j.id) join public.devices d on d.id=j.device_id and d.deleted_at is null
-  where s.department in('laboratory','glass')and s.step_status='in_progress'and j.current_status in('laboratory_pending','laboratory_in_progress','glass_pending','glass_in_progress','parts_pending');
-  result:=result||jsonb_build_object('lab_glass',n);
- end if;
- if greenloop_private.sbn_can('parts')then
-  select count(distinct imei)into n from(
- select d.imei_1 imei from greenloop_private.pqm_orders()q join public.devices d on d.id=q.device_id where q.needs_issue
- union select imei from greenloop_private.pp_returns()where status='pending')pending;
-  result:=result||jsonb_build_object('parts',n);
- end if;
- if greenloop_private.sbn_can('final_qc')then
-  select count(distinct d.id)into n from public.job_work_order_steps s join public.job_work_orders w on w.id=s.work_order_id join public.jobs j on j.id=w.job_id and j.deleted_at is null and greenloop_private.company_job_available(j.id) join public.devices d on d.id=j.device_id and d.deleted_at is null
-  where s.department='final_qc'and s.step_status='in_progress'and j.current_status in('final_qc_pending','qc_failed');
-  result:=result||jsonb_build_object('final_qc',n);
- end if;
- if greenloop_private.sbn_can('frame_department')then
-  select count(distinct d.id)into n from public.job_work_order_steps s join public.job_work_orders w on w.id=s.work_order_id join public.jobs j on j.id=w.job_id and j.deleted_at is null and greenloop_private.company_job_available(j.id) join public.devices d on d.id=j.device_id and d.deleted_at is null
-  where s.department='frame'and s.step_status='in_progress'and j.current_status in('frame_pending','frame_in_progress');
-  result:=result||jsonb_build_object('frame',n);
- end if;
- if greenloop_private.sbn_can('ready_stock')then
-  n:=greenloop_private.drc_ready_count();
-  result:=result||jsonb_build_object('ready_stock',n);
- end if;
- if greenloop_private.sbn_can('accounts')then
-  select count(*)into n from greenloop_private.box_workflow w join public.export_boxes b on b.id=w.box_id where w.state='accounts';
-  result:=result||jsonb_build_object('accounts',n);
- end if;
- if greenloop_private.sbn_can('export_boxes')then
-  select count(*)into n from public.export_boxes b left join greenloop_private.box_workflow w on w.box_id=b.id
-  where coalesce(w.state,case when b.box_status='open'then 'draft'else 'legacy'end)in('draft','recheck')and exists(select 1 from public.export_box_items i where i.box_id=b.id);
-  result:=result||jsonb_build_object('box_entry',n);
- end if;
- if greenloop_private.sbn_can('stock_exported')then
-  select count(distinct i.device_id)into n from public.export_box_items i join greenloop_private.box_workflow w on w.box_id=i.box_id and w.state='exported'join public.jobs j on j.id=i.job_id and j.deleted_at is null and greenloop_private.company_job_available(j.id) join public.devices d on d.id=i.device_id and d.deleted_at is null where j.current_status='shipped';
-  result:=result||jsonb_build_object('stock_exported',n);
- end if;
- if greenloop_private.sbn_can('ready_stock_journey')then
-  select count(distinct d.id)into n from public.jobs j join public.devices d on d.id=j.device_id and d.deleted_at is null where j.deleted_at is null and greenloop_private.company_job_available(j.id);
-  result:=result||jsonb_build_object('stock_journey',n);
- end if;
- if greenloop_private.sbn_can('supplier_returns')then
-  select count(distinct coalesce(device_id::text,job_id::text,imei_1,id::text))into n from public.supplier_returns where archived_at is null and status in('requested','approved');
-  result:=result||jsonb_build_object('supplier_returns',n);
- end if;
- return result;
-end;$function$;
-$ddl$),
-  ('greenloop_private.pd_enrich(jsonb)','643e4ec06554e08db6b9b37f88614b68',$ddl$
-CREATE OR REPLACE FUNCTION greenloop_private.pd_enrich(plan jsonb)
- RETURNS jsonb
- LANGUAGE plpgsql
- STABLE SECURITY DEFINER
- SET search_path TO 'pg_catalog', 'public'
-AS $function$
+  left join entered e on e.batch_id=r.id left join unentered_returns t on t.batch_id=r.id;$body$),
+  ('greenloop_private.pd_enrich(jsonb)','0ea229bd035a4cd7355f8718f7da3890',$body$
  declare k text;rows jsonb;
  begin
   if plan is null then return null;end if;
@@ -167,15 +97,8 @@ AS $function$
    end if;
   end loop;
   return plan||jsonb_build_object('damage_version','20261117-parts-request-damage-1');
- end;$function$;
-$ddl$),
-  ('greenloop_private.technician_parts_pending()','f99486ad198e1961d9a58ed37affccff',$ddl$
-CREATE OR REPLACE FUNCTION greenloop_private.technician_parts_pending()
- RETURNS TABLE(order_id uuid, request_id uuid, device_id uuid, imei text, model text, storage_gb integer, color text, supplier_code text, batch_number text, technician_key text, technician_name text, part_name text, quantity bigint, ordered_at timestamp with time zone)
- LANGUAGE sql
- STABLE SECURITY DEFINER
- SET search_path TO 'pg_catalog', 'public'
-AS $function$
+ end;$body$),
+  ('greenloop_private.technician_parts_pending()','b1286f91057107e506d844351619233b',$body$
  with pending_requests as materialized (
    select m.order_id,r.id,r.part_name,r.quantity_requested,r.quantity_issued
    from greenloop_private.parts_flow_requests m join public.job_part_requests r on r.id=m.request_id
@@ -207,15 +130,8 @@ AS $function$
  from assigned_orders o join pending_requests r on r.order_id=o.id
  join public.jobs j on j.id=o.job_id join public.devices d on d.id=o.device_id and d.deleted_at is null
  left join public.suppliers s on s.id=j.supplier_id left join public.receiving_batches b on b.id=j.receiving_batch_id;
-$function$;
-$ddl$),
-  ('greenloop_private.ppp_report(jsonb,text)','c4d11f8b1431eb5c78c0806592517569',$ddl$
-CREATE OR REPLACE FUNCTION greenloop_private.ppp_report(p_filters jsonb, p_group text DEFAULT NULL::text)
- RETURNS jsonb
- LANGUAGE plpgsql
- STABLE SECURITY DEFINER
- SET search_path TO 'pg_catalog', 'public'
-AS $function$
+$body$),
+  ('greenloop_private.ppp_report(jsonb,text)','5a05047288fed2c5c50f3be6447616c9',$body$
 declare f jsonb:=coalesce(p_filters,'{}'); result jsonb;
 begin
  if jsonb_typeof(f)is distinct from 'object'or exists(select 1 from jsonb_each(f)e where e.key<>all(array['query','supplier_id','batch_id','invoice_number','model','part_name','source','currency','issued_day','quantity','phones','returned_quantity'])or jsonb_typeof(e.value)not in('string','null')or (length(e.value#>>'{}')>200 and not(e.key in('query','_search')and greenloop_private.sc_is_bulk(e.value#>>'{}'))))then raise exception 'Use valid pending-price filters.'using errcode='22023';end if;
@@ -277,15 +193,36 @@ begin
     from eligible where group_id=p_group),'[]') end
  ) into result;
  return result;
-end;$function$;
-$ddl$)
+end;$body$)
  ) r(identity,source_hash,replacement) loop
-  current_source:=pg_get_functiondef(to_regprocedure(item.identity));
-  if md5(replace(current_source,chr(13),'')) is distinct from item.source_hash then
+  select pg_get_functiondef(p.oid),p.prosrc into current_source,current_body
+  from pg_proc p where p.oid=to_regprocedure(item.identity);
+  new_body:=item.replacement;
+  if item.source_hash is null then
+   -- The Parts marker has verified this live Sidebar routine. Keep its other
+   -- branches and permissions and replace only the reviewed IMEI Entry query.
+   select count(*),min(m.parts[1]) into matches,sidebar_query
+   from regexp_matches(current_body,sidebar_pattern,'gx') m(parts);
+   if matches<>1 or strpos(current_body,sidebar_query)=0
+    or strpos(substr(current_body,strpos(current_body,sidebar_query)+length(sidebar_query)),sidebar_query)>0
+    or not exists (
+     select 1 from greenloop_private.parts_queue_membership_installation s
+     where to_regprocedure(s.identity)=to_regprocedure(item.identity) and s.hash=md5(current_source)
+    )
+   then raise exception 'Could not verify the live Sidebar IMEI Entry query. No changes were applied.'; end if;
+   new_body:=replace(current_body,sidebar_query,new_body);
+  elsif md5(btrim(replace(current_body,chr(13),''),E' \t\n')) is distinct from item.source_hash then
    raise exception 'Unexpected database definition for %. No changes were applied.',item.identity;
   end if;
+  -- Reuse the catalog definition so each owner, security setting, language,
+  -- signature, and routine option retains its live value.
+  body_delimiter:=(regexp_match(current_source,E'\nAS (\\$[a-zA-Z0-9_]*\\$)'))[1];
+  if body_delimiter is null or strpos(current_source,body_delimiter||current_body||body_delimiter)=0
+   or strpos(new_body,body_delimiter)>0
+  then raise exception 'Could not locate the function body for %. No changes were applied.',item.identity; end if;
   reviewed:=reviewed||jsonb_build_array(jsonb_build_object('identity',item.identity,'hash',md5(current_source)));
-  execute item.replacement;
+  execute replace(current_source,body_delimiter||current_body||body_delimiter,
+    body_delimiter||new_body||body_delimiter);
  end loop;
 
  -- Keep existing installation checks valid only for the exact bodies replaced.
@@ -305,6 +242,14 @@ $ddl$)
      seal.relation,seal.hash_column,seal.identity_column,seal.hash_column)
    using new_hash,item.identity,item.hash;
   end loop;
+  update greenloop_private.office_routines set original_hash=new_hash
+  where to_regprocedure(implementation)=to_regprocedure(item.identity) and original_hash=item.hash;
+  update greenloop_private.capability_routines set original_hash=new_hash
+  where to_regprocedure(implementation)=to_regprocedure(item.identity) and original_hash=item.hash;
+  update greenloop_private.office_routines set wrapped_hash=new_hash
+  where to_regprocedure(identity)=to_regprocedure(item.identity) and wrapped_hash=item.hash;
+  update greenloop_private.capability_routines set wrapped_hash=new_hash
+  where to_regprocedure(identity)=to_regprocedure(item.identity) and wrapped_hash=item.hash;
  end loop;
 
  create table greenloop_private.workflow_read_load_installation(identity text primary key,hash text not null);
@@ -340,5 +285,5 @@ $ddl$)
 end;
 $install$;
 
-select public.get_workflow_read_load_version() as installed_workflow_read_load_version;
 commit;
+select public.get_workflow_read_load_version() as installed_workflow_read_load_version;
