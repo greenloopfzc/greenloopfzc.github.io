@@ -57,6 +57,7 @@
   const refresh = dialog.querySelector("[data-model-refresh]");
   let stage = "", readVersion = 0, summary = null;
   let pageStarts = [], pageIndex = 0;
+  let technicianGroup = null, loading = false;
 
   function message(text) {
     status.textContent = text;
@@ -65,12 +66,16 @@
 
   function clear() {
     summary = null;
+    technicianGroup = null;
+    loading = false;
     pageStarts = [];
     pageIndex = 0;
     body.replaceChildren();
     totalCell.textContent = "";
     range.textContent = "";
     scroll.hidden = true;
+    scroll.scrollTop = 0;
+    scroll.removeAttribute("aria-busy");
     pager.hidden = true;
   }
 
@@ -80,24 +85,6 @@
     const start = pageStarts[index];
     const end = pageStarts[index + 1] ?? rows.length;
     for (let i = 0; i < body.rows.length; i++) body.rows[i].hidden = i < start || i >= end;
-    if (isTechnicianStock(stage)) {
-      let first = start;
-      while (first < end) {
-        let after = first + 1;
-        while (after < end && rows[after].technician_id === rows[first].technician_id) after++;
-        for (const column of technicianColumns) {
-          const cell = body.rows[first].cells[column];
-          cell.hidden = false;
-          cell.rowSpan = after - first;
-          for (let i = first + 1; i < after; i++) {
-            const duplicate = body.rows[i].cells[column];
-            duplicate.hidden = true;
-            duplicate.rowSpan = 1;
-          }
-        }
-        first = after;
-      }
-    }
     scroll.scrollTop = 0;
     pager.hidden = offset === 0 && start === 0 && end === groupCount;
     range.textContent = (offset + start + 1) + "–" + (offset + end) + " of " + groupCount + " groups";
@@ -107,15 +94,11 @@
 
   function fitRows(visibleRow = pageStarts[pageIndex] ?? 0) {
     if (!dialog.open || !summary?.rows.length) return;
-    for (const row of body.rows) {
-      row.hidden = false;
-      if (isTechnicianStock(stage)) {
-        for (const column of technicianColumns) {
-          row.cells[column].hidden = false;
-          row.cells[column].rowSpan = 1;
-        }
-      }
+    if (isTechnicianStock(stage)) {
+      loadMoreWhenNearEnd();
+      return;
     }
+    for (const row of body.rows) row.hidden = false;
     const longestRange = summary.group_count;
     range.textContent = longestRange + "–" + longestRange + " of " + longestRange + " groups";
     pager.hidden = summary.offset === 0 && summary.rows.length === summary.group_count;
@@ -124,51 +107,26 @@
       pager.hidden = false;
       const available = scroll.clientHeight - table.tHead.getBoundingClientRect().height
         - table.tFoot.getBoundingClientRect().height - 4;
-      const heights = [...body.rows].map(row => row.getBoundingClientRect().height);
       let used = 0;
       for (let i = 0; i < body.rows.length; i++) {
-        let blockHeight = heights[i];
-        if (isTechnicianStock(stage) && (i === 0 || summary.rows[i].technician_id !== summary.rows[i - 1].technician_id)) {
-          let after = i + 1;
-          while (after < heights.length && summary.rows[after].technician_id === summary.rows[i].technician_id) {
-            blockHeight += heights[after++];
-          }
-          if (blockHeight > available) blockHeight = heights[i];
-        }
-        if (used > 0 && used + blockHeight > available) {
+        const height = body.rows[i].getBoundingClientRect().height;
+        if (used > 0 && used + height > available) {
           pageStarts.push(i);
           used = 0;
         }
-        used += heights[i];
+        used += height;
       }
     }
     showPage(pageStarts.findLastIndex(start => start <= visibleRow));
   }
 
-  function render(lastPage, adjacent) {
+  function renderModelSummary(lastPage) {
     body.replaceChildren();
     const { offset, rows } = summary;
-    const technicianStock = isTechnicianStock(stage);
-    const technicianStarts = technicianStock
-      ? rows.map((row, i) => i === 0 || row.technician_id !== rows[i - 1].technician_id)
-      : [];
-    let serial = 0;
-    if (technicianStock && offset && adjacent) {
-      // Derive the first serial from the adjacent data page, including a group that crosses the boundary.
-      serial = lastPage
-        ? Math.max(0, adjacent.serial - technicianStarts.filter(Boolean).length - (adjacent.id === rows.at(-1).technician_id ? 0 : 1))
-        : adjacent.serial - (adjacent.id === rows[0].technician_id ? 1 : 0);
-    }
-    rows.forEach(({model, storage_gb, quantity, technician, technician_total}, index) => {
+    rows.forEach(({model, storage_gb, quantity}, index) => {
       const line = body.insertRow();
-      if (technicianStarts[index]) serial++;
-      const cells = [technicianStock ? serial : offset + index + 1, model || "Not recorded",
-        storage_gb == null ? "Not recorded" : amount(storage_gb) + " GB", amount(quantity)];
-      if (technicianStock) {
-        cells.splice(1, 0, technician);
-        cells.push(amount(technician_total));
-      }
-      for (const value of cells) {
+      for (const value of [offset + index + 1, model || "Not recorded",
+        storage_gb == null ? "Not recorded" : amount(storage_gb) + " GB", amount(quantity)]) {
         line.insertCell().textContent = value;
       }
     });
@@ -177,12 +135,41 @@
     fitRows(lastPage ? rows.length - 1 : 0);
   }
 
-  function technicianAt(index) {
-    if (!isTechnicianStock(stage)) return null;
-    return {
-      id: summary.rows[index].technician_id,
-      serial: Number(body.rows[index].cells[0].textContent)
-    };
+  function appendTechnicianStock(rows) {
+    for (const record of rows) {
+      const line = body.insertRow();
+      const firstForTechnician = technicianGroup?.id !== record.technician_id;
+      if (firstForTechnician) {
+        const serial = (technicianGroup?.serial ?? 0) + 1;
+        technicianGroup = { id: record.technician_id, serial, line };
+        line.insertCell().textContent = serial;
+        const technician = line.insertCell();
+        technician.className = "stage-model-technician";
+        technician.textContent = record.technician;
+      }
+      const model = line.insertCell();
+      model.className = "stage-model-name";
+      model.textContent = record.model || "Not recorded";
+      line.insertCell().textContent = record.storage_gb == null ? "Not recorded" : amount(record.storage_gb) + " GB";
+      line.insertCell().textContent = amount(record.quantity);
+      if (firstForTechnician) {
+        const total = line.insertCell();
+        total.className = "stage-model-tech-total";
+        total.textContent = amount(record.technician_total);
+      } else {
+        // A technician can continue across a request boundary.
+        for (const column of technicianColumns) technicianGroup.line.cells[column].rowSpan++;
+      }
+    }
+    scroll.hidden = false;
+  }
+
+  function loadMoreWhenNearEnd() {
+    if (!isTechnicianStock(stage) || !dialog.open || !summary || loading || !status.hidden || scroll.hidden) return;
+    const nextOffset = summary.offset + pageSize;
+    if (nextOffset < summary.group_count && scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight <= 96) {
+      void load(nextOffset);
+    }
   }
 
   function isValid(data, expectedStage, offset) {
@@ -203,34 +190,48 @@
         : data.rows.reduce((sum, row) => sum + row.quantity, 0) <= data.total);
   }
 
-  async function load(offset = 0, lastPage = false, adjacent = null) {
+  async function load(offset = 0, lastPage = false) {
     const activeStage = stage;
+    const technicianStock = isTechnicianStock(activeStage);
+    const append = technicianStock && offset > 0;
     const version = ++readVersion;
     const current = () => dialog.open && version === readVersion && canView(activeStage);
-    clear();
+    if (!append) clear();
     if (!current()) return;
-    refresh.disabled = true;
-    message("Loading pending phones…");
+    loading = true;
+    refresh.disabled = !append;
+    if (append) scroll.setAttribute("aria-busy", "true");
+    else message("Loading pending phones…");
     try {
       const client = window.GREENLOOP_GET_CLIENT();
-      const result = isTechnicianStock(activeStage)
+      const result = technicianStock
         ? await client.rpc("get_lab_technician_stock_summary_v1", { p_offset: offset })
         : await client.rpc("get_pending_model_summary_v1", { p_stage: activeStage, p_offset: offset });
       if (!current()) return;
       if (result.error || !isValid(result.data, activeStage, offset)) throw new Error("Pending model summary could not be verified.");
+      if (append && (result.data.group_count !== summary.group_count || result.data.total !== summary.total)) {
+        message("Technician stock changed. Select Refresh to see the current list.");
+        return;
+      }
       summary = result.data;
       if (!summary.rows.length) {
         message(summary.group_count ? "This page changed. Select Refresh to see the current summary." : "No pending phones. Total 0.");
         return;
       }
       message("");
-      render(lastPage, adjacent);
+      if (technicianStock) appendTechnicianStock(summary.rows);
+      else renderModelSummary(lastPage);
     } catch {
-      if (current()) message(isTechnicianStock(activeStage)
+      if (current()) message(technicianStock
         ? "Technician stock could not be loaded. Select Refresh to try again."
         : "Model summary could not be loaded. Select Refresh to try again.");
     } finally {
-      if (current()) refresh.disabled = false;
+      if (current()) {
+        loading = false;
+        refresh.disabled = false;
+        scroll.removeAttribute("aria-busy");
+        loadMoreWhenNearEnd();
+      }
     }
   }
 
@@ -262,14 +263,15 @@
   }
 
   refresh.addEventListener("click", () => void load());
+  scroll.addEventListener("scroll", loadMoreWhenNearEnd, { passive: true });
   previous.addEventListener("click", () => {
     if (pageIndex > 0) showPage(pageIndex - 1);
-    else if (summary?.offset > 0) void load(summary.offset - pageSize, true, technicianAt(0));
+    else if (summary?.offset > 0) void load(summary.offset - pageSize, true);
   });
   next.addEventListener("click", () => {
     if (pageIndex + 1 < pageStarts.length) showPage(pageIndex + 1);
     else if (summary && summary.offset + pageSize < summary.group_count) {
-      void load(summary.offset + pageSize, false, technicianAt(summary.rows.length - 1));
+      void load(summary.offset + pageSize);
     }
   });
   window.addEventListener("resize", () => fitRows());

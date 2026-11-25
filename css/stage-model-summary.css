@@ -83,18 +83,21 @@
   overflow-wrap: anywhere;
 }
 .stage-model-scroll tbody td:not(:nth-child(2)) { white-space: nowrap; }
-.stage-model-dialog[data-technician-stock] .stage-model-scroll tbody td:nth-child(3) {
+.stage-model-dialog[data-technician-stock] .stage-model-scroll { overscroll-behavior: contain; }
+.stage-model-dialog[data-technician-stock] .stage-model-scroll tbody td { white-space: nowrap; }
+.stage-model-dialog[data-technician-stock] .stage-model-scroll td:is(.stage-model-technician, .stage-model-name) {
   white-space: normal;
   overflow-wrap: anywhere;
 }
+.stage-model-dialog[data-technician-stock] .stage-model-scroll thead th { z-index: 1; }
 .stage-model-dialog[data-technician-stock] .stage-model-scroll thead th:last-child { white-space: normal; }
-.stage-model-dialog[data-technician-stock] .stage-model-scroll :is(th, td):not(:last-child) {
+.stage-model-dialog[data-technician-stock] .stage-model-scroll :is(th:not(:last-child), td:not(.stage-model-tech-total)) {
   border-inline-end: 1px solid var(--nm-line, #cbd8df);
 }
-.stage-model-dialog[data-technician-stock] .stage-model-scroll td:is(:nth-child(1), :nth-child(2), :last-child) {
+.stage-model-dialog[data-technician-stock] .stage-model-scroll td[rowspan] {
   vertical-align: middle;
 }
-.stage-model-dialog[data-technician-stock] .stage-model-scroll tbody td:last-child {
+.stage-model-dialog[data-technician-stock] .stage-model-scroll .stage-model-tech-total {
   color: var(--nm-green, #087b57);
   font-weight: 750;
 }
