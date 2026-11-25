@@ -158,7 +158,7 @@
 (function(root){const rules={get_stock_activity_range_v1:{page:"ready_stock",capability:"search",read:true},get_stock_activity_range_version:{read:true}};Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,rules);Object.assign(root.GREENLOOP_RPC_CAPABILITIES,rules);})(typeof window!=="undefined"?window:globalThis);
 
 (function(root){
-  const rules={get_ready_stock_esim_v1:{"page":"ready_stock","capability":"view","read":true},get_ready_stock_esim_version:{read:true},get_esim_stock_v1:{"page":"reports","capability":"report_esim_stock","read":true},get_esim_stock_version:{read:true},get_lab_qc_handover_v1:{"page":"reports","capability":"report_lab_qc_handover","read":true},get_lab_qc_handover_version:{read:true},get_activity_log_v1:{page:"reports",capability:"report_activity_log",read:true},get_activity_log_version:{read:true}};
+  const rules={get_ready_stock_total_esim_v1:{page:"ready_stock",capability:"view",read:true},get_ready_stock_total_esim_version:{read:true},get_ready_stock_esim_v1:{"page":"ready_stock","capability":"view","read":true},get_ready_stock_esim_version:{read:true},get_esim_stock_v1:{"page":"reports","capability":"report_esim_stock","read":true},get_esim_stock_version:{read:true},get_lab_qc_handover_v1:{"page":"reports","capability":"report_lab_qc_handover","read":true},get_lab_qc_handover_version:{read:true},get_activity_log_v1:{page:"reports",capability:"report_activity_log",read:true},get_activity_log_version:{read:true}};
   Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,rules);
   Object.assign(root.GREENLOOP_RPC_CAPABILITIES,rules);
 })(typeof window !== "undefined" ? window : globalThis);

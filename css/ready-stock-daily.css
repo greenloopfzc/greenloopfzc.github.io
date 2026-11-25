@@ -150,3 +150,15 @@ html[data-theme="ruby-obsidian"] #ready-stock-view{--rsd-green:#efb0bd;--rsd-blu
 #ready-daily.is-date-range .rsd-slash,
 #ready-daily.is-date-range [data-activity-metric="month"] { display: none; }
 .rsd-filter-error { flex-basis: 100%; margin: 0; color: var(--nm-red,#a93f3f); }
+
+#ready-groups-total:empty{display:none}
+#ready-groups-table-total th,#ready-groups-table-total td{
+  position:static;background:var(--nm-green-bg,#deeee8);font-weight:750;text-align:center;
+}
+#ready-groups-table-total th{width:auto;text-align:right;font-size:inherit}
+@media (max-width:700px){
+  #ready-groups-table-total{display:block}
+  #ready-groups-table-total[hidden]{display:none}
+  #ready-groups-table-total tr{display:grid;grid-template-columns:1fr auto auto}
+  #ready-groups-table-total th{text-align:left}
+}

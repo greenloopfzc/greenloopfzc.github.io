@@ -124,7 +124,9 @@
     total.textContent=`${totalQty} phone${totalQty===1?'':'s'}`;
     totalEsim.textContent=`Includes ${esimQty} eSIM`;
     totalEsim.hidden=false;
-    totalView.dataset.readyImeis=registerScope('Total Ready Stock',flatRows,totalQty);
+    const totalScope=registerScope('Total Ready Stock',flatRows,totalQty);
+    quantityScopes[totalScope].totalEsim=true;
+    totalView.dataset.readyImeis=totalScope;
     totalView.disabled=false;
     rangeLabel.textContent='Includes phones in boxes awaiting export';
   }

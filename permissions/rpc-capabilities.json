@@ -144,6 +144,14 @@
       "capability": "view",
       "read": true
     },
+    "get_ready_stock_total_esim_v1": {
+      "page": "ready_stock",
+      "capability": "view",
+      "read": true
+    },
+    "get_ready_stock_total_esim_version": {
+      "read": true
+    },
     "get_ready_stock_esim_v1": {
       "page": "ready_stock",
       "capability": "view",
