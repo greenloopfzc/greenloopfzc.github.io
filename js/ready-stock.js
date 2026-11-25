@@ -5,6 +5,7 @@
   const app = document.querySelector("#ready-stock-app");
   const permissionMessage = document.querySelector("#permission-message");
   const total = document.querySelector("#ready-stock-total");
+  const totalEsim = document.querySelector("#ready-stock-total-esim");
   const totalView = document.querySelector("#ready-stock-total-view");
   const gradeSummary = document.querySelector("#ready-stock-grades");
   const stockGrades = ["A", "B", "D", "BA", "BB", "RMA"];
@@ -104,18 +105,25 @@
   }
 
   function render(data) {
-    quantityScopes=[];
     // Cards use the complete aggregate response; phone rows are fetched only in the popup.
-    const flatRows=Array.isArray(data?.rows)?data.rows:[];
-    const totalQty=flatRows.reduce((sum,row)=>sum+Number(row.quantity||0),0);
+    const flatRows=data?.rows;
+    const esimQty=data?.esim_count;
+    if(!Array.isArray(flatRows)||flatRows.some(row=>typeof row?.model!=="string"||typeof row.final_grade!=="string"||
+      !Number.isSafeInteger(row.quantity)||row.quantity<1))throw Error("Ready Stock totals could not be verified.");
+    const totalQty=flatRows.reduce((sum,row)=>sum+row.quantity,0);
+    if(!Number.isSafeInteger(esimQty)||esimQty<0||esimQty>totalQty)throw Error("Ready Stock eSIM total could not be verified.");
+    quantityScopes=[];
+    const card=(key,label,quantity,scope)=>`<button class="ready-stock-grade-card" type="button" data-ready-grade="${key}" data-ready-imeis="${scope}" data-capability="view" data-capability-page="ready_stock" data-search-read-only aria-haspopup="dialog" aria-expanded="false" aria-label="${escapeHtml('View phones: '+label)}"><span>${label}</span><strong class="ready-stock-grade-count${quantity?'':' ready-stock-zero'}">${escapeHtml(quantity)}</strong><small>phones</small><span class="ready-stock-grade-view">View phones <span aria-hidden="true">→</span></span></button>`;
+    const esimScope=quantityScopes.push({label:"eSIM · Ready Stock",esim:true,quantity:esimQty})-1;
     gradeSummary.innerHTML=stockGrades.map(grade=>{
       const gradeRows=flatRows.filter(row=>stockGroup(row).g===normalize(grade));
-      const quantity=gradeRows.reduce((sum,row)=>sum+Number(row.quantity||0),0);
+      const quantity=gradeRows.reduce((sum,row)=>sum+row.quantity,0);
       const label=grade==='RMA'?'RMA Stock':'Grade '+grade;
-      const scope=registerScope(label+' · Ready Stock',gradeRows,quantity);
-      return `<button class="ready-stock-grade-card" type="button" data-ready-grade="${grade}" data-ready-imeis="${scope}" data-capability="view" data-capability-page="ready_stock" data-search-read-only aria-haspopup="dialog" aria-expanded="false" aria-label="${escapeHtml('View phones: '+label)}"><span>${label}</span><strong class="ready-stock-grade-count${quantity?'':' ready-stock-zero'}">${escapeHtml(quantity)}</strong><small>phones</small><span class="ready-stock-grade-view">View phones <span aria-hidden="true">→</span></span></button>`;
-    }).join('');
+      return card(grade,label,quantity,registerScope(label+' · Ready Stock',gradeRows,quantity));
+    }).join('')+card("esim","eSIM",esimQty,esimScope);
     total.textContent=`${totalQty} phone${totalQty===1?'':'s'}`;
+    totalEsim.textContent=`Includes ${esimQty} eSIM`;
+    totalEsim.hidden=false;
     totalView.dataset.readyImeis=registerScope('Total Ready Stock',flatRows,totalQty);
     totalView.disabled=false;
     rangeLabel.textContent='Includes phones in boxes awaiting export';
@@ -127,13 +135,10 @@
     refresh.textContent = "Loading...";
     const generation = ++readyGeneration;
     try {
-    const { data, error } = await getClient().rpc("get_ready_stock_final_grade_table", {
-      p_date_from: null,
-      p_date_to: null
-    });
+    const { data, error } = await getClient().rpc("get_ready_stock_esim_v1", { p_view:"cards" });
     if (generation !== readyGeneration) return;
     if (error) throw error;
-    render(Array.isArray(data) ? data[0] : data);
+    render(data);
     window.dispatchEvent(new CustomEvent('greenloop:ready-stock-refreshed'));
     } finally { if (generation === readyGeneration) { refresh.disabled = false; refresh.textContent = "Refresh stock"; } }
   }
