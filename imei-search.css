@@ -38,6 +38,11 @@ html:is([data-design="neumorphism"],[data-mode="dark"]) .history-content { --his
 .app-page .history-basic-table th,.app-page .history-basic-table td { text-align:left!important; padding:12px 24px; border:1px solid var(--history-line); overflow-wrap:anywhere; vertical-align:top; }
 .history-basic-table th { width:16%; font-weight:500; color:var(--history-muted); background:var(--history-well); }
 .history-basic-table td { width:34%; font-weight:600; }
+.app-page .history-basic-table .history-esim-row > :is(th,td) {
+  background: #ffeb9b !important;
+  color: #3d2c00 !important;
+  font-weight: 750;
+}
 .history-basic-table tr > :first-child { border-left:0; }
 .history-basic-table tr > :last-child { border-right:0; }
 .history-stage-list { padding:6px 26px 0; }

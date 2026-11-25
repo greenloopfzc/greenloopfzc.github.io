@@ -398,7 +398,9 @@ function buildStageSections(sortedRows) {
     const specifications=[["Model",device.model],["GB",storage],["Grade",device.final_grade],["Final BH",finalBh]];
     const specs=specifications.map(([name,value])=>`<div><dt>${escapeHtml(name)}</dt><dd>${safe(value)}</dd></div>`).join("");
     const cells=values.map(([name,value],index)=>`<th scope="row">${escapeHtml(name)}</th><td${index===values.length-1 && values.length%2 ? ' colspan="3"' : ""}>${safe(value)}</td>`);
-    header.innerHTML=`<div class="history-basic-heading"><h2 id="history-device-name">Device details</h2>${badge(stage)}<dl class="history-device-specs" aria-label="Phone specifications">${specs}</dl></div><table class="history-basic-table"><caption class="history-sr-only">Basic phone and supplier details</caption><tbody>${cells.reduce((html,cell,index)=>html+(index%2===0 ? "<tr>" : "")+cell+(index%2===1 || index===cells.length-1 ? "</tr>" : ""),"")}</tbody></table>`;
+    const esimEvidence=window.GREENLOOP_ESIM_ONLY_EVIDENCE?.(device);
+    const esimRow=esimEvidence ? `<tr class="history-esim-row"><th scope="row">SIM Type</th><td colspan="3">${esimEvidence==="sales_region" ? "Likely eSIM-only · Sales region" : "eSIM-only"}</td></tr>` : "";
+    header.innerHTML=`<div class="history-basic-heading"><h2 id="history-device-name">Device details</h2>${badge(stage)}<dl class="history-device-specs" aria-label="Phone specifications">${specs}</dl></div><table class="history-basic-table"><caption class="history-sr-only">Basic phone and supplier details</caption><tbody>${esimRow}${cells.reduce((html,cell,index)=>html+(index%2===0 ? "<tr>" : "")+cell+(index%2===1 || index===cells.length-1 ? "</tr>" : ""),"")}</tbody></table>`;
   }
   function renderReplacementHistory(data) {
     if(data.replacement_history_unavailable)return '<p class="history-replacement-warning" role="status">Replacement history could not be loaded. Refresh to check the old/new IMEI link.</p>';
