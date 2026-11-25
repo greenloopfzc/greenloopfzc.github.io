@@ -3,6 +3,7 @@
  'use strict';
  const panel=document.querySelector('#ready-daily'),dialog=document.querySelector('#ready-daily-dialog');if(!panel||!dialog)return;
  const $=id=>document.getElementById(id),titles={ready:'Stock Production Report',export:'Stock Export Report',received:'Stock Received Report'},nouns={ready:'Production',export:'Export',received:'Received'};
+ const hours={ready:'9 AM – 9 PM',export:'10 AM – 9 PM',received:'full day'};
  const metrics=['today','month','daily_average','monthly_average'];let live=true,data=null,selection=null,offset=0,total=0,request=0,summaryRequest=0,activeRange=null,timer,poll;
  const canSearch=()=>window.GREENLOOP_CAN?.('search','ready_stock')===true,allowed=()=>live&&GREENLOOP_PAGE_ACCESS?.pageKey==='ready_stock'&&GREENLOOP_CAN?.('view','ready_stock')===true;
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -56,7 +57,7 @@
   for(const card of panel.querySelectorAll('[data-daily-kind]')){const kind=card.dataset.dailyKind,r=d.reports[kind];for(const button of card.querySelectorAll('[data-activity-metric]')){const metric=button.dataset.activityMetric,average=metric.includes('average');const text=fmt(r[metric],average);button.querySelector('[data-activity-value]').textContent=text;button.classList.toggle('rsa-long',text.length>7);button.disabled=metric!=='today'&&!canSearch();button.querySelector('.rsa-label').textContent=(metric==='today'?(d.date===today()?'Today’s ':'Selected Day’s '):metric==='month'?'Monthly ':metric==='daily_average'?'Average Daily ':'Average Monthly ')+nouns[kind];button.querySelector('[data-activity-period]').textContent=metric==='today'?date(d.date):metric==='month'?date(d.month_from)+' – '+date(d.month_to):metric==='daily_average'?d.daily_days+' working days':r.monthly_months?r.monthly_months+' completed month'+(r.monthly_months===1?'':'s')+' · '+month(r.monthly_from)+' – '+month(r.monthly_to):'No completed recorded month';button.title=button.disabled?'Search permission is required to open this period.':'View '+button.querySelector('.rsa-label').textContent;}}
   $('ready-daily-average-note').textContent='Daily average: '+date(d.daily_from)+' – '+date(d.daily_to)+' · Sundays excluded. Monthly average: up to 3 completed recorded months; current month excluded.';
   }
-  $('ready-daily-note').textContent='Production / Export: 10 AM – 9 PM · Received: full day · UAE (UTC+4)';$('ready-daily-updated').textContent='Updated '+new Date(d.as_of).toLocaleTimeString('en-GB',{timeZone:'Asia/Dubai',hour:'2-digit',minute:'2-digit',hour12:true});$('ready-daily-error').hidden=true;
+  $('ready-daily-note').textContent='Production: '+hours.ready+' · Export: '+hours.export+' · Received: '+hours.received+' · UAE (UTC+4)';$('ready-daily-updated').textContent='Updated '+new Date(d.as_of).toLocaleTimeString('en-GB',{timeZone:'Asia/Dubai',hour:'2-digit',minute:'2-digit',hour12:true});$('ready-daily-error').hidden=true;
  }
  let summaryRead,refreshAgain=false;
  function refresh(){
@@ -107,7 +108,7 @@
   else if(view==='receipts'){headers=['S.No','Stock / Batch','Invoice','Supplier','Qty received','Received'];rows=d.rows.map((r,i)=>[offset+i+1,GREENLOOP_BATCH_LABEL?.(r.batch_number,{receipt_quantity:r.planned_quantity})||r.batch_number,r.invoice_number||'Not recorded',GREENLOOP_SUPPLIER_RECEIPT_LABEL(r.supplier_code,r.planned_quantity,r.supplier_name),fmt(r.quantity),new Date(r.received_at).toLocaleString('en-GB',{timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true})]);}
   else{headers=['S.No','IMEI','Model','GB','Grade','Color','Supplier','Stock / Batch','Date'];rows=d.rows.map((r,i)=>[offset+i+1,r.imei,r.model,GREENLOOP_STORAGE.label(r.storage_gb),r.grade,r.color,GREENLOOP_SUPPLIER_RECEIPT_LABEL(r.supplier_code,r.planned_quantity,r.supplier_name),GREENLOOP_BATCH_LABEL?.(r.batch_number,{receipt_quantity:r.planned_quantity})||r.batch_number,new Date(r.occurred_at).toLocaleString('en-GB',{timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric'})]);}
   $('ready-daily-head').innerHTML='<tr>'+headers.map(h=>'<th scope="col">'+esc(h)+'</th>').join('')+'</tr>';$('ready-daily-rows').innerHTML=rows.length?rows.map(row=>'<tr>'+row.map((v,i)=>'<td>'+(i===3&&(view==='days'||view==='months')?v:esc(v??'—'))+'</td>').join('')+'</tr>').join(''):'<tr><td colspan="'+headers.length+'" class="rsd-empty">'+(view==='months'?'No completed month of recorded history is available yet.':'No activity records in this period.')+'</td></tr>';
-  $('ready-daily-period').textContent=periodLabel(d.scope)+' · UAE';$('ready-daily-back').hidden=!selection.period;const average=selection.metric.includes('average')&&!selection.period;
+  $('ready-daily-period').textContent=periodLabel(d.scope)+' · '+hours[selection.kind]+' UAE';$('ready-daily-back').hidden=!selection.period;const average=selection.metric.includes('average')&&!selection.period;
   $('ready-daily-status').textContent=average&&d.total===0?'Monthly average will be available after the first recorded calendar month completes.':average?fmt(d.quantity)+' total / '+d.total+(view==='days'?' working days':' completed months')+' = '+fmt(data.reports[selection.kind][selection.metric],true)+(view==='days'?' phones / day':' phones / month'):fmt(d.quantity)+' '+(selection.kind==='received'?'phones received · '+d.total+' original receipts':'activity entries');
   $('ready-daily-page').textContent=d.total?(offset+1)+'–'+Math.min(offset+d.rows.length,d.total)+' of '+d.total:'0 records';total=d.total;$('ready-daily-previous').disabled=offset===0;$('ready-daily-next').disabled=offset+d.rows.length>=total;
  }
@@ -191,7 +192,7 @@
  };
  for(const name of ['greenloop:ready-stock-refreshed','greenloop:workflow-committed','greenloop:supplier-return-changed'])window.addEventListener(name,schedule);document.addEventListener('visibilitychange',()=>{if(!document.hidden)schedule();});
  for(const name of ['pagehide','greenloop:office-locked','greenloop:signed-out','greenloop:permissions-changed'])window.addEventListener(name,stop);window.addEventListener('hashchange',()=>{close();schedule();});
- window.GREENLOOP_STOCK_ACTIVITY={async request(activity,args={}){
+ window.GREENLOOP_STOCK_ACTIVITY={hours,async request(activity,args={}){
   if(activity.range){
    try{return {data:await rangeRequest(activity.range,{...args,p_kind:activity.kind,p_expected:activity.expected}),error:null};}
    catch(error){return {data:null,error};}
