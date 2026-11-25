@@ -28,6 +28,7 @@
   let rowSequence = 0;
   let toastTimer;
   let excelPaste;
+  let stockScope;
 
   const failurePanelResize = window.ResizeObserver ? new ResizeObserver(entries=>{
     for(const {target} of entries){if(target.hidden||!target.isConnected)continue;const row=target.closest('tr');const space=Math.ceil(target.getBoundingClientRect().height)+16+'px';if(row.style.getPropertyValue('--failure-panel-space')!==space)row.style.setProperty('--failure-panel-space',space);}
@@ -506,16 +507,44 @@
     return request;
   }
 
-  async function autoPickAllPending() {
-    if (!editable()) return;
-    if (autoPickButton.disabled || tableBody.querySelector('tr[data-saving="yes"]')) return;
+  function pendingImeis(steps) {
+    return [...new Set(steps.map(step => String(getDevice(step)?.imei_1 || "").trim()).filter(imei => /^\d{15}$/.test(imei)))];
+  }
+
+  async function findPendingStockImeis(filters, active) {
+    await window.GREENLOOP_STOCK.ready();
+    if (!active()) return [];
+    const receiptIds = window.GREENLOOP_STOCK.matchingReceiptIds(filters);
+    const steps = [];
+    const receiptsPerQuery = 75;
+    for (let offset = 0; offset < receiptIds.length; offset += receiptsPerQuery) {
+      const batchIds = receiptIds.slice(offset, offset + receiptsPerQuery);
+      const { data, error } = await window.GREENLOOP_FILTERS.all(() =>
+        waitingSteps("id, work_order:job_work_orders!inner(job:jobs!inner(device:devices!inner(imei_1)))")
+          .in("work_order.job.receiving_batch_id", batchIds)
+          .is("work_order.job.deleted_at", null)
+          .is("work_order.job.device.deleted_at", null)
+          .order("created_at", { ascending: true }).order("id"));
+      if (!active()) return [];
+      if (error) throw error;
+      steps.push(...data);
+    }
+    return pendingImeis(steps);
+  }
+
+  function trayLoadBlocked() {
+    return autoPickButton.disabled || excelPaste?.busy || document.querySelector("#complete-final-qc").disabled ||
+      Boolean(tableBody.querySelector('tr[data-saving="yes"], tr[data-loading="yes"]'));
+  }
+
+  async function autoPickAllPending(selectedImeis = null, current = () => true) {
+    if (!editable() || queueStopped || trayLoadBlocked()) return false;
     setMessage();
     setSubmitting(autoPickButton, true, "Loading...");
     try {
-      await loadQueue(true);
-      const pending = queueSteps
-        .map((step) => ({ step, imei: String(getDevice(step)?.imei_1 || "").trim() }))
-        .filter((item) => /^\d{15}$/.test(item.imei));
+      if (!selectedImeis) await loadQueue(true);
+      if (!current() || queueStopped || !editable()) return false;
+      const pending = selectedImeis || pendingImeis(queueSteps);
 
       if (!pending.length) {
         setMessage("No valid IMEIs are waiting in Final QC.");
@@ -523,7 +552,7 @@
       }
 
       const trayHasData = rowSteps.size > 0 || [...tableBody.querySelectorAll(".final-row-imei")].some((input) => input.value.trim());
-      if (trayHasData && !window.confirm(`Replace the current tray and load all ${pending.length} pending Final QC IMEIs? Unsaved tray entries will be cleared.`)) return;
+      if (trayHasData && !window.confirm(`Replace the current tray with ${pending.length} pending Final QC IMEIs? Unsaved tray entries will be cleared.`)) return false;
 
       failurePanelResize?.disconnect();
       excelPaste?.clear();
@@ -532,18 +561,21 @@
       rowSequence = 0;
       createRows(pending.length);
       const rows = [...tableBody.rows];
-      const active=()=>rows[0]?.parentElement===tableBody&&tableBody.firstElementChild===rows[0];
+      const active = () => current() && !queueStopped && editable() && tableBody.firstElementChild === rows[0];
       const batchSize = 100;
 
       for (let start = 0; start < pending.length; start += batchSize) {
         const end = Math.min(start + batchSize, pending.length);
-        const prepared=await window.GREENLOOP_QC_FAST.load("final_qc",pending.slice(start,end).map(item=>item.imei),active);
-        if(!active())return;
-        await Promise.all(pending.slice(start, end).map((item, offset) => {
+        const batch = pending.slice(start, end);
+        const prepared = await window.GREENLOOP_QC_FAST.load("final_qc", batch, active);
+        if (!active()) return false;
+        if (prepared.size !== batch.length) throw new Error("Final QC loading stopped. Review the tray before retrying.");
+        await Promise.all(batch.map((imei, offset) => {
           const row = rows[start + offset];
-          row.querySelector(".final-row-imei").value = item.imei;
-          return loadScannedRow(row,{bulk:true,prepared:prepared.get(item.imei)});
+          row.querySelector(".final-row-imei").value = imei;
+          return loadScannedRow(row, { bulk:true, prepared:prepared.get(imei), isCurrent:active });
         }));
+        if (!active()) return false;
         autoPickButton.textContent = `Loading ${end}/${pending.length}`;
       }
 
@@ -555,7 +587,9 @@
       }
       rows.find((row) => rowSteps.has(row.dataset.rowId))?.querySelector("[data-final-grade]")?.focus();
       window.requestAnimationFrame(syncHorizontalScrollWidth);
+      return true;
     } catch (error) {
+      if (selectedImeis) throw error;
       setMessage(error.message || "Pending Final QC IMEIs could not be loaded.");
     } finally {
       setSubmitting(autoPickButton, false);
@@ -838,6 +872,10 @@
     await Promise.all([loadFinalGrades(), loadFailureOptions()]);
     createRows(10);
     app.hidden = false;
+    stockScope = window.GREENLOOP_QC_STOCK_SCOPE.attach({
+      host:app.querySelector(".final-bulk-toolbar"), stage:"final_qc", client:getClient(),
+      findImeis:findPendingStockImeis, load:autoPickAllPending, blocked:trayLoadBlocked
+    });
     setupHorizontalScroll();
     tableBody.querySelector(".final-row-imei")?.focus();
     void loadQueue().catch(error => setMessage(error.message || "Final QC count could not refresh. Use Refresh to retry."));
@@ -908,7 +946,7 @@
 
   document.querySelector("#add-ten-rows").addEventListener("click", () => createRows(10));
   document.querySelector("#clear-tray").addEventListener("click", resetTray);
-  autoPickButton.addEventListener("click", autoPickAllPending);
+  autoPickButton.addEventListener("click", () => { if (!stockScope?.busy) void autoPickAllPending(); });
   document.querySelector("#refresh-queue").addEventListener("click", () => Promise.all([loadQueue(),loadFailureOptions()]).then(() => showToast("Final QC queue refreshed.")).catch((error) => setMessage(error.message || "Queue could not be refreshed.")));
   queueCount.addEventListener("click", () => {
     queueDetailsLoaded = false;

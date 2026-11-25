@@ -88,6 +88,10 @@
   if(values&&!supplier&&!code&&!batch&&!invoice&&!from&&!to){const found=values.map(resolve).filter(Boolean);if(found.length)return [...new Map(found.map(r=>[r.batch_id,r])).values()];}
   return selected;
  }
+ function matchingReceiptIds({supplier_id,batch_id,invoice_number}){
+  const originals=new Set(catalogRows.filter(r=>(!supplier_id||r.supplier_id===supplier_id)&&(!batch_id||r.batch_id===batch_id)&&(!invoice_number||r.invoice_number===invoice_number)).map(r=>r.batch_id));
+  return rows.filter(r=>originals.has(rootReceipt(r)?.batch_id)).map(r=>r.batch_id);
+ }
  function summaryText(s){return s?`Received stock: ${num(s.received)} | Returned: ${num(s.returned)} | Replacement received: ${num(s.replacement_received)} | Stock balance: ${num(s.balance)}`:'';}
  function enrich(data,context={}){
   const seen=new WeakSet();function visit(v){if(!v||typeof v!=='object'||seen.has(v))return;seen.add(v);if(Array.isArray(v)){v.forEach(visit);return;}const r=resolve(v);
@@ -129,7 +133,7 @@
  function chamanText(s){return s?chamanCells(s).map(([label,n])=>label+': '+num(n)).join(' | '):'';}
  function chamanHtml(s,options={}){if(!s)return '';const values=chamanCells(s),directions=[['Greenloop','Chaman','Outgoing stock'],['Chaman','Greenloop','Return receiving']];return '<section class="chaman-movement-summary" data-chaman-summary aria-label="Greenloop and Chaman Transfer Desk"><header class="chaman-summary-heading"><span class="chaman-summary-mark" aria-hidden="true">↔</span><div><h3>Greenloop &amp; Chaman Transfer Desk</h3><p>Stock Transfer &amp; Return Summary</p></div><span class="chaman-summary-scope">'+esc(options.scope||'Current stock selection')+(options.home?'<span class="chaman-desk-refresh">Updated '+esc(options.updated||'Not recorded')+' <button type="button" data-overview-refresh data-capability="view" class="secondary-button">Refresh</button></span>':'')+'</span></header><table data-no-serial data-preserve-table-layout><thead><tr><th scope="col">Stock movement</th><th scope="col">Sent / Returned</th><th scope="col">Received</th><th scope="col">Balance Pending</th></tr></thead><tbody>'+directions.map(([from,to,note],row)=>'<tr class="chaman-summary-direction-'+row+'"><th scope="row"><b>'+from+' <span aria-hidden="true">→</span> '+to+'</b><small>'+note+'</small></th>'+values.slice(row*3,row*3+3).map(([label,n],col)=>{const contents='<span>'+(col===2?'Balance Pending':label)+'</span><strong>'+esc(num(n))+'</strong>';return '<td class="chaman-movement-cell'+(col===2?' is-pending-balance':'')+'" data-chaman-cell="'+(row*3+col)+'">'+(options.home&&col===2?'<button type="button" data-pending-kind="'+(row?'return':'out')+'" data-capability="view" class="chaman-pending-link" aria-label="View pending '+(row?'Chaman to Greenloop':'Greenloop to Chaman')+' phones">'+contents+'<small>View Pending →</small></button>':contents)+'</td>';}).join('')+'</tr>').join('')+'</tbody></table></section>';}
 
- window.GREENLOOP_STOCK={ready,clear,resolve,catalogue,selectorValues,readArgs,summary,scoped,summaryText,label,labelRow,enrich,summaryHtml,chamanHtml,chamanText,mount,get rows(){return catalogRows;}};
+ window.GREENLOOP_STOCK={ready,clear,resolve,catalogue,selectorValues,readArgs,summary,scoped,matchingReceiptIds,summaryText,label,labelRow,enrich,summaryHtml,chamanHtml,chamanText,mount,get rows(){return catalogRows;}};
  document.addEventListener('greenloop:workflow-notifications-refreshed',()=>{stamp=0;});
  window.addEventListener('greenloop:office-locked',clear);window.addEventListener('greenloop:signed-out',clear);window.addEventListener('greenloop:permissions-changed',clear);window.addEventListener('greenloop:workflow-committed',()=>{stamp=0;});document.addEventListener('greenloop:workflow-committed',()=>{stamp=0;});
 })();
