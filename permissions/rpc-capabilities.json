@@ -1923,6 +1923,13 @@
       "read": true
     }
   },
+  "delete_unverified_box_v1": {
+    "page": "export_boxes",
+    "capability": "delete"
+  },
+  "get_delete_unverified_box_version": {
+    "read": true
+  },
   "get_box_status_v1": {
     "page": "export_boxes",
     "capability": "view",

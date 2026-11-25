@@ -17,7 +17,7 @@
 <script defer src="js/imei-scan.js?v=20261118-lab-single-notice-1"></script>
 <script defer src="js/imei-stage-notice.js?v=20261118-lab-single-notice-1"></script>
   <script defer src="js/permission-catalog.js?v=20261119-stage-change-parts-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261120-multiple-open-boxes-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261125-delete-unverified-box-1"></script>
 <script defer src="js/page-capabilities.js?v=20261104-report-permissions-1"></script>
 <link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
 <script defer src="js/office-access.js?v=20261024-office-access-1"></script>
@@ -50,11 +50,11 @@
   <link rel="stylesheet" href="css/clean-layout.css?v=20261118-remove-workflow-help-2">
   <script defer src="js/clean-layout.js?v=20261118-remove-workflow-help-2"></script>
   <script defer src="js/suspicious-badge.js?v=20261117-reader-battery-performance-1"></script>
-  <link rel="stylesheet" href="css/box-status.css?v=20261024-box-recheck-1">
+  <link rel="stylesheet" href="css/box-status.css?v=20261125-delete-unverified-box-1">
   <link rel="stylesheet" href="css/table-filters.css?v=20261024-sort-box-cleanup-1">
   <script defer src="js/table-sorting.js?v=20261112-report-downloads-1"></script>
   <script defer src="js/table-filters.js?v=20261118-operational-loading-1"></script>
-  <script defer src="js/box-status.js?v=20261112-report-downloads-1"></script>
+  <script defer src="js/box-status.js?v=20261125-delete-unverified-box-1"></script>
 </head>
   <body class="app-page">
     <div class="app-shell">
@@ -102,7 +102,21 @@
               <div class="export-sheet-footer"><span class="gl-wordmark gl-wordmark-small"><img src="assets/greenloop-fzc-logo.jpg" alt="Greenloop FZC" width="1280" height="427"></span><span id="export-sheet-total">0 phones</span><span>Checked by: Quality Control Team</span></div>
             </section>
             </div>
-            <section id="box-status-panel" hidden><div class="br-card"><div class="br-heading"><div><h2>Box Status</h2><p>Saved boxes by date · UAE time</p></div></div><p id="box-status-message" class="form-message" role="status"></p><div id="box-status-list"></div><div class="br-pager"><button id="box-status-prev" class="secondary-button" type="button" data-search-read-only data-capability="view" data-capability-page="export_boxes">Previous</button><span id="box-status-count"></span><button id="box-status-next" class="secondary-button" type="button" data-search-read-only data-capability="view" data-capability-page="export_boxes">Next</button></div></div><section id="box-status-detail" class="br-card" hidden></section></section>
+            <section id="box-status-panel" hidden><div class="br-card"><div class="br-heading"><div><h2>Box Status</h2><p>Saved boxes by date · UAE time</p></div></div><p id="box-status-message" class="form-message" role="status"></p><div id="box-status-list"></div><div class="br-pager"><button id="box-status-prev" class="secondary-button" type="button" data-search-read-only data-capability="view" data-capability-page="export_boxes">Previous</button><span id="box-status-count"></span><button id="box-status-next" class="secondary-button" type="button" data-search-read-only data-capability="view" data-capability-page="export_boxes">Next</button></div></div><section id="box-status-detail" class="br-card" hidden></section>
+              <dialog id="box-delete-dialog" class="br-delete-dialog" aria-labelledby="box-delete-heading">
+                <form id="box-delete-form">
+                  <h2 id="box-delete-heading">Delete Box</h2>
+                  <p id="box-delete-copy"></p>
+                  <label for="box-delete-code">Deletion code</label>
+                  <input id="box-delete-code" type="password" inputmode="numeric" autocomplete="off" maxlength="32" required autofocus>
+                  <p id="box-delete-error" role="alert"></p>
+                  <div class="br-actions">
+                    <button id="cancel-box-delete" type="button" class="secondary-button">Cancel</button>
+                    <button type="submit" class="danger-button" data-capability="delete" data-capability-page="export_boxes">Delete Box</button>
+                  </div>
+                </form>
+              </dialog>
+            </section>
           </section>
         </div>
       </main>
