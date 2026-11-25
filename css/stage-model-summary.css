@@ -88,6 +88,12 @@
   overflow-wrap: anywhere;
 }
 .stage-model-dialog[data-technician-stock] .stage-model-scroll thead th:last-child { white-space: normal; }
+.stage-model-dialog[data-technician-stock] .stage-model-scroll :is(th, td):not(:last-child) {
+  border-inline-end: 1px solid var(--nm-line, #cbd8df);
+}
+.stage-model-dialog[data-technician-stock] .stage-model-scroll td:is(:nth-child(1), :nth-child(2), :last-child) {
+  vertical-align: middle;
+}
 .stage-model-dialog[data-technician-stock] .stage-model-scroll tbody td:last-child {
   color: var(--nm-green, #087b57);
   font-weight: 750;
