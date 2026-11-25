@@ -95,6 +95,14 @@
       "search": "report_device_cost_search",
       "sort": "report_device_cost_sort"
     },
+    "lab_qc_handover": {
+      "label": "Lab to Final QC Handover",
+      "view": "report_lab_qc_handover",
+      "actions": [
+        "report_lab_qc_handover_search"
+      ],
+      "search": "report_lab_qc_handover_search"
+    },
     "activity_log": {
       "label": "Activity Log",
       "view": "report_activity_log",
@@ -232,6 +240,7 @@
     "report_final_qc_sort": "report_final_qc",
     "report_device_cost_search": "report_device_cost",
     "report_device_cost_sort": "report_device_cost",
+    "report_lab_qc_handover_search": "report_lab_qc_handover",
     "report_technician_work_search": "report_technician_work",
     "report_technician_work_sort": "report_technician_work",
     "report_technician_work_download": "report_technician_work",

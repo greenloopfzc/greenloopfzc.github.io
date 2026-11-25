@@ -158,7 +158,7 @@
 (function(root){const rules={get_stock_activity_range_v1:{page:"ready_stock",capability:"search",read:true},get_stock_activity_range_version:{read:true}};Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,rules);Object.assign(root.GREENLOOP_RPC_CAPABILITIES,rules);})(typeof window!=="undefined"?window:globalThis);
 
 (function(root){
-  const rules={get_activity_log_v1:{page:"reports",capability:"report_activity_log",read:true},get_activity_log_version:{read:true}};
+  const rules={get_lab_qc_handover_v1:{"page":"reports","capability":"report_lab_qc_handover","read":true},get_lab_qc_handover_version:{read:true},get_activity_log_v1:{page:"reports",capability:"report_activity_log",read:true},get_activity_log_version:{read:true}};
   Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,rules);
   Object.assign(root.GREENLOOP_RPC_CAPABILITIES,rules);
 })(typeof window !== "undefined" ? window : globalThis);

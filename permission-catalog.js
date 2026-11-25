@@ -54,3 +54,10 @@
   catalog.byPage.reports.capabilities.push({key:"report_activity_log",label:"View Activity Log",write:false});
   catalog.reportSections.activity_log = {label:"Activity Log",view:"report_activity_log",actions:[]};
 })(typeof window !== "undefined" ? window : globalThis);
+
+(function(root){
+  const catalog=root.GREENLOOP_PERMISSION_CATALOG;
+  catalog.byPage.reports.capabilities.push({"key":"report_lab_qc_handover","label":"View Lab to Final QC Handover","write":false},{"key":"report_lab_qc_handover_search","label":"Change handover report dates and times","write":false});
+  catalog.reportSections.lab_qc_handover={"label":"Lab to Final QC Handover","view":"report_lab_qc_handover","actions":["report_lab_qc_handover_search"],"search":"report_lab_qc_handover_search"};
+  catalog.reportDependencies.report_lab_qc_handover_search="report_lab_qc_handover";
+})(typeof window!=="undefined"?window:globalThis);

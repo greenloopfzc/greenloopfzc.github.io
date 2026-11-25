@@ -1,0 +1,31 @@
+.handover-report { padding: 16px; }
+.handover-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+.handover-card {
+  display: grid;
+  gap: 5px;
+  justify-items: center;
+  padding: 12px 8px;
+  color: var(--nm-ink, #25343d);
+  background: var(--nm-card, #f5f7fa);
+  border: 1px solid var(--nm-line, #c8d5dd);
+  border-radius: 14px;
+}
+.handover-card strong { font-size: 1.75rem; font-variant-numeric: tabular-nums; }
+.handover-card[data-handover-card="missing"]:not(:disabled) strong,
+.handover-missing { color: var(--nm-red, #a23737); }
+.handover-note { margin: 10px 0; color: var(--nm-muted, #576774); font-size: .85rem; }
+.handover-result-heading { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+.handover-result-heading h3 { margin: 10px 0; }
+.handover-table { overflow: auto; max-height: 65vh; }
+.handover-table table { width: 100%; min-width: 650px; }
+.handover-table :is(td, th) { text-align: center; }
+.handover-table th { position: sticky; top: 0; z-index: 1; background: var(--nm-well, #e4ebf0); }
+.handover-table td:nth-child(2) { white-space: nowrap; }
+.handover-table td.handover-missing { font-weight: 700; }
+.handover-table small { display: block; margin-top: 3px; color: var(--nm-muted, #576774); }
+.handover-table .handover-count { min-width: 3rem; }
