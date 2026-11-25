@@ -1,0 +1,14 @@
+.esim-stock { padding: 16px; }
+.esim-stock .supplier-scope { margin: 0 0 14px; }
+.esim-stock-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+.esim-stock-cards { display: flex; flex-wrap: wrap; gap: 12px; }
+.esim-stock-cards button { display: grid; justify-items: center; gap: 4px; min-width: min(12rem, 100%); }
+.esim-stock-cards button[aria-pressed="true"] { border-color: var(--nm-green, #087b57); }
+.esim-stock-cards strong { font-size: 1.55rem; font-variant-numeric: tabular-nums; }
+.esim-stock-summary { font-size: .85rem; color: var(--nm-muted, #526773); }
+.esim-stock :is([data-esim-status], [data-esim-summary]):empty { display: none; }
+.esim-stock-table { overflow: auto; max-height: 65vh; }
+.esim-stock-table table { width: 100%; min-width: 760px; }
+.esim-stock-table :is(th, td) { text-align: center; }
+.esim-stock-table th { position: sticky; top: 0; z-index: 1; background: var(--nm-well, #e5edf2); }
+.esim-stock-table td:nth-child(8) { font-weight: 750; }

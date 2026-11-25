@@ -144,6 +144,14 @@
       "capability": "view",
       "read": true
     },
+    "get_esim_stock_v1": {
+      "page": "reports",
+      "capability": "report_esim_stock",
+      "read": true
+    },
+    "get_esim_stock_version": {
+      "read": true
+    },
     "get_lab_qc_handover_v1": {
       "page": "reports",
       "capability": "report_lab_qc_handover",

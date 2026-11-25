@@ -61,3 +61,10 @@
   catalog.reportSections.lab_qc_handover={"label":"Lab to Final QC Handover","view":"report_lab_qc_handover","actions":["report_lab_qc_handover_search"],"search":"report_lab_qc_handover_search"};
   catalog.reportDependencies.report_lab_qc_handover_search="report_lab_qc_handover";
 })(typeof window!=="undefined"?window:globalThis);
+
+(function(root){
+  const catalog=root.GREENLOOP_PERMISSION_CATALOG;
+  catalog.byPage.reports.capabilities.push({"key":"report_esim_stock","label":"View eSIM Stock","write":false},{"key":"report_esim_stock_search","label":"Filter eSIM Stock","write":false});
+  catalog.reportSections.esim_stock={"label":"eSIM Stock","view":"report_esim_stock","actions":["report_esim_stock_search"],"search":"report_esim_stock_search"};
+  catalog.reportDependencies.report_esim_stock_search="report_esim_stock";
+})(typeof window!=="undefined"?window:globalThis);

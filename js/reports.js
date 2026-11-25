@@ -23,7 +23,7 @@
   const reportSections = window.GREENLOOP_PERMISSION_CATALOG?.reportSections || {};
   const removedReportKeys = new Set(["overview", "stock_received", "work_in_progress", "parts_requests", "parts_inventory", "technicians", "final_qc", "costs"]);
   const allowedReport = key => !removedReportKeys.has(key) && (key==="stock_progress" ? Boolean(window.GREENLOOP_CAN?.("view","reports")&&window.GREENLOOP_CAN?.("report_supplier_progress","reports")) : key==="chaman_correction" ? Boolean(canResetData&&window.GREENLOOP_CAN?.("report_chaman_correction","reports")) : key==="bulk_imei_correction" ? Boolean(window.GREENLOOP_CAN?.("report_imei_correction","reports")&&window.GREENLOOP_CAN?.("workflow_correction","reports")&&window.GREENLOOP_CAN?.("bulk_imei_correction","reports")) : Boolean(reportSections[key] && window.GREENLOOP_CAN?.(reportSections[key].view,"reports")));
-  const selfLoadedReports = new Set(["chaman_correction","stock_receipt_correction","bulk_imei_correction","supplier_progress","stock_progress","stock_grade_analysis","parts_usage","technician_work","activity_log","lab_qc_handover","stock_parts_cost","manual_damage","production_correction","complete_device_details","data_correction","restricted_data"]);
+  const selfLoadedReports = new Set(["chaman_correction","stock_receipt_correction","bulk_imei_correction","supplier_progress","stock_progress","esim_stock","stock_grade_analysis","parts_usage","technician_work","activity_log","lab_qc_handover","stock_parts_cost","manual_damage","production_correction","complete_device_details","data_correction","restricted_data"]);
   let selectedExportBox = "";
   let exportBoxImeiFilter = "";
   let correctionRecord = null;
@@ -104,6 +104,7 @@
     chaman_correction:{title:"Chaman Transfer Correction",description:"Correct dates, notes and receiving, or remove mistaken phones and transfers with permanent history.",columns:[]},
     stock_receipt_correction:{title:"Stock Receipt Correction",description:"Correct a mistaken received quantity with permanent history. IMEIs, returns and replacements stay preserved.",columns:[]},
     technician_work:{title:"Technician Work Report",description:"",columns:[]},
+    esim_stock:{title:"eSIM Stock",description:"",columns:[]},
     lab_qc_handover:{title:"Lab to Final QC Handover",description:"",columns:[]},
     activity_log:{title:"Activity Log",description:"",columns:[]},
     stock_grade_analysis:{title:"Stock Grade & Work Analysis",description:"Initial QC GL grades and required Glass / Polish by supplier, stock / batch or invoice.",columns:[]},
@@ -941,6 +942,7 @@
     if(!allowedReport(activeReport))activeReport='';
     window.GREENLOOP_ACTIVE_REPORT=activeReport;
     if(activeReport!=="technician_work")window.GREENLOOP_TECHNICIAN_WORK_REPORT?.unmount();
+    if(activeReport!=="esim_stock")window.GREENLOOP_ESIM_STOCK?.unmount();
     if(activeReport!=="lab_qc_handover")window.GREENLOOP_LAB_QC_HANDOVER?.unmount();
     if(activeReport!=="activity_log")window.GREENLOOP_ACTIVITY_LOG?.unmount();
     if(activeReport!=="stock_progress")window.GREENLOOP_COMPANY_STOCK_PROGRESS?.unmount();
@@ -999,6 +1001,16 @@
       window.GREENLOOP_DAMAGE_MANAGEMENT?.unmount();window.GREENLOOP_COMPLETE_DEVICE_DETAILS?.unmount();
       panelKicker.textContent="Initial QC analysis";panelTitle.textContent=reports.stock_grade_analysis.title;panelDescription.textContent=reports.stock_grade_analysis.description;rowCount.textContent="Supplier / stock / invoice";
       window.GREENLOOP_STOCK_GRADE_ANALYSIS?.mount(reportContent);return;
+    }
+    if(activeReport==="esim_stock"){
+      filterForm.hidden=true;
+      window.GREENLOOP_DAMAGE_MANAGEMENT?.unmount();
+      window.GREENLOOP_COMPLETE_DEVICE_DETAILS?.unmount();
+      panelKicker.textContent="Reports";
+      panelTitle.textContent=reports.esim_stock.title;
+      panelDescription.textContent="";
+      window.GREENLOOP_ESIM_STOCK?.mount(reportContent,rowCount);
+      return;
     }
     if(activeReport==="lab_qc_handover"){
       filterForm.hidden=true;
@@ -1090,7 +1102,7 @@
     if(activeReport==='stock_progress'){await window.GREENLOOP_COMPANY_STOCK_PROGRESS?.refresh();return;}
     if(activeReport==='stock_grade_analysis'){await window.GREENLOOP_STOCK_GRADE_ANALYSIS?.refresh();return;}
     if(activeReport==='technician_work'){await window.GREENLOOP_TECHNICIAN_WORK_REPORT?.refresh();return;}
-    if(activeReport==='activity_log'||activeReport==='lab_qc_handover')return;
+    if(activeReport==='activity_log'||activeReport==='lab_qc_handover'||activeReport==='esim_stock')return;
     if(activeReport==='parts_usage'){await window.GREENLOOP_PARTS_USAGE?.refresh();return;}
     if(activeReport==='stock_parts_cost'){await window.GREENLOOP_STOCK_PARTS_COST?.refresh();return;}
     if(activeReport==='manual_damage'){await window.GREENLOOP_DAMAGE_MANAGEMENT?.refresh();return;}
