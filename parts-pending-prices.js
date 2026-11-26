@@ -4,7 +4,12 @@
  const fields=[['supplier_id','Supplier Code'],['invoice_number','Invoice'],['batch_id','Stock / Batch'],['model','Model'],['part_name','Part'],['source','Part Source'],['phones','Phones'],['quantity','Parts Qty'],['returned_quantity','Returned Qty'],['issued_day','Issued Date'],['currency','Currency']];
  const columns=[['supplier_code','Supplier Code'],['invoice_number','Invoice / Stock'],['model','Model'],['part_name','Part'],['source','Part Source'],['phones','Phones'],['quantity','Parts Qty']];
  const sourceLabel=s=>({local:'Local',china:'China',unrecorded:'Not recorded'}[s]||'Not recorded'),number=v=>Number(v||0).toLocaleString('en-GB'),money=v=>Number(v).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}),date=v=>v?new Date(v.length===10?v+'T12:00:00Z':v).toLocaleDateString('en-GB',{timeZone:'Asia/Dubai',day:'2-digit',month:'short',year:'numeric'}):'—';
- const groupColor=row=>row.color_key?(row.color_key==='not recorded'?'Color not recorded':row.color):'';
+ function groupColor(row) {
+  if (Array.isArray(row.display_colors)) {
+   return row.display_colors.map(color => !color || color === 'Not recorded' ? 'Color not recorded' : color).join(', ');
+  }
+  return row.color_key ? (row.color_key === 'not recorded' ? 'Color not recorded' : row.color) : '';
+ }
  let root,active=false,stopped=false,loading=false,working=false,pending=null,stale=false,generation=0,detailGeneration=0,report=null,detail=null,filters={},sortKey='',sortDir=1,timer,refreshTimer,queuedRefresh=false;
  const drafts=new Map(),$=selector=>root?.querySelector(selector),all=selector=>[...(root?.querySelectorAll(selector)||[])],draftKey=r=>r.group_id+'|'+r.selection_token;
  const busy=()=>working||!!pending,hasDrafts=()=>[...drafts.values()].some(d=>d.price!==''||d.source);
