@@ -23,11 +23,14 @@
   const blank = () => ({ p_from: null, p_to: null, p_search: "" });
 
   host.innerHTML = `
-    <button type="button" class="accounts-section-card" aria-expanded="false"
-      aria-controls="box-data-table-panel" data-box-data-toggle ${capability("view")}>
-      <strong>${title}</strong>
-      <small>${pending ? "Phones in boxes awaiting verification" : "Phones in exported boxes"}</small>
-    </button>
+    <div class="box-summary-cards">
+      <button type="button" class="accounts-section-card" aria-expanded="false"
+        aria-controls="box-data-table-panel" data-box-data-toggle ${capability("view")}>
+        <span class="accounts-card-icon" aria-hidden="true">▦</span>
+        <strong>${title}</strong>
+        <small>${pending ? "Pending box summary" : "Exported box summary"}</small>
+      </button>
+    </div>
     <section id="box-data-table-panel" class="box-queue-card" aria-labelledby="box-data-table-title" hidden>
       <div class="box-detail-heading">
         <h2 id="box-data-table-title" tabindex="-1">${title}</h2>
@@ -36,24 +39,26 @@
       <form class="box-queue-filter" aria-label="${dateLabel} range in UAE time" ${capability("search")}>
         <label>${dateLabel} from · UAE <input name="from" type="date" min="1900-01-01" max="9999-12-30"></label>
         <label>${dateLabel} to · UAE <input name="to" type="date" min="1900-01-01" max="9999-12-30"></label>
-        <label>Search phones <input name="search" type="search" maxlength="120" placeholder="Box, IMEI, model, GB or color"></label>
+        <label class="box-summary-search">Search <input name="search" type="search" maxlength="120" placeholder="Box number, model, GB, color or grade"></label>
         <button type="submit" class="primary-button">Apply filters</button>
         <button type="button" class="secondary-button" data-box-data-clear>Clear filters</button>
       </form>
       <p role="status" data-box-data-status></p>
       <div class="box-table-wrap">
         <table class="box-table" aria-labelledby="box-data-table-title" data-no-serial data-no-table-filters data-no-auto-sort>
-          <thead><tr>${["S.No", "Box Number", "IMEI", "Model", "GB", "Color", "Grade", dateLabel + " · UAE"]
+          <thead><tr>${["S.No", "Box Number", "Model", "GB", "Color", "Grade", "Qty", dateLabel + " · UAE"]
             .map(label => `<th scope="col">${label}</th>`).join("")}</tr></thead>
           <tbody></tbody>
         </table>
       </div>
-      <nav class="box-queue-pagination" aria-label="Box phone pages">
+      <nav class="box-queue-pagination" aria-label="Box summary pages">
         <button type="button" class="secondary-button" data-box-data-prev ${capability("view")}>Previous</button>
         <span data-box-data-range></span>
         <button type="button" class="secondary-button" data-box-data-next ${capability("view")}>Next</button>
       </nav>
     </section>`;
+  const reviewCard = pending && document.getElementById("accounts-verify-summary");
+  if (reviewCard) host.querySelector(".box-summary-cards").prepend(reviewCard);
 
   const toggle = host.querySelector("[data-box-data-toggle]");
   const panel = host.querySelector("#box-data-table-panel");
@@ -92,10 +97,12 @@
   function valid(data, start) {
     const states = pending ? ["accounts"] : ["exported", "legacy"];
     return data?.scope === page && data.offset === start &&
-      Number.isSafeInteger(data.total) && data.total >= 0 &&
-      Number.isSafeInteger(data.box_count) && data.box_count >= 0 && data.box_count <= data.total &&
-      Array.isArray(data.rows) && data.rows.length === Math.min(pageSize, Math.max(data.total - start, 0)) &&
-      data.rows.every(row => row && row.item_id && row.box_number && states.includes(row.state));
+      Number.isSafeInteger(data.group_count) && data.group_count >= 0 &&
+      Number.isSafeInteger(data.phone_count) && data.phone_count >= data.group_count &&
+      Number.isSafeInteger(data.box_count) && data.box_count >= 0 && data.box_count <= data.group_count &&
+      Array.isArray(data.rows) && data.rows.length === Math.min(pageSize, Math.max(data.group_count - start, 0)) &&
+      data.rows.every(row => row && row.box_number && states.includes(row.state) &&
+        Number.isSafeInteger(row.quantity) && row.quantity > 0);
   }
 
   async function load(start = 0) {
@@ -106,37 +113,38 @@
     const current = () => request === activeRequest && !panel.hidden && allowed("view");
     offset = start;
     panel.setAttribute("aria-busy", "true");
-    status.textContent = "Loading box phones…";
+    status.textContent = "Loading box summary…";
     body.replaceChildren();
     range.textContent = "";
     sync();
     try {
-      const {data, error} = await window.GREENLOOP_GET_CLIENT().rpc("get_box_data_table_v1", {
+      const {data, error} = await window.GREENLOOP_GET_CLIENT().rpc("get_box_data_table_v2", {
         p_page: page, ...applied, p_offset: start, p_limit: pageSize
       }, {signal: activeRequest.signal});
       if (!current()) return;
       if (error) throw error;
-      if (!valid(data, start)) throw Error("The phone list could not be verified. Select Refresh to retry.");
-      total = data.total;
+      if (!valid(data, start)) throw Error("The box summary could not be verified. Select Refresh to retry.");
+      total = data.group_count;
       if (start > 0 && start >= total) {
         await load(total ? Math.floor((total - 1) / pageSize) * pageSize : 0);
         return;
       }
       status.textContent = total
-        ? `${number.format(total)} phones · ${number.format(data.box_count)} ${data.box_count === 1 ? "box" : "boxes"}`
-        : "No box phones match these filters.";
+        ? `${number.format(data.phone_count)} phones · ${number.format(data.box_count)} ${data.box_count === 1 ? "box" : "boxes"}`
+        : "No box contents match these filters.";
       body.innerHTML = data.rows.map((row, index) => {
         const date = new Date(row.box_date);
         const dateText = row.box_date && Number.isFinite(date.getTime()) ? displayDate.format(date) : "—";
-        const cells = [start + index + 1, row.box_number, row.imei, row.model,
-          row.storage_gb == null ? null : `${row.storage_gb} GB`, row.color, row.final_grade, dateText];
+        const cells = [start + index + 1, row.box_number, row.model,
+          row.storage_gb == null ? null : `${row.storage_gb} GB`, row.color, row.final_grade,
+          number.format(row.quantity), dateText];
         return `<tr>${cells.map(value => `<td>${esc(value == null || value === "" ? "—" : value)}</td>`).join("")}</tr>`;
       }).join("");
-      if (total) range.textContent = `${number.format(start + 1)}–${number.format(start + data.rows.length)} of ${number.format(total)} phones`;
+      if (total) range.textContent = `${number.format(start + 1)}–${number.format(start + data.rows.length)} of ${number.format(total)} rows`;
     } catch (error) {
       if (!current()) return;
       total = 0;
-      status.textContent = error.message || "Box phones could not load. Select Refresh to retry.";
+      status.textContent = error.message || "The box summary could not load. Select Refresh to retry.";
     } finally {
       if (request === activeRequest) {
         request = null;
