@@ -46,10 +46,10 @@
   <script defer src="js/employee-updates.js?v=20261117-reader-battery-performance-1"></script>
   <link rel="stylesheet" href="css/lab-bulk-transfer.css?v=20261030-lab-bulk-transfer-1">
   <link rel="stylesheet" href="css/b-dept-scan.css?v=20261105-issuance-sidebar-1">
-<script defer src="js/b-dept-scan.js?v=20261117-primary-imei-1"></script>
+<script defer src="js/b-dept-scan.js?v=20261126-b-dept-save-all-1"></script>
 <link rel="stylesheet" href="css/qc-stock-scope.css?v=20261105-qc-direct-ready-1">
 <script defer src="js/qc-stock-scope.js?v=20261121-lab-stock-workbench-1"></script>
-<script defer src="js/laboratory.js?v=20261124-delete-code-1"></script>
+<script defer src="js/laboratory.js?v=20261126-b-dept-save-all-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261111-ruby-obsidian-1">
     <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261102-imei-scan-location-1">
   <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
@@ -90,7 +90,7 @@
             </section>
             <div id="frame-view-controls" class="frame-view-controls" hidden><div id="frame-view-tabs" class="frame-view-tabs" role="tablist" aria-label="B-DEPT views" hidden><button id="frame-pending-tab" class="frame-view-tab" type="button" role="tab" aria-selected="true" aria-controls="frame-pending-panel" data-frame-view="pending">Pending Work <span id="frame-pending-tab-count">0</span></button><button id="frame-history-tab" class="frame-view-tab" type="button" role="tab" aria-selected="false" aria-controls="frame-report-panel" tabindex="-1" data-frame-view="history">History <span id="frame-history-tab-count">0</span></button></div><button type="button" class="secondary-button stage-model-trigger" data-stage-model-summary="frame_department" data-capability="view" data-capability-page="frame_department" data-search-read-only aria-haspopup="dialog">Model Summary</button><a id="open-b-dept-report" class="frame-view-tab bdr-report-link" href="b-dept-report.html" data-capability="view" data-capability-page="frame_department" hidden>B-DEPT Performance Report</a></div>
             <section id="frame-pending-panel" class="technician-lines-panel">
-              <div class="technician-lines-heading"><div><p id="lines-kicker" class="panel-kicker">Selected technician</p><h2 id="technician-lines-title">Assigned phone lines</h2><p id="technician-lines-help">Review the lower line, order required parts, then complete the job after Parts has issued them.</p></div><div class="technician-line-tools"><div class="frame-lines-actions"><span id="technician-lines-count" class="queue-count">0 lines</span><button id="refresh-frame" class="secondary-button" type="button" hidden>Refresh</button></div></div></div>
+              <div class="technician-lines-heading"><div><p id="lines-kicker" class="panel-kicker">Selected technician</p><h2 id="technician-lines-title">Assigned phone lines</h2><p id="technician-lines-help">Review the lower line, order required parts, then complete the job after Parts has issued them.</p></div><div class="technician-line-tools"><div class="frame-lines-actions"><span id="technician-lines-count" class="queue-count">0 lines</span><button id="save-frame-all" class="primary-button" type="button" data-capability="entry" data-capability-page="frame_department" disabled hidden>Save All</button><button id="refresh-frame" class="secondary-button" type="button" hidden>Refresh</button></div></div></div>
               <p id="lab-board-message" class="form-message receiving-message" role="status" aria-live="polite"></p>
               <section id="lab-technician-summary" class="lab-technician-summary" aria-labelledby="lab-summary-title" hidden>
                 <h3 id="lab-summary-title">Pending phones summary</h3>

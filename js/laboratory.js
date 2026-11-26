@@ -14,6 +14,7 @@
   const linesKicker = document.querySelector("#lines-kicker");
   const linesHead = document.querySelector("#technician-lines-head");
   const refreshFrameButton = document.querySelector("#refresh-frame");
+  const saveFrameAllButton = document.querySelector("#save-frame-all");
   const technicianBoardTitle = document.querySelector("#technician-board-title");
   const technicianLinesTitle = document.querySelector("#technician-lines-title");
   const technicianLinesHelp = document.querySelector("#technician-lines-help");
@@ -72,6 +73,8 @@
   let frameGradeItems = [];
   let frameScan=null;
   const frameDrafts=new Map();
+  const frameSaveErrors = new Map();
+  let frameSaving = false, frameReads = 0;
   let frameLabTechnicians = [], frameLabDefaults = new Map();
   const lineDrafts = new Map();
   const workbenchReads = new Map();
@@ -85,6 +88,7 @@
   const searchable = () => !isFrameMode && window.GREENLOOP_PAGE_ACCESS?.pageKey === "lab_glass" && window.GREENLOOP_CAN?.("search", "lab_glass") === true;
 
   const editable = () => window.GREENLOOP_PAGE_ACCESS?.pageKey === (isFrameMode ? "frame_department" : "lab_glass") && window.GREENLOOP_PAGE_ACCESS.canEdit === true;
+  const canSaveFrame = () => !labStopped && editable() && window.GREENLOOP_CAN?.("entry", "frame_department") === true;
 
   function getClient() { return (client ||= window.GREENLOOP_GET_CLIENT()); }
   function escapeHtml(value) { return String(value ?? "").replace(/[&<>'"]/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"})[c]); }
@@ -178,6 +182,7 @@
     const byId=new Map(technicianRows.map(row=>[String(row.step_id),row]));
     const rows=elements.map(el=>byId.get(el.dataset.stepId)||{});
     workFilters.bind(rows,elements);
+    if (isFrameMode) syncFrameSaveAll();
   }
   new MutationObserver(applyWorkFilters).observe(technicianWorkRows,{childList:true});
 
@@ -200,16 +205,17 @@
     frameReportPanel.setAttribute('role', 'tabpanel');
     frameReportPanel.setAttribute('aria-labelledby', 'frame-history-tab');
     showFrameView('pending');
-    frameScan=window.GREENLOOP_B_DEPT_SCAN.mount({host:framePendingPanel,getRows:()=>technicianRows,reload:()=>loadFrameRows(true),render:renderFrameLines,start:()=>workFilters.clear(),resetDrafts:()=>{frameDrafts.clear();technicianWorkRows.replaceChildren();},allowed:()=>editable()&&window.GREENLOOP_CAN?.('entry','frame_department')===true});
+    frameScan=window.GREENLOOP_B_DEPT_SCAN.mount({host:framePendingPanel,getRows:()=>technicianRows,reload:()=>loadFrameRows(true),render:renderFrameLines,start:()=>workFilters.clear(),resetDrafts:()=>{frameDrafts.clear();frameSaveErrors.clear();technicianWorkRows.replaceChildren();},allowed:canSaveFrame,blocked:()=>frameSaving});
     linesKicker.hidden = true;
     technicianLinesTitle.textContent = "Pending work";
-    technicianLinesHelp.textContent = "Choose a destination after Pass. Selections carry to the visible rows below. Save each phone to transfer it.";
+    technicianLinesHelp.textContent = "Choose Pass or Fail and review each destination. Save All applies to visible rows with a result.";
     refreshFrameButton.hidden = false;
+    saveFrameAllButton.hidden = false;
     linesHead.innerHTML = "<th>IMEI</th><th>Model</th><th>GB</th><th>Color</th><th>Initial BH</th><th>Final BH</th><th>Supplier code</th><th>Supplier grade</th><th>Initial grade</th><th>Final grade</th><th>Pass</th><th>Fail</th><th>Destination / Save</th>";
   }
 
   function showFrameView(view, moveFocus = false) {
-    if (!isFrameMode) return;
+    if (!isFrameMode || frameSaving) return;
     const history = view === 'history';
     framePendingPanel.hidden = history;
     frameReportPanel.hidden = !history;
@@ -438,6 +444,7 @@
     for (let row = source; row; row = row.nextElementSibling) {
       if (!row.dataset.stepId || row.dataset.busy === 'yes' || row.dataset.saved === 'yes' ||
           row.hidden || row.style.display === 'none') continue;
+      frameSaveErrors.delete(row.dataset.stepId);
       if (result) {
         for (const box of row.querySelectorAll(selector)) {
           if (box.dataset.frameResult === result) box.checked = control.checked;
@@ -447,17 +454,33 @@
         const field = row.querySelector(selector);
         if (field && (selector !== '[data-frame-lab-technician]' || !field.disabled)) field.value = control.value;
       }
-      if (selector !== '[data-frame-final-grade]') updateFrameRoute(row);
+      updateFrameRoute(row);
     }
+    syncFrameSaveAll();
+  }
+
+  function frameRowsToSave() {
+    return [...technicianWorkRows.querySelectorAll('tr[data-step-id]:not([data-saved="yes"])')]
+      .filter(row => !row.hidden && row.style.display !== 'none' && row.querySelector('[data-frame-result]:checked'));
+  }
+
+  function syncFrameSaveAll() {
+    if (frameSaving) return;
+    const count = frameRowsToSave().length;
+    saveFrameAllButton.textContent = count ? `Save All (${count})` : "Save All";
+    saveFrameAllButton.disabled = !count || frameReads > 0 || !canSaveFrame();
   }
 
   function updateFrameRoute(row) {
     const result=row.querySelector('[data-frame-result]:checked')?.dataset.frameResult||'',route=row.querySelector('[data-frame-destination]'),lab=result==='pass'&&route.value==='lab_glass';
     route.disabled=result!=='pass'||!editable();row.querySelector('[data-frame-lab-wrap]').hidden=!lab;row.querySelector('[data-frame-lab-technician]').disabled=!lab||!editable();
     row.querySelector('[data-frame-final-grade]').disabled=route.value!=='ready_stock'||!editable();row.querySelector('[data-complete-frame]').disabled=!result||!editable();
-    row.querySelector('.line-status').textContent=result==='pass'?(lab?'Choose technician, then transfer to Lab & Glass':route.value==='ready_stock'?'Select Final Grade, then move to Ready Stock':'Transfer to '+frameDestinationNames[route.value]):result==='fail'?'Will stay in B-DEPT':'Select Pass or Fail';
+    const status = row.querySelector('.line-status');
+    const error = frameSaveErrors.get(row.dataset.stepId);
+    status.classList.toggle("error", Boolean(error));
+    status.textContent=error||(result==='pass'?(lab?'Choose technician, then transfer to Lab & Glass':route.value==='ready_stock'?'Select Final Grade, then move to Ready Stock':'Transfer to '+frameDestinationNames[route.value]):result==='fail'?'Will stay in B-DEPT':'Select Pass or Fail');
   }
-  for(const event of ['greenloop:office-locked','greenloop:signed-out'])window.addEventListener(event,()=>frameDrafts.clear());
+  for(const event of ['greenloop:office-locked','greenloop:signed-out'])window.addEventListener(event,()=>{frameDrafts.clear();frameSaveErrors.clear();});
   function captureFrameDrafts(){
     for(const row of technicianWorkRows.querySelectorAll('tr[data-step-id]')){
       if(row.dataset.saved==='yes')continue;
@@ -636,17 +659,27 @@
     alignSelectedCounter();return true;
   }
   async function loadFrameRows(skipHistory=false) {
-    setBoardMessage();
-    const [{ data, error }, choices] = await Promise.all([getClient().rpc("get_b_dept_rows_v1"),getClient().rpc("get_b_dept_lab_options_v1")]);
-    if(!window.document||!app.isConnected||window.GREENLOOP_PAGE_ACCESS?.pageKey!=="frame_department"||window.GREENLOOP_CAN?.("view","frame_department")!==true)return;
-    if(choices.error)throw choices.error;setFrameLabOptions(choices.data);
-    if (error) throw error;
-    const rows = data || [];
-    await GREENLOOP_RECEIPTS.load("frame_department",rows.map(r=>r.imei));
-    technicianRows = rows;
-    frameScan?.refresh();
-    renderFrameLines();
-    if(!skipHistory)await loadFrameReport();
+    frameReads++;
+    syncFrameSaveAll();
+    try {
+      if (!frameSaving) setBoardMessage();
+      const [{ data, error }, choices] = await Promise.all([getClient().rpc("get_b_dept_rows_v1"),getClient().rpc("get_b_dept_lab_options_v1")]);
+      const canApply = () => !labStopped && app.isConnected && window.GREENLOOP_PAGE_ACCESS?.pageKey === "frame_department" && window.GREENLOOP_CAN?.("view","frame_department") === true;
+      if (!canApply()) return;
+      if (choices.error) throw choices.error;
+      if (error) throw error;
+      if (!Array.isArray(data)) throw Error("Pending B-DEPT phones could not be verified. Select Refresh to retry.");
+      await GREENLOOP_RECEIPTS.load("frame_department",data.map(r=>r.imei));
+      if (!canApply()) return;
+      setFrameLabOptions(choices.data);
+      technicianRows = data;
+      frameScan?.refresh();
+      renderFrameLines();
+      if (!skipHistory) await loadFrameReport();
+    } finally {
+      frameReads--;
+      syncFrameSaveAll();
+    }
   }
   async function loadTechnicians(preferredId = activeTechnicianId) {
     const selectionAtStart=activeTechnicianId,renderAtStart=JSON.stringify([technicians,activeTechnicianId,[...hiddenTechnicianIds],visibilityReady]);
@@ -885,29 +918,25 @@
       mainScanReads--;if(ticket===imeiLookupVersion){pendingImei='';technicianImeiScanWrap.removeAttribute('aria-busy');checkTechnicianImei.textContent='Open phone';}
     }
   }
-  async function completeFrame(button) {
-    if (!editable()) return;
-    const row = button.closest("tr");
+  function frameSaveRequest(row) {
     const result = row.querySelector("[data-frame-result]:checked")?.dataset.frameResult || "";
-    if (!result) return;
     const finalGrade = row.querySelector("[data-frame-final-grade]")?.value || "";
     const destination = row.querySelector("[data-frame-destination]").value;
     const labTechnician = row.querySelector("[data-frame-lab-technician]").value;
-    if (result === "pass" && destination === "lab_glass" && !labTechnician) {setBoardMessage("Select the Lab technician before transferring this phone.");row.querySelector("[data-frame-lab-technician]").focus();return;}
+    if (result === "pass" && destination === "lab_glass" && !labTechnician) {
+      return { error:"Select the Lab technician before transferring this phone.", field:row.querySelector("[data-frame-lab-technician]") };
+    }
     if (result === "pass" && destination === "ready_stock" && !finalGrade) {
-      setBoardMessage("Select the Final Grade before passing this B-DEPT phone to Ready Stock.");
-      row.querySelector("[data-frame-final-grade]")?.focus();
-      return;
+      return { error:"Select the Final Grade before passing to Ready Stock.", field:row.querySelector("[data-frame-final-grade]") };
     }
     const bhInput = row.querySelector('[data-b-dept-bh]');
     const unavailable = row.querySelector('[data-b-dept-unavailable]').checked;
     const bhText = bhInput.value.trim(), bh = bhText === "" ? null : Number(bhText);
-    if ((!unavailable && result === "pass" && bh === null) || bh !== null && (!Number.isInteger(bh) || bh < 0 || bh > 100)) {
-      setBoardMessage("Enter Final Battery Health from 0 to 100 before passing this phone."); bhInput.focus(); return;
+    if ((!unavailable && result === "pass" && bh === null) || bhInput.validity.badInput || bh !== null && (!Number.isInteger(bh) || bh < 0 || bh > 100)) {
+      return { error:"Enter Final Battery Health as a whole number from 0 to 100.", field:bhInput };
     }
-    setSubmitting(button, true, "Saving...");
-    const { error } = await getClient().rpc("record_b_dept_result_v2", {
-      p_work_order_step_id: button.dataset.completeFrame,
+    return { row, imei:row.querySelector(".line-imei").textContent.trim(), args:{
+      p_work_order_step_id: row.dataset.stepId,
       p_result: result,
       p_final_grade: result === "pass" && destination === "ready_stock" ? finalGrade : null,
       p_final_battery_health: unavailable ? null : bh,
@@ -917,16 +946,84 @@
       p_technician_roster_id: result === "pass" && destination === "lab_glass" ? labTechnician : null,
       p_parts: [],
       p_services: []
-    });
-    setSubmitting(button, false);
-    if (error) { setBoardMessage(error.message); return; }
-    row.dataset.saved = "yes";
-    frameDrafts.delete(String(button.dataset.completeFrame));
-    const destinationName = frameDestinationNames[destination];
-    if (result === 'pass') frameScan?.complete(row.querySelector('.line-imei').textContent.trim(), 'Passed — transferred to ' + destinationName + '.');
-    showToast(result === 'pass' ? 'B-DEPT passed. Phone sent to ' + destinationName + '.' : 'B-DEPT failed. Phone remains in B-DEPT.');
-    document.dispatchEvent(new CustomEvent("greenloop:notifications-changed"));
-    await refreshAll();
+    } };
+  }
+
+  async function saveFrameRows(rows) {
+    if (frameSaving || !canSaveFrame() || !rows.length) return;
+    if (frameReads || frameScan?.busy) {
+      setBoardMessage("Wait for the pending phones to finish loading, then save again.");
+      return;
+    }
+    const requests = [];
+    const issues = [];
+    for (const row of rows) {
+      const request = frameSaveRequest(row);
+      frameSaveErrors.delete(row.dataset.stepId);
+      if (request.error) {
+        frameSaveErrors.set(row.dataset.stepId, request.error);
+        issues.push(request);
+      } else requests.push(request);
+      updateFrameRoute(row);
+    }
+    if (!requests.length) {
+      setBoardMessage(issues[0].error);
+      issues[0].field.focus();
+      return;
+    }
+
+    frameSaving = true;
+    const controls = [...framePendingPanel.querySelectorAll("input, select, button")].map(control => [control, control.disabled]);
+    controls.forEach(([control]) => { control.disabled = true; });
+    const rowButton = rows.length === 1 ? rows[0].querySelector("[data-complete-frame]") : null;
+    if (rowButton) rowButton.textContent = "Saving…";
+    let saved = 0, attempted = 0, stopped = "", refreshError = "";
+    try {
+      // These per-phone writes share a database lock. Send one at a time.
+      for (const { row, imei, args } of requests) {
+        if (!canSaveFrame()) { stopped = "Access changed. Save stopped."; break; }
+        saveFrameAllButton.textContent = `Saving ${++attempted} of ${requests.length}…`;
+        let error;
+        try { ({ error } = await getClient().rpc("record_b_dept_result_v2", args)); }
+        catch (failure) { error = failure; }
+        if (error) {
+          const message = error.message || "This phone could not be saved.";
+          frameSaveErrors.set(row.dataset.stepId, message);
+          issues.push({error:message});
+          if (!/^[0-9A-Z]{5}$/.test(error.code || "") || /^(08|42501)/.test(error.code)) {
+            stopped = "Save stopped. Check History and refresh before retrying.";
+            break;
+          }
+          continue;
+        }
+        saved++;
+        row.dataset.saved = "yes";
+        frameDrafts.delete(row.dataset.stepId);
+        const passed = args.p_result === "pass";
+        const label = passed ? "Passed · sent to " + frameDestinationNames[args.p_destination] : "Fail recorded · remains in B-DEPT";
+        row.querySelector(".line-status").textContent = label;
+        if (passed) frameScan?.complete(imei, label);
+      }
+      if (saved && !labStopped && window.GREENLOOP_CAN?.("view", "frame_department")) {
+        document.dispatchEvent(new CustomEvent("greenloop:notifications-changed"));
+        try { await refreshAll(); }
+        catch { refreshError = "The list could not refresh. Select Refresh to update the queue."; }
+      }
+    } finally {
+      frameSaving = false;
+      controls.forEach(([control, disabled]) => {
+        if (control.isConnected) control.disabled = disabled || control.closest("tr")?.dataset.saved === "yes";
+      });
+      if (rowButton) rowButton.textContent = "Save";
+      for (const row of rows) if (row.isConnected && row.dataset.saved !== "yes") updateFrameRoute(row);
+      frameScan?.sync();
+      syncFrameSaveAll();
+      window.GREENLOOP_LOCK_VIEW_ONLY_CONTROLS?.(framePendingPanel);
+    }
+    if (labStopped) return;
+    const status = [`${saved} of ${rows.length} saved.`, issues.length ? `${issues.length} need checking. ${issues[0].error}` : "", stopped, refreshError].filter(Boolean).join(" ");
+    setBoardMessage(status, saved === rows.length && !refreshError);
+    if (saved === rows.length) showToast(`${saved} B-DEPT result${saved === 1 ? "" : "s"} saved.`);
   }
 
   function scheduleBackgroundRefresh(){
@@ -1004,7 +1101,8 @@
   document.querySelector("#close-menu").addEventListener("click", () => setMenu(false));
   backdrop.addEventListener("click", () => setMenu(false));
   document.querySelector("#refresh-lab").addEventListener("click", () => {setBoardMessage();refreshAll().catch((error) => setBoardMessage(error.message));});
-  refreshFrameButton.addEventListener("click", () => refreshAll().catch((error) => setBoardMessage(error.message)));
+  refreshFrameButton.addEventListener("click", () => { if (!frameSaving) void refreshAll().catch((error) => setBoardMessage(error.message)); });
+  saveFrameAllButton.addEventListener("click", () => void saveFrameRows(frameRowsToSave()).catch(error => setBoardMessage(error.message)));
   addTechnicianButton.addEventListener("click", () => addTechnician().catch((error) => setBoardMessage(error.message)));
   removeTechnicianButton.addEventListener("click", () => removeTechnician().catch((error) => setBoardMessage(error.message)));
   hideTechnicianButton.addEventListener('click',()=>changeTechnicianVisibility().catch(error=>setBoardMessage(error.message)));
@@ -1065,7 +1163,8 @@
     const returned=event.target.closest("[data-pf-return]");if(returned){runLineAction(returned,submitPartReturn).catch(e=>setBoardMessage(e.message));return;}
     const order = event.target.closest("[data-order-parts]"); if (order && !order.disabled) runLineAction(order, orderParts).catch((error) => setBoardMessage(error.message));
     const completeLabButton = event.target.closest("[data-complete-lab]"); if (completeLabButton) runLineAction(completeLabButton, completeLab).catch((error) => setBoardMessage(error.message));
-    const completeFrameButton = event.target.closest("[data-complete-frame]"); if (completeFrameButton) runLineAction(completeFrameButton, completeFrame).catch((error) => setBoardMessage(error.message));
+    const completeFrameButton = event.target.closest("[data-complete-frame]");
+    if (completeFrameButton && !completeFrameButton.disabled) void saveFrameRows([completeFrameButton.closest("tr")]).catch(error => setBoardMessage(error.message));
   });
   technicianWorkRows.addEventListener('input',event=>{if(editable()&&event.target.matches('[data-part-damage-reason]')){rememberLineDraft(event.target.closest('tr'),'part');markLineChanged(event.target.closest('tr'),'part');}});
   technicianWorkRows.addEventListener("change", (event) => {
@@ -1093,8 +1192,11 @@
       return;
     }
     if (event.target.matches('[data-b-dept-unavailable]')) {
-      const input = event.target.closest('tr').querySelector('[data-b-dept-bh]');
+      const row = event.target.closest('tr');
+      const input = row.querySelector('[data-b-dept-bh]');
       input.disabled = event.target.checked; if (event.target.checked) input.value = "";
+      frameSaveErrors.delete(row.dataset.stepId);
+      updateFrameRoute(row);
       return;
     }
 

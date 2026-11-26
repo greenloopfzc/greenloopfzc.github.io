@@ -2,13 +2,13 @@
 (() => {
  'use strict';
  const valid=v=>/^\d{15}$/.test(v),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- function mount({host,getRows,reload,render,start,allowed,resetDrafts}){
+ function mount({host,getRows,reload,render,start,allowed,blocked,resetDrafts}){
   const panel=document.createElement('section');panel.className='b-dept-scan';panel.setAttribute('aria-label','Scan B-DEPT phones');
   panel.innerHTML='<div class="b-dept-scan-field"><label for="b-dept-scan-imei">Scan / paste IMEIs</label><input id="b-dept-scan-imei" type="text" inputmode="numeric" autocomplete="off" maxlength="15" data-b-dept-scan data-imei-scan data-capability="entry" data-capability-page="frame_department" placeholder="Scan a phone or paste an Excel IMEI column"><small>Each scan adds a new line. The scanner stays ready for the next phone.</small></div><div class="b-dept-scan-actions"><button type="button" class="secondary-button" data-frame-show-all data-capability="view" data-capability-page="frame_department" data-search-read-only>Auto Pick</button><button type="button" class="secondary-button" data-frame-clear-tray data-capability="view" data-capability-page="frame_department" data-search-read-only>Clear Tray</button><span data-frame-scan-count role="status" aria-live="polite"></span></div>';
   host.querySelector('#lab-work-filters').before(panel);
   const input=panel.querySelector('input'),count=panel.querySelector('[data-frame-scan-count]');
-  let entries=[],selected=true,running=false,ticket=0,stopped=false,loadedAt=0,invalidValues=[];
-  const can=()=>!stopped&&Boolean(window.document?.body?.contains(input))&&allowed(),queue=()=>new Map(getRows().map(r=>[String(r.imei),r]));
+  let entries=[],selected=true,running=false,resetting=false,ticket=0,stopped=false,loadedAt=0,invalidValues=[];
+  const can=()=>!stopped&&!blocked()&&Boolean(window.document?.body?.contains(input))&&allowed(),queue=()=>new Map(getRows().map(r=>[String(r.imei),r]));
   function status(){const loaded=entries.filter(e=>e.state==='loaded').length,done=entries.filter(e=>e.state==='complete').length,bad=entries.filter(e=>e.state==='error').length;count.textContent=selected?`${entries.length} selected · ${loaded} loaded${done?' · '+done+' completed':''}${bad?' · '+bad+' need checking':''}`:'All pending phones loaded';if(invalidValues.length)count.textContent+=` · ${invalidValues.length} invalid value(s): ${invalidValues.slice(0,3).join(', ')}`;input.disabled=!can();}
   function select(rows){
    if(!selected)return rows;
@@ -56,27 +56,29 @@
   const pasted=e=>{if(e.target!==input&&!e.target.matches('[data-frame-empty-imei]'))return;e.preventDefault();e.stopImmediatePropagation();if(!can())return;const text=e.clipboardData?.getData('text/plain')||e.clipboardData?.getData('text')||'',values=[],issues=[];for(const raw of text.split(/[\s,;]+/)){const value=raw.replace(/^["']|["']$/g,'').replace(/[\u0660-\u0669\u06f0-\u06f9]/g,c=>String(c.charCodeAt(0)-(c.charCodeAt(0)>=0x6f0?0x6f0:0x660)));if(!value||/^imei(?:1)?$/i.test(value))continue;if(valid(value))values.push(value);else issues.push(value);}invalidValues.push(...issues);if(values.length)void add(values,'paste');else status();};
   window.addEventListener('paste',pasted,true);
   async function resetTray(showPending) {
-   if(window.GREENLOOP_CAN?.('view','frame_department')!==true||host.querySelector('tr[data-busy="yes"]'))return;
+   if(stopped||blocked()||window.GREENLOOP_CAN?.('view','frame_department')!==true)return;
    const revision=++ticket;
+   resetting=true;
    selected=!showPending;entries=[];invalidValues=[];input.value='';
    resetDrafts?.();
-   await start();
-   if(revision!==ticket||stopped)return;
-   changed();
-   if(showPending){
-    try{await reload();if(revision===ticket&&!stopped)changed();}
-    catch(error){if(revision===ticket)count.textContent=error.message||'Pending phones could not load. Try Auto Pick again.';}
-   }else if(can())input.focus();
+   try{
+    await start();
+    if(revision!==ticket||stopped)return;
+    changed();
+    if(showPending){await reload();if(revision===ticket&&!stopped)changed();}
+    else if(can())input.focus();
+   }catch(error){if(revision===ticket)count.textContent=error.message||'Pending phones could not load. Try Auto Pick again.';}
+   finally{if(revision===ticket)resetting=false;}
   }
   panel.querySelector('[data-frame-show-all]').onclick=()=>void resetTray(true);
   panel.querySelector('[data-frame-clear-tray]').onclick=()=>void resetTray(false);
   host.addEventListener('click',e=>{const b=e.target.closest('[data-frame-scan-location]');if(!b)return;const item=entries[Number(b.dataset.frameScanLocation)];if(!item?.record||!can())return;void window.GREENLOOP_IMEI_STAGE_NOTICE.show({imei:item.imei,knownRecord:item.record,title:'Phone unavailable in B-DEPT',message:item.message});});
-  function stop(){stopped=true;ticket++;entries=[];selected=true;status();}
+  function stop(){stopped=true;resetting=false;ticket++;entries=[];selected=true;status();}
   for(const event of ['greenloop:office-locked','greenloop:signed-out','pagehide'])window.addEventListener(event,stop);
   window.addEventListener('greenloop:permissions-changed',()=>{if(!allowed())stop();else{stopped=false;status();}});
   window.addEventListener('pageshow',event=>{if(event.persisted&&window.document?.body?.contains(input)){stopped=false;status();if(can())void reload().then(changed).catch(()=>{});}});
   status();
-  return{select,refresh(){loadedAt=Date.now();const current=queue();for(const e of entries)if(e.state==='loaded'&&!current.has(e.imei)){e.state='error';e.message='This phone is no longer pending in B-DEPT. Refresh or check its current location.';}status();},complete(imei,label){for(const e of entries)if(e.imei===imei&&e.state==='loaded'){e.state='complete';e.message=label;}status();},issueMarkup(row){
+  return{select,sync:status,get busy(){return running||resetting||entries.some(e=>e.state==='checking');},refresh(){loadedAt=Date.now();const current=queue();for(const e of entries)if(e.state==='loaded'&&!current.has(e.imei)){e.state='error';e.message='This phone is no longer pending in B-DEPT. Refresh or check its current location.';}status();},complete(imei,label){for(const e of entries)if(e.imei===imei&&e.state==='loaded'){e.state='complete';e.message=label;}status();},issueMarkup(row){
    if(row.scan_empty)return `<tr class="b-dept-empty-row"><td><input type="text" inputmode="numeric" maxlength="15" autocomplete="off" placeholder="Scan IMEI" aria-label="Scan IMEI line ${row.scan_line}" data-frame-empty-imei data-capability="entry" data-capability-page="frame_department" ${can()?'':'disabled'}></td>${Array.from({length:11},()=>'<td>—</td>').join('')}<td><button type="button" class="line-save" disabled>Save</button></td></tr>`;
    return `<tr class="b-dept-scan-result${row.scan_completed?' is-completed':' is-error'}"><td colspan="13"><span class="b-dept-scan-line">Line ${row.scan_line}</span><strong>${esc(row.imei)}</strong><span>${esc(row.scan_issue)}</span>${entries[row.scan_entry]?.record?`<button type="button" class="secondary-button" data-frame-scan-location="${row.scan_entry}" data-capability="view" data-capability-page="frame_department" data-search-read-only>Current location</button>`:''}</td></tr>`;}};
  }
