@@ -39,14 +39,14 @@
       <form class="box-queue-filter" aria-label="${dateLabel} range in UAE time" ${capability("search")}>
         <label>${dateLabel} from · UAE <input name="from" type="date" min="1900-01-01" max="9999-12-30"></label>
         <label>${dateLabel} to · UAE <input name="to" type="date" min="1900-01-01" max="9999-12-30"></label>
-        <label class="box-summary-search">Search <input name="search" type="search" maxlength="120" placeholder="Box number, model, GB or grade"></label>
+        <label class="box-summary-search">Search <input name="search" type="search" maxlength="120" placeholder="Box number, model or GB"></label>
         <button type="submit" class="primary-button">Apply filters</button>
         <button type="button" class="secondary-button" data-box-data-clear>Clear filters</button>
       </form>
       <p role="status" data-box-data-status></p>
       <div class="box-table-wrap">
         <table class="box-table" aria-labelledby="box-data-table-title" data-no-serial data-no-table-filters data-no-auto-sort>
-          <thead><tr>${["S.No", "Box Number", "Model", "GB", "Grade", "Qty", dateLabel + " · UAE"]
+          <thead><tr>${["S.No", "Box Number", "Model", "GB", "Qty", dateLabel + " · UAE"]
             .map(label => `<th scope="col">${label}</th>`).join("")}</tr></thead>
           <tbody></tbody>
         </table>
@@ -118,7 +118,7 @@
     range.textContent = "";
     sync();
     try {
-      const {data, error} = await window.GREENLOOP_GET_CLIENT().rpc("get_box_data_table_v3", {
+      const {data, error} = await window.GREENLOOP_GET_CLIENT().rpc("get_box_data_table_v4", {
         p_page: page, ...applied, p_offset: start, p_limit: pageSize
       }, {signal: activeRequest.signal});
       if (!current()) return;
@@ -136,7 +136,7 @@
         const date = new Date(row.box_date);
         const dateText = row.box_date && Number.isFinite(date.getTime()) ? displayDate.format(date) : "—";
         const cells = [start + index + 1, row.box_number, row.model,
-          row.storage_gb == null ? null : `${row.storage_gb} GB`, row.final_grade,
+          row.storage_gb == null ? null : `${row.storage_gb} GB`,
           number.format(row.quantity), dateText];
         return `<tr>${cells.map(value => `<td>${esc(value == null || value === "" ? "—" : value)}</td>`).join("")}</tr>`;
       }).join("");

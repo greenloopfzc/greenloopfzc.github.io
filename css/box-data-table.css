@@ -19,5 +19,5 @@
 [data-box-data-table] .box-queue-filter { margin:16px 0; }
 [data-box-data-table] .box-summary-search { flex:1 1 245px; min-width:min(245px,100%); }
 [data-box-data-table] .box-table { min-width:640px; }
-[data-box-data-table] .box-table tbody td:nth-child(6) { font-weight:700; font-variant-numeric:tabular-nums; }
+[data-box-data-table] .box-table tbody td:nth-child(5) { font-weight:700; font-variant-numeric:tabular-nums; }
 @media print { [data-box-data-table] { display:none !important; } }
