@@ -162,3 +162,13 @@
   Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,rules);
   Object.assign(root.GREENLOOP_RPC_CAPABILITIES,rules);
 })(typeof window !== "undefined" ? window : globalThis);
+
+(function(root){
+  const rule = {
+    dynamic:"filter_source", parameter:"p_page",
+    accounts:{page:"accounts", capability:"view", read:true},
+    stock_exported:{page:"stock_exported", capability:"view", read:true}
+  };
+  root.GREENLOOP_RPC_CAPABILITIES.rpcs.get_box_data_table_v1 = rule;
+  root.GREENLOOP_RPC_CAPABILITIES.get_box_data_table_v1 = rule;
+})(typeof window !== "undefined" ? window : globalThis);

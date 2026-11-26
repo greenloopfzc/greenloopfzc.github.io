@@ -1,0 +1,6 @@
+[data-box-data-table] > .accounts-section-card { min-width:min(240px,100%); margin-bottom:16px; }
+[data-box-data-table] > .accounts-section-card[aria-expanded="true"] { border-color:var(--nm-green,#087651); background:var(--nm-green-bg,#e1f1e9); }
+[data-box-data-table] [hidden] { display:none !important; }
+[data-box-data-table] .box-queue-filter { margin:16px 0; }
+[data-box-data-table] .box-table { min-width:760px; }
+@media print { [data-box-data-table] { display:none !important; } }
