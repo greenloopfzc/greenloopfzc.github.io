@@ -173,4 +173,6 @@
   root.GREENLOOP_RPC_CAPABILITIES.get_box_data_table_v1 = rule;
   root.GREENLOOP_RPC_CAPABILITIES.rpcs.get_box_data_table_v2 = rule;
   root.GREENLOOP_RPC_CAPABILITIES.get_box_data_table_v2 = rule;
+  root.GREENLOOP_RPC_CAPABILITIES.rpcs.get_box_data_table_v3 = rule;
+  root.GREENLOOP_RPC_CAPABILITIES.get_box_data_table_v3 = rule;
 })(typeof window !== "undefined" ? window : globalThis);
