@@ -14,6 +14,16 @@
   }
   const state=v=>({accounts:'Awaiting verification',exported:'Verified',legacy:'Historical box · prior workflow',draft:'Box Entry',recheck:'Recheck'}[v]||v);
   const exportedPrintAllowed=()=>page==='stock_exported'&&window.GREENLOOP_PAGE_ACCESS?.pageKey===page&&window.GREENLOOP_CAN?.('view',page)===true&&window.GREENLOOP_CAN?.('print',page)===true;
+  function recheckCapability(box) {
+    if (pending && box.state === 'accounts') return 'verify';
+    if (!pending && box.state === 'exported' && box.verified_at) return 'recheck_exported';
+    return null;
+  }
+  function recheckControls(box) {
+    const capability = recheckCapability(box);
+    if (!capability || window.GREENLOOP_CAN?.(capability,page) !== true) return '';
+    return `<section class="box-recheck-return" data-capability="${capability}" data-capability-page="${page}"><label>Reason for Recheck<textarea id="box-recheck-reason" rows="2" minlength="2" maxlength="1000" placeholder="Explain what needs to be checked or corrected"></textarea></label><button type="button" class="secondary-button" data-request-box-recheck>Send for Recheck</button></section>`;
+  }
   async function rpc(name,args={}){const {data,error}=await client.rpc(name,args);if(error)throw error;return data;}
   const readDetail=id=>rpc(page==='accounts'?'get_accounts_verify_box_detail_v1':'get_box_workflow_v1',{p_box_id:id});
   const detailCurrent=token=>token===generation&&window.GREENLOOP_CAN?.('view',page)===true;
@@ -50,7 +60,7 @@
       ?data.lines.map(row=>({...row,sim_type:row.esim_only===true?'e-Sim':'-'}))
       :data.lines;
     const columns=[['S.No','serial_no'],['IMEI','imei'],['Model','model'],['GB','storage_gb'],['Grade','final_grade'],...(page==='accounts'?[['Final BH','final_battery_health'],['e-Sim','sim_type']]:[]),['Color','color'],['Supplier','supplier_name'],['Supplier code','supplier_code'],['Stock received · UAE','received_at'],['Invoice','invoice_number'],['Stock/Batch No','batch_number']];
-    detail.innerHTML=`<div class="box-detail-heading"><div><span class="gl-wordmark gl-wordmark-small"><img src="assets/greenloop-fzc-logo.jpg" alt="Greenloop FZC"></span><h2>${cell(b.box_number)}</h2><p>${cell(state(b.state))} · ${data.lines.length} phones</p>${b.customer_code?`<p>Customer: ${cell(b.customer_name||b.customer_code)}</p>`:""}</div><div class="box-actions">${downloads.buttons('data-export-box-report',page,'print')}<button class="secondary-button" type="button" data-print-box data-search-read-only ${page==='stock_exported'?'data-capability="print" data-capability-page="stock_exported"':''}>Print Box</button>${b.state==='accounts'&&page==='accounts'&&canEdit?'<button class="secondary-button" type="button" data-confirm-print data-entry-only hidden>Printing completed</button><button class="primary-button" type="button" data-verify-box data-entry-only>Verify Box</button>':''}<button class="secondary-button" type="button" data-close-box data-search-read-only>Close</button></div></div><p class="box-review-note">${b.state==='accounts'?'Review every phone and its source details. Choose Verify Box, or send it back for Recheck with a reason.':b.state==='legacy'?'Historical box from before Accounts verification was introduced.':'Verified by '+cell(b.verified_by_name)+' · '+cell(dt(b.verified_at))}</p>${b.recheck_count&&b.recheck_reason?`<div class="br-reason"><strong>Resubmitted after Recheck · ${cell(dt(b.last_sent_at))}</strong><p>${cell(b.recheck_reason)}</p></div>`:''}${b.state==='accounts'&&page==='accounts'&&window.GREENLOOP_CAN?.('verify','accounts')?'<section class="box-recheck-return" data-capability="verify" data-capability-page="accounts"><label>Reason for Recheck<textarea id="box-recheck-reason" rows="2" minlength="2" maxlength="1000" placeholder="Explain what needs to be checked or corrected"></textarea></label><button type="button" class="secondary-button" data-request-box-recheck>Send for Recheck</button></section>':''}${page==='accounts'?window.GREENLOOP_ACCOUNTS?.picker(b)||'':''}<div class="box-table-wrap"><table class="box-table"><thead><tr>${columns.map(([label])=>'<th>'+esc(label)+'</th>').join('')}</tr></thead><tbody>${rows.map(row=>'<tr>'+columns.map(([,key])=>'<td>'+cell(key==='received_at'?dt(row[key]):key==='final_battery_health'?finalBh(row):row[key])+'</td>').join('')+'</tr>').join('')}</tbody></table></div>`;
+    detail.innerHTML=`<div class="box-detail-heading"><div><span class="gl-wordmark gl-wordmark-small"><img src="assets/greenloop-fzc-logo.jpg" alt="Greenloop FZC"></span><h2>${cell(b.box_number)}</h2><p>${cell(state(b.state))} · ${data.lines.length} phones</p>${b.customer_code?`<p>Customer: ${cell(b.customer_name||b.customer_code)}</p>`:""}</div><div class="box-actions">${downloads.buttons('data-export-box-report',page,'print')}<button class="secondary-button" type="button" data-print-box data-search-read-only ${page==='stock_exported'?'data-capability="print" data-capability-page="stock_exported"':''}>Print Box</button>${b.state==='accounts'&&page==='accounts'&&canEdit?'<button class="secondary-button" type="button" data-confirm-print data-entry-only hidden>Printing completed</button><button class="primary-button" type="button" data-verify-box data-entry-only>Verify Box</button>':''}<button class="secondary-button" type="button" data-close-box data-search-read-only>Close</button></div></div><p class="box-review-note">${b.state==='accounts'?'Review every phone and its source details. Choose Verify Box, or send it back for Recheck with a reason.':b.state==='legacy'?'Historical box from before Accounts verification was introduced.':'Verified by '+cell(b.verified_by_name)+' · '+cell(dt(b.verified_at))}</p>${b.recheck_count&&b.recheck_reason?`<div class="br-reason"><strong>Resubmitted after Recheck · ${cell(dt(b.last_sent_at))}</strong><p>${cell(b.recheck_reason)}</p></div>`:''}${recheckControls(b)}${page==='accounts'?window.GREENLOOP_ACCOUNTS?.picker(b)||'':''}<div class="box-table-wrap"><table class="box-table"><thead><tr>${columns.map(([label])=>'<th>'+esc(label)+'</th>').join('')}</tr></thead><tbody>${rows.map(row=>'<tr>'+columns.map(([,key])=>'<td>'+cell(key==='received_at'?dt(row[key]):key==='final_battery_health'?finalBh(row):row[key])+'</td>').join('')+'</tr>').join('')}</tbody></table></div>`;
     window.GREENLOOP_SORTING.table('box-detail-lines',detail.querySelector('table'),rows,columns.map(([label,key])=>[key,label,['serial_no','final_battery_health'].includes(key)?'number':undefined]));
     if(customerChoice && detail.querySelector("#box-customer"))detail.querySelector("#box-customer").value=customerChoice;
     detail.hidden=false;
@@ -138,11 +148,34 @@
     if(done){offset=0;await load();notice('Box verified and moved to Stock Exported.');}
   }
   async function requestRecheck(){
-    if(busy||!selected||page!=='accounts'||!window.GREENLOOP_CAN?.('verify','accounts'))return;
-    const reason=detail.querySelector('#box-recheck-reason');if(!reason||reason.value.trim().length<2){notice('Enter the reason for Recheck.',true);reason?.focus();return;}
-    const box=selected.box;lock(true);let done=false;
-    try{await rpc('request_box_recheck_v1',{p_box_id:box.box_id,p_revision:box.revision,p_reason:reason.value.trim()});done=true;}catch(e){notice(e.message,true);}finally{lock(false);}
-    if(done){offset=0;await load();notice('Box returned to Box Entry for Recheck. It can be verified after it is corrected and sent back.');}
+    if (busy || !selected || window.GREENLOOP_CAN?.('view',page) !== true) return;
+    const box = selected.box;
+    const capability = recheckCapability(box);
+    if (!capability || window.GREENLOOP_CAN?.(capability,page) !== true) return;
+    const reasonField = detail.querySelector('#box-recheck-reason');
+    const reason = reasonField?.value.trim() || '';
+    if (reason.length < 2 || reason.length > 1000) {
+      notice('Enter a reason for Recheck (2 to 1000 characters).',true);
+      reasonField?.focus();
+      return;
+    }
+    if (!pending && !window.confirm('Confirm '+box.box_number+' is physically at Greenloop and send it back to Box Entry for Recheck? Accounts will verify it again after correction.')) return;
+    const token = generation;
+    const action = pending ? 'request_box_recheck_v1' : 'request_exported_box_recheck_v1';
+    lock(true);
+    try {
+      await rpc(action,{p_box_id:box.box_id,p_revision:box.revision,p_reason:reason});
+    } catch(e) {
+      if (detailCurrent(token)) notice(e.message,true);
+      return;
+    } finally {
+      lock(false);
+    }
+    if (detailCurrent(token)) {
+      offset=0;
+      await load();
+      if (detailCurrent(token+1)) notice('Box returned to Box Entry for Recheck. Print the corrected box and send it to Accounts for verification.');
+    }
   }
   filter.addEventListener('submit',e=>{e.preventDefault();if(!busy){offset=0;load();}});
   $('#clear-box-dates').addEventListener('click',()=>{if(busy)return;filter.reset();offset=0;queueCard=false;queueReveal=false;queueFilters.clear();});

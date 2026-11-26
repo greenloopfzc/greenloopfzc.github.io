@@ -6,18 +6,18 @@
  const status=s=>({accounts:'Pending Verification',recheck:'Recheck',exported:'Verified',legacy:'Historical'}[s]||s);
  const deleteDialog=$('#box-delete-dialog'),deleteForm=$('#box-delete-form'),deleteError=$('#box-delete-error');
  let client,offset=0,total=0,busy=false,selected=null,printed=null,accessVersion=0,deleteTarget=null,listedBoxes=[];
- const canDelete=state=>can('delete')&&(state==='accounts'||state==='recheck');
+ const canDelete=box=>can('delete')&&!box.previously_verified&&['accounts','recheck'].includes(box.raw_state??box.state);
  const filters=window.GREENLOOP_FILTERS.get('box-status-filters',{before:list,sortTarget:list,dateKey:'saved_at',dateLabel:'Saved',fields:[['state','Status']],sortFields:[['box_number','Box'],['quantity','Phones','number'],['saved_at','Saved','date'],['state','Status']],onChange:()=>{offset=0;selected=null;printed=null;detail.hidden=true;return load();}});
  function notice(text='',error=false){message.textContent=text;message.classList.toggle('is-visible',!!text);message.classList.toggle('is-success',!error);}
  async function rpc(name,args={}){const r=await client.rpc(name,args);if(r.error)throw r.error;return r.data;}
  function lock(value){busy=value;filters.setBusy(value);panel.setAttribute('aria-busy',String(value));detail.querySelectorAll('button,input').forEach(el=>{if(value){if(!el.hasAttribute('data-br-disabled'))el.dataset.brDisabled=String(el.disabled);el.disabled=true;}else if(el.hasAttribute('data-br-disabled')){el.disabled=el.dataset.brDisabled==='true';delete el.dataset.brDisabled;}});$('#box-status-prev').disabled=value||offset===0;$('#box-status-next').disabled=value||offset+50>=total;window.GREENLOOP_LOCK_VIEW_ONLY_CONTROLS?.(panel);}
  async function load(){if(busy||panel.hidden)return;lock(true);try{await loadRows();}catch(e){notice(e.message||'Box status could not be loaded.',true);}finally{lock(false);}}
  async function loadRows(){const token=accessVersion,sort=filters.sortArgs();const data=await rpc('get_box_status_v1',{p_filters:filters.query(),p_offset:offset,p_limit:50,p_sort_key:sort.p_sort_by||'saved_at',p_sort_direction:sort.p_sort_by?sort.p_sort_direction:'desc'});if(token!==accessVersion||!can("view"))return;total=Number(data.total||0);filters.result(data);listedBoxes=data.rows;
- list.innerHTML=data.rows.length?'<div class="br-table-wrap"><table class="br-table"><thead><tr><th>Box</th><th>Phones</th><th>Saved</th><th>Status</th><th>Verified</th>'+(can('delete')?'<th>Actions</th>':'')+'</tr></thead><tbody>'+data.rows.map(b=>`<tr><td><button type="button" class="br-open-box" data-br-open="${esc(b.id)}" data-capability="view" data-capability-page="export_boxes" data-search-read-only>${esc(b.box_number)}</button><span class="br-mobile-state br-state br-${esc(b.raw_state)}">${esc(b.state)}</span></td><td>${esc(b.quantity)}</td><td>${esc(dt(b.saved_at))}</td><td><span class="br-state br-${esc(b.raw_state)}">${esc(b.state)}</span></td><td>${esc(dt(b.verified_at))}</td>${can('delete')?'<td>'+deleteButton(b.id,b.raw_state)+'</td>':''}</tr>`).join('')+'</tbody></table></div>':'<p class="br-empty">No saved boxes match these dates or filters.</p>';
+ list.innerHTML=data.rows.length?'<div class="br-table-wrap"><table class="br-table"><thead><tr><th>Box</th><th>Phones</th><th>Saved</th><th>Status</th><th>Verified</th>'+(can('delete')?'<th>Actions</th>':'')+'</tr></thead><tbody>'+data.rows.map(b=>`<tr><td><button type="button" class="br-open-box" data-br-open="${esc(b.id)}" data-capability="view" data-capability-page="export_boxes" data-search-read-only>${esc(b.box_number)}</button><span class="br-mobile-state br-state br-${esc(b.raw_state)}">${esc(b.state)}</span></td><td>${esc(b.quantity)}</td><td>${esc(dt(b.saved_at))}</td><td><span class="br-state br-${esc(b.raw_state)}">${esc(b.state)}</span></td><td>${esc(dt(b.verified_at))}</td>${can('delete')?'<td>'+deleteButton(b.id,b)+'</td>':''}</tr>`).join('')+'</tbody></table></div>':'<p class="br-empty">No saved boxes match these dates or filters.</p>';
  if(selected&&!detail.hidden){const changed=data.rows.find(r=>r.id===selected.box.box_id&&(r.raw_state!==selected.box.state||r.revision!==selected.box.revision));if(changed){const data=await rpc('get_box_entry_review_v1',{p_box_id:selected.box.box_id});if(token===accessVersion&&can('view'))renderDetail(data);}}
  $('#box-status-count').textContent=total?`${offset+1}–${Math.min(offset+50,total)} of ${total} boxes`:'0 boxes';}
- function deleteButton(id,state){
-   return canDelete(state)?'<button type="button" class="danger-button" data-br-delete="'+esc(id)+'" data-capability="delete" data-capability-page="export_boxes">Delete Box</button>':'';
+ function deleteButton(id,box){
+   return canDelete(box)?'<button type="button" class="danger-button" data-br-delete="'+esc(id)+'" data-capability="delete" data-capability-page="export_boxes">Delete Box</button>':'';
  }
  const imeiDigits=value=>String(value??'').replace(/\D/g,'');
  const boxFull=()=>Number.isSafeInteger(selected?.box.capacity)&&selected.lines.length>=selected.box.capacity;
@@ -47,8 +47,8 @@
  const draft=sameBox?detail.querySelector('#br-imei')?.value??'':'';
  selected=data;printed=null;
  const b=data.box,recheck=b.state==='recheck',canCorrect=recheck&&can('scan'),full=boxFull();
- detail.innerHTML=`<div class="br-heading"><div><h2>${esc(b.box_number)}</h2><span class="br-state br-${esc(b.state)}">${esc(status(b.state))}</span><p>${data.lines.length} phone${data.lines.length===1?"":"s"} · Saved ${esc(dt(b.saved_at))}</p></div><div class="br-actions">${can('print')?'<button type="button" class="secondary-button" data-br-print data-capability="print" data-capability-page="export_boxes">Print Box</button>':''}${recheck&&can('print')?'<button type="button" class="secondary-button" data-br-confirm data-capability="print" data-capability-page="export_boxes" hidden>Printing completed</button>':''}${recheck&&can('save')?`<button type="button" class="primary-button" data-br-resend data-capability="save" data-capability-page="export_boxes" ${!data.lines.length||b.printed_revision!==b.revision||!b.printed_at?'disabled':''}>Resend to Accounts</button>`:''}${window.GREENLOOP_REPORT_DOWNLOADS.buttons('data-br-export','export_boxes','print')}${deleteButton(b.box_id,b.state)}<button type="button" class="secondary-button" data-br-close data-search-read-only>Close</button></div></div>
- ${b.recheck_reason?`<div class="br-reason"><strong>${recheck?'Accounts requested Recheck':'Previous Recheck'}</strong><p>${esc(b.recheck_reason)}</p><small>${esc(b.recheck_by_name||'Accounts')} · ${esc(dt(b.recheck_at))}</small></div>`:''}
+ detail.innerHTML=`<div class="br-heading"><div><h2>${esc(b.box_number)}</h2><span class="br-state br-${esc(b.state)}">${esc(status(b.state))}</span><p>${data.lines.length} phone${data.lines.length===1?"":"s"} · Saved ${esc(dt(b.saved_at))}</p></div><div class="br-actions">${can('print')?'<button type="button" class="secondary-button" data-br-print data-capability="print" data-capability-page="export_boxes">Print Box</button>':''}${recheck&&can('print')?'<button type="button" class="secondary-button" data-br-confirm data-capability="print" data-capability-page="export_boxes" hidden>Printing completed</button>':''}${recheck&&can('save')?`<button type="button" class="primary-button" data-br-resend data-capability="save" data-capability-page="export_boxes" ${!data.lines.length||b.printed_revision!==b.revision||!b.printed_at?'disabled':''}>Resend to Accounts</button>`:''}${window.GREENLOOP_REPORT_DOWNLOADS.buttons('data-br-export','export_boxes','print')}${deleteButton(b.box_id,b)}<button type="button" class="secondary-button" data-br-close data-search-read-only>Close</button></div></div>
+ ${b.recheck_reason?`<div class="br-reason"><strong>${recheck?'Box returned for Recheck':'Previous Recheck'}</strong><p>${esc(b.recheck_reason)}</p><small>${esc(b.recheck_by_name||'Not recorded')} · ${esc(dt(b.recheck_at))}</small></div>`:''}
  ${recheck?'<p>Remove an incorrect IMEI, then scan the correct Ready Stock phone. Print the updated box, confirm printing and resend to Accounts.</p>':''}
  <p id="br-action-message" class="form-message" role="status" aria-live="polite"></p>
  ${canCorrect?`
@@ -119,7 +119,7 @@
 
  function showDeleteBox(id){
    const b=selected?.box.box_id===id?selected.box:listedBoxes.find(row=>row.id===id);
-   if(!b||!canDelete(b.raw_state??b.state))return;
+   if(!b||!canDelete(b))return;
    deleteTarget={id,number:b.box_number,revision:b.revision,state:b.raw_state??b.state};
    const count=b.quantity??selected?.lines.length;
    $('#box-delete-copy').textContent='Delete '+b.box_number+'? '+count+' phone'+(count===1?' will':'s will')+' become available in Ready Stock.';
@@ -132,7 +132,7 @@
  $('#cancel-box-delete').addEventListener('click',()=>deleteDialog.close());
  deleteForm.addEventListener('submit',async event=>{
    event.preventDefault();
-   if(busy||!deleteTarget||!canDelete(deleteTarget.state))return;
+   if(busy||!deleteTarget||!canDelete(deleteTarget))return;
    const requested=deleteTarget,token=accessVersion;
    const code=$('#box-delete-code').value;
    deleteForm.reset();

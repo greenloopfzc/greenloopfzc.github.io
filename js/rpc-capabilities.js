@@ -178,3 +178,12 @@
   root.GREENLOOP_RPC_CAPABILITIES.rpcs.get_box_data_table_v4 = rule;
   root.GREENLOOP_RPC_CAPABILITIES.get_box_data_table_v4 = rule;
 })(typeof window !== "undefined" ? window : globalThis);
+
+(function(root){
+  const rules = {
+    request_exported_box_recheck_v1:{page:"stock_exported",capability:"recheck_exported"},
+    get_exported_box_recheck_version:{read:true}
+  };
+  Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,rules);
+  Object.assign(root.GREENLOOP_RPC_CAPABILITIES,rules);
+})(typeof window !== "undefined" ? window : globalThis);

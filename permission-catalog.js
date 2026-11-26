@@ -68,3 +68,9 @@
   catalog.reportSections.esim_stock={"label":"eSIM Stock","view":"report_esim_stock","actions":["report_esim_stock_search"],"search":"report_esim_stock_search"};
   catalog.reportDependencies.report_esim_stock_search="report_esim_stock";
 })(typeof window!=="undefined"?window:globalThis);
+
+(function(root){
+  root.GREENLOOP_PERMISSION_CATALOG.byPage.stock_exported.capabilities.push({
+    key:"recheck_exported", label:"Send exported boxes for recheck", write:true
+  });
+})(typeof window !== "undefined" ? window : globalThis);
