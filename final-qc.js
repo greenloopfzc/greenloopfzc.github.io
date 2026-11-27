@@ -25,6 +25,9 @@
   let queueSteps = [];
   let gradeItems = [];
   let failureReasons = [], failureTechnicians = [];
+  let reworkPartOptions = null;
+  let reworkPartRequest;
+  let reworkPartError = "";
   let rowSequence = 0;
   let toastTimer;
   let excelPaste;
@@ -106,13 +109,76 @@
 
   function failureReasonOptions(value="") {return `<option value="">Select failure reason</option>${failureReasons.map(r=>`<option value="${escapeHtml(r.id)}"${r.id===value?' selected':''}>${escapeHtml(r.label)}</option>`).join('')}`;}
   function failureTechnicianOptions(value="") {return `<option value="">Select technician</option>${failureTechnicians.map(t=>`<option value="${escapeHtml(t.id)}"${t.id===value?' selected':''}>${escapeHtml(t.full_name)}</option>`).join('')}`;}
+
+  function syncReworkPartControls(row, enabled) {
+    const select = row.querySelector("[data-rework-part]");
+    const list = row.querySelector("[data-rework-parts]");
+    const picked = new Set([...list.children].map(item => item.dataset.part));
+    const add = row.querySelector("[data-add-rework-part]");
+    const status = row.querySelector("[data-rework-parts-status]");
+    select.disabled = !enabled || !reworkPartOptions?.length || picked.size >= 100;
+    if (enabled) {
+      const previous = select.value;
+      const placeholder = reworkPartError ? "Parts list unavailable" : reworkPartRequest ? "Loading parts…" : "Select a part";
+      select.replaceChildren(new Option(placeholder, ""),
+        ...(reworkPartOptions || []).map(part => {
+          const option = new Option(part.name, part.name);
+          option.disabled = picked.has(part.name);
+          return option;
+        }));
+      if ([...select.options].some(option => option.value === previous && !option.disabled)) select.value = previous;
+    }
+    add.disabled = select.disabled || !select.value;
+    status.textContent = reworkPartError;
+    list.querySelectorAll("input,button").forEach(control => { control.disabled = !enabled; });
+  }
+
+  function loadReworkPartOptions(refresh = false) {
+    if (reworkPartRequest) return reworkPartRequest;
+    if (!refresh && (reworkPartOptions || reworkPartError)) return;
+    reworkPartError = "";
+    reworkPartRequest = (async () => {
+      try {
+        const {data, error} = await getClient().rpc("get_final_qc_rework_part_options_v1", {});
+        if (error) throw error;
+        if (!Array.isArray(data) || data.some(part => typeof part?.name !== "string" || !part.name)) {
+          throw new Error("Invalid parts catalog.");
+        }
+        reworkPartOptions = data;
+      } catch {
+        reworkPartError = "Parts list could not be loaded. Use Refresh to try again.";
+      } finally {
+        reworkPartRequest = null;
+        [...tableBody.rows].filter(row => row.classList.contains("is-qc-failed")).forEach(syncFailureFields);
+      }
+    })();
+    [...tableBody.rows].filter(row => row.classList.contains("is-qc-failed")).forEach(syncFailureFields);
+    return reworkPartRequest;
+  }
+
+  function addReworkPart(row) {
+    const select = row.querySelector("[data-rework-part]");
+    const name = select.value;
+    if (!name || select.disabled || select.selectedOptions[0]?.disabled) return;
+    const list = row.querySelector("[data-rework-parts]");
+    list.insertAdjacentHTML("beforeend", `<li data-part="${escapeHtml(name)}">
+      <span>${escapeHtml(name)}</span>
+      <input type="number" min="1" max="10000" step="1" inputmode="numeric" value="1" aria-label="Quantity for ${escapeHtml(name)}" data-capability="entry" data-capability-page="final_qc">
+      <button type="button" data-remove-rework-part data-capability="entry" data-capability-page="final_qc" aria-label="Remove ${escapeHtml(name)}">−</button>
+    </li>`);
+    select.value = "";
+    syncFailureFields(row);
+    select.focus();
+  }
+
   function syncFailureFields(row) {
     const fail=resultValue(row)==='fail'&&rowSteps.has(row.dataset.rowId), fields=row.querySelector('[data-failure-fields]');if(!fields)return;
     fields.hidden=!fail;row.classList.toggle('is-qc-failed',fail);
     window.requestAnimationFrame(syncHorizontalScrollWidth);
-    const completed=row.dataset.completed==='yes';
+    const completed=row.dataset.completed==='yes'||row.dataset.saving==='yes';
     row.querySelectorAll('[data-failure-reason],[data-failure-technician]').forEach(c=>c.disabled=!fail||completed||!window.GREENLOOP_CAN?.('entry','final_qc'));
     row.querySelectorAll('[data-add-failure-reason],[data-remove-failure-reason]').forEach(c=>c.disabled=!fail||completed||!window.GREENLOOP_CAN?.('manage_options','final_qc'));
+    syncReworkPartControls(row,fail&&!completed&&window.GREENLOOP_CAN?.('entry','final_qc'));
     const context=rowSteps.get(row.dataset.rowId)?.failureReturnContext;
     row.querySelector('[data-failure-hint]').textContent=context?`IMEI ${getDevice(rowSteps.get(row.dataset.rowId))?.imei_1||''} · Return to ${context.department==='glass'?'Glass':'Laboratory'} · Previous: ${context.technician_name||'Unassigned'}`:'Scan a phone with completed Lab / Glass work before returning it.';
   }
@@ -205,7 +271,23 @@
       <td class="final-result-cell pass"><label><input type="checkbox" data-result="pass"><span>Pass</span></label></td>
       <td class="final-result-cell frame"><label><input type="checkbox" data-result="frame"><span>B-DEPT</span></label></td>
       <td class="final-result-cell fail"><label><input type="checkbox" data-result="fail"><span>Fail</span></label></td>
-      <td class="final-save-cell"><button type="button" class="final-row-save" data-save-row>Save</button><div class="final-failure-panel" data-failure-fields hidden role="group" aria-label="Phone failure and return technician"><div class="final-failure-field"><label>Failure Reason</label><div class="final-failure-reason-control"><select data-failure-reason aria-label="Failure Reason" aria-required="true" data-capability="entry" data-capability-page="final_qc">${failureReasonOptions()}</select><button type="button" data-add-failure-reason data-capability="manage_options" data-capability-page="final_qc" title="Add failure reason">+</button><button type="button" class="remove" data-remove-failure-reason data-capability="manage_options" data-capability-page="final_qc" title="Remove failure reason">−</button></div></div><div class="final-failure-field"><label>Return Technician</label><select data-failure-technician aria-label="Return Technician" aria-required="true" data-capability="entry" data-capability-page="final_qc">${failureTechnicianOptions()}</select></div><small data-failure-hint></small></div></td>
+      <td class="final-save-cell">
+        <button type="button" class="final-row-save" data-save-row>Save</button>
+        <div class="final-failure-panel" data-failure-fields hidden role="group" aria-label="Phone failure and return details">
+          <div class="final-failure-field"><label>Failure Reason</label><div class="final-failure-reason-control"><select data-failure-reason aria-label="Failure Reason" aria-required="true" data-capability="entry" data-capability-page="final_qc">${failureReasonOptions()}</select><button type="button" data-add-failure-reason data-capability="manage_options" data-capability-page="final_qc" title="Add failure reason">+</button><button type="button" class="remove" data-remove-failure-reason data-capability="manage_options" data-capability-page="final_qc" title="Remove failure reason">−</button></div></div>
+          <div class="final-failure-field">
+            <label for="${rowId}-part">Parts Required <span>(optional)</span></label>
+            <div class="final-rework-part-control">
+              <select id="${rowId}-part" data-rework-part data-capability="entry" data-capability-page="final_qc" disabled><option value="">Select a part</option></select>
+              <button type="button" data-add-rework-part data-capability="entry" data-capability-page="final_qc" aria-label="Add required part" disabled>+</button>
+            </div>
+            <ul class="final-rework-parts" data-rework-parts aria-label="Selected required parts"></ul>
+            <small data-rework-parts-status aria-live="polite"></small>
+          </div>
+          <div class="final-failure-field"><label>Return Technician</label><select data-failure-technician aria-label="Return Technician" aria-required="true" data-capability="entry" data-capability-page="final_qc">${failureTechnicianOptions()}</select></div>
+          <small data-failure-hint></small>
+        </div>
+      </td>
     </tr>`;
   }
 
@@ -242,6 +324,8 @@
     row.querySelector("[data-final-battery]").title = "Final Battery Health";
     row.classList.remove("is-loaded", "is-error");
     rowSteps.delete(row.dataset.rowId);
+    row.querySelector("[data-rework-part]").value = "";
+    row.querySelector("[data-rework-parts]").replaceChildren();
     row.querySelector("[data-failure-reason]").value="";row.querySelector("[data-failure-technician]").value="";syncFailureFields(row);
     row.querySelector("[data-battery-unavailable]").checked = false;
     syncBatteryAvailability(row);
@@ -386,6 +470,7 @@
     const supplier = getSupplier(job) || {};
     rowSteps.set(row.dataset.rowId, step);
     row.querySelector("[data-failure-technician]").value=step.failureReturnContext?.technician_id||"";syncFailureFields(row);
+    if (resultValue(row) === "fail") void loadReworkPartOptions();
     row.querySelector('[data-auto="model"]').textContent = device.model || "-";
     row.querySelector('[data-auto="storage"]').textContent = device.storage_gb ? `${device.storage_gb} GB` : "-";
     row.querySelector('[data-auto="color"]').textContent = device.color || "-";
@@ -694,9 +779,23 @@
 
     const failureReason=row.querySelector('[data-failure-reason]').value;
     const returnTechnician=row.querySelector('[data-failure-technician]').value;
+    const parts = [];
     if(result==='fail'){
       const error=!step.failureReturnContext?'This phone has no completed Lab / Glass work to return to. Refresh the queue.':!failureReasons.some(r=>r.id===failureReason)?'Select a failure reason before returning this phone.':!failureTechnicians.some(t=>t.id===returnTechnician)?'Select an active return technician.':'';
       if(error){setRowState(row,error,'is-error');return {ok:false,error};}
+      for (const item of row.querySelector("[data-rework-parts]").children) {
+        const input = item.querySelector("input");
+        const quantity = input.valueAsNumber;
+        if (!Number.isInteger(quantity) || quantity < 1 || quantity > 10000) {
+          const error = "Enter a whole quantity from 1 to 10000 for each required part.";
+          setRowState(row,error,"is-error");
+          input.focus();
+          return {ok:false,error};
+        }
+        parts.push({name:item.dataset.part,quantity});
+      }
+      const selected = row.querySelector("[data-rework-part]");
+      if (selected.value && !selected.disabled) parts.push({name:selected.value,quantity:1});
     }
 
     const rowButton = row.querySelector("[data-save-row]");
@@ -707,7 +806,11 @@
     setSubmitting(rowButton, true, "Saving...");
     setRowState(row, progressText, "is-loading");
     const rpcResponse = result === "fail"
-      ? await getClient().rpc('return_final_qc_with_technician_v1',{p_final_step_id:step.id,p_reason_id:failureReason,p_technician_id:returnTechnician,p_context_token:step.failureReturnContext.context_token,p_final_battery_health:finalBattery,p_battery_health_unavailable:batteryUnavailable})
+      ? await getClient().rpc(parts.length ? "return_final_qc_with_parts_v1" : "return_final_qc_with_technician_v1", {
+        p_final_step_id:step.id, p_reason_id:failureReason, p_technician_id:returnTechnician,
+        p_context_token:step.failureReturnContext.context_token, p_final_battery_health:finalBattery,
+        p_battery_health_unavailable:batteryUnavailable, ...(parts.length ? {p_parts:parts} : {})
+      })
       : result === "frame"
       ? await getClient().rpc("route_final_qc_pass_to_frame_v3", {
         p_job_id: getJob(step).id,
@@ -744,7 +847,7 @@
     rowButton.textContent = "Saved";
     setRowState(row, result === "pass"
       ? `Passed - Attempt ${response?.attempt_number || "-"}`
-      : result === "frame" ? "Sent to B-DEPT - Grade pending" : `Failed - ${response?.technician_name||"Lab / Glass rework"} · ${response?.failure_reason||""}`, "is-completed");
+      : result === "frame" ? "Sent to B-DEPT - Grade pending" : `Failed - ${response?.technician_name||"Lab / Glass rework"} · ${response?.failure_reason||""}${parts.length ? " · Parts requested" : ""}`, "is-completed");
     queueSteps = queueSteps.filter((candidate) => candidate.id !== step.id);
     scheduleQueueRefresh();
     return { ok: true, result };
@@ -897,6 +1000,10 @@
 
   tableBody.addEventListener("keydown", (event) => {
     if (!editable()) return;
+    if (event.key === "Enter" && event.target.matches("[data-rework-parts] input")) {
+      event.preventDefault();
+      return;
+    }
     const input = event.target.closest(".final-row-imei");
     if (!input || event.key !== "Enter" && !(event.key === "Tab" && input.closest('tr').dataset.loading === 'yes')) return;
     event.preventDefault();
@@ -908,7 +1015,11 @@
   tableBody.addEventListener("change", (event) => {
     if (!editable()) return;
     const row = event.target.closest("tr");
-    if (!row || row.dataset.completed === "yes") return;
+    if (!row || row.dataset.completed === "yes" || row.dataset.saving === "yes") return;
+    if (event.target.matches("[data-rework-part]")) {
+      row.querySelector("[data-add-rework-part]").disabled = !event.target.value;
+      return;
+    }
     if (event.target.matches("[data-battery-unavailable]")) {
       syncBatteryAvailability(row);
       return;
@@ -921,6 +1032,7 @@
     if (event.target.matches("[data-result]")) {
       applyResultRules(row, event.target);
       row.dataset.manualResult = "yes";
+      if (resultValue(row) === "fail" && rowSteps.has(row.dataset.rowId)) void loadReworkPartOptions();
       if (event.target.dataset.result !== "fail") carryResult(row);
     }
   });
@@ -928,13 +1040,21 @@
   tableBody.addEventListener("click", (event) => {
     if (!editable()) return;
     const row = event.target.closest("tr");
-    if (!row || row.dataset.completed === "yes") return;
+    if (!row || row.dataset.completed === "yes" || row.dataset.saving === "yes") return;
     if (event.target.closest("[data-save-row]")) {
       saveRowFromButton(row).catch((error) => setMessage(error.message || "Final QC row could not be saved."));
       return;
     }
     if(event.target.closest('[data-add-failure-reason]')){addFailureReason(row).catch(e=>setMessage(e.message));return;}
     if(event.target.closest('[data-remove-failure-reason]')){removeFailureReason(row).catch(e=>setMessage(e.message));return;}
+    if (event.target.closest("[data-add-rework-part]")) { addReworkPart(row); return; }
+    const removePart = event.target.closest("[data-remove-rework-part]");
+    if (removePart) {
+      removePart.closest("li").remove();
+      syncFailureFields(row);
+      row.querySelector("[data-rework-part]").focus();
+      return;
+    }
     if (event.target.closest("[data-add-grade]")) {
       addFinalGrade(row).catch((error) => setMessage(error.message || "Final Grade could not be added."));
       return;
@@ -947,7 +1067,11 @@
   document.querySelector("#add-ten-rows").addEventListener("click", () => createRows(10));
   document.querySelector("#clear-tray").addEventListener("click", resetTray);
   autoPickButton.addEventListener("click", () => { if (!stockScope?.busy) void autoPickAllPending(); });
-  document.querySelector("#refresh-queue").addEventListener("click", () => Promise.all([loadQueue(),loadFailureOptions()]).then(() => showToast("Final QC queue refreshed.")).catch((error) => setMessage(error.message || "Queue could not be refreshed.")));
+  document.querySelector("#refresh-queue").addEventListener("click", () => Promise.all([
+    loadQueue(),loadFailureOptions(),
+    reworkPartError || reworkPartOptions || tableBody.querySelector("tr.is-qc-failed:not([data-completed='yes'])")
+      ? loadReworkPartOptions(true) : null
+  ]).then(() => showToast("Final QC queue refreshed.")).catch((error) => setMessage(error.message || "Queue could not be refreshed.")));
   queueCount.addEventListener("click", () => {
     queueDetailsLoaded = false;
     queueDetailsError = "";

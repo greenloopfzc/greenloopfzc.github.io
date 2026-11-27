@@ -3948,6 +3948,15 @@
     "page": "final_qc",
     "capability": "entry"
   },
+  "get_final_qc_rework_part_options_v1": {
+    "page": "final_qc",
+    "capability": "view",
+    "read": true
+  },
+  "return_final_qc_with_parts_v1": {
+    "page": "final_qc",
+    "capability": "entry"
+  },
   "get_final_qc_failure_version": {
     "read": true
   },

@@ -5,7 +5,8 @@
   const fields = {
     initial_qc: 'select[data-requirement="part"]',
     qc_issuance: 'select[data-work-choice="part"]',
-    lab_glass: '[data-choice="part"] select'
+    lab_glass: '[data-choice="part"] select',
+    final_qc: 'select[data-rework-part]'
   };
   let anchor, popup, search, list, empty, observer;
   let activeIndex = -1;
