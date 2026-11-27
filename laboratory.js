@@ -655,6 +655,7 @@
     const employee=technicians.find(t=>String(t.id)===String(technicianId));
     const data=await readWorkbench({p_employee_id:employee?.unassigned?null:technicianId,p_imei:scan||null});
     if(labStopped||window.GREENLOOP_CAN?.('view','lab_glass')!==true||version!==rowLoadVersion||technicianId!==activeTechnicianId||editsAtStart!==editVersion||scan!==focusedImei)return;
+    if(quiet&&window.GREENLOOP_PARTS_PICKER?.activeWithin(technicianWorkRows)){backgroundQueued=true;return;}
     if(scan&&String(data.employee_id)!==String(technicianId)){setBoardMessage('Phone assignment changed. Scan the IMEI again.');return;}
     applyWorkbenchRows(data.rows,{quiet,serverTime:data.server_now,workOptions:data.work_options,technicianId:scan?"":technicianId});
     alignSelectedCounter();return true;
@@ -735,6 +736,7 @@
   }
 
   function technicianEditorIsActive() {
+    if (window.GREENLOOP_PARTS_PICKER?.activeWithin(technicianWorkRows)) return true;
     const active = document.activeElement;
     if (!active || !technicianWorkRows.contains(active)) return false;
     return active.matches("select, input, textarea");

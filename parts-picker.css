@@ -1,0 +1,22 @@
+.parts-picker {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  overflow: hidden;
+  border: 1px solid var(--nm-line, #c7d5de);
+  border-radius: 12px;
+  color: var(--nm-ink, #223641);
+  background: var(--nm-card, #f5f8fa);
+  box-shadow: 0 6px 18px #182e3b38;
+  font: inherit;
+  font-size: .875rem;
+}
+.parts-picker input[type="search"] { flex: none; min-height: 38px; width: 100%; padding: 6px 10px; }
+.parts-picker ul { min-height: 0; overflow: auto; overscroll-behavior: contain; margin: 0; padding: 0; list-style: none; }
+.parts-picker li { padding: 8px 10px; border-radius: 6px; cursor: pointer; overflow-wrap: anywhere; }
+.parts-picker li[aria-selected="true"] { font-weight: 700; }
+.parts-picker li:hover,.parts-picker li.is-highlighted { background: var(--nm-well, #deebe9); }
+.parts-picker-empty { margin: 4px 10px; color: var(--nm-muted, #526a76); }
