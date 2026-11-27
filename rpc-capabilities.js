@@ -187,3 +187,9 @@
   Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs,rules);
   Object.assign(root.GREENLOOP_RPC_CAPABILITIES,rules);
 })(typeof window !== "undefined" ? window : globalThis);
+
+(function(root){
+  const rule={page:"accounts",capability:"verify"};
+  root.GREENLOOP_RPC_CAPABILITIES.rpcs.verify_boxes_v1=rule;
+  root.GREENLOOP_RPC_CAPABILITIES.verify_boxes_v1=rule;
+})(typeof window!=="undefined"?window:globalThis);

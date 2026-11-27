@@ -177,7 +177,7 @@
       progressBar.style.width = "0";
       sheetTitle.textContent = "Export Box";
       startNextButton.disabled = imeiInput.disabled = printButton.disabled = true;
-      tableBody.innerHTML = '<tr><td class="export-sheet-empty" colspan="7">No open export box is available.</td></tr>';
+      tableBody.innerHTML = '<tr><td class="export-sheet-empty" colspan="8">No open export box is available.</td></tr>';
       return;
     }
     const count = lines.length,mayRemove=removable;
@@ -199,8 +199,8 @@
     sheetTotal.textContent = `${count} valid phone${count === 1 ? "" : "s"}`;
     if(!drawRows){tableBody.querySelectorAll('[data-draft-remove]').forEach(b=>b.disabled=boxBusy||scanning);return;}
 
-    const validRows=sortedLines().map(line=>`<tr><td>${escapeHtml(line.serial_no)}</td><td>${escapeHtml(line.imei)}</td><td>${escapeHtml(line.model||"-")}</td><td>${escapeHtml(line.storage_gb?`${line.storage_gb} GB`:"-")}</td><td>${escapeHtml(line.final_grade||"-")}</td><td>${escapeHtml(line.color||"-")}</td><td>${escapeHtml(line.box_number||currentBox.box_number)}</td>${mayRemove?`<td class="export-line-action">${removable?`<button type="button" class="secondary-button" data-draft-remove="${escapeHtml(line.id)}" data-capability="scan" data-capability-page="export_boxes" ${boxBusy||scanning?'disabled':''} aria-label="Delete ${escapeHtml(line.imei)} from this box">Delete</button>`:''}</td>`:''}</tr>`).join('');
-    tableBody.innerHTML=validRows||`<tr><td class="export-sheet-empty" colspan="${7+(mayRemove?1:0)}">Scan the first Ready Stock IMEI to add it to this box.</td></tr>`;
+    const validRows=sortedLines().map(line=>`<tr><td>${escapeHtml(line.serial_no)}</td><td>${escapeHtml(line.imei)}</td><td>${escapeHtml(line.model||"-")}</td><td>${escapeHtml(line.storage_gb?`${line.storage_gb} GB`:"-")}</td><td>${escapeHtml(line.final_grade||"-")}</td><td>${escapeHtml(line.color||"-")}</td><td class="export-esim">${line.esim_only===true?"e-Sim":"-"}</td><td>${escapeHtml(line.box_number||currentBox.box_number)}</td>${mayRemove?`<td class="export-line-action">${removable?`<button type="button" class="secondary-button" data-draft-remove="${escapeHtml(line.id)}" data-capability="scan" data-capability-page="export_boxes" ${boxBusy||scanning?'disabled':''} aria-label="Delete ${escapeHtml(line.imei)} from this box">Delete</button>`:''}</td>`:''}</tr>`).join('');
+    tableBody.innerHTML=validRows||`<tr><td class="export-sheet-empty" colspan="${8+(mayRemove?1:0)}">Scan the first Ready Stock IMEI to add it to this box.</td></tr>`;
 
   }
 

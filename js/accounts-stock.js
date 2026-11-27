@@ -198,5 +198,5 @@
     stockFilters.clear();
   }
   for(const event of ['greenloop:office-locked','greenloop:signed-out','greenloop:permissions-changed'])window.addEventListener(event,clearStock);
-  window.GREENLOOP_ACCOUNTS = {init,picker,reloadCustomers};
+  window.GREENLOOP_ACCOUNTS = {init,picker,reloadCustomers,customerOptions:options};
 })();

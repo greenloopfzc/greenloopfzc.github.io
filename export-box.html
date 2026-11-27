@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css?v=20261016-strict-view-only-1">
-    <link rel="stylesheet" href="css/export-box.css?v=20261123-large-box-count-1">
+    <link rel="stylesheet" href="css/export-box.css?v=20261127-box-entry-esim-bulk-verify-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="js/imei-canonical.js?v=20261117-primary-imei-1"></script>
 <script defer src="js/imei-scan.js?v=20261118-lab-single-notice-1"></script>
@@ -41,7 +41,7 @@
     <link rel="stylesheet" href="css/box-print.css?v=20261109-box-print-design-1">
     <script defer src="js/report-downloads.js?v=20261117-parts-damage-1"></script>
     <script defer src="js/box-print.js?v=20261109-stock-exported-all-columns-1"></script>
-    <script defer src="js/export-box.js?v=20261120-multiple-open-boxes-1"></script>
+    <script defer src="js/export-box.js?v=20261127-box-entry-esim-bulk-verify-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261111-ruby-obsidian-1">
     <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261102-imei-scan-location-1">
   <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
@@ -95,7 +95,7 @@
                   <th scope="col" aria-sort="none"><button type="button" class="table-sort-heading" data-box-sort="storage_gb" data-capability="sort" data-capability-page="export_boxes">GB <span aria-hidden="true">↕</span></button></th>
                   <th scope="col" aria-sort="none"><button type="button" class="table-sort-heading" data-box-sort="final_grade" data-capability="sort" data-capability-page="export_boxes">Grade <span aria-hidden="true">↕</span></button></th>
                   <th scope="col" aria-sort="none"><button type="button" class="table-sort-heading" data-box-sort="color" data-capability="sort" data-capability-page="export_boxes">Color <span aria-hidden="true">↕</span></button></th>
-                  <th scope="col">Box number</th><th scope="col" id="export-delete-heading" class="export-line-action" hidden>Delete</th>
+                  <th scope="col" class="export-esim">e-Sim</th><th scope="col">Box number</th><th scope="col" id="export-delete-heading" class="export-line-action" hidden>Delete</th>
                 </tr></thead>
                 <tbody id="export-box-lines"></tbody>
               </table></div>

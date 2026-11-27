@@ -16,14 +16,14 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css?v=20261016-strict-view-only-1">
-    <link rel="stylesheet" href="css/box-workflow.css?v=20261109-accounts-stock-filters-1">
+    <link rel="stylesheet" href="css/box-workflow.css?v=20261127-box-entry-esim-bulk-verify-1">
     <link rel="stylesheet" href="css/box-data-table.css?v=20261126-box-summary-no-grade-1">
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="js/imei-canonical.js?v=20261117-primary-imei-1"></script>
 <script defer src="js/imei-scan.js?v=20261118-lab-single-notice-1"></script>
 <script defer src="js/imei-stage-notice.js?v=20261118-lab-single-notice-1"></script>
   <script defer src="js/permission-catalog.js?v=20261119-stage-change-parts-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261126-box-summary-no-grade-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261127-box-entry-esim-bulk-verify-1"></script>
 <script defer src="js/page-capabilities.js?v=20261104-report-permissions-1"></script>
 <link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
 <script defer src="js/office-access.js?v=20261024-office-access-1"></script>
@@ -53,8 +53,8 @@
     <script defer src="js/accounts-imei-data.js?v=20261120-imei-bounded-export-1"></script>
 
     <script defer src="js/accounts-stock-overview.js?v=20261121-accounts-stock-overview-net-export-1"></script>
-    <script defer src="js/accounts-stock.js?v=20261121-accounts-stock-overview-1"></script>
-    <script defer src="js/box-workflow.js?v=20261126-exported-box-recheck-1"></script>
+    <script defer src="js/accounts-stock.js?v=20261127-box-entry-esim-bulk-verify-1"></script>
+    <script defer src="js/box-workflow.js?v=20261127-box-entry-esim-bulk-verify-1"></script>
     <script defer src="js/box-data-table.js?v=20261126-box-summary-no-grade-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261111-ruby-obsidian-1">
     <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261102-imei-scan-location-1">
@@ -91,7 +91,18 @@
             <div data-box-data-table="accounts"></div>
             <form id="box-queue-filter" class="box-queue-filter"><label>From date<input name="from" type="date"></label><label>To date<input name="to" type="date"></label><button class="primary-button" type="submit" data-search-read-only>Show boxes</button><button id="clear-box-dates" class="secondary-button" type="button" data-search-read-only>All dates</button></form>
             <p id="box-queue-message" role="status" class="form-message"></p>
-            <section class="box-queue-card"><div id="box-queue-list"></div><div class="box-queue-pagination"><button id="box-queue-prev" class="secondary-button" type="button" data-search-read-only>Previous</button><span id="box-queue-count"></span><button id="box-queue-next" class="secondary-button" type="button" data-search-read-only>Next</button></div></section>
+            <section class="box-queue-card">
+              <form id="box-bulk-verify" class="box-bulk-verify" data-capability="verify" data-capability-page="accounts" hidden>
+                <div>
+                  <label for="box-bulk-customer">Customer for selected boxes</label>
+                  <div class="accounts-customer-controls">
+                    <select id="box-bulk-customer" required><option value="">Select customer</option></select>
+                  </div>
+                </div>
+                <button type="submit" class="primary-button">Verify selected boxes</button>
+                <span id="box-bulk-count" role="status"></span>
+              </form>
+              <div id="box-queue-list"></div><div class="box-queue-pagination"><button id="box-queue-prev" class="secondary-button" type="button" data-search-read-only>Previous</button><span id="box-queue-count"></span><button id="box-queue-next" class="secondary-button" type="button" data-search-read-only>Next</button></div></section>
             <section id="box-queue-detail" class="box-queue-card" hidden></section>
             </section>
             <section id="accounts-imei-panel" hidden aria-label="IMEI DATA"></section>

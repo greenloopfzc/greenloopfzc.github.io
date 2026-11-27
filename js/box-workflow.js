@@ -3,6 +3,8 @@
   const $=s=>document.querySelector(s),app=$('#box-queue-app'),page=app.dataset.boxPage;
   const filter=$('#box-queue-filter'),list=$('#box-queue-list'),detail=$('#box-queue-detail'),message=$('#box-queue-message');
   const pending=page==='accounts',queueTitle=pending?'Boxes to review':'Exported Boxes';
+  const bulkForm=$('#box-bulk-verify'), bulkCustomer=$('#box-bulk-customer');
+  let selectableBoxes=new Map();
   let queueReveal=false,queueCard=false;
   let client,offset=0,total=0,busy=false,generation=0,selected=null,printed=null,canEdit=false;
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -27,8 +29,30 @@
   async function rpc(name,args={}){const {data,error}=await client.rpc(name,args);if(error)throw error;return data;}
   const readDetail=id=>rpc(page==='accounts'?'get_accounts_verify_box_detail_v1':'get_box_workflow_v1',{p_box_id:id});
   const detailCurrent=token=>token===generation&&window.GREENLOOP_CAN?.('view',page)===true;
+  const mayBulkVerify=()=>Boolean(bulkForm && canEdit && window.GREENLOOP_CAN?.('view','accounts')===true
+    && window.GREENLOOP_CAN?.('verify','accounts')===true);
+  const bulkInputs=()=>Array.from(list.querySelectorAll('[data-box-select]'));
+  const selectedBoxes=()=>bulkInputs().filter(input=>input.checked).map(input=>selectableBoxes.get(input.value)).filter(Boolean);
+  function syncBulkForm() {
+    if (!bulkForm) return;
+    const inputs=bulkInputs();
+    const choices=selectedBoxes();
+    const allowed=mayBulkVerify() && queueReveal;
+    const selectAll=list.querySelector('[data-box-select-all]');
+    for (const input of inputs) input.disabled=busy || !allowed;
+    if (selectAll) {
+      selectAll.disabled=busy || !allowed || !inputs.length;
+      selectAll.checked=inputs.length>0 && choices.length===inputs.length;
+      selectAll.indeterminate=choices.length>0 && choices.length<inputs.length;
+    }
+    bulkForm.hidden=!allowed || !choices.length;
+    bulkCustomer.disabled=busy || bulkForm.hidden;
+    bulkForm.querySelector('button[type=submit]').disabled=busy || bulkForm.hidden;
+    const phones=choices.reduce((sum,box)=>sum+box.quantity,0);
+    $('#box-bulk-count').textContent=`${choices.length} selected · ${phones} phone${phones===1?'':'s'}`;
+  }
   function notice(text='',error=false){message.textContent=text;message.classList.toggle('is-visible',!!text);message.classList.toggle('is-success',!error);}
-  function lock(value){busy=value;queueFilters.setBusy(value);app.setAttribute('aria-busy',String(value));app.querySelectorAll('button').forEach(b=>{if(b.hasAttribute('data-show-box-list')||!b.closest('[data-box-data-table]'))b.disabled=value;});$('#box-queue-prev').disabled=value||offset===0;$('#box-queue-next').disabled=value||offset+50>=total;detail.querySelectorAll('[data-entry-only]').forEach(b=>b.disabled=value||!canEdit);if(page==='stock_exported'){const print=detail.querySelector('[data-print-box]');if(print)print.disabled=value||!exportedPrintAllowed();}}
+  function lock(value){busy=value;queueFilters.setBusy(value);app.setAttribute('aria-busy',String(value));app.querySelectorAll('button').forEach(b=>{if(b.hasAttribute('data-show-box-list')||!b.closest('[data-box-data-table]'))b.disabled=value;});$('#box-queue-prev').disabled=value||offset===0;$('#box-queue-next').disabled=value||offset+50>=total;detail.querySelectorAll('[data-entry-only]').forEach(b=>b.disabled=value||!canEdit);if(page==='stock_exported'){const print=detail.querySelector('[data-print-box]');if(print)print.disabled=value||!exportedPrintAllowed();}syncBulkForm();}
   const queueFilters=window.GREENLOOP_FILTERS.get('box-record-filters',{
     before:filter,sortTarget:list,dateKey:'filter_date',dateLabel:page==='accounts'?'Saved':'Exported',fields:[['state','Status'],['customer_code','Customer code'],['saved_by_name','Saved by'],['verified_by_name','Verified by']],
     onChange:()=>{offset=0;queueReveal=queueCard||Object.values(queueFilters.query()).some(Boolean);return load();}
@@ -38,21 +62,68 @@
   queueSummary.id=pending?'accounts-verify-summary':'exported-boxes-summary';
   queueSummary.dataset.boxListSummary='';
   list.parentElement.before(queueSummary);
-  function revealQueue(){list.parentElement.hidden=!queueReveal;if(!queueReveal)list.replaceChildren();}
+  function revealQueue(){list.parentElement.hidden=!queueReveal;if(!queueReveal)list.replaceChildren();syncBulkForm();}
+  function renderQueue(rows) {
+    const showSelection=mayBulkVerify();
+    const eligible=showSelection?rows.filter(b=>b.state==='accounts' && b.id && Number.isInteger(b.revision)
+      && Number.isInteger(b.quantity) && b.quantity>0):[];
+    selectableBoxes=new Map(eligible.map(b=>[b.id,b]));
+    const selectionHeader=showSelection?'<th scope="col"><label class="box-select-control"><input type="checkbox" data-box-select-all data-capability="verify" data-capability-page="accounts" aria-label="Select all boxes on this page"> Select</label></th>':'';
+    const selectionCell=box=>showSelection?`<td>${selectableBoxes.has(box.id)
+      ?`<input type="checkbox" data-box-select data-capability="verify" data-capability-page="accounts" value="${esc(box.id)}" aria-label="Select ${esc(box.box_number)}">`:''}</td>`:'';
+    list.innerHTML=rows.length?'<div class="box-table-wrap"><table class="box-table"><thead><tr><th>Box</th><th>Phones</th><th>Saved · UAE</th><th>Saved by</th><th>Status</th><th>Verified · UAE</th><th>Verified by</th><th>Customer</th>'+selectionHeader+'</tr></thead><tbody>'+rows.map(b=>`<tr><td><button type="button" class="quiet-link" data-search-read-only data-open-box="${esc(b.id)}">${cell(b.box_number)}</button></td><td>${cell(b.quantity)}</td><td>${cell(dt(b.saved_at))}</td><td>${cell(b.saved_by_name)}</td><td>${cell(state(b.state))}</td><td>${cell(dt(b.verified_at))}</td><td>${cell(b.verified_by_name)}</td><td>${cell(b.customer_name||b.customer_code)}</td>${selectionCell(b)}</tr>`).join('')+'</tbody></table></div>':'<p class="box-empty">No boxes found for these dates.</p>';
+  }
   queueSummary.addEventListener('click',e=>{if(busy||!e.target.closest('[data-show-box-list]'))return;queueCard=true;queueReveal=true;load();});
   document.addEventListener('greenloop:accounts-section',e=>{if(page!=='accounts')return;queueCard=false;queueReveal=false;detail.hidden=true;selected=null;printed=null;revealQueue();if(e.detail.view==='verify'&&!busy){queueFilters.clear();}});
   revealQueue();
   async function load(){
-    if(busy)return;const token=++generation;notice();lock(true);selected=null;printed=null;detail.hidden=true;
+    if(busy)return;const token=++generation;notice();selectableBoxes.clear();bulkForm?.reset();lock(true);selected=null;printed=null;detail.hidden=true;
     try {
       const data=await rpc('get_sorted_filter_records_v1',{...queueFilters.sortArgs(),p_source:page,p_filters:queueFilters.query(),p_offset:offset,p_limit:50});if(token!==generation)return;
-      queueFilters.result(data);total=data.total;list.innerHTML=data.rows.length?'<div class="box-table-wrap"><table class="box-table"><thead><tr><th>Box</th><th>Phones</th><th>Saved · UAE</th><th>Saved by</th><th>Status</th><th>Verified · UAE</th><th>Verified by</th><th>Customer</th></tr></thead><tbody>'+data.rows.map(b=>`<tr><td><button type="button" class="quiet-link" data-search-read-only data-open-box="${esc(b.id)}">${cell(b.box_number)}</button></td><td>${cell(b.quantity)}</td><td>${cell(dt(b.saved_at))}</td><td>${cell(b.saved_by_name)}</td><td>${cell(state(b.state))}</td><td>${cell(dt(b.verified_at))}</td><td>${cell(b.verified_by_name)}</td><td>${cell(b.customer_name||b.customer_code)}</td></tr>`).join('')+'</tbody></table></div>':'<p class="box-empty">No boxes found for these dates.</p>';
+      queueFilters.result(data);total=data.total;renderQueue(data.rows);
       queueFilters.externalFilters([{label:'Card',value:queueCard?queueTitle:'',clear:()=>{queueCard=false;queueReveal=Object.values(queueFilters.query()).some(Boolean);return load();}}]);
       queueSummary.innerHTML=`<button type="button" class="accounts-section-card" data-show-box-list ${pending?'data-show-account-boxes':''} data-capability="view" data-capability-page="${page}" aria-pressed="${queueReveal}"><span class="accounts-card-icon" aria-hidden="true">${pending?'✓':'▣'}</span><strong>${queueTitle}</strong><small>${total.toLocaleString('en-GB')} ${total===1?'box':'boxes'} ${pending?'pending':'exported'}</small></button>`;
       revealQueue();
       $('#box-queue-count').textContent=total?`${offset+1}–${Math.min(offset+50,total)} of ${total} boxes`:'0 boxes';
     }catch(e){list.innerHTML='';total=0;notice(e.message||'Boxes could not be loaded.',true);}finally{if(token===generation)lock(false);}
   }
+  list.addEventListener('change',event=>{
+    if (busy || !mayBulkVerify()) return;
+    if (event.target.matches('[data-box-select-all]')) {
+      for (const input of bulkInputs()) input.checked=event.target.checked;
+    } else if (!event.target.matches('[data-box-select]')) return;
+    bulkCustomer.innerHTML=window.GREENLOOP_ACCOUNTS.customerOptions(bulkCustomer.value);
+    syncBulkForm();
+  });
+  bulkForm?.addEventListener('submit',async event=>{
+    event.preventDefault();
+    if (busy || !mayBulkVerify() || !queueReveal) return;
+    const boxes=selectedBoxes();
+    if (!boxes.length || !bulkForm.reportValidity()) return;
+    const customer=bulkCustomer.value;
+    const label=bulkCustomer.selectedOptions[0].textContent;
+    const count=boxes.length, boxText=`${count} box${count===1?'':'es'}`;
+    const numbers=boxes.map(b=>b.box_number).join(', ');
+    if (!window.confirm(`Verify ${boxText} for ${label} and move them to Stock Exported?\n\n${numbers}`)) return;
+    const token=generation;
+    let errorMessage='';
+    lock(true);
+    try {
+      const verified=await rpc('verify_boxes_v1',{
+        p_box_ids:boxes.map(b=>b.id),p_revisions:boxes.map(b=>b.revision),p_customer_id:customer
+      });
+      if (verified!==count) throw Error('Verification could not be confirmed. Check the refreshed box list.');
+    } catch(error) {
+      errorMessage=error.message || 'The selected boxes could not be verified. Check the refreshed box list.';
+    } finally {
+      lock(false);
+    }
+    if (!detailCurrent(token) || !mayBulkVerify()) return;
+    offset=0;
+    const next=token+1;
+    await load();
+    if (detailCurrent(next)) notice(errorMessage || `${boxText} verified for ${label} and moved to Stock Exported.`,Boolean(errorMessage));
+  });
   function renderDetail(data,keepCustomer=false){
     const customerChoice=keepCustomer?detail.querySelector("#box-customer")?.value:null;
     selected=data;printed=null;const b=data.box;
@@ -182,7 +253,7 @@
   $('#box-queue-prev').addEventListener('click',()=>{if(!busy&&offset>0){offset-=50;load();}});
   $('#box-queue-next').addEventListener('click',()=>{if(!busy&&offset+50<total){offset+=50;load();}});
   app.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||busy)return;if(b.hasAttribute('data-export-box-report'))exportData(b.dataset.exportBoxReport);else if(b.dataset.openBox)open(b.dataset.openBox);else if(b.hasAttribute('data-print-box'))printBox();else if(b.hasAttribute('data-confirm-print'))confirmPrint();else if(b.hasAttribute('data-verify-box'))verify();else if(b.hasAttribute('data-request-box-recheck'))requestRecheck();else if(b.hasAttribute('data-close-box')){if(page==='stock_exported')window.GREENLOOP_BOX_PRINT?.clear();detail.hidden=true;selected=null;printed=null;}});
-  for(const event of ['greenloop:office-locked','greenloop:signed-out','greenloop:permissions-changed'])window.addEventListener(event,()=>{generation++;selected=null;printed=null;detail.hidden=true;detail.replaceChildren();});
+  for(const event of ['greenloop:office-locked','greenloop:signed-out','greenloop:permissions-changed'])window.addEventListener(event,()=>{generation++;selected=null;printed=null;detail.hidden=true;detail.replaceChildren();selectableBoxes.clear();bulkForm?.reset();syncBulkForm();});
   async function init(){client=window.GREENLOOP_GET_CLIENT();const {data,error}=await client.auth.getSession();if(error)throw error;if(!data.session){location.replace('index.html');return;}await window.GREENLOOP_ACCESS_READY;await window.GREENLOOP_STOCK?.ready();if(window.GREENLOOP_PAGE_ACCESS?.pageKey!==page)throw Error('You do not have permission to view this page.');canEdit=window.GREENLOOP_PAGE_ACCESS.canEdit===true;if(page==='accounts')await window.GREENLOOP_ACCOUNTS.init({client,canEdit,lock,notice,isBusy:()=>busy});app.hidden=false;await load();}
   init().catch(e=>{const n=$('#permission-message');n.textContent=e.message;n.hidden=false;});
 })();
