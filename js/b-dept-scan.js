@@ -37,7 +37,7 @@
    finally{running=false;status();if(entries.some(e=>e.state==='checking')&&can())void process();}
   }
   async function add(values,source){
-   if(!can())return;
+   if(resetting||!can())return;
    if(host.querySelector('tr[data-busy="yes"]')){count.textContent='Wait for the current Save to finish, then scan again.';return;}
    const revision=ticket;if(window.GREENLOOP_IMEI_CANONICAL){values=await window.GREENLOOP_IMEI_CANONICAL.list(values,()=>revision===ticket&&can());if(!values||revision!==ticket||!can())return;}const seen=new Set(entries.map(e=>e.imei)),first=entries.length===0;selected=true;
    for(const imei of values){const duplicate=seen.has(imei);seen.add(imei);entries.push({imei,state:duplicate?'error':'checking',message:duplicate?'Duplicate IMEI — this extra line cannot be saved.':'Checking this phone…',source});}
@@ -70,6 +70,20 @@
    }catch(error){if(revision===ticket)count.textContent=error.message||'Pending phones could not load. Try Auto Pick again.';}
    finally{if(revision===ticket)resetting=false;}
   }
+  async function loadStock(imeis,active) {
+   if(stopped||running||resetting||blocked()||!active())return false;
+   if((entries.length||invalidValues.length||input.value.trim())&&!window.confirm(`Load ${imeis.length} pending B-DEPT phone(s) and replace the current tray selection?`))return false;
+   const revision=++ticket;
+   resetting=true;
+   try{
+    await start();
+    if(revision!==ticket||!active()||stopped)return false;
+    entries=imeis.map(imei=>({imei,state:'loaded',message:'',source:'stock'}));
+    selected=true;invalidValues=[];input.value='';loadedAt=Date.now();
+    changed();
+    return true;
+   }finally{if(revision===ticket)resetting=false;}
+  }
   panel.querySelector('[data-frame-show-all]').onclick=()=>void resetTray(true);
   panel.querySelector('[data-frame-clear-tray]').onclick=()=>void resetTray(false);
   host.addEventListener('click',e=>{const b=e.target.closest('[data-frame-scan-location]');if(!b)return;const item=entries[Number(b.dataset.frameScanLocation)];if(!item?.record||!can())return;void window.GREENLOOP_IMEI_STAGE_NOTICE.show({imei:item.imei,knownRecord:item.record,title:'Phone unavailable in B-DEPT',message:item.message});});
@@ -78,7 +92,7 @@
   window.addEventListener('greenloop:permissions-changed',()=>{if(!allowed())stop();else{stopped=false;status();}});
   window.addEventListener('pageshow',event=>{if(event.persisted&&window.document?.body?.contains(input)){stopped=false;status();if(can())void reload().then(changed).catch(()=>{});}});
   status();
-  return{select,sync:status,get busy(){return running||resetting||entries.some(e=>e.state==='checking');},refresh(){loadedAt=Date.now();const current=queue();for(const e of entries)if(e.state==='loaded'&&!current.has(e.imei)){e.state='error';e.message='This phone is no longer pending in B-DEPT. Refresh or check its current location.';}status();},complete(imei,label){for(const e of entries)if(e.imei===imei&&e.state==='loaded'){e.state='complete';e.message=label;}status();},issueMarkup(row){
+  return{panel,select,loadStock,sync:status,get busy(){return running||resetting||entries.some(e=>e.state==='checking');},refresh(){loadedAt=Date.now();const current=queue();for(const e of entries)if(e.state==='loaded'&&!current.has(e.imei)){e.state='error';e.message='This phone is no longer pending in B-DEPT. Refresh or check its current location.';}status();},complete(imei,label){for(const e of entries)if(e.imei===imei&&e.state==='loaded'){e.state='complete';e.message=label;}status();},issueMarkup(row){
    if(row.scan_empty)return `<tr class="b-dept-empty-row"><td><input type="text" inputmode="numeric" maxlength="15" autocomplete="off" placeholder="Scan IMEI" aria-label="Scan IMEI line ${row.scan_line}" data-frame-empty-imei data-capability="entry" data-capability-page="frame_department" ${can()?'':'disabled'}></td>${Array.from({length:11},()=>'<td>—</td>').join('')}<td><button type="button" class="line-save" disabled>Save</button></td></tr>`;
    return `<tr class="b-dept-scan-result${row.scan_completed?' is-completed':' is-error'}"><td colspan="13"><span class="b-dept-scan-line">Line ${row.scan_line}</span><strong>${esc(row.imei)}</strong><span>${esc(row.scan_issue)}</span>${entries[row.scan_entry]?.record?`<button type="button" class="secondary-button" data-frame-scan-location="${row.scan_entry}" data-capability="view" data-capability-page="frame_department" data-search-read-only>Current location</button>`:''}</td></tr>`;}};
  }

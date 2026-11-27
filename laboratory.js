@@ -72,6 +72,7 @@
   let manualLabPartsMode = false;
   let frameGradeItems = [];
   let frameScan=null;
+  let frameStockScope=null;
   const frameDrafts=new Map();
   const frameSaveErrors = new Map();
   let frameSaving = false, frameReads = 0;
@@ -215,7 +216,7 @@
   }
 
   function showFrameView(view, moveFocus = false) {
-    if (!isFrameMode || frameSaving) return;
+    if (!isFrameMode || frameSaving || frameStockScope?.busy) return;
     const history = view === 'history';
     framePendingPanel.hidden = history;
     frameReportPanel.hidden = !history;
@@ -676,10 +677,28 @@
       frameScan?.refresh();
       renderFrameLines();
       if (!skipHistory) await loadFrameReport();
+      return data;
     } finally {
       frameReads--;
       syncFrameSaveAll();
     }
+  }
+  function frameStockBlocked() {
+    return frameSaving || frameReads>0 || frameScan.busy;
+  }
+  async function loadFrameStock(filters,active) {
+    await window.GREENLOOP_STOCK.ready();
+    if (!active()) return null;
+    const receiptIds=new Set(window.GREENLOOP_STOCK.matchingReceiptIds(filters));
+    if (!receiptIds.size) return 0;
+    const rows=await loadFrameRows(true);
+    if (!active() || !rows) return null;
+    if (rows.some(row=>!Object.hasOwn(row,'receiving_batch_id'))) throw Error('B-DEPT stock information could not be verified. Refresh and try again.');
+    const imeis=[...new Set(rows.filter(row=>receiptIds.has(row.receiving_batch_id)).map(row=>row.imei))];
+    if (imeis.some(imei=>!/^\d{15}$/.test(imei))) throw Error('A pending B-DEPT IMEI could not be verified. Refresh and try again.');
+    if (!imeis.length) return 0;
+    if (frameStockBlocked()) throw Error('Finish the current scan or save before loading stock.');
+    return await frameScan.loadStock(imeis,active) ? imeis.length : null;
   }
   async function loadTechnicians(preferredId = activeTechnicianId) {
     const selectionAtStart=activeTechnicianId,renderAtStart=JSON.stringify([technicians,activeTechnicianId,[...hiddenTechnicianIds],visibilityReady]);
@@ -951,7 +970,7 @@
 
   async function saveFrameRows(rows) {
     if (frameSaving || !canSaveFrame() || !rows.length) return;
-    if (frameReads || frameScan?.busy) {
+    if (frameReads || frameScan?.busy || frameStockScope?.busy) {
       setBoardMessage("Wait for the pending phones to finish loading, then save again.");
       return;
     }
@@ -1071,7 +1090,13 @@
       });
       await refreshAll();
     }
-    else {await loadFrameGrades();await refreshAll();}
+    else {
+      frameStockScope=window.GREENLOOP_QC_STOCK_SCOPE.attach({
+        host:frameScan.panel,stage:'frame_department',client:getClient(),load:loadFrameStock,blocked:frameStockBlocked
+      });
+      await loadFrameGrades();
+      await refreshAll();
+    }
     if (!isFrameMode) {
       window.GREENLOOP_EMPLOYEES?.watch(scheduleBackgroundRefresh);
       // One fallback refresh; workflow signals/focus remain immediate. A signal
@@ -1101,7 +1126,7 @@
   document.querySelector("#close-menu").addEventListener("click", () => setMenu(false));
   backdrop.addEventListener("click", () => setMenu(false));
   document.querySelector("#refresh-lab").addEventListener("click", () => {setBoardMessage();refreshAll().catch((error) => setBoardMessage(error.message));});
-  refreshFrameButton.addEventListener("click", () => { if (!frameSaving) void refreshAll().catch((error) => setBoardMessage(error.message)); });
+  refreshFrameButton.addEventListener("click", () => { if (!frameSaving && !frameStockScope?.busy) void refreshAll().catch((error) => setBoardMessage(error.message)); });
   saveFrameAllButton.addEventListener("click", () => void saveFrameRows(frameRowsToSave()).catch(error => setBoardMessage(error.message)));
   addTechnicianButton.addEventListener("click", () => addTechnician().catch((error) => setBoardMessage(error.message)));
   removeTechnicianButton.addEventListener("click", () => removeTechnician().catch((error) => setBoardMessage(error.message)));

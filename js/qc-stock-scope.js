@@ -5,15 +5,17 @@
  function attach({host,stage,client,load,clear,findImeis,blocked=()=>false}){
   const lab=stage==='lab_glass';
   const final=stage==='final_qc';
-  const page=lab||final?stage:stage==='issuance'?'qc_issuance':'initial_qc';
-  const loadCapability=lab?'search':'entry';
+  const frame=stage==='frame_department';
+  const loadBySearch=lab||frame;
+  const page=loadBySearch||final?stage:stage==='issuance'?'qc_issuance':'initial_qc';
+  const loadCapability=loadBySearch?'search':'entry';
   const panel=document.createElement('section');panel.className='qc-stock-scope';panel.setAttribute('aria-label','Choose stock');
   panel.innerHTML='<label>Supplier<select data-qcs-supplier data-capability="search" data-capability-page="initial_qc"><option value="">All suppliers</option></select></label><label>Stock / Batch<select data-qcs-batch data-capability="search" data-capability-page="initial_qc"><option value="">All stocks / batches</option></select></label><label>Invoice<select data-qcs-invoice data-capability="search" data-capability-page="initial_qc"><option value="">All invoices</option></select></label><div class="qc-stock-actions"><button type="button" class="secondary-button" data-qcs-clear data-capability="search" data-capability-page="initial_qc">Clear</button><button type="button" class="primary-button" data-qcs-load data-capability="entry" data-capability-page="initial_qc">Load selected stock</button><small data-qcs-status role="status">Choose a supplier, stock or invoice.</small></div>';
   panel.querySelectorAll('[data-capability-page]').forEach(e=>e.dataset.capabilityPage=page);
   host.after(panel);
   const supplier=panel.querySelector('[data-qcs-supplier]'),batch=panel.querySelector('[data-qcs-batch]'),invoice=panel.querySelector('[data-qcs-invoice]'),status=panel.querySelector('[data-qcs-status]'),button=panel.querySelector('[data-qcs-load]');
-  if(lab)button.dataset.capability=loadCapability;
-  if(lab||final)panel.querySelectorAll('[data-capability="search"]').forEach(e=>e.setAttribute('data-search-read-only',''));
+  if(loadBySearch)button.dataset.capability=loadCapability;
+  if(loadBySearch||final)panel.querySelectorAll('[data-capability="search"]').forEach(e=>e.setAttribute('data-search-read-only',''));
   let catalog=[],selection={},generation=0,loading=false,stopped=false;
   const can=cap=>!stopped&&window.GREENLOOP_CAN?.(cap,page)===true;
   const filters=()=>Object.fromEntries(Object.entries(selection).filter(([,v])=>v));
@@ -27,7 +29,7 @@
    invoice.innerHTML='<option value="">All invoices</option>'+[...new Set(stocks.map(r=>r.invoice_number).filter(Boolean))].map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');invoice.value=selection.invoice_number||'';sync();
   }
   async function rpc(args){const{data,error}=await client.rpc('get_qc_stock_selection_v1',{p_stage:stage,p_filters:filters(),...args});if(error)throw error;if(!data||!Array.isArray(data.rows)||!Number.isSafeInteger(Number(data.total))||Number(data.total)<0)throw Error('Stock selection could not be verified.');return data;}
-  async function refreshCount(){const ticket=++generation;if(!can('search')||!Object.keys(filters()).length){message('Choose a supplier, stock or invoice.');sync();return;}if(lab||final){message(lab?'Load to view matching Lab & Glass phones.':'Load to review matching Final QC phones.');return;}message('Checking pending phones…');try{const r=await rpc({p_offset:0,p_limit:1});if(ticket!==generation||stopped)return;message(`${r.total} phone(s) ${stage==='issuance'?'awaiting Issuance':'waiting for Initial QC'}`);}catch(e){if(ticket===generation&&!stopped)message(e.message||'Stock count could not load.',true);}sync();}
+  async function refreshCount(){const ticket=++generation;if(!can('search')||!Object.keys(filters()).length){message('Choose a supplier, stock or invoice.');sync();return;}if(loadBySearch||final){const name=lab?'Lab & Glass':frame?'B-DEPT':'Final QC';message(`Load to ${lab?'view':'review'} matching ${name} phones.`);return;}message('Checking pending phones…');try{const r=await rpc({p_offset:0,p_limit:1});if(ticket!==generation||stopped)return;message(`${r.total} phone(s) ${stage==='issuance'?'awaiting Issuance':'waiting for Initial QC'}`);}catch(e){if(ticket===generation&&!stopped)message(e.message||'Stock count could not load.',true);}sync();}
   panel.addEventListener('change',e=>{
    if(loading||!can('search'))return;
    if(e.target===supplier)selection={supplier_id:supplier.value};
@@ -50,6 +52,12 @@
    if(blocked()){message('Finish the current save or edit before loading stock.',true);return;}
    loading=true;sync();const ticket=++generation;message('Loading selected stock…');
    try{
+    if(frame){
+     const active=()=>ticket===generation&&can('search')&&can('view');
+     const loaded=await load(filters(),active);
+     if(active())message(loaded===null?'Stock selection cancelled.':loaded?`${loaded} pending B-DEPT phone(s) loaded.`:'No pending B-DEPT phones match this stock. The current tray is unchanged.');
+     return;
+    }
     if(lab){const total=await load(filters());if(ticket===generation&&can('search')&&total!==undefined)message(total?'':'No Lab & Glass phones match this stock.');return;}
     if(final){
      const active=()=>ticket===generation&&can(loadCapability)&&can('search');
