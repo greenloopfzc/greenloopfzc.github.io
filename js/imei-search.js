@@ -373,7 +373,16 @@ function buildStageSections(sortedRows) {
       return renderActivity(row,nested);
     }).join("");
   }
-  function renderBasicTable(device,rows) {
+  function renderRmaHistory(rows) {
+    if (!rows.length) return "";
+    const entries=rows.map(row=>{
+      const box=field(row,"Box number");
+      const reason=field(row,"Reason");
+      return `<li><strong>${safe(row.title)}</strong> · ${safe(journeyMoment(row.occurred_at))}${row.same_time ? ' · <span class="history-same-time">Same time</span>' : ""} · ${fact("By",row.actor)}${box ? " · "+fact("Box",box) : ""}${reason ? " · "+fact("Reason",reason) : ""}</li>`;
+    });
+    return `<section class="history-rma" aria-labelledby="history-rma-title"><h3 id="history-rma-title">RMA History</h3><ul class="history-bullets">${entries.join("")}</ul></section>`;
+  }
+  function renderBasicTable(device,rows,hasRma) {
     const names=Boolean(window.GREENLOOP_CAN_VIEW_PARTNER_NAMES);
     const receipt=[...rows].reverse().find(row=>row.stage==="stock_received") || {};
     const supplierCode=GREENLOOP_RECEIPTS.label("imei_search",device.imei_1,scalar(device.supplier_code)||field(receipt,"Supplier code","Supplier"),null,null);
@@ -401,7 +410,8 @@ function buildStageSections(sortedRows) {
     const esimEvidence=window.GREENLOOP_ESIM_ONLY_EVIDENCE?.(device);
     const likelyEsim=esimEvidence==="sales_region";
     const esimBadge=esimEvidence ? `<span class="journey-badge history-esim-badge"${likelyEsim ? ' title="Based on saved sales region"' : ""}>${likelyEsim ? "Likely eSIM-only" : "eSIM-only"}</span>` : "";
-    header.innerHTML=`<div class="history-basic-heading"><h2 id="history-device-name">Device details</h2>${badge(stage)}<dl class="history-device-specs" aria-label="Phone specifications">${specs}</dl>${esimBadge}</div><table class="history-basic-table"><caption class="history-sr-only">Basic phone and supplier details</caption><tbody>${cells.reduce((html,cell,index)=>html+(index%2===0 ? "<tr>" : "")+cell+(index%2===1 || index===cells.length-1 ? "</tr>" : ""),"")}</tbody></table>`;
+    const rmaBadge=hasRma ? '<span class="journey-badge history-rma-badge" data-tone="warning">RMA</span>' : "";
+    header.innerHTML=`<div class="history-basic-heading"><h2 id="history-device-name">Device details</h2>${badge(stage)}<dl class="history-device-specs" aria-label="Phone specifications">${specs}</dl>${rmaBadge}${esimBadge}</div><table class="history-basic-table"><caption class="history-sr-only">Basic phone and supplier details</caption><tbody>${cells.reduce((html,cell,index)=>html+(index%2===0 ? "<tr>" : "")+cell+(index%2===1 || index===cells.length-1 ? "</tr>" : ""),"")}</tbody></table>`;
   }
   function renderReplacementHistory(data) {
     if(data.replacement_history_unavailable)return '<p class="history-replacement-warning" role="status">Replacement history could not be loaded. Refresh to check the old/new IMEI link.</p>';
@@ -435,13 +445,14 @@ function buildStageSections(sortedRows) {
   }
   function renderHistory(data) {
     const rows=window.GREENLOOP_STOCK_JOURNEY.activity(data.rows);
-    renderBasicTable(data.device || {},rows);
     const visibleRows=rows.map(row=>({...row,details:visibleDetails(row)}));
+    const rmaRows=visibleRows.filter(row=>row.rma_event);
+    renderBasicTable(data.device || {},rows,rmaRows.length>0);
     const compact=window.GREENLOOP_STOCK_JOURNEY.render(visibleRows,{
       escape:escapeHtml,date:journeyMoment,currentStage:currentStage(data.device || {}),
       money:value=>number(value)===null ? missing : number(value).toLocaleString("en-GB",{minimumFractionDigits:2,maximumFractionDigits:2})
     });
-    body.innerHTML=(data.chaman_summary?.sent?'<section class="history-chaman-summary"><h3>Chaman Shop transfers</h3><p>'+escapeHtml('Sent: '+data.chaman_summary.sent+' · Received back at Greenloop: '+data.chaman_summary.returned+' · Outside Greenloop: '+data.chaman_summary.outside_greenloop)+'</p><p>Every dispatch, receiving and return is recorded in the journey below.</p></section>':'')+renderReplacementHistory(data)+renderTechnicianHistory(data.technician_history)+window.GREENLOOP_IMEI_CORRECTIONS.render(data.report_corrections,data.device?.imei_1)+(rows.length ? compact+`<details class="history-full-activity"><summary>Full activity (${rows.length} records)</summary><ol class="history-activity-list">${renderActivityList(visibleRows)}</ol></details>` : '<p class="history-missing">No history has been recorded for this phone.</p>');
+    body.innerHTML=renderRmaHistory(rmaRows)+(data.chaman_summary?.sent?'<section class="history-chaman-summary"><h3>Chaman Shop transfers</h3><p>'+escapeHtml('Sent: '+data.chaman_summary.sent+' · Received back at Greenloop: '+data.chaman_summary.returned+' · Outside Greenloop: '+data.chaman_summary.outside_greenloop)+'</p><p>Every dispatch, receiving and return is recorded in the journey below.</p></section>':'')+renderReplacementHistory(data)+renderTechnicianHistory(data.technician_history)+window.GREENLOOP_IMEI_CORRECTIONS.render(data.report_corrections,data.device?.imei_1)+(rows.length ? compact+`<details class="history-full-activity"><summary>Full activity (${rows.length} records)</summary><ol class="history-activity-list">${renderActivityList(visibleRows)}</ol></details>` : '<p class="history-missing">No history has been recorded for this phone.</p>');
     count.textContent="Oldest → newest · UAE date & time · Same time = no separate clock sequence recorded";
     const totals=data.summary || {};
     const unpriced=number(totals.unpriced_manual_part_quantity) || 0;
