@@ -410,7 +410,7 @@ function buildStageSections(sortedRows) {
     const esimEvidence=window.GREENLOOP_ESIM_ONLY_EVIDENCE?.(device);
     const likelyEsim=esimEvidence==="sales_region";
     const esimBadge=esimEvidence ? `<span class="journey-badge history-esim-badge"${likelyEsim ? ' title="Based on saved sales region"' : ""}>${likelyEsim ? "Likely eSIM-only" : "eSIM-only"}</span>` : "";
-    const rmaBadge=hasRma ? '<span class="journey-badge history-rma-badge" data-tone="warning">RMA</span>' : "";
+    const rmaBadge=hasRma ? '<span class="journey-badge history-rma-badge">RMA</span>' : "";
     header.innerHTML=`<div class="history-basic-heading"><h2 id="history-device-name">Device details</h2>${badge(stage)}<dl class="history-device-specs" aria-label="Phone specifications">${specs}</dl>${rmaBadge}${esimBadge}</div><table class="history-basic-table"><caption class="history-sr-only">Basic phone and supplier details</caption><tbody>${cells.reduce((html,cell,index)=>html+(index%2===0 ? "<tr>" : "")+cell+(index%2===1 || index===cells.length-1 ? "</tr>" : ""),"")}</tbody></table>`;
   }
   function renderReplacementHistory(data) {

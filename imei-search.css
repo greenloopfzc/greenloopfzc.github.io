@@ -29,6 +29,7 @@ html:is([data-design="neumorphism"],[data-mode="dark"]) .history-content { --his
 .imei-journey-header { display:block; padding:0; }
 .history-basic-heading { display:flex; flex-wrap:wrap; justify-content:flex-start; align-items:center; gap:12px; padding:22px 26px; }
 .history-basic-heading > .journey-badge { flex:0 1 auto; padding:8px 14px; font-size:1rem; }
+.history-basic-heading > .history-rma-badge { padding:9px 16px; font-size:1.15rem; background:#b3212a; color:#fff; }
 .history-basic-heading > .history-esim-badge { background:#ffeb9b; color:#3d2c00; }
 .history-basic-heading h2 { margin:0; color:var(--history-ink); font:750 1.25rem/1.4 "Manrope",Arial,sans-serif; }
 .history-device-specs { display:flex; flex-wrap:wrap; align-items:center; gap:10px clamp(20px,2.4vw,42px); min-width:0; margin:0; margin-inline-start:clamp(4px,1.2vw,20px); }
