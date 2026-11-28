@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en" data-global-imei-search="off">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0d5c43">
+  <title>RMA | Greenloop</title>
+  <script src="js/appearance.js?v=20261111-ruby-obsidian-1"></script>
+  <link rel="stylesheet" href="css/styles.css?v=20261016-strict-view-only-1">
+  <link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
+  <link rel="stylesheet" href="css/appearance.css?v=20261111-ruby-obsidian-1">
+  <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
+  <link rel="stylesheet" href="css/sidebar-compact.css?v=20261009-sidebar-pdf-1">
+  <link rel="stylesheet" href="css/customer-rma.css?v=20261128-customer-rma-1">
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="js/permission-catalog.js?v=20261119-stage-change-parts-1"></script>
+  <script defer src="js/rpc-capabilities.js?v=20261128-customer-rma-1"></script>
+  <script defer src="js/page-capabilities.js?v=20261104-report-permissions-1"></script>
+  <script defer src="js/office-access.js?v=20261024-office-access-1"></script>
+  <script defer src="js/config.js?v=20261128-customer-rma-1"></script>
+  <script defer src="js/part-notifications.js?v=20261124-workflow-read-load-1"></script>
+  <script defer src="js/sidebar-compact.js?v=20261105-issuance-sidebar-1"></script>
+  <script defer src="js/customer-rma.js?v=20261128-customer-rma-1"></script>
+</head>
+<body class="app-page">
+  <div class="app-shell">
+    <aside id="sidebar" class="sidebar" aria-label="Main navigation">
+      <div class="sidebar-top">
+        <a class="app-brand" href="dashboard.html"><span class="gl-wordmark"><img src="assets/greenloop-fzc-logo.jpg" alt="Greenloop FZC" width="1280" height="427"></span></a>
+        <button id="close-menu" hidden aria-hidden="true" tabindex="-1" class="icon-button close-menu" type="button" aria-label="Close menu">×</button>
+      </div>
+      <nav class="sidebar-nav"></nav>
+      <div class="sidebar-user"><span class="user-avatar">SA</span><span><strong>System Admin</strong><small>Super Admin</small></span></div>
+    </aside>
+    <div id="menu-backdrop" class="menu-backdrop" hidden></div>
+    <main class="app-main">
+      <header class="topbar">
+        <button id="open-menu" class="icon-button menu-button" type="button" aria-label="Open menu">☰</button>
+        <div class="breadcrumb"><a href="dashboard.html">Dashboard</a><span aria-hidden="true">/</span><strong>RMA</strong></div>
+        <div class="topbar-actions"><span class="live-chip">Live database</span></div>
+      </header>
+      <div class="page-content customer-rma" id="customer-rma">
+        <section class="page-heading"><h1>RMA</h1></section>
+        <section class="panel rma-panel" aria-labelledby="rma-intake-title">
+          <header class="rma-section-header"><h2 id="rma-intake-title">Receive RMA</h2></header>
+          <div class="rma-controls">
+            <label id="rma-mode-field" hidden>Record type
+              <select id="rma-mode" data-capability="view" data-search-read-only>
+                <option value="export">Customer return</option>
+                <option value="opening">Opening Stock RMA</option>
+              </select>
+            </label>
+            <form id="rma-lookup" class="rma-controls">
+              <label>IMEI<input id="rma-imei" type="text" inputmode="numeric" maxlength="15" autocomplete="off" pattern="[0-9]{15}" placeholder="Scan 15-digit IMEI" data-capability="view" data-search-read-only required></label>
+              <button class="secondary-button" type="submit" data-capability="view" data-search-read-only>Review phone</button>
+            </form>
+          </div>
+          <p class="rma-status" id="rma-intake-status" role="status" aria-live="polite"></p>
+          <dl id="rma-preview" class="rma-preview" hidden></dl>
+          <form id="rma-receive" class="rma-controls" hidden>
+            <label class="rma-reason">Return reason<textarea id="rma-reason" rows="2" minlength="2" maxlength="1000" data-capability="entry" required></textarea></label>
+            <label id="rma-reference-field" hidden>Previous box or invoice (optional)<input id="rma-reference" maxlength="120" data-capability="entry"></label>
+            <button class="primary-button" type="submit" data-capability="entry">Save RMA</button>
+          </form>
+        </section>
+        <section class="panel rma-panel" id="rma-case-report" aria-labelledby="rma-history-title">
+          <header class="rma-section-header"><h2 id="rma-history-title">RMA Report</h2></header>
+          <form class="rma-controls" data-rma-filter>
+            <label>Recorded from · UAE<input name="from" type="date" data-capability="view" data-search-read-only></label>
+            <label>Recorded to · UAE<input name="to" type="date" data-capability="view" data-search-read-only></label>
+            <button class="primary-button" type="submit" data-capability="view" data-search-read-only>Apply dates</button>
+            <button class="secondary-button" type="button" data-rma-clear data-capability="view" data-search-read-only>Clear</button>
+          </form>
+          <p class="rma-status" data-rma-status role="status" aria-live="polite"></p>
+          <div class="rma-table-wrap">
+            <table class="rsd-table" data-no-serial data-preserve-table-layout>
+              <thead><tr><th scope="col">S.No</th><th scope="col">IMEI</th><th scope="col">Model</th><th scope="col">GB</th><th scope="col">Customer</th><th scope="col">Original Export Box</th><th scope="col">Recorded · UAE</th><th scope="col">Recorded by</th><th scope="col">Status</th><th scope="col">Re-export Box</th><th scope="col">Return Reason</th></tr></thead>
+              <tbody data-rma-rows></tbody>
+            </table>
+          </div>
+          <footer class="rma-paging">
+            <button class="secondary-button" type="button" data-rma-prev data-capability="view" data-search-read-only disabled>Previous</button>
+            <span data-rma-page></span>
+            <button class="secondary-button" type="button" data-rma-next data-capability="view" data-search-read-only disabled>Next</button>
+          </footer>
+        </section>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

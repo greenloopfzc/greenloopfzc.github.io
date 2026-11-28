@@ -4460,5 +4460,24 @@
   },
   "get_lab_stock_workbench_version": {
     "read": true
+  },
+  "get_rma_intake_v1": {
+    "page": "stock_received",
+    "capability": "view",
+    "read": true
+  },
+  "receive_customer_rma_v1": {
+    "page": "stock_received",
+    "capability": "entry"
+  },
+  "get_rma_cases_v1": {
+    "page": "stock_received",
+    "capability": "view",
+    "read": true
+  },
+  "get_rma_ready_report_v1": {
+    "page": "ready_stock",
+    "capability": "view",
+    "read": true
   }
 }

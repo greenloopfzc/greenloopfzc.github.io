@@ -8,7 +8,7 @@
   const totalEsim = document.querySelector("#ready-stock-total-esim");
   const totalView = document.querySelector("#ready-stock-total-view");
   const gradeSummary = document.querySelector("#ready-stock-grades");
-  const stockGrades = ["A", "B", "D", "BA", "BB", "RMA"];
+  const stockGrades = ["A", "B", "D", "BA", "BB"];
   const rangeLabel = document.querySelector("#ready-stock-range-label");
   const sidebar = document.querySelector("#sidebar");
   const backdrop = document.querySelector("#menu-backdrop");
@@ -112,15 +112,22 @@
       !Number.isSafeInteger(row.quantity)||row.quantity<1))throw Error("Ready Stock totals could not be verified.");
     const totalQty=flatRows.reduce((sum,row)=>sum+row.quantity,0);
     if(!Number.isSafeInteger(esimQty)||esimQty<0||esimQty>totalQty)throw Error("Ready Stock eSIM total could not be verified.");
+    const rmaQty = data.rma_count;
+    const verifiedRma = Number.isSafeInteger(rmaQty) && rmaQty>=0 && rmaQty<=totalQty;
     quantityScopes=[];
     const card=(key,label,quantity,scope)=>`<button class="ready-stock-grade-card" type="button" data-ready-grade="${key}" data-ready-imeis="${scope}" data-capability="view" data-capability-page="ready_stock" data-search-read-only aria-haspopup="dialog" aria-expanded="false" aria-label="${escapeHtml('View phones: '+label)}"><span>${label}</span><strong class="ready-stock-grade-count${quantity?'':' ready-stock-zero'}">${escapeHtml(quantity)}</strong><small>phones</small><span class="ready-stock-grade-view">View phones <span aria-hidden="true">→</span></span></button>`;
     const esimScope=quantityScopes.push({label:"eSIM · Ready Stock",esim:true,quantity:esimQty})-1;
     gradeSummary.innerHTML=stockGrades.map(grade=>{
       const gradeRows=flatRows.filter(row=>stockGroup(row).g===normalize(grade));
       const quantity=gradeRows.reduce((sum,row)=>sum+row.quantity,0);
-      const label=grade==='RMA'?'RMA Stock':'Grade '+grade;
+      const label='Grade '+grade;
       return card(grade,label,quantity,registerScope(label+' · Ready Stock',gradeRows,quantity));
-    }).join('')+card("esim","eSIM",esimQty,esimScope);
+    }).join('')+`<button class="ready-stock-grade-card" type="button" data-ready-grade="RMA" data-rma-ready
+      data-capability="view" data-capability-page="ready_stock" data-search-read-only
+      aria-haspopup="dialog" aria-expanded="false" aria-controls="rma-ready-report"${verifiedRma ? "" : " disabled"}>
+      <span>RMA Stock</span><strong class="ready-stock-grade-count${rmaQty ? "" : " ready-stock-zero"}">${verifiedRma ? rmaQty : "—"}</strong>
+      <small>phones</small><span class="ready-stock-grade-view">View report →</span></button>`
+      +card("esim","eSIM",esimQty,esimScope);
     total.textContent=`${totalQty} phone${totalQty===1?'':'s'}`;
     totalEsim.textContent=`Includes ${esimQty} eSIM`;
     totalEsim.hidden=false;

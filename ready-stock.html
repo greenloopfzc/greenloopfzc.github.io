@@ -22,7 +22,7 @@
 <script defer src="js/imei-scan.js?v=20261118-lab-single-notice-1"></script>
 <script defer src="js/imei-stage-notice.js?v=20261118-lab-single-notice-1"></script>
   <script defer src="js/permission-catalog.js?v=20261119-stage-change-parts-1"></script>
-<script defer src="js/rpc-capabilities.js?v=20261125-ready-stock-total-esim-1"></script>
+<script defer src="js/rpc-capabilities.js?v=20261128-customer-rma-1"></script>
 <script defer src="js/page-capabilities.js?v=20261104-report-permissions-1"></script>
 <link rel="stylesheet" href="css/office-access.css?v=20261024-office-access-1">
 <script defer src="js/office-access.js?v=20261024-office-access-1"></script>
@@ -31,7 +31,7 @@
 <script defer src="js/stock-consistency.js?v=20261118-operational-loading-1"></script>
 <script defer src="js/batch-quantity-display.js?v=20261107-batch-quantity-labels-1"></script>
 <script src="complete-lists.js?v=20261113-stock-units-1" defer></script>
-  <script defer src="js/config.js?v=20261125-ready-stock-total-esim-1"></script>
+  <script defer src="js/config.js?v=20261128-customer-rma-1"></script>
 <link rel="stylesheet" href="css/cable-workspace.css?v=20261111-replacement-cable-1">
 <script defer src="js/reader-connection.js?v=20261106-reader-port-fallback-1"></script>
 <script defer src="js/device-reader.js?v=20261124-cable-reader-latency-1"></script>
@@ -43,7 +43,9 @@
     <script defer src="js/part-notifications.js?v=20261124-workflow-read-load-1"></script>
     <script defer src="js/employee-updates.js?v=20261117-reader-battery-performance-1"></script>
   <script defer src="js/storage-options.js?v=20261027-iphone-entry-options-1"></script>
-  <script defer src="js/ready-stock.js?v=20261125-ready-stock-total-esim-1"></script>
+  <script defer src="js/ready-stock.js?v=20261128-customer-rma-1"></script>
+  <link rel="stylesheet" href="css/customer-rma.css?v=20261128-customer-rma-1">
+  <script defer src="js/customer-rma.js?v=20261128-customer-rma-1"></script>
       <link rel="stylesheet" href="css/appearance.css?v=20261111-ruby-obsidian-1">
     <link rel="stylesheet" href="css/imei-stage-notice.css?v=20261102-imei-scan-location-1">
   <link rel="stylesheet" href="css/branding.css?v=20261009-brand-1">
@@ -141,5 +143,29 @@
     <dialog id="ready-groups-dialog" class="rsd-dialog rsg-dialog" aria-labelledby="ready-groups-title"><header class="rsd-dialog-header"><div><p class="panel-kicker">Stock summary / Phone details</p><h2 id="ready-groups-title">Ready Stock</h2><p id="ready-groups-period"></p></div><button id="ready-groups-close" type="button" class="secondary-button" data-capability="view" data-capability-page="ready_stock" data-search-read-only>Close</button></header><div class="rsd-dialog-status"><p id="ready-groups-status" role="status" aria-live="polite"></p><div class="rsg-actions"><button id="ready-groups-color" type="button" class="secondary-button" data-capability="view" data-capability-page="ready_stock" data-search-read-only aria-pressed="false">Show Color</button><button id="ready-groups-models" type="button" class="secondary-button" data-capability="view" data-capability-page="ready_stock" data-search-read-only aria-pressed="false">Model Summary</button><button id="ready-groups-back" type="button" class="secondary-button" data-capability="view" data-capability-page="ready_stock" data-search-read-only hidden>← Back to summary</button><button id="ready-groups-refresh" type="button" class="secondary-button" data-capability="view" data-capability-page="ready_stock" data-search-read-only>Refresh list</button></div></div><div class="rsd-table-wrap"><table class="rsd-table"><thead id="ready-groups-head"></thead><tbody id="ready-groups-rows"></tbody><tfoot id="ready-groups-table-total" hidden></tfoot></table></div><p id="ready-groups-total" class="rsg-total" role="status"></p><footer class="rsd-pagination"><button id="ready-groups-previous" type="button" class="secondary-button" data-capability="view" data-capability-page="ready_stock" data-search-read-only disabled>Previous</button><span id="ready-groups-page"></span><button id="ready-groups-next" type="button" class="secondary-button" data-capability="view" data-capability-page="ready_stock" data-search-read-only disabled>Next</button></footer></dialog>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   <dialog id="ready-model-dialog" class="rsd-dialog rsm-dialog" aria-labelledby="ready-model-title"><header class="rsd-dialog-header"><div><p class="panel-kicker">Model · GB / Grade Breakdown</p><h2 id="ready-model-title">Model breakdown</h2><p id="ready-model-scope"></p></div><button id="ready-model-close" type="button" class="secondary-button" data-capability="view" data-capability-page="ready_stock" data-search-read-only>Close</button></header><div class="rsd-dialog-status"><p id="ready-model-status" role="status" aria-live="polite"></p><div class="rsg-actions"><button id="ready-model-back" type="button" class="secondary-button" data-capability="view" data-capability-page="ready_stock" data-search-read-only hidden>← GB / Grade</button><button id="ready-model-refresh" type="button" class="secondary-button" data-capability="view" data-capability-page="ready_stock" data-search-read-only>Refresh Model Summary</button></div></div><div class="rsd-table-wrap"><table class="rsd-table rsm-table" data-no-serial data-preserve-table-layout><thead id="ready-model-head"></thead><tbody id="ready-model-rows"></tbody></table></div><p id="ready-model-total" class="rsg-total"></p><footer class="rsd-pagination"><button id="ready-model-prev" type="button" class="secondary-button" data-capability="view" data-capability-page="ready_stock" data-search-read-only>Previous</button><span id="ready-model-page"></span><button id="ready-model-next" type="button" class="secondary-button" data-capability="view" data-capability-page="ready_stock" data-search-read-only>Next</button></footer></dialog>
+  <dialog id="rma-ready-report" class="rsd-dialog" aria-labelledby="rma-ready-title">
+    <header class="rsd-dialog-header">
+      <h2 id="rma-ready-title">RMA Stock</h2>
+      <button class="secondary-button" type="button" data-rma-close data-capability="view" data-search-read-only>Close</button>
+    </header>
+    <form class="rma-controls" data-rma-filter>
+      <label>Ready from · UAE<input name="from" type="date" data-capability="view" data-search-read-only></label>
+      <label>Ready to · UAE<input name="to" type="date" data-capability="view" data-search-read-only></label>
+      <button class="primary-button" type="submit" data-capability="view" data-search-read-only>Apply dates</button>
+      <button class="secondary-button" type="button" data-rma-clear data-capability="view" data-search-read-only>Clear</button>
+    </form>
+    <p class="rma-status" data-rma-status role="status" aria-live="polite"></p>
+    <div class="rma-table-wrap">
+      <table class="rsd-table" data-no-serial data-preserve-table-layout>
+        <thead><tr><th scope="col">S.No</th><th scope="col">Customer</th><th scope="col">Model</th><th scope="col">GB</th><th scope="col">Final Grade</th><th scope="col">Original Export Box</th><th scope="col">Ready Date · UAE</th><th scope="col">Qty</th></tr></thead>
+        <tbody data-rma-rows></tbody>
+      </table>
+    </div>
+    <footer class="rma-paging">
+      <button class="secondary-button" type="button" data-rma-prev data-capability="view" data-search-read-only disabled>Previous</button>
+      <span data-rma-page></span>
+      <button class="secondary-button" type="button" data-rma-next data-capability="view" data-search-read-only disabled>Next</button>
+    </footer>
+  </dialog>
 </body>
 </html>

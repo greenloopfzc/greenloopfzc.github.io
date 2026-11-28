@@ -193,3 +193,29 @@
   root.GREENLOOP_RPC_CAPABILITIES.rpcs.verify_boxes_v1=rule;
   root.GREENLOOP_RPC_CAPABILITIES.verify_boxes_v1=rule;
 })(typeof window!=="undefined"?window:globalThis);
+
+(function(root){
+  const rules = {
+    "get_rma_intake_v1": {
+      "page": "stock_received",
+      "capability": "view",
+      "read": true
+    },
+    "receive_customer_rma_v1": {
+      "page": "stock_received",
+      "capability": "entry"
+    },
+    "get_rma_cases_v1": {
+      "page": "stock_received",
+      "capability": "view",
+      "read": true
+    },
+    "get_rma_ready_report_v1": {
+      "page": "ready_stock",
+      "capability": "view",
+      "read": true
+    }
+  };
+  Object.assign(root.GREENLOOP_RPC_CAPABILITIES.rpcs, rules);
+  Object.assign(root.GREENLOOP_RPC_CAPABILITIES, rules);
+})(typeof window!=="undefined"?window:globalThis);
